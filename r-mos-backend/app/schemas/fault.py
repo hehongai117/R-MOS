@@ -55,6 +55,10 @@ class FaultCaseListItem(BaseModel):
     severity: str
     created_at: datetime
 
+    # V2.3.1 修复: 添加 from_attributes 支持 ORM 对象转换
+    class Config:
+        from_attributes = True
+
 
 class FaultCaseListResponse(BaseModel):
     """故障案例列表响应"""
