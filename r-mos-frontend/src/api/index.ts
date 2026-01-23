@@ -45,3 +45,43 @@ export {
     updateFaultCase,
     deleteFaultCase,
 } from './fault'
+
+// Incident API
+export {
+    listIncidents,
+    getIncident,
+    createIncident,
+} from './incident'
+export type { ListIncidentsParams } from './incident'
+
+// Evidence API
+export {
+    listEvidenceBundles,
+    getEvidenceBundle,
+    createEvidenceBundle,
+} from './evidence'
+export type { ListEvidenceBundlesParams } from './evidence'
+
+// Observation API
+export {
+    listObservations,
+    getObservation,
+    createObservation,
+} from './observation'
+export type { ListObservationsParams } from './observation'
+
+// Assessment API
+export {
+    listAssessmentProviders,
+    createAssessmentProvider,
+    updateAssessmentProvider,
+    getAssessmentProvider,
+    listAssessments,
+    createAssessment,
+    getAssessment,
+    getAssessmentAudit,
+    revokeAssessment,
+    disputeAssessment,
+    reinstateAssessment,
+} from './assessment'
+export type { ListProvidersParams, ListAssessmentsParams } from './assessment'
