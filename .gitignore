@@ -52,3 +52,9 @@ logs/
 
 # local git worktrees
 /.worktrees/
+
+# CAD/mesh export temp
+*.stl.tmp
+*.tmp
+*~
+.DS_Store
