@@ -9,6 +9,11 @@ from app.models.task import Task, TaskStatus
 from app.models.event import Event, EventType
 from app.models.snapshot import Snapshot
 from app.models.fault import FaultCase
+from app.models.incident import Incident
+from app.models.observation import Observation
+from app.models.evidence import EvidenceBundle, EvidenceItem
+from app.models.assessment import AssessmentProvider, ExternalAssessment, AssessmentAuditEvent
+from app.models.audit_log import SOPAuditLog, AuditAction, ActorType  # V2.3 新增
 
 __all__ = [
     # Base
@@ -27,4 +32,20 @@ __all__ = [
     "Snapshot",
     # Fault
     "FaultCase",
+    # Incident
+    "Incident",
+    # Observation
+    "Observation",
+    # Evidence
+    "EvidenceBundle",
+    "EvidenceItem",
+    # Assessment
+    "AssessmentProvider",
+    "ExternalAssessment",
+    "AssessmentAuditEvent",
+    # Audit (V2.3 新增)
+    "SOPAuditLog",
+    "AuditAction",
+    "ActorType",
 ]
+

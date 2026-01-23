@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # CORS配置
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
     
     # Adapter配置
     ROBOT_ADAPTER_TYPE: str = "mock"  # mock / gazebo / real

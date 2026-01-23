@@ -8,7 +8,11 @@ from app.api.v1.endpoints import (
     websocket,   # 拆包A
     tasks,       # 拆包B
     sops,        # 拆包C
-    fault_cases  # 拆包C
+    fault_cases, # 拆包C
+    incidents,
+    observations,
+    evidence,
+    assessments,
 )
 
 # 创建v1版本路由
@@ -21,6 +25,10 @@ api_router.include_router(adapter.router, tags=["adapter"])
 api_router.include_router(tasks.router, tags=["tasks"])
 api_router.include_router(sops.router, tags=["sops"])
 api_router.include_router(fault_cases.router, tags=["fault_cases"])
+api_router.include_router(incidents.router, tags=["incidents"])
+api_router.include_router(observations.router, tags=["observations"])
+api_router.include_router(evidence.router, tags=["evidence"])
+api_router.include_router(assessments.router, tags=["assessments"])
 
 # WebSocket不需要/api/v1前缀，单独注册
 websocket_router = websocket.router
