@@ -40,4 +40,15 @@ Thumbs.db
 logs/
 *.log
 
-.worktrees/
+
+# local tooling & macos
+.DS_Store
+/.codex/
+/_repo_snapshot.txt
+/documents/
+
+# robot large assets
+/robot/roboto_origin/
+
+# local git worktrees
+/.worktrees/
