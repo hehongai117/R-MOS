@@ -58,3 +58,6 @@ logs/
 *.tmp
 *~
 .DS_Store
+
+# robot repo (keep out of main repo)
+/robot/
