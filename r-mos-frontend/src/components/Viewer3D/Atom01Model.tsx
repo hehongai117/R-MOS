@@ -15,10 +15,11 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
+import { getRobotModelBase } from '../../config/robots';
 import * as THREE from 'three';
 
 // GLB 模型路径
-const MODEL_BASE_PATH = '/models/atom01';
+const MODEL_BASE_PATH = getRobotModelBase('atom01');
 
 // Link 名称列表
 const LINK_NAMES = [

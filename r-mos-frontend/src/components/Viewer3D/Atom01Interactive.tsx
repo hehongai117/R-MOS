@@ -11,10 +11,11 @@
 import React, { useRef, useMemo, useEffect, useState, useCallback } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
+import { getRobotModelBase } from '../../config/robots';
 import * as THREE from 'three';
 
 // GLB 模型路径
-const MODEL_BASE_PATH = '/models/atom01';
+const MODEL_BASE_PATH = getRobotModelBase('atom01');
 
 // 零件信息接口
 export interface PartInfo {

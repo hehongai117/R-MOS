@@ -11,7 +11,8 @@ import * as THREE from 'three';
 export const USE_PLACEHOLDER = true;
 
 /** 模型基础路径 */
-export const MODEL_BASE_PATH = '/models/humanoid';
+const MODEL_BASE_URL = import.meta.env.VITE_MODEL_BASE_URL || '/models';
+export const MODEL_BASE_PATH = `${MODEL_BASE_URL}/humanoid`;
 
 // ===== 关节定义 =====
 
