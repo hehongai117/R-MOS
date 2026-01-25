@@ -22,7 +22,7 @@ async def test_mock_adapter_get_joint_states():
     
     joint_states = await adapter.get_joint_states()
     assert len(joint_states) == 5
-    assert joint_states.joint_id is not None
+    assert all(state.joint_id for state in joint_states)
 
 
 @pytest.mark.asyncio
