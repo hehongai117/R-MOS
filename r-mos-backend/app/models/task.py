@@ -47,6 +47,22 @@ class Task(Base, TimestampMixin):
         index=True,
         comment="关联SOP ID（可为NULL）"
     )
+
+    # Teaching domain references (Phase 1+)
+    assignment_id = Column(
+        Integer,
+        ForeignKey("assignments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="关联教学作业 ID（可为NULL）"
+    )
+    guidance_policy_id = Column(
+        Integer,
+        ForeignKey("guidance_policies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="关联引导策略 ID（可为NULL）"
+    )
     
     user_id = Column(Integer, nullable=True, comment="执行用户ID")
     # V2.3修正：使用 String 而不是 SQLEnum，与迁移文件保持一致
@@ -67,8 +83,11 @@ class Task(Base, TimestampMixin):
     
     # 关系
     sop = relationship("SOP", back_populates="tasks")
+    assignment = relationship("Assignment", back_populates="tasks")
+    guidance_policy = relationship("GuidancePolicy", back_populates="tasks")
     events = relationship("Event", back_populates="task", cascade="all, delete-orphan", lazy="selectin")
     snapshots = relationship("Snapshot", back_populates="task", cascade="all, delete-orphan", lazy="selectin")
+    attempts = relationship("AssignmentAttempt", back_populates="task")
     
     def __repr__(self):
         return f"<Task(id={self.id}, title={self.title}, status={self.status})>"
