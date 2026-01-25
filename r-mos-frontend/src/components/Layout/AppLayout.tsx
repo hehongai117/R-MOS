@@ -10,6 +10,11 @@ import {
     WarningOutlined,
     DatabaseOutlined,
     HomeOutlined,
+    AlertOutlined,
+    FolderOpenOutlined,
+    AuditOutlined,
+    ToolOutlined,
+    RobotOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
@@ -23,6 +28,16 @@ const menuItems = [
         label: '首页',
     },
     {
+        key: '/maintenance',
+        icon: <ToolOutlined />,
+        label: 'SOP 维保系统',
+    },
+    {
+        key: '/atom01',
+        icon: <RobotOutlined />,
+        label: '机器人演示',
+    },
+    {
         key: '/sops',
         icon: <FileTextOutlined />,
         label: 'SOP列表',
@@ -31,6 +46,21 @@ const menuItems = [
         key: '/monitor',
         icon: <MonitorOutlined />,
         label: '实时监控',
+    },
+    {
+        key: '/incidents',
+        icon: <AlertOutlined />,
+        label: '事件列表',
+    },
+    {
+        key: '/evidence',
+        icon: <FolderOpenOutlined />,
+        label: '证据包',
+    },
+    {
+        key: '/assessments',
+        icon: <AuditOutlined />,
+        label: '评估状态',
     },
     {
         key: '/admin/faults',

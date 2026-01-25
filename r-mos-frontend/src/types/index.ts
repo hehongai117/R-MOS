@@ -60,6 +60,63 @@ export type {
     TaskReportSummary,
 } from './report'
 
+// Incident 相关类型
+export type {
+    IncidentType,
+    IncidentLevel,
+    IncidentStatus,
+    IncidentCreateRequest,
+    Incident,
+    IncidentListItem,
+    IncidentListResponse,
+} from './incident'
+
+// Evidence 相关类型
+export type {
+    EvidenceType,
+    EvidenceBundleType,
+    HashAlgo as EvidenceHashAlgo,
+    EvidenceItem,
+    EvidenceBundleCreateRequest,
+    EvidenceBundle,
+    EvidenceBundleListItem,
+    EvidenceBundleListResponse,
+} from './evidence'
+
+// Observation 相关类型
+export type {
+    ObservationType,
+    ObservationMetric,
+    ObservationCreateRequest,
+    Observation,
+    ObservationListItem,
+    ObservationListResponse,
+} from './observation'
+
+// Assessment 相关类型
+export type {
+    ProviderType,
+    ProviderStatus,
+    AssessmentStatus,
+    ReportFormat,
+    HashAlgo as AssessmentHashAlgo,
+    AuditAction,
+    ActorType,
+    AssessmentReasonCode,
+    AssessmentReasonCodeWithNone,
+    AssessmentProviderCreateRequest,
+    AssessmentProviderUpdateRequest,
+    AssessmentProvider,
+    AssessmentProviderListResponse,
+    ExternalAssessmentCreateRequest,
+    ExternalAssessment,
+    ExternalAssessmentListItem,
+    ExternalAssessmentListResponse,
+    AssessmentStatusChangeRequest,
+    AssessmentAuditEvent,
+    AssessmentAuditTrail,
+} from './assessment'
+
 // API 通用类型
 export type {
     ErrorResponse,

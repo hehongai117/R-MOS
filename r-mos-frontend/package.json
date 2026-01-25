@@ -1,11 +1,12 @@
 {
     "name": "r-mos-frontend",
     "private": true,
-    "version": "1.0.0",
+    "version": "0.1.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
         "build": "tsc -b && vite build",
+        "test": "node scripts/run-adjudication-tests.mjs",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview"
     },
@@ -32,6 +33,7 @@
         "eslint": "^8.56.0",
         "eslint-plugin-react-hooks": "^4.6.0",
         "eslint-plugin-react-refresh": "^0.4.5",
+        "sirv": "^3.0.2",
         "typescript": "^5.3.3",
         "vite": "^5.0.10"
     }

@@ -9,13 +9,22 @@ from .base import Base, TimestampMixin
 
 
 class TaskStatus(str, Enum):
-    """任务状态枚举"""
+    """任务状态枚举（V2.3 增强）
+    
+    状态流转规则：
+    - PENDING → IN_PROGRESS（开始）
+    - IN_PROGRESS → PAUSED / COMPLETED / FAILED
+    - PAUSED → IN_PROGRESS / CANCELLED
+    - PENDING / PAUSED → CANCELLED
+    - FAILED / COMPLETED / CANCELLED / TIMEOUT 为终态
+    """
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     PAUSED = "paused"
     COMPLETED = "completed"
     FAILED = "failed"
     TIMEOUT = "timeout"
+    CANCELLED = "cancelled"  # V2.3 新增
 
 
 class Task(Base, TimestampMixin):

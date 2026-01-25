@@ -42,9 +42,20 @@ logs/
 
 
 # local tooling & macos
-.DS_Store
 /.codex/
+/_repo_snapshot.txt
+/documents/
+
+# robot large assets
 /robot/roboto_origin/
 
 # local git worktrees
 /.worktrees/
+
+# CAD/mesh export temp
+*.stl.tmp
+*.tmp
+*~
+
+# robot repo (keep out of main repo)
+/robot/

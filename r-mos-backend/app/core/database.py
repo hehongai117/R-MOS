@@ -56,7 +56,17 @@ async def init_db():
     """
     from app.models.base import Base
     # 导入所有模型（确保被注册到metadata）
-    from app.models import sop, task, event, snapshot, fault
+    from app.models import (
+        sop,
+        task,
+        event,
+        snapshot,
+        fault,
+        incident,
+        observation,
+        evidence,
+        assessment,
+    )
     
     async with engine.begin() as conn:
         logger.info("正在创建数据库表...")

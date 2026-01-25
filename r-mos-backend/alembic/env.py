@@ -24,6 +24,10 @@ from app.models import (
     Event,
     Snapshot,
     FaultCase,
+    Incident,
+    Observation,
+    EvidenceBundle, EvidenceItem,
+    AssessmentProvider, ExternalAssessment, AssessmentAuditEvent,
 )
 
 # Alembic Config对象

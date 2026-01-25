@@ -78,13 +78,28 @@ app.add_middleware(
 )
 
 
-# 请求日志中间件
+# 请求日志中间件（V2.3 增强：Trace ID 支持）
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """记录所有HTTP请求"""
-    logger.info(f"收到请求: {request.method} {request.url.path}")
+    """记录所有HTTP请求，注入 Trace ID"""
+    import uuid
+    from datetime import datetime
+    
+    # 生成 Trace ID
+    trace_id = request.headers.get("X-Trace-ID") or str(uuid.uuid4())[:8]
+    request.state.trace_id = trace_id
+    request.state.start_time = datetime.utcnow()
+    
+    logger.info(f"[{trace_id}] 收到请求: {request.method} {request.url.path}")
+    
     response = await call_next(request)
-    logger.info(f"响应状态: {response.status_code}")
+    
+    # 计算耗时
+    duration_ms = (datetime.utcnow() - request.state.start_time).total_seconds() * 1000
+    logger.info(f"[{trace_id}] 响应状态: {response.status_code} ({duration_ms:.1f}ms)")
+    
+    # 在响应头中返回 Trace ID
+    response.headers["X-Trace-ID"] = trace_id
     return response
 
 
@@ -149,6 +164,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """请求验证错误处理（422 Unprocessable Entity）"""
+    trace_id = getattr(request.state, "trace_id", str(id(request)))
     return JSONResponse(
         status_code=422,
         content={
@@ -161,7 +177,36 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "details": exc.errors()
             },
             "timestamp": None,
-            "request_id": str(id(request))
+            "request_id": trace_id
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """通用异常兜底处理器（500 Internal Server Error）
+    
+    V2.3 新增：捕获所有未处理的异常，返回标准 JSON 格式，
+    避免直接暴露 500 错误堆栈给前端。
+    """
+    from datetime import datetime
+    
+    trace_id = getattr(request.state, "trace_id", str(id(request)))
+    logger.error(f"[{trace_id}] 未处理异常: {type(exc).__name__}: {exc}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status_code": 500,
+            "error_type": "InternalServerError",
+            "message": "服务器内部错误，请稍后重试",
+            "details": {
+                "code": "INTERNAL_ERROR",
+                "message": "请联系管理员并提供 Trace ID",
+                "details": {}
+            },
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "request_id": trace_id
         }
     )
 
