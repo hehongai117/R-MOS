@@ -82,6 +82,17 @@ class TeachingService:
         await self.db.refresh(teaching_class)
         return teaching_class
 
+    async def list_classes(self) -> List[TeachingClass]:
+        result = await self.db.execute(select(TeachingClass).order_by(TeachingClass.id))
+        return result.scalars().all()
+
+    async def get_class(self, class_id: int) -> TeachingClass:
+        result = await self.db.execute(select(TeachingClass).where(TeachingClass.id == class_id))
+        teaching_class = result.scalar_one_or_none()
+        if not teaching_class:
+            raise ResourceNotFoundError("Class", class_id)
+        return teaching_class
+
     async def create_course(
         self,
         *,
@@ -102,6 +113,20 @@ class TeachingService:
         self.db.add(course)
         await self.db.commit()
         await self.db.refresh(course)
+        return course
+
+    async def list_courses(self, *, class_id: Optional[int] = None) -> List[Course]:
+        query = select(Course)
+        if class_id is not None:
+            query = query.where(Course.class_id == class_id)
+        result = await self.db.execute(query.order_by(Course.id))
+        return result.scalars().all()
+
+    async def get_course(self, course_id: int) -> Course:
+        result = await self.db.execute(select(Course).where(Course.id == course_id))
+        course = result.scalar_one_or_none()
+        if not course:
+            raise ResourceNotFoundError("Course", course_id)
         return course
 
     async def enroll_student(
@@ -176,6 +201,13 @@ class TeachingService:
         await self.db.refresh(assignment)
         return assignment
 
+    async def list_assignments(self, *, class_id: Optional[int] = None) -> List[Assignment]:
+        query = select(Assignment)
+        if class_id is not None:
+            query = query.where(Assignment.class_id == class_id)
+        result = await self.db.execute(query.order_by(Assignment.id))
+        return result.scalars().all()
+
     async def get_assignment(self, assignment_id: int) -> Assignment:
         result = await self.db.execute(select(Assignment).where(Assignment.id == assignment_id))
         assignment = result.scalar_one_or_none()
@@ -216,6 +248,15 @@ class TeachingService:
         if not attempt:
             raise ResourceNotFoundError("AssignmentAttempt", attempt_id)
         return attempt
+
+    async def list_attempts(self, *, assignment_id: int) -> List[AssignmentAttempt]:
+        await self.get_assignment(assignment_id)
+        result = await self.db.execute(
+            select(AssignmentAttempt)
+            .where(AssignmentAttempt.assignment_id == assignment_id)
+            .order_by(AssignmentAttempt.attempt_index)
+        )
+        return result.scalars().all()
 
     async def update_attempt_status(
         self,

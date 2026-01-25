@@ -39,13 +39,19 @@ class ClassCreate(TeachingBaseModel):
     name: str = Field(..., max_length=200)
     term: Optional[str] = None
     teacher_id: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata_json: Optional[Dict[str, Any]] = Field(
         None,
+        alias="metadata",
         validation_alias=AliasChoices("metadata", "metadata_json"),
     )
 
 
 class ClassResponse(ClassCreate):
+    metadata_json: Optional[Dict[str, Any]] = Field(
+        None,
+        alias="metadata",
+        validation_alias="metadata_json",
+    )
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -56,13 +62,19 @@ class CourseCreate(TeachingBaseModel):
     name: str = Field(..., max_length=200)
     description: Optional[str] = None
     schedule: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata_json: Optional[Dict[str, Any]] = Field(
         None,
+        alias="metadata",
         validation_alias=AliasChoices("metadata", "metadata_json"),
     )
 
 
 class CourseResponse(CourseCreate):
+    metadata_json: Optional[Dict[str, Any]] = Field(
+        None,
+        alias="metadata",
+        validation_alias="metadata_json",
+    )
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

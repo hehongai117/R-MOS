@@ -1,0 +1,345 @@
+"""
+Teaching domain API endpoints.
+"""
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
+from app.schemas.teaching import (
+    GuidancePolicyCreate,
+    GuidancePolicyResponse,
+    ClassCreate,
+    ClassResponse,
+    CourseCreate,
+    CourseResponse,
+    EnrollmentCreate,
+    EnrollmentResponse,
+    AssignmentCreate,
+    AssignmentResponse,
+    AssignmentAttemptResponse,
+    EvidenceLinkResponse,
+)
+from app.services.teaching_service import TeachingService
+
+
+router = APIRouter()
+
+
+class AttemptCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    student_id: int
+    task_id: Optional[int] = None
+
+
+class AttemptStatusUpdateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    status: str
+
+
+class AttemptGradeRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    score: float
+
+
+def _raise_business_error(exc: BusinessRuleViolation) -> None:
+    raise exc
+
+
+def _raise_not_found(exc: ResourceNotFoundError) -> None:
+    raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get(
+    "/guidance-policies",
+    response_model=List[GuidancePolicyResponse],
+    response_model_by_alias=True,
+)
+async def list_guidance_policies(db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    return await service.list_guidance_policies()
+
+
+@router.post(
+    "/guidance-policies",
+    response_model=GuidancePolicyResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def create_guidance_policy(
+    request: GuidancePolicyCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    try:
+        return await service.create_guidance_policy(**request.model_dump())
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+
+
+@router.get(
+    "/guidance-policies/{policy_id}",
+    response_model=GuidancePolicyResponse,
+    response_model_by_alias=True,
+)
+async def get_guidance_policy(policy_id: int, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.get_guidance_policy(policy_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/classes",
+    response_model=List[ClassResponse],
+    response_model_by_alias=True,
+)
+async def list_classes(db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    return await service.list_classes()
+
+
+@router.post(
+    "/classes",
+    response_model=ClassResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def create_class(request: ClassCreate, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        payload = request.model_dump()
+        metadata = payload.pop("metadata_json", None)
+        if metadata is not None:
+            payload["metadata"] = metadata
+        return await service.create_class(**payload)
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+
+
+@router.get(
+    "/classes/{class_id}",
+    response_model=ClassResponse,
+    response_model_by_alias=True,
+)
+async def get_class(class_id: int, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.get_class(class_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/courses",
+    response_model=List[CourseResponse],
+    response_model_by_alias=True,
+)
+async def list_courses(
+    class_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    return await service.list_courses(class_id=class_id)
+
+
+@router.post(
+    "/courses",
+    response_model=CourseResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def create_course(request: CourseCreate, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        payload = request.model_dump()
+        metadata = payload.pop("metadata_json", None)
+        if metadata is not None:
+            payload["metadata"] = metadata
+        return await service.create_course(**payload)
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/courses/{course_id}",
+    response_model=CourseResponse,
+    response_model_by_alias=True,
+)
+async def get_course(course_id: int, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.get_course(course_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/enrollments",
+    response_model=List[EnrollmentResponse],
+    response_model_by_alias=True,
+)
+async def list_enrollments(
+    class_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    return await service.list_enrollments(class_id=class_id)
+
+
+@router.post(
+    "/enrollments",
+    response_model=EnrollmentResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def enroll_student(request: EnrollmentCreate, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.enroll_student(**request.model_dump())
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/assignments",
+    response_model=List[AssignmentResponse],
+    response_model_by_alias=True,
+)
+async def list_assignments(
+    class_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    return await service.list_assignments(class_id=class_id)
+
+
+@router.post(
+    "/assignments",
+    response_model=AssignmentResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def create_assignment(request: AssignmentCreate, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.create_assignment(**request.model_dump())
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/assignments/{assignment_id}",
+    response_model=AssignmentResponse,
+    response_model_by_alias=True,
+)
+async def get_assignment(assignment_id: int, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.get_assignment(assignment_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/assignments/{assignment_id}/attempts",
+    response_model=List[AssignmentAttemptResponse],
+    response_model_by_alias=True,
+)
+async def list_attempts(assignment_id: int, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.list_attempts(assignment_id=assignment_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.post(
+    "/assignments/{assignment_id}/attempts",
+    response_model=AssignmentAttemptResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def create_attempt(
+    assignment_id: int,
+    request: AttemptCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    try:
+        return await service.create_attempt(
+            assignment_id=assignment_id,
+            student_id=request.student_id,
+            task_id=request.task_id,
+        )
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get(
+    "/attempts/{attempt_id}",
+    response_model=AssignmentAttemptResponse,
+    response_model_by_alias=True,
+)
+async def get_attempt(attempt_id: int, db: AsyncSession = Depends(get_db)):
+    service = TeachingService(db)
+    try:
+        return await service.get_attempt(attempt_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.patch(
+    "/attempts/{attempt_id}",
+    response_model=AssignmentAttemptResponse,
+    response_model_by_alias=True,
+)
+async def update_attempt_status(
+    attempt_id: int,
+    request: AttemptStatusUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    try:
+        return await service.update_attempt_status(attempt_id, request.status)
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.post(
+    "/attempts/{attempt_id}/grade",
+    response_model=AssignmentAttemptResponse,
+    response_model_by_alias=True,
+)
+async def grade_attempt(
+    attempt_id: int,
+    request: AttemptGradeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    try:
+        return await service.grade_attempt(attempt_id, score=request.score)
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+
+@router.get("/attempts/{attempt_id}/evidence", response_model=EvidenceLinkResponse)
+async def get_attempt_evidence(attempt_id: int):
+    raise HTTPException(status_code=501, detail="Evidence endpoint not implemented")
