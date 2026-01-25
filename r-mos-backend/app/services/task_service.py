@@ -16,6 +16,7 @@ from app.core.exceptions import BusinessRuleViolation
 from app.services.snapshot_service import SnapshotService
 from app.services.event_service import EventService
 from app.services.scoring_service import ScoringService
+from app.services.evidence_engine import EvidenceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -302,6 +303,10 @@ class TaskService:
             event_type=EventType.TASK_COMPLETED.value,
             result="completed"
         )
+
+        # 5. 生成证据包与关联（Phase 1）
+        evidence_engine = EvidenceEngine(self.db)
+        await evidence_engine.generate_bundle_for_task(task_id)
         
         logger.info(f"Task已完成: task_id={task_id}")
     
