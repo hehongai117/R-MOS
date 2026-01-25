@@ -197,6 +197,10 @@ export interface AdjudicationReport {
   blockingConstraints: Constraint[];    // 阻止操作的约束列表
   requiredActions: string[];            // 需要先执行的操作
   timestamp: number;
+  // 模式增强信息
+  hint?: string;                        // 教学提示
+  allowRetry?: boolean;                 // 是否允许重试
+  shouldSummarize?: boolean;            // 考试结算信号
 }
 
 // ============================================================
@@ -221,8 +225,14 @@ export enum SystemState {
   REASSEMBLING = 'reassembling',                 // 重新装配中
   
   // 验证状态
-  VERIFICATION = 'verification'                   // 功能验证中
+  VERIFICATION = 'verification',                  // 功能验证中
+
+  // 致命失败
+  FAILED_FATAL = 'failed_fatal'                   // 致命失败（系统锁定，仅允许重置）
 }
+
+/** 操作模式 */
+export type OperationMode = 'teaching' | 'exam' | 'maintenance';
 
 /** 操作记录 */
 export interface ActionRecord {
@@ -239,6 +249,9 @@ export interface ActionRecord {
 export interface AdjudicationState {
   // 系统状态
   systemState: SystemState;
+
+  // 操作模式
+  operationMode: OperationMode;
   
   // 零件状态
   partStates: Record<string, PartState>;
@@ -360,7 +373,10 @@ export interface SOPStepAdjudication {
   };
   
   // 不可逆标记
-  isIrreversible: boolean;
+  isIrreversible?: boolean;
+
+  // 失败即致命
+  fatalOnFailure?: boolean;
 }
 
 /** SOP 脚本（裁决级） */

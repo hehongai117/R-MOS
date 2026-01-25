@@ -303,22 +303,173 @@ export const FOOT_SCREW_INSTANCES: Record<string, Part> = {
 };
 
 /**
+ * 躯干总成螺丝实例定义
+ * 用于 torso 约束与裁决测试
+ */
+export const TORSO_SCREW_INSTANCES: Record<string, Part> = {
+    // ============================================================
+    // 躯干胸腔夹板螺丝 (M3×10, 8颗)
+    // ============================================================
+    'screw_torso_m3x10_001': {
+        id: 'screw_torso_m3x10_001',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #1',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [0.03, 0.02, 0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_002': {
+        id: 'screw_torso_m3x10_002',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #2',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [-0.03, 0.02, 0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_003': {
+        id: 'screw_torso_m3x10_003',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #3',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [0.03, 0.02, -0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_004': {
+        id: 'screw_torso_m3x10_004',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #4',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [-0.03, 0.02, -0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_005': {
+        id: 'screw_torso_m3x10_005',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #5',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [0.03, -0.02, 0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_006': {
+        id: 'screw_torso_m3x10_006',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #6',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [-0.03, -0.02, 0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_007': {
+        id: 'screw_torso_m3x10_007',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #7',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [0.03, -0.02, -0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+    'screw_torso_m3x10_008': {
+        id: 'screw_torso_m3x10_008',
+        category: PartCategory.SCREW,
+        bomCode: 'ATOM-01-SCREW-M3X10',
+        displayName: '躯干夹板螺丝 #8',
+        modelPath: `${PARTS_BASE}/screws/M3x10.glb`,
+        parentId: 'frame_torso_chest',
+        localPosition: [-0.03, -0.02, -0.02],
+        localRotation: [0, 0, 0],
+        screwSpec: {
+            type: 'M3×10',
+            pitch: 0.5,
+            threadLength: 10,
+            requiredTool: 'hex_2.5',
+            torque: 0.8,
+        },
+    },
+};
+
+export const ALL_SCREW_INSTANCES: Record<string, Part> = {
+    ...FOOT_SCREW_INSTANCES,
+    ...TORSO_SCREW_INSTANCES,
+};
+
+/**
  * 获取螺丝实例
  */
 export function getScrewInstance(screwId: string): Part | undefined {
-    return FOOT_SCREW_INSTANCES[screwId];
+    return ALL_SCREW_INSTANCES[screwId];
 }
 
 /**
  * 获取所有螺丝实例 ID
  */
 export function getAllScrewIds(): string[] {
-    return Object.keys(FOOT_SCREW_INSTANCES);
+    return Object.keys(ALL_SCREW_INSTANCES);
 }
 
 /**
  * 获取零件的所有螺丝
  */
 export function getScrewsByParent(parentId: string): Part[] {
-    return Object.values(FOOT_SCREW_INSTANCES).filter(s => s.parentId === parentId);
+    return Object.values(ALL_SCREW_INSTANCES).filter(s => s.parentId === parentId);
 }

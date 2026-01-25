@@ -18,15 +18,15 @@ import {
     ConstraintType,
     FastenedByParams,
     CoveredByParams,
+    BlockedByParams,
     ScrewState,
 } from '../types/adjudication';
 import {
-    getConstraintsByPart,
-    getActiveConstraints,
+    getAllConstraints,
+    getConstraintById,
     canReleaseConstraint,
 } from '../data/constraintGraph';
 import { getPartById, getPartScrews } from '../data/partRegistry';
-import { getScrewInstance } from '../data/screwInstances';
 import { useAdjudicationStore } from './stateManager';
 import {
     isScrewExtracted,
@@ -38,6 +38,9 @@ import {
 // ============================================================
 // 裁决报告生成辅助函数
 // ============================================================
+
+const ERR_CONSTRAINT = 'ERR_CONSTRAINT';
+const ERR_INCOMPLETE = 'ERR_INCOMPLETE';
 
 function createReport(
     result: AdjudicationResult,
@@ -63,11 +66,137 @@ function createReport(
 // ============================================================
 
 /**
+ * 构建零件子节点索引
+ */
+function buildChildrenIndex(): Record<string, string[]> {
+    const index: Record<string, string[]> = {};
+    const allPartIds = Object.keys(useAdjudicationStore.getState().partStates);
+
+    allPartIds.forEach(id => {
+        const part = getPartById(id);
+        if (part?.parentId) {
+            if (!index[part.parentId]) {
+                index[part.parentId] = [];
+            }
+            index[part.parentId].push(id);
+        }
+    });
+
+    return index;
+}
+
+/**
+ * 获取父子链影响范围
+ */
+function collectStructuralClosure(seedIds: string[]): Set<string> {
+    const affected = new Set<string>();
+    const childrenIndex = buildChildrenIndex();
+
+    const addDescendants = (rootId: string): void => {
+        const queue = [rootId];
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (!current || affected.has(current)) continue;
+            affected.add(current);
+            const children = childrenIndex[current] || [];
+            children.forEach(childId => queue.push(childId));
+        }
+    };
+
+    const addAncestors = (rootId: string): void => {
+        let current: string | null = rootId;
+        while (current) {
+            const part = getPartById(current);
+            const parentId = part?.parentId ?? null;
+            if (parentId && !affected.has(parentId)) {
+                affected.add(parentId);
+            }
+            current = parentId;
+        }
+    };
+
+    seedIds.forEach(seedId => {
+        if (!seedId) return;
+        addDescendants(seedId);
+        addAncestors(seedId);
+    });
+
+    return affected;
+}
+
+/**
+ * 获取约束链影响范围（按约束关系扩展）
+ */
+function collectConstraintClosure(seed: Set<string>): Set<string> {
+    const affected = new Set(seed);
+    const constraints = getAllConstraints();
+    let changed = true;
+
+    while (changed) {
+        changed = false;
+        for (const constraint of constraints) {
+            const relatedParts = new Set<string>([
+                constraint.constrainedPart,
+                constraint.constrainingPart,
+            ]);
+
+            if (constraint.type === ConstraintType.FASTENED_BY) {
+                const params = constraint.params as FastenedByParams;
+                params.screwIds.forEach(id => relatedParts.add(id));
+            }
+
+            if (constraint.type === ConstraintType.COVERED_BY) {
+                const params = constraint.params as CoveredByParams;
+                relatedParts.add(params.coverPartId);
+            }
+
+            if (constraint.type === ConstraintType.BLOCKED_BY) {
+                const params = constraint.params as BlockedByParams;
+                relatedParts.add(params.blockingPartId);
+            }
+
+            const intersects = Array.from(relatedParts).some(id => affected.has(id));
+            if (intersects) {
+                relatedParts.forEach(id => {
+                    if (!affected.has(id)) {
+                        affected.add(id);
+                        changed = true;
+                    }
+                });
+            }
+        }
+    }
+
+    return affected;
+}
+
+/**
+ * 获取某个动作影响的零件集合（父子链 + 约束链）
+ */
+function getAffectedParts(action: ActionType, targetId: string): Set<string> {
+    if (action === ActionType.SELECT_TOOL) {
+        return new Set();
+    }
+    const structural = collectStructuralClosure([targetId]);
+    return collectConstraintClosure(structural);
+}
+
+/**
+ * 判断动作是否属于某约束的解除动作
+ */
+function isActionReleasingConstraint(constraint: Constraint, action: ActionType, targetId: string): boolean {
+    return constraint.releaseCondition.requiredActions.some(req => (
+        req.action === action && req.targetParts.includes(targetId)
+    ));
+}
+
+/**
  * 获取阻止操作零件的约束
  */
-export function getBlockingConstraints(partId: string): Constraint[] {
+export function getBlockingConstraints(partId: string, action: ActionType = ActionType.DETACH_PART): Constraint[] {
     const store = useAdjudicationStore.getState();
-    const constraints = getConstraintsByPart(partId);
+    const constraints = getAllConstraints();
+    const affectedParts = getAffectedParts(action, partId);
 
     // 获取已移除的零件和已退出的螺丝
     const removedParts = new Set(
@@ -85,6 +214,8 @@ export function getBlockingConstraints(partId: string): Constraint[] {
     // 过滤出仍然活跃的阻塞约束
     return constraints.filter(c => {
         if (!store.constraintStates[c.id]) return false;
+        if (!affectedParts.has(c.constrainedPart)) return false;
+        if (isActionReleasingConstraint(c, action, partId)) return false;
         return !canReleaseConstraint(c, removedParts, extractedScrews);
     });
 }
@@ -169,7 +300,7 @@ function generateRequiredActions(constraints: Constraint[]): string[] {
  * @param action - 操作类型
  * @returns AdjudicationReport
  */
-export function canOperatePart(partId: string, _action: ActionType): AdjudicationReport {
+export function canOperatePart(partId: string, action: ActionType): AdjudicationReport {
     const part = getPartById(partId);
 
     if (!part) {
@@ -193,14 +324,14 @@ export function canOperatePart(partId: string, _action: ActionType): Adjudicatio
     }
 
     // 检查阻塞约束
-    const blockingConstraints = getBlockingConstraints(partId);
+    const blockingConstraints = getBlockingConstraints(partId, action);
 
     if (blockingConstraints.length > 0) {
         return createReport(
             AdjudicationResult.BLOCKED,
             partId,
             generateBlockingReason(blockingConstraints),
-            'CONSTRAINT_NOT_RELEASED',
+            ERR_CONSTRAINT,
             blockingConstraints,
             generateRequiredActions(blockingConstraints)
         );
@@ -222,7 +353,7 @@ export function canOperatePart(partId: string, _action: ActionType): Adjudicatio
  * @returns AdjudicationReport
  */
 export function canRemoveScrew(screwId: string, toolId: string | null): AdjudicationReport {
-    const screw = getScrewInstance(screwId);
+    const screw = getPartById(screwId);
 
     if (!screw) {
         return createReport(
@@ -256,31 +387,17 @@ export function canRemoveScrew(screwId: string, toolId: string | null): Adjudica
         );
     }
 
-    // 检查螺丝所属零件是否可访问（覆盖物是否已拆除）
-    if (screw.parentId) {
-        const parentPart = getPartById(screw.parentId);
-        if (parentPart) {
-            // 检查父零件的覆盖约束
-            const constraints = getConstraintsByPart(screw.parentId);
-            const store = useAdjudicationStore.getState();
-
-            for (const c of constraints) {
-                if (c.type === ConstraintType.COVERED_BY && store.constraintStates[c.id]) {
-                    const params = c.params as CoveredByParams;
-                    const coverPart = getPartById(params.coverPartId);
-                    if (!store.partStates[params.coverPartId]?.isRemoved) {
-                        return createReport(
-                            AdjudicationResult.BLOCKED,
-                            screwId,
-                            `请先拆卸 ${coverPart?.displayName || params.coverPartId}`,
-                            'COVERED_BY_CONSTRAINT',
-                            [c],
-                            [`拆卸 ${params.coverPartId}`]
-                        );
-                    }
-                }
-            }
-        }
+    // 约束强制阻断（B.2）
+    const blockingConstraints = getBlockingConstraints(screwId, ActionType.EXTRACT_SCREW);
+    if (blockingConstraints.length > 0) {
+        return createReport(
+            AdjudicationResult.BLOCKED,
+            screwId,
+            generateBlockingReason(blockingConstraints),
+            ERR_CONSTRAINT,
+            blockingConstraints,
+            generateRequiredActions(blockingConstraints)
+        );
     }
 
     return createReport(
@@ -321,14 +438,14 @@ export function canDetachPart(partId: string): AdjudicationReport {
     }
 
     // 检查所有阻塞约束
-    const blockingConstraints = getBlockingConstraints(partId);
+    const blockingConstraints = getBlockingConstraints(partId, ActionType.DETACH_PART);
 
     if (blockingConstraints.length > 0) {
         return createReport(
             AdjudicationResult.BLOCKED,
             partId,
             generateBlockingReason(blockingConstraints),
-            'CONSTRAINT_NOT_RELEASED',
+            ERR_CONSTRAINT,
             blockingConstraints,
             generateRequiredActions(blockingConstraints)
         );
@@ -343,7 +460,7 @@ export function canDetachPart(partId: string): AdjudicationReport {
                 AdjudicationResult.INCOMPLETE,
                 partId,
                 `还有 ${screwCheck.remainingScrews.length} 颗螺丝未拆除`,
-                'SCREWS_NOT_EXTRACTED',
+                ERR_INCOMPLETE,
                 [],
                 screwCheck.remainingScrews.map(id => `拆卸螺丝 ${id}`)
             );
@@ -450,7 +567,81 @@ export function validatePartDetachment(partId: string): AdjudicationReport {
         AdjudicationResult.INCOMPLETE,
         partId,
         '零件尚未分离',
-        'PART_NOT_DETACHED'
+        ERR_INCOMPLETE
+    );
+}
+
+// ============================================================
+// 完成判定（三元公理）
+// ============================================================
+
+function isActionSemanticallyComplete(action: ActionType, targetId: string): boolean {
+    const store = useAdjudicationStore.getState();
+
+    switch (action) {
+        case ActionType.EXTRACT_SCREW:
+        case ActionType.ROTATE_SCREW:
+            return store.screwStates[targetId]?.state === ScrewState.EXTRACTED ||
+                store.screwStates[targetId]?.state === ScrewState.REMOVED;
+        case ActionType.DETACH_PART:
+            return store.partStates[targetId]?.isDetached ?? false;
+        case ActionType.REMOVE_PART:
+            return store.partStates[targetId]?.isRemoved ?? false;
+        default:
+            return true;
+    }
+}
+
+function isActionGeometryComplete(action: ActionType, targetId: string): boolean {
+    switch (action) {
+        case ActionType.EXTRACT_SCREW:
+        case ActionType.ROTATE_SCREW:
+            return isScrewExtracted(targetId);
+        default:
+            return true;
+    }
+}
+
+/**
+ * 完成判定：语义 && 约束 && 几何
+ */
+export function validateActionCompletion(
+    action: ActionType,
+    targetId: string,
+    _toolId?: string | null
+): AdjudicationReport {
+    const semanticOk = isActionSemanticallyComplete(action, targetId);
+    const blockingConstraints = getBlockingConstraints(targetId, action);
+    const constraintOk = blockingConstraints.length === 0;
+    const geometryOk = isActionGeometryComplete(action, targetId);
+
+    const allComplete = semanticOk && constraintOk && geometryOk;
+
+    if (!constraintOk) {
+        return createReport(
+            AdjudicationResult.BLOCKED,
+            targetId,
+            generateBlockingReason(blockingConstraints),
+            ERR_CONSTRAINT,
+            blockingConstraints,
+            generateRequiredActions(blockingConstraints)
+        );
+    }
+
+    if (!allComplete) {
+        return createReport(
+            AdjudicationResult.INCOMPLETE,
+            targetId,
+            '操作未完成（语义/约束/几何未满足）',
+            ERR_INCOMPLETE
+        );
+    }
+
+    return createReport(
+        AdjudicationResult.ALLOWED,
+        targetId,
+        '完成判定通过',
+        'OK'
     );
 }
 
@@ -535,7 +726,7 @@ function updateConstraintsAfterScrewExtraction(screwId: string): void {
     // 检查所有约束是否可以解除
     Object.entries(store.constraintStates).forEach(([constraintId, isActive]) => {
         if (isActive) {
-            const constraint = getActiveConstraints('').find(c => c.id === constraintId);
+            const constraint = getConstraintById(constraintId);
             if (constraint && canReleaseConstraint(constraint, removedParts, extractedScrews)) {
                 store.setConstraintActive(constraintId, false);
             }
@@ -564,7 +755,7 @@ function updateConstraintsAfterPartRemoval(partId: string): void {
     // 检查所有约束是否可以解除
     Object.entries(store.constraintStates).forEach(([constraintId, isActive]) => {
         if (isActive) {
-            const constraint = getActiveConstraints('').find(c => c.id === constraintId);
+            const constraint = getConstraintById(constraintId);
             if (constraint && canReleaseConstraint(constraint, removedParts, extractedScrews)) {
                 store.setConstraintActive(constraintId, false);
             }

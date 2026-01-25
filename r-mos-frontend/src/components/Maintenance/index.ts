@@ -3,4 +3,3 @@
  */
 export { default as ToolSelector } from './ToolSelector';
 export { default as ScrewInfo } from './ScrewInfo';
-export { default as SOPPlayer } from './SOPPlayer';

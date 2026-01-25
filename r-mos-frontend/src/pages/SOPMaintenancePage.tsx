@@ -10,8 +10,8 @@
  * - 螺丝信息展示
  */
 
-import { useState, useCallback, Suspense } from 'react';
-import { Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Tabs } from 'antd';
+import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
+import { Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Tabs, Select, Modal } from 'antd';
 import {
     ToolOutlined,
     PartitionOutlined,
@@ -25,10 +25,16 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
-import { DisassemblyDemo } from '@/components/Viewer3D/DisassemblyDemo';
-import { ToolSelector, ScrewInfo, SOPPlayer } from '@/components/Maintenance';
+import { DisassemblyDemoAdjudicated } from '@/components/Viewer3D/DisassemblyDemoAdjudicated';
+import { ToolSelector, ScrewInfo } from '@/components/Maintenance';
+import { SOPPlayerAdjudicated } from '@/components/Maintenance/SOPPlayerAdjudicated';
+import { ALL_SOP_SCRIPTS } from '@/data/sopScripts';
+import { AdjudicationReport, SOPExecutor, useAdjudicationStore } from '@/adjudication';
+import { scoringEngine } from '@/adjudication/core/scoringEngine';
+import { formatCountdown, isCountdownUrgent } from '@/adjudication/ui/examHeader';
 
 const { Title, Text } = Typography;
+const EXAM_DURATION_MS = 60 * 60 * 1000;
 
 // 分组颜色
 const GROUP_COLORS: Record<string, string> = {
@@ -68,7 +74,76 @@ function SOPMaintenancePage() {
     const [rightPanelTab, setRightPanelTab] = useState<string>('part');
     const [focusTarget, setFocusTarget] = useState<string | null>(null);
     const [disassemblyPlaying, setDisassemblyPlaying] = useState(false);
+    const [examRemainingMs, setExamRemainingMs] = useState(EXAM_DURATION_MS);
+    const [scoreState, setScoreState] = useState(scoringEngine.getState());
+    const [scoreFlash, setScoreFlash] = useState(false);
+    const [examSummaryReport, setExamSummaryReport] = useState<AdjudicationReport | null>(null);
+    const [sopExecutor, setSopExecutor] = useState<SOPExecutor | null>(null);
+    const examEndAtRef = useRef<number | null>(null);
+    const operationMode = useAdjudicationStore((state) => state.operationMode);
+    const setOperationMode = useAdjudicationStore((state) => state.setOperationMode);
+    const setCurrentTool = useAdjudicationStore((state) => state.setCurrentTool);
 
+    useEffect(() => {
+        const unsubscribe = scoringEngine.subscribe((state) => {
+            setScoreState(state);
+        });
+        return unsubscribe;
+    }, []);
+
+    useEffect(() => {
+        setScoreFlash(true);
+        const timer = setTimeout(() => setScoreFlash(false), 300);
+        return () => clearTimeout(timer);
+    }, [scoreState.currentScore]);
+
+    useEffect(() => {
+        if (operationMode !== 'exam' || examSummaryReport) {
+            examEndAtRef.current = null;
+            return;
+        }
+        if (!examEndAtRef.current) {
+            examEndAtRef.current = Date.now() + examRemainingMs;
+        }
+        const timer = setInterval(() => {
+            if (!examEndAtRef.current) return;
+            const remaining = Math.max(0, examEndAtRef.current - Date.now());
+            setExamRemainingMs(remaining);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [operationMode, examSummaryReport, examRemainingMs]);
+
+    const examTimeText = useMemo(() => formatCountdown(examRemainingMs), [examRemainingMs]);
+    const examUrgent = useMemo(() => isCountdownUrgent(examRemainingMs), [examRemainingMs]);
+
+    const handleModeChange = useCallback((mode: 'teaching' | 'exam' | 'maintenance') => {
+        Modal.confirm({
+            title: '切换模式将重置当前进度，确定吗？',
+            okText: '确定',
+            cancelText: '取消',
+            onOk: () => {
+                setOperationMode(mode);
+                sopExecutor?.reset();
+                scoringEngine.reset(100);
+                setExamSummaryReport(null);
+                setExamRemainingMs(EXAM_DURATION_MS);
+                examEndAtRef.current = mode === 'exam' ? Date.now() + EXAM_DURATION_MS : null;
+            },
+        });
+    }, [sopExecutor, setOperationMode]);
+
+    const handleSummarize = useCallback((report: AdjudicationReport) => {
+        setExamSummaryReport(report);
+        examEndAtRef.current = null;
+    }, []);
+
+    const handleResetExam = useCallback(() => {
+        scoringEngine.reset(100);
+        setExamSummaryReport(null);
+        sopExecutor?.reset();
+        setExamRemainingMs(EXAM_DURATION_MS);
+        examEndAtRef.current = operationMode === 'exam' ? Date.now() + EXAM_DURATION_MS : null;
+    }, [sopExecutor, operationMode]);
     const handlePartHover = useCallback((part: PartInfo | null) => {
         setHoveredPart(part);
     }, []);
@@ -95,10 +170,10 @@ function SOPMaintenancePage() {
         }
     }, []);
 
-    const handleSOPToolRequired = useCallback((toolId: string | null, screwId: string | null) => {
+    const handleSOPToolRequired = useCallback((toolId: string | null) => {
         if (toolId) setSelectedToolId(toolId);
-        if (screwId) setSelectedScrewId(screwId);
-    }, []);
+        setCurrentTool(toolId ?? null);
+    }, [setCurrentTool]);
 
     // 双击聚焦
     const handlePartDoubleClick = useCallback((part: PartInfo) => {
@@ -119,12 +194,40 @@ function SOPMaintenancePage() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: 16
+                marginBottom: 16,
+                gap: 16,
             }}>
                 <Title level={3} style={{ margin: 0 }}>
                     <ToolOutlined style={{ marginRight: 8 }} />
                     SOP 维保系统
                 </Title>
+
+                {/* 考试模式顶栏 */}
+                {operationMode === 'exam' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Tag
+                            color={examUrgent ? 'red' : 'blue'}
+                            style={{ margin: 0, minWidth: 90, textAlign: 'center' }}
+                        >
+                            倒计时 {examTimeText}
+                        </Tag>
+                        <Tag
+                            color="green"
+                            style={{
+                                margin: 0,
+                                minWidth: 90,
+                                textAlign: 'center',
+                                transition: 'all 0.3s ease',
+                                transform: scoreFlash ? 'scale(1.05)' : 'scale(1)',
+                                color: scoreFlash ? '#faad14' : undefined,
+                                boxShadow: scoreFlash ? '0 0 8px rgba(250, 173, 20, 0.6)' : 'none',
+                            }}
+                        >
+                            得分 {scoreState.currentScore}
+                        </Tag>
+                    </div>
+                )}
+
                 <Space>
                     <Segmented
                         value={viewMode}
@@ -148,6 +251,17 @@ function SOPMaintenancePage() {
                         </Tag>
                     )}
                     <Tag color="blue">24 个零件</Tag>
+                    <Select
+                        size="small"
+                        value={operationMode}
+                        style={{ width: 120 }}
+                        onChange={(value) => handleModeChange(value)}
+                        options={[
+                            { value: 'teaching', label: '教学模式' },
+                            { value: 'exam', label: '考试模式' },
+                            { value: 'maintenance', label: '维保模式' },
+                        ]}
+                    />
                 </Space>
             </div>
 
@@ -191,16 +305,22 @@ function SOPMaintenancePage() {
                         {/* 工具选择器 */}
                         <ToolSelector
                             selectedToolId={selectedToolId}
-                            onToolSelect={setSelectedToolId}
+                            onToolSelect={(toolId) => {
+                                setSelectedToolId(toolId);
+                                setCurrentTool(toolId);
+                            }}
                             requiredScrewId={selectedScrewId || undefined}
                         />
 
                         {/* SOP 播放器 */}
-                        <SOPPlayer
+                        <SOPPlayerAdjudicated
+                            availableSOPs={ALL_SOP_SCRIPTS}
                             onExplodeChange={setExplodeAmount}
                             onPartSelect={handleSOPPartSelect}
                             onToolRequired={handleSOPToolRequired}
                             currentToolId={selectedToolId}
+                            onSummarize={handleSummarize}
+                            onExecutorReady={setSopExecutor}
                         />
 
                         {/* 悬停提示 */}
@@ -271,10 +391,13 @@ function SOPMaintenancePage() {
                             </Suspense>
 
                             {/* 拆卸动画演示 */}
-                            <DisassemblyDemo
+                            <DisassemblyDemoAdjudicated
                                 isPlaying={disassemblyPlaying}
+                                screwId={selectedScrewId ?? 'screw_left_foot_m4x10_001'}
+                                toolId={selectedToolId ?? undefined}
                                 targetPosition={[0, 0.6, 0.08]}
-                                onComplete={() => setDisassemblyPlaying(false)}
+                                onAdjudicationBlocked={() => setDisassemblyPlaying(false)}
+                                onAdjudicationComplete={() => setDisassemblyPlaying(false)}
                             />
 
                             <OrbitControls
@@ -389,6 +512,38 @@ function SOPMaintenancePage() {
                     />
                 </Col>
             </Row>
+
+            {/* 考试结束覆盖层 */}
+            {examSummaryReport && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(10, 15, 25, 0.92)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        padding: 24,
+                    }}
+                >
+                    <div style={{ textAlign: 'center', maxWidth: 640 }}>
+                        <Title level={2} style={{ color: '#fff', marginBottom: 8 }}>
+                            考试结束
+                        </Title>
+                        <Text style={{ color: '#ff4d4f', fontSize: 22, display: 'block', marginBottom: 12 }}>
+                            原因码：{examSummaryReport.reasonCode}
+                        </Text>
+                        <Text style={{ fontSize: 20, display: 'block', marginBottom: 24 }}>
+                            最终得分：{scoreState.currentScore}
+                        </Text>
+                        <Button type="primary" onClick={handleResetExam}>
+                            重置
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

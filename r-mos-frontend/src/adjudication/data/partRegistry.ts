@@ -5,6 +5,7 @@
 
 import { Part, PartCategory } from '../types/adjudication';
 import { getRobotModelBase } from '../../config/robots';
+import { FOOT_SCREW_INSTANCES, TORSO_SCREW_INSTANCES } from './screwInstances';
 
 const MODEL_BASE_URL = import.meta.env.VITE_MODEL_BASE_URL || '/models';
 const ROBOT_BASE = getRobotModelBase('atom01');
@@ -39,6 +40,36 @@ export const PART_REGISTRY: Record<string, Part> = {
         modelPath: `${ROBOT_BASE}/torso_link.glb`,
         parentId: 'base_link',
         localPosition: [0, 0.15, 0],
+        localRotation: [0, 0, 0],
+    },
+    'frame_torso_chest': {
+        id: 'frame_torso_chest',
+        category: PartCategory.COVER,
+        bomCode: 'ATOM-01-TORSO-CHEST-001',
+        displayName: '胸腔夹板',
+        modelPath: `${PARTS_BASE}/frames/frame_torso_chest.glb`,
+        parentId: 'torso_link',
+        localPosition: [0, 0.18, 0.06],
+        localRotation: [0, 0, 0],
+    },
+    'torso_motor': {
+        id: 'torso_motor',
+        category: PartCategory.MOTOR,
+        bomCode: 'ATOM-01-TORSO-MOTOR-001',
+        displayName: '躯干内部电机',
+        modelPath: `${PARTS_BASE}/motors/torso_motor.glb`,
+        parentId: 'torso_link',
+        localPosition: [0, 0.16, 0],
+        localRotation: [0, 0, 0],
+    },
+    'torso_pcb_main': {
+        id: 'torso_pcb_main',
+        category: PartCategory.PCB,
+        bomCode: 'ATOM-01-TORSO-PCB-001',
+        displayName: '躯干主控板',
+        modelPath: `${PARTS_BASE}/pcbs/torso_pcb_main.glb`,
+        parentId: 'torso_link',
+        localPosition: [0, 0.17, -0.02],
         localRotation: [0, 0, 0],
     },
 
@@ -196,9 +227,29 @@ export const PART_REGISTRY: Record<string, Part> = {
 };
 
 /**
+ * 全量零件注册表（包含螺丝实例）
+ * 作为逻辑层唯一数据源
+ */
+export const PART_SCHEMA_REGISTRY: Record<string, Part> = {
+    ...PART_REGISTRY,
+    ...FOOT_SCREW_INSTANCES,
+    ...TORSO_SCREW_INSTANCES,
+};
+
+/**
  * 零件-螺丝映射 (为脚部总成垂直切片定义)
  */
 export const PART_SCREWS_REGISTRY: Record<string, string[]> = {
+    'frame_torso_chest': [
+        'screw_torso_m3x10_001',
+        'screw_torso_m3x10_002',
+        'screw_torso_m3x10_003',
+        'screw_torso_m3x10_004',
+        'screw_torso_m3x10_005',
+        'screw_torso_m3x10_006',
+        'screw_torso_m3x10_007',
+        'screw_torso_m3x10_008',
+    ],
     'left_ankle_roll_link': [
         'screw_left_foot_m4x10_001',
         'screw_left_foot_m4x10_002',
@@ -233,7 +284,7 @@ export const PART_SCREWS_REGISTRY: Record<string, string[]> = {
  * 根据 ID 获取零件信息
  */
 export function getPartById(id: string): Part | undefined {
-    return PART_REGISTRY[id];
+    return PART_SCHEMA_REGISTRY[id];
 }
 
 /**
@@ -247,12 +298,12 @@ export function getPartScrews(partId: string): string[] {
  * 获取指定类型的所有零件
  */
 export function getPartsByCategory(category: PartCategory): Part[] {
-    return Object.values(PART_REGISTRY).filter(p => p.category === category);
+    return Object.values(PART_SCHEMA_REGISTRY).filter(p => p.category === category);
 }
 
 /**
  * 获取所有零件 ID 列表
  */
 export function getAllPartIds(): string[] {
-    return Object.keys(PART_REGISTRY);
+    return Object.keys(PART_SCHEMA_REGISTRY);
 }

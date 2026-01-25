@@ -23,8 +23,9 @@ import {
     SystemState,
 } from '../types/adjudication';
 import { useAdjudicationStore } from '../core/stateManager';
-import { adjudicateAction } from '../core/decisionEngine';
+import { adjudicateAction, validateActionCompletion } from '../core/decisionEngine';
 import { isScrewExtracted } from '../core/geometryJudge';
+import { scoringEngine } from '../core/scoringEngine';
 
 // ============================================================
 // SOP 执行状态
@@ -306,6 +307,19 @@ export class SOPExecutor {
             };
         }
 
+        // 致命失败锁定：禁止任何后续操作
+        if (useAdjudicationStore.getState().systemState === SystemState.FAILED_FATAL) {
+            return {
+                result: AdjudicationResult.BLOCKED,
+                targetPart: step.targetParts[0] || '',
+                reason: '系统已进入致命失败状态，需重置',
+                reasonCode: 'FAILED_FATAL',
+                blockingConstraints: [],
+                requiredActions: ['重置系统状态'],
+                timestamp: Date.now(),
+            };
+        }
+
         // 检查前置条件
         const preconditionCheck = checkStepPreconditions(step);
         if (!preconditionCheck.allPassed) {
@@ -323,14 +337,17 @@ export class SOPExecutor {
 
         // 检查目标零件/螺丝的约束
         if (step.targetParts.length > 0) {
-            const targetReport = adjudicateAction(
-                step.action,
-                step.targetParts[0],
-                step.requiredTool
-            );
+            const currentTool = useAdjudicationStore.getState().currentToolId;
+            for (const targetId of step.targetParts) {
+                const targetReport = adjudicateAction(
+                    step.action,
+                    targetId,
+                    currentTool
+                );
 
-            if (targetReport.result !== AdjudicationResult.ALLOWED) {
-                return targetReport;
+                if (targetReport.result !== AdjudicationResult.ALLOWED) {
+                    return targetReport;
+                }
             }
         }
 
@@ -361,6 +378,19 @@ export class SOPExecutor {
             };
         }
 
+        const step = this.getCurrentStep();
+        if (useAdjudicationStore.getState().systemState === SystemState.FAILED_FATAL) {
+            return {
+                result: AdjudicationResult.BLOCKED,
+                targetPart: '',
+                reason: '系统已进入致命失败状态，需重置',
+                reasonCode: 'FAILED_FATAL',
+                blockingConstraints: [],
+                requiredActions: ['重置系统状态'],
+                timestamp: Date.now(),
+            };
+        }
+
         // 更新状态为前置条件检查
         this.context.executionState = SOPExecutionState.PRECONDITION_CHECK;
         this.context.stepStartTime = Date.now();
@@ -370,6 +400,35 @@ export class SOPExecutor {
         const canExecute = this.canExecuteStep();
 
         if (canExecute.result !== AdjudicationResult.ALLOWED) {
+            if (step?.fatalOnFailure) {
+                const failureHandling = this.handleFailure(step, canExecute);
+                if (failureHandling.hint) {
+                    canExecute.hint = failureHandling.hint;
+                }
+                canExecute.allowRetry = false;
+                canExecute.shouldSummarize = true;
+                useAdjudicationStore.getState().setSystemState(SystemState.FAILED_FATAL);
+                this.context.executionState = SOPExecutionState.FAILED;
+                this.context.lastReport = canExecute;
+                this.notifyStateChange();
+                this.onFailed?.(canExecute.reason);
+                this.onBlocked?.(canExecute);
+                return canExecute;
+            }
+            const failureHandling = step ? this.handleFailure(step, canExecute) : { allowRetry: false };
+            if (failureHandling.hint) {
+                canExecute.hint = failureHandling.hint;
+            }
+            canExecute.allowRetry = failureHandling.allowRetry;
+            if (failureHandling.shouldSummarize) {
+                canExecute.shouldSummarize = true;
+            }
+            if (failureHandling.allowRetry) {
+                this.context.executionState = SOPExecutionState.FAILED;
+                this.context.lastReport = canExecute;
+                this.notifyStateChange();
+                return canExecute;
+            }
             this.context.executionState = SOPExecutionState.BLOCKED;
             this.context.lastReport = canExecute;
             this.notifyStateChange();
@@ -401,9 +460,59 @@ export class SOPExecutor {
             };
         }
 
+        if (useAdjudicationStore.getState().systemState === SystemState.FAILED_FATAL) {
+            return {
+                result: AdjudicationResult.BLOCKED,
+                targetPart: step.targetParts[0] || '',
+                reason: '系统已进入致命失败状态，需重置',
+                reasonCode: 'FAILED_FATAL',
+                blockingConstraints: [],
+                requiredActions: ['重置系统状态'],
+                timestamp: Date.now(),
+            };
+        }
+
         // 更新状态为验证中
         this.context.executionState = SOPExecutionState.VALIDATION;
         this.notifyStateChange();
+
+        // 三元完成判定（语义 && 约束 && 几何）
+        const currentTool = useAdjudicationStore.getState().currentToolId;
+        for (const targetId of step.targetParts) {
+            const completionReport = validateActionCompletion(step.action, targetId, currentTool);
+            if (completionReport.result !== AdjudicationResult.ALLOWED) {
+                this.context.lastReport = completionReport;
+
+                if (completionReport.result === AdjudicationResult.BLOCKED) {
+                    this.context.executionState = SOPExecutionState.BLOCKED;
+                    this.notifyStateChange();
+                    this.onBlocked?.(completionReport);
+                    return completionReport;
+                }
+
+                // INCOMPLETE 走既有失败分支
+                if (step.onFailure.action === 'block') {
+                    const failureHandling = this.handleFailure(step, completionReport);
+                    if (failureHandling.hint) {
+                        completionReport.hint = failureHandling.hint;
+                    }
+                    completionReport.allowRetry = failureHandling.allowRetry;
+                    if (failureHandling.shouldSummarize) {
+                        completionReport.shouldSummarize = true;
+                    }
+                    if (failureHandling.allowRetry) {
+                        this.context.executionState = SOPExecutionState.FAILED;
+                        this.notifyStateChange();
+                        return completionReport;
+                    }
+                    this.context.executionState = SOPExecutionState.BLOCKED;
+                    this.notifyStateChange();
+                    this.onBlocked?.(completionReport);
+                }
+
+                return completionReport;
+            }
+        }
 
         // 验证完成条件
         const validationCheck = validateStepCompletion(step);
@@ -424,6 +533,19 @@ export class SOPExecutor {
 
             // 根据步骤配置处理失败
             if (step.onFailure.action === 'block') {
+                const failureHandling = this.handleFailure(step, report);
+                if (failureHandling.hint) {
+                    report.hint = failureHandling.hint;
+                }
+                report.allowRetry = failureHandling.allowRetry;
+                if (failureHandling.shouldSummarize) {
+                    report.shouldSummarize = true;
+                }
+                if (failureHandling.allowRetry) {
+                    this.context.executionState = SOPExecutionState.FAILED;
+                    this.notifyStateChange();
+                    return report;
+                }
                 this.context.executionState = SOPExecutionState.BLOCKED;
                 this.notifyStateChange();
                 this.onBlocked?.(report);
@@ -487,6 +609,19 @@ export class SOPExecutor {
 
         if (stepIndex < 0 || stepIndex >= this.currentSOP.steps.length) {
             return false;
+        }
+
+        const currentStep = this.getCurrentStep();
+        const currentStepCompleted = currentStep
+            ? this.context.completedSteps.includes(currentStep.stepId)
+            : false;
+        const isRollingBack = stepIndex < this.context.currentStepIndex;
+        if (
+            isRollingBack &&
+            currentStep?.isIrreversible &&
+            (this.context.executionState === SOPExecutionState.EXECUTING || currentStepCompleted)
+        ) {
+            throw new Error('不可逆步骤不允许回滚');
         }
 
         // 只能跳转到已完成的步骤或当前步骤
@@ -556,6 +691,53 @@ export class SOPExecutor {
         if (this.context) {
             this.onStateChange?.({ ...this.context });
         }
+    }
+
+    /**
+     * 教学模式重试当前步骤
+     */
+    retryStep(): boolean {
+        if (!this.context) return false;
+        if (this.context.executionState !== SOPExecutionState.FAILED) return false;
+        this.context.executionState = SOPExecutionState.IDLE;
+        this.context.lastReport = null;
+        this.notifyStateChange();
+        return true;
+    }
+
+    private handleFailure(
+        step: SOPStepAdjudication,
+        report: AdjudicationReport
+    ): { allowRetry: boolean; hint?: string; shouldSummarize?: boolean } {
+        const { operationMode } = useAdjudicationStore.getState();
+
+        if (operationMode === 'teaching') {
+            // 教学模式：允许重试（UI 可提示引导）
+            const hint = step.failureReasons
+                .find(reason => reason.teachingResponse?.showHint && reason.teachingResponse.hintContent)
+                ?.teachingResponse.hintContent;
+            return { allowRetry: true, hint };
+        }
+
+        if (operationMode === 'exam') {
+            const failure = step.failureReasons[0];
+            const examResponse = failure?.examResponse;
+            if (examResponse) {
+                if (examResponse.deductPoints > 0) {
+                    scoringEngine.deduct(step.stepId, failure.code, examResponse.deductPoints);
+                }
+                if (!examResponse.allowContinue) {
+                    useAdjudicationStore.getState().setSystemState(SystemState.FAILED_FATAL);
+                    scoringEngine.finalize(failure.code);
+                    report.shouldSummarize = true;
+                    return { allowRetry: false, shouldSummarize: true };
+                }
+            }
+            return { allowRetry: false };
+        }
+
+        // 维保模式：沿用严格阻断
+        return { allowRetry: false };
     }
 }
 

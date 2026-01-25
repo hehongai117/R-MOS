@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import {
     SystemState,
     ScrewState,
@@ -14,8 +14,9 @@ import {
     ScrewInstanceState,
     ActionRecord,
     AdjudicationState,
+    OperationMode,
 } from '../types/adjudication';
-import { FOOT_CONSTRAINTS } from '../data/constraintGraph';
+import { getAllConstraints } from '../data/constraintGraph';
 import { getAllScrewIds } from '../data/screwInstances';
 import { getAllPartIds } from '../data/partRegistry';
 
@@ -44,6 +45,9 @@ interface AdjudicationStore extends AdjudicationState {
     /** 设置系统状态 */
     setSystemState: (state: SystemState) => void;
 
+    /** 设置操作模式 */
+    setOperationMode: (mode: OperationMode) => void;
+
     /** 添加操作记录 */
     addActionRecord: (record: Omit<ActionRecord, 'id' | 'timestamp' | 'stateSnapshot'>) => void;
 
@@ -66,6 +70,36 @@ interface AdjudicationStore extends AdjudicationState {
 
     /** 获取操作历史 */
     getActionHistory: () => ActionRecord[];
+}
+
+type MemoryStorage = {
+    getItem: (name: string) => string | null;
+    setItem: (name: string, value: string) => void;
+    removeItem: (name: string) => void;
+};
+
+function createMemoryStorage(): MemoryStorage {
+    const store = new Map<string, string>();
+    return {
+        getItem: (name) => store.get(name) ?? null,
+        setItem: (name, value) => {
+            store.set(name, value);
+        },
+        removeItem: (name) => {
+            store.delete(name);
+        },
+    };
+}
+
+function resolvePersistStorage() {
+    const injected = (globalThis as any).__RMOS_PERSIST_STORAGE__;
+    if (injected) {
+        return injected;
+    }
+    if (typeof window !== 'undefined' && window.localStorage) {
+        return createJSONStorage(() => window.localStorage);
+    }
+    return createJSONStorage(() => createMemoryStorage());
 }
 
 // ============================================================
@@ -98,7 +132,7 @@ function createInitialPartStates(): Record<string, PartState> {
 
 function createInitialConstraintStates(): Record<string, boolean> {
     const states: Record<string, boolean> = {};
-    FOOT_CONSTRAINTS.forEach(c => {
+    getAllConstraints().forEach(c => {
         states[c.id] = c.isActive;
     });
     return states;
@@ -106,6 +140,7 @@ function createInitialConstraintStates(): Record<string, boolean> {
 
 const INITIAL_STATE: Omit<AdjudicationState, never> = {
     systemState: SystemState.FULLY_ASSEMBLED,
+    operationMode: 'maintenance',
     partStates: createInitialPartStates(),
     screwStates: createInitialScrewStates(),
     constraintStates: createInitialConstraintStates(),
@@ -199,6 +234,10 @@ export const useAdjudicationStore = create<AdjudicationStore>()(
                     set({ systemState: state }, false, 'setSystemState');
                 },
 
+                setOperationMode: (mode) => {
+                    set({ operationMode: mode }, false, 'setOperationMode');
+                },
+
                 addActionRecord: (record) => {
                     const fullRecord: ActionRecord = {
                         id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -249,10 +288,12 @@ export const useAdjudicationStore = create<AdjudicationStore>()(
             }),
             {
                 name: 'adjudication-storage',
+                storage: resolvePersistStorage(),
                 // 只持久化部分状态，排除操作历史（可能很大）
                 partialize: (state) => ({
                     systemState: state.systemState,
                     currentToolId: state.currentToolId,
+                    operationMode: state.operationMode,
                 }),
             }
         ),
@@ -269,6 +310,13 @@ export const useAdjudicationStore = create<AdjudicationStore>()(
  */
 export function useSystemState(): SystemState {
     return useAdjudicationStore((state) => state.systemState);
+}
+
+/**
+ * 获取当前操作模式
+ */
+export function useOperationMode(): OperationMode {
+    return useAdjudicationStore((state) => state.operationMode);
 }
 
 /**

@@ -22,21 +22,14 @@ import {
     adjudicateAction,
     canRemoveScrew,
     canDetachPart,
-    commitScrewExtraction,
-    commitPartRemoval,
-    getBlockingConstraints,
 } from '../core/decisionEngine';
 import {
     checkToolMatch,
-    validateScrewRotation,
-    getScrewProgress,
 } from '../core/geometryJudge';
 import {
     useAdjudicationStore,
     resetStateDirect,
 } from '../core/stateManager';
-import { FOOT_CONSTRAINTS, getConstraintsByPart } from '../data/constraintGraph';
-import { getScrewInstance } from '../data/screwInstances';
 
 // ============================================================
 // 测试辅助函数
@@ -89,7 +82,7 @@ export function runTC001(): {
     const report = canDetachPart('left_ankle_roll_link');
 
     // 验证：应该被阻断
-    const passed = report.result === AdjudicationResult.BLOCKED;
+    const passed = report.result === AdjudicationResult.BLOCKED && report.reasonCode === 'ERR_CONSTRAINT';
 
     // 验证：阻断原因应该提到软胶覆盖
     const hasCorrectReason = report.reason.includes('软胶') ||
@@ -178,8 +171,8 @@ export function runTC003(): {
     const report = canDetachPart('left_ankle_roll_link');
 
     // 验证：应该返回 INCOMPLETE 或 BLOCKED
-    const passed = report.result === AdjudicationResult.BLOCKED ||
-        report.result === AdjudicationResult.INCOMPLETE;
+    const passed = report.result === AdjudicationResult.BLOCKED &&
+        report.reasonCode === 'ERR_CONSTRAINT';
 
     // 验证：应该提示剩余螺丝
     const mentionsRemaining = report.reason.includes('螺丝') ||
@@ -192,7 +185,7 @@ export function runTC003(): {
       结果: ${report.result}
       原因: ${report.reason}
       需要操作: ${report.requiredActions.join(', ') || '无'}
-      预期: BLOCKED/INCOMPLETE (螺丝未全部拆除)
+      预期: BLOCKED + ERR_CONSTRAINT (约束未解除)
       验证: ${passed ? '✅ 正确阻断' : '❌ 未正确阻断'}
       提示剩余: ${mentionsRemaining ? '✅ 正确提示剩余螺丝' : '❌ 未正确提示'}
     `.trim(),
@@ -231,7 +224,7 @@ export function runTC004(): {
         passed: toolCheck.matched,
     });
 
-    // 步骤 3: 拆卸所有螺丝
+    // 步骤 3: 拆卸脚底板螺丝
     const screwIds = [
         'screw_left_foot_m4x10_001',
         'screw_left_foot_m4x10_002',
@@ -249,6 +242,26 @@ export function runTC004(): {
 
     steps.push({
         step: '3. 拆卸 4 颗螺丝',
+        result: 'EXTRACTED',
+        passed: true,
+    });
+
+    // 步骤 3.1: 拆卸踝关节螺丝（父子链约束影响）
+    const ankleScrewIds = [
+        'screw_left_ankle_m4x8_001',
+        'screw_left_ankle_m4x8_002',
+        'screw_left_ankle_m4x8_003',
+        'screw_left_ankle_m4x8_004',
+    ];
+
+    ankleScrewIds.forEach(id => {
+        extractScrew(id);
+    });
+
+    store.setConstraintActive('constraint_left_ankle_fastened', false);
+
+    steps.push({
+        step: '3.1. 拆卸踝关节螺丝',
         result: 'EXTRACTED',
         passed: true,
     });

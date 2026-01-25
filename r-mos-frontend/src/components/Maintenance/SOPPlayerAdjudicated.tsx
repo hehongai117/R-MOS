@@ -14,7 +14,7 @@
  * - A.3：禁止绕过裁决层推进 SOP
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Card, Space, Typography, Button, Steps, Tag, Progress, Alert, Select, Tooltip, Empty, Divider, Modal } from 'antd';
 import {
     PlayCircleOutlined,
@@ -22,12 +22,12 @@ import {
     StepBackwardOutlined,
     ReloadOutlined,
     CheckCircleOutlined,
-    WarningOutlined,
     ToolOutlined,
     AimOutlined,
     ExpandOutlined,
     StopOutlined,
     ExclamationCircleOutlined,
+    BulbOutlined,
 } from '@ant-design/icons';
 import { getToolById } from '@/data/toolData';
 import {
@@ -55,6 +55,8 @@ export interface SOPPlayerAdjudicatedProps {
     onToolRequired?: (toolId: string | null) => void;
     onBlocked?: (report: AdjudicationReport) => void;
     onComplete?: () => void;
+    onSummarize?: (report: AdjudicationReport) => void;
+    onExecutorReady?: (executor: SOPExecutor | null) => void;
 
     // 当前状态
     currentToolId?: string | null;
@@ -100,6 +102,8 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     onToolRequired,
     onBlocked,
     onComplete,
+    onSummarize,
+    onExecutorReady,
     currentToolId: propCurrentToolId,
 }) => {
     const [selectedSOP, setSelectedSOP] = useState<SOPScriptAdjudication | null>(null);
@@ -110,6 +114,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
 
     // 从 store 获取当前工具
     const storeCurrentToolId = useAdjudicationStore((state) => state.currentToolId);
+    const operationMode = useAdjudicationStore((state) => state.operationMode);
     const currentToolId = propCurrentToolId ?? storeCurrentToolId;
     const setCurrentTool = useAdjudicationStore((state) => state.setCurrentTool);
 
@@ -127,7 +132,8 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
 
     // 是否完成
     const isCompleted = context?.executionState === SOPExecutionState.COMPLETE;
-    const isBlocked = context?.executionState === SOPExecutionState.BLOCKED;
+    const isFailed = context?.executionState === SOPExecutionState.FAILED;
+    const isBlocked = context?.executionState === SOPExecutionState.BLOCKED || isFailed;
 
     // 创建执行器
     const createExecutor = useCallback((sop: SOPScriptAdjudication) => {
@@ -146,8 +152,13 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             },
             onBlocked: (report) => {
                 setLastReport(report);
-                setShowBlockedModal(true);
+                if (!report.shouldSummarize && operationMode !== 'teaching') {
+                    setShowBlockedModal(true);
+                }
                 onBlocked?.(report);
+                if (report.shouldSummarize) {
+                    onSummarize?.(report);
+                }
             },
             onComplete: () => {
                 onComplete?.();
@@ -156,13 +167,14 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
 
         newExecutor.loadSOP(sop);
         setExecutor(newExecutor);
+        onExecutorReady?.(newExecutor);
 
         // 初始化 context
         const initialContext = newExecutor.getContext();
         if (initialContext) {
             setContext({ ...initialContext });
         }
-    }, [onStepChange, onPartSelect, onToolRequired, onBlocked, onComplete]);
+    }, [onStepChange, onPartSelect, onToolRequired, onBlocked, onComplete, onSummarize, onExecutorReady, operationMode]);
 
     // 选择 SOP
     const handleSelectSOP = useCallback((sopId: string) => {
@@ -203,6 +215,15 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             setLastReport(report);
         }
     }, [executor, context, isCompleted]);
+
+    const handleRetry = useCallback(() => {
+        if (!executor) return;
+        const retried = executor.retryStep();
+        if (retried) {
+            setLastReport(null);
+            setShowBlockedModal(false);
+        }
+    }, [executor]);
 
     // 上一步（仅限已完成步骤）
     const handlePrev = useCallback(() => {
@@ -304,6 +325,27 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                     </Space>
                                 }
                                 style={{ marginBottom: 8 }}
+                            />
+                        )}
+
+                        {/* 教学提示气泡 */}
+                        {isBlocked && lastReport?.hint && operationMode === 'teaching' && (
+                            <Alert
+                                type="info"
+                                icon={<BulbOutlined />}
+                                message="教学提示"
+                                description={<Text>{lastReport.hint}</Text>}
+                                action={
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        ghost
+                                        onClick={handleRetry}
+                                    >
+                                        重试
+                                    </Button>
+                                }
+                                style={{ marginTop: -4, marginBottom: 8 }}
                             />
                         )}
 

@@ -10,7 +10,7 @@ import {
     ScrewGeometryCondition,
     SCREW_GEOMETRY_CONDITIONS,
 } from '../types/adjudication';
-import { getScrewInstance } from '../data/screwInstances';
+import { getPartById } from '../data/partRegistry';
 import { useAdjudicationStore } from './stateManager';
 
 // ============================================================
@@ -28,7 +28,7 @@ export function getScrewGeometryCondition(screwType: string): ScrewGeometryCondi
  * 根据螺丝ID获取其几何条件
  */
 export function getScrewGeometryConditionById(screwId: string): ScrewGeometryCondition | undefined {
-    const screw = getScrewInstance(screwId);
+    const screw = getPartById(screwId);
     if (!screw?.screwSpec) return undefined;
     return getScrewGeometryCondition(screw.screwSpec.type);
 }
@@ -129,7 +129,7 @@ export function getScrewProgress(screwId: string): {
  * @returns 位移量 (mm)
  */
 export function calculateDisplacementFromRotation(screwId: string, rotations: number): number {
-    const screw = getScrewInstance(screwId);
+    const screw = getPartById(screwId);
     if (!screw?.screwSpec) return 0;
 
     return rotations * screw.screwSpec.pitch;
@@ -152,7 +152,7 @@ export function validateScrewRotation(screwId: string, deltaRotations: number): 
     const store = useAdjudicationStore.getState();
     const screwState = store.screwStates[screwId];
     const condition = getScrewGeometryConditionById(screwId);
-    const screw = getScrewInstance(screwId);
+    const screw = getPartById(screwId);
 
     if (!screwState) {
         return {
@@ -254,7 +254,7 @@ export function checkToolMatch(toolId: string | null, screwId: string): {
     requiredTool: string | null;
     message: string;
 } {
-    const screw = getScrewInstance(screwId);
+    const screw = getPartById(screwId);
 
     if (!screw?.screwSpec) {
         return {
@@ -275,18 +275,10 @@ export function checkToolMatch(toolId: string | null, screwId: string): {
     }
 
     if (toolId !== requiredTool) {
-        // 映射工具ID到友好名称
-        const toolNames: Record<string, string> = {
-            'hex_2.5': '2.5mm 内六角扳手',
-            'hex_3': '3mm 内六角扳手',
-            'hex_4': '4mm 内六角扳手',
-            'hex_5': '5mm 内六角扳手',
-        };
-
         return {
             matched: false,
             requiredTool,
-            message: `工具不匹配，需要 ${toolNames[requiredTool] || requiredTool}`,
+            message: `工具不匹配，需要 ${requiredTool}`,
         };
     }
 

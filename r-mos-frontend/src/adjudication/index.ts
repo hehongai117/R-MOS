@@ -18,6 +18,8 @@ export {
 
 export {
     FOOT_SCREW_INSTANCES,
+    TORSO_SCREW_INSTANCES,
+    ALL_SCREW_INSTANCES,
     getScrewInstance,
     getAllScrewIds,
     getScrewsByParent,
@@ -25,6 +27,8 @@ export {
 
 export {
     FOOT_CONSTRAINTS,
+    TORSO_CONSTRAINTS,
+    ALL_CONSTRAINTS,
     getConstraintsByPart,
     getActiveConstraints,
     getConstraintById,
@@ -32,10 +36,17 @@ export {
     canReleaseConstraint,
 } from './data/constraintGraph';
 
+export {
+    CRITICAL_PARTS,
+    isCriticalPart,
+    getCriticalPartReason,
+} from './data/criticalParts';
+
 // 核心模块导出
 export {
     useAdjudicationStore,
     useSystemState,
+    useOperationMode,
     useCurrentTool,
     useScrewState,
     usePartState,
@@ -43,6 +54,11 @@ export {
     setScrewStateDirect,
     resetStateDirect,
 } from './core/stateManager';
+
+// 评分引擎
+export {
+    scoringEngine,
+} from './core/scoringEngine';
 
 // 几何判定模块导出
 export {
@@ -62,6 +78,7 @@ export {
     canRemoveScrew,
     canDetachPart,
     adjudicateAction,
+    validateActionCompletion,
     validateScrewExtraction,
     validatePartDetachment,
     commitScrewExtraction,
