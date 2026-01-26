@@ -225,3 +225,42 @@
 - UI 页面：`r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
 - SOP 播放器：`r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
 - P4 测试：`r-mos-frontend/src/adjudication/__tests__/p4_mode.test.ts`、`r-mos-frontend/src/adjudication/__tests__/examMode.test.ts`
+
+---
+
+## 2026-01-26 — 教学闭环 P0（任务1~6）
+
+### 任务1：教学域模型与迁移
+- 新增教学域模型（Class/Course/Enrollment/Assignment/AssignmentAttempt/GuidancePolicy/EvidenceLink），Task 增加 assignment_id、guidance_policy_id 关系。
+- 新增数据库迁移脚本，补齐外键约束与索引。
+- 单测覆盖：教学模型关系与默认值。
+
+### 任务2：教学域数据结构
+- 新增教学域 Pydantic Schema，输出 camelCase，支持 populate_by_name。
+- 补齐 AttemptStatus 与 Attempt/Evidence Link 相关响应结构。
+
+### 任务3：教学服务层
+- 新增教学服务层（CRUD + Attempt 状态机 + 评分），提供 list/get 能力。
+- Attempt 状态流转校验与 attempt_index 自增。
+
+### 任务4：教学接口
+- 新增教学 API 路由并接入 v1 router。
+- 统一错误响应格式（BusinessRuleViolation 与 ResourceNotFound）。
+- 单测覆盖：作业、尝试、状态流转、重复报名、证据占位接口。
+
+### 任务5：证据引擎与 EvidenceLink
+- 新增 EvidenceEngine，自动汇总 Task/Event/Snapshot 生成证据包摘要（summary 写入 machine_tags）。
+- Task 完成时自动生成 EvidenceBundle 与 EvidenceLink。
+- 单测覆盖：证据包生成、尝试关联、完成钩子。
+
+### 任务6：教学前端（最小闭环）
+- 新增教学前端 API：作业、尝试、证据查询。
+- 新增教学状态管理 store（Zustand）。
+- 新增页面：作业列表（学生/教师视图）、尝试执行页、证据摘要页。
+- Ghost Hand Lite：目标部件高亮、相机聚焦、工具虚影占位。
+- 教学菜单与路由接入。
+
+### 验证记录
+- `r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit -v`
+- `r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit/test_teaching_api.py -v`
+- `r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit/test_evidence_engine.py -v`
