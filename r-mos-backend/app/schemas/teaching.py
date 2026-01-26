@@ -153,3 +153,10 @@ class EvidenceLinkResponse(TeachingBaseModel):
     class_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class AttemptEvidenceResponse(TeachingBaseModel):
+    bundle_id: str
+    task_id: Optional[int] = None
+    attempt_id: int
+    summary: Optional[Dict[str, Any]] = None

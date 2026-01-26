@@ -16,6 +16,7 @@ from app.schemas.teaching import (
     AssignmentAttemptResponse,
     AttemptStatus,
     EvidenceLinkResponse,
+    AttemptEvidenceResponse,
 )
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "AssignmentAttemptResponse",
     "AttemptStatus",
     "EvidenceLinkResponse",
+    "AttemptEvidenceResponse",
 ]

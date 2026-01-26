@@ -11,6 +11,11 @@ from main import app
 from app.core.database import get_db
 from app.models.base import Base
 import app.models as app_models  # noqa: F401  # Ensure models are registered
+from app.schemas.sop import SOPCreate
+from app.schemas.task import TaskCreate, StepExecutionRequest
+from app.services.sop_service import SOPService
+from app.services.task_service import TaskService
+from app.services.teaching_service import TeachingService
 
 
 @pytest.fixture
@@ -34,11 +39,13 @@ def client():
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.state.test_sessionmaker = Session
 
     with TestClient(app) as test_client:
         yield test_client
 
     app.dependency_overrides.clear()
+    app.state.test_sessionmaker = None
     asyncio.run(engine.dispose())
 
 
@@ -187,3 +194,114 @@ def test_attempt_status_transitions(client):
         json={"status": "completed"},
     )
     assert resp.status_code in (400, 409)
+
+
+def test_get_attempt_evidence(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            sop_service = SOPService(session)
+            sop = await sop_service.create_sop(
+                SOPCreate(
+                    name="测试SOP",
+                    description="用于证据接口测试",
+                    applicable_model="MOCK_HUMANOID_V1",
+                    category="unit-test",
+                    difficulty_level="low",
+                    estimated_time=120,
+                    steps=[
+                        {
+                            "step_index": 1,
+                            "title": "步骤一",
+                            "description": "第一个步骤",
+                            "target_part": "knee_right",
+                            "expected_action": "inspect",
+                            "is_critical": True,
+                            "timeout_seconds": 60,
+                            "allow_skip": False,
+                        },
+                        {
+                            "step_index": 2,
+                            "title": "步骤二",
+                            "description": "第二个步骤",
+                            "target_part": "knee_right",
+                            "expected_action": "execute",
+                            "is_critical": False,
+                            "timeout_seconds": 60,
+                            "allow_skip": False,
+                        },
+                    ],
+                )
+            )
+
+            teaching_service = TeachingService(session)
+            teaching_class = await teaching_service.create_class(name="班级一")
+            assignment = await teaching_service.create_assignment(
+                class_id=teaching_class.id,
+                title="作业一",
+            )
+
+            task_service = TaskService(session)
+            task = await task_service.create_task(
+                TaskCreate(title="任务一", sop_id=sop.id, user_id=1, pass_score=70)
+            )
+            task.assignment_id = assignment.id
+            await session.commit()
+
+            attempt = await teaching_service.create_attempt(
+                assignment_id=assignment.id,
+                student_id=101,
+                task_id=task.id,
+            )
+
+            await task_service.start_task(task.id)
+            await task_service.execute_step(
+                task.id,
+                StepExecutionRequest(step_index=1, action="execute", parameters={}),
+            )
+            await task_service.execute_step(
+                task.id,
+                StepExecutionRequest(step_index=2, action="execute", parameters={}),
+            )
+
+            return attempt.id, task.id
+
+    attempt_id, task_id = asyncio.run(setup_data())
+
+    resp = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["attemptId"] == attempt_id
+    assert data["taskId"] == task_id
+    assert data["bundleId"]
+    summary = data["summary"]
+    assert summary is not None
+    assert "total_steps" in summary
+    assert "skip_count" in summary
+    assert "error_count" in summary
+    assert "duration_ms" in summary
+
+
+def test_get_attempt_evidence_link_not_found(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            teaching_service = TeachingService(session)
+            teaching_class = await teaching_service.create_class(name="班级二")
+            assignment = await teaching_service.create_assignment(
+                class_id=teaching_class.id,
+                title="作业二",
+            )
+            attempt = await teaching_service.create_attempt(
+                assignment_id=assignment.id,
+                student_id=102,
+                task_id=None,
+            )
+            return attempt.id
+
+    attempt_id = asyncio.run(setup_data())
+
+    resp = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
+    assert resp.status_code == 404

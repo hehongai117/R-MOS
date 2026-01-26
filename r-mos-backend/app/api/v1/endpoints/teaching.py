@@ -6,10 +6,13 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
+from app.models.evidence import EvidenceBundle
+from app.models.teaching import EvidenceLink
 from app.schemas.teaching import (
     GuidancePolicyCreate,
     GuidancePolicyResponse,
@@ -22,7 +25,7 @@ from app.schemas.teaching import (
     AssignmentCreate,
     AssignmentResponse,
     AssignmentAttemptResponse,
-    EvidenceLinkResponse,
+    AttemptEvidenceResponse,
 )
 from app.services.teaching_service import TeachingService
 
@@ -340,6 +343,37 @@ async def grade_attempt(
         _raise_not_found(exc)
 
 
-@router.get("/attempts/{attempt_id}/evidence", response_model=EvidenceLinkResponse)
-async def get_attempt_evidence(attempt_id: int):
-    raise HTTPException(status_code=501, detail="Evidence endpoint not implemented")
+@router.get(
+    "/attempts/{attempt_id}/evidence",
+    response_model=AttemptEvidenceResponse,
+    response_model_by_alias=True,
+)
+async def get_attempt_evidence(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    service = TeachingService(db)
+    try:
+        await service.get_attempt(attempt_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+    result = await db.execute(
+        select(EvidenceLink)
+        .where(EvidenceLink.attempt_id == attempt_id)
+        .order_by(EvidenceLink.created_at.desc())
+    )
+    link = result.scalars().first()
+    if not link:
+        raise HTTPException(status_code=404, detail="证据关联不存在")
+
+    bundle = await db.get(EvidenceBundle, link.bundle_id)
+    if not bundle:
+        raise HTTPException(status_code=500, detail="证据包不存在")
+
+    return AttemptEvidenceResponse(
+        bundle_id=bundle.id,
+        task_id=link.task_id,
+        attempt_id=attempt_id,
+        summary=bundle.machine_tags,
+    )
