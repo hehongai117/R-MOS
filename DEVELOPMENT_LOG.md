@@ -8,4 +8,5 @@
 - 任务4：提交 3d8de00；用例 T4-01~T4-03；ADR ADR-TEACH-004
 - 任务5：提交 46ce3fc、bb14e62；用例 T5-01~T5-03；ADR ADR-TEACH-001、ADR-TEACH-003
 - 任务6：提交 67f3e4e；用例 T6-01~T6-02；ADR ADR-TEACH-005
+- 任务7：提交 25b37eb；用例 无；ADR 无新增
 - 任务8：提交 2d97188；用例 T8-01~T8-03；ADR ADR-OPS-001
