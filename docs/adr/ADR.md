@@ -1,0 +1,31 @@
+# 架构决策记录
+
+## ADR-TEACH-001
+- 决策：使用 `EvidenceLink` 解耦教学域与执行域
+- 背景：教学域不应直接依赖裁决域与任务执行细节
+- 影响：证据生成可独立升级，教学域仅通过关联查询
+
+## ADR-TEACH-002
+- 决策：尝试状态机采用白名单流转
+- 背景：避免前端或服务端出现非法回退
+- 影响：非法状态流转返回 `INVALID_ATTEMPT_STATUS_TRANSITION`
+
+## ADR-TEACH-003
+- 决策：证据生成时机绑定任务完成钩子
+- 背景：完成时最稳定地汇总事件与快照
+- 影响：任务完成后自动生成 `EvidenceBundle` 与 `EvidenceLink`
+
+## ADR-TEACH-004
+- 决策：错误响应格式统一为结构化数据
+- 背景：前端需稳定解析错误码与提示
+- 影响：`BusinessRuleViolation` 与 `ResourceNotFoundError` 统一格式
+
+## ADR-TEACH-005
+- 决策：教学域数据结构输出驼峰命名
+- 背景：前端字段命名与交互一致性
+- 影响：启用 `populate_by_name=True` 支持下划线入参
+
+## ADR-TEACH-006
+- 决策：`metadata` 字段冲突采用别名策略
+- 背景：`Base.metadata` 与业务字段冲突
+- 影响：使用 `metadata_json` 内部字段，外部保持 `metadata`

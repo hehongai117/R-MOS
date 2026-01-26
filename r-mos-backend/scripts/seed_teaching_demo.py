@@ -1,43 +1,87 @@
 """
 教学演示数据导入脚本
 """
+import argparse
 import asyncio
-import sys
 import os
+import sys
 
-sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import select, delete, inspect
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 
 from app.core.config import settings
+from app.models import Base
 from app.models.sop import SOP, SOPStep
 from app.models.task import Task
-from app.models.teaching import GuidancePolicy, TeachingClass, Course, Assignment, AssignmentAttempt
+from app.models.teaching import (
+    GuidancePolicy,
+    TeachingClass,
+    Course,
+    Enrollment,
+    Assignment,
+    AssignmentAttempt,
+    EvidenceLink,
+)
 from app.schemas.task import TaskCreate
 from app.services.task_service import TaskService
 
-engine = create_async_engine(settings.DATABASE_URL, echo=True)
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-DEMO_SOP_NAME = "教学演示SOP"
-DEMO_POLICY_NAME = "Level 1 练习"
-DEMO_CLASS_NAME = "教学演示班级"
-DEMO_COURSE_NAME = "基础维保课程"
-DEMO_ASSIGNMENT_TITLE = "示例作业"
-DEMO_TASK_TITLE = "示例作业-教学任务"
-DEMO_STUDENT_ID = 1001
+DEFAULT_CLASS_NAME = "教学演示班级"
+DEFAULT_COURSE_NAME = "基础维保课程"
+DEFAULT_POLICY_NAME = "默认教学策略"
+DEFAULT_SOP_NAME = "教学演示SOP"
+DEFAULT_ASSIGNMENT_TITLE = "示例作业"
+DEFAULT_ASSIGNMENT_DESC = "教学闭环演示作业"
+
+
+def parse_student_id(raw: str) -> int:
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if digits:
+        return int(digits)
+    raise ValueError(f"学生编号无法解析为数字，请检查 --student-id：{raw}")
+
+
+async def has_table(session: AsyncSession, table_name: str) -> bool:
+    def _has(sync_session) -> bool:
+        return inspect(sync_session.get_bind()).has_table(table_name)
+
+    return await session.run_sync(_has)
+
+
+async def reset_teaching_domain(session: AsyncSession) -> None:
+    delete_targets = [
+        (EvidenceLink, "evidence_links"),
+        (AssignmentAttempt, "assignment_attempts"),
+        (Assignment, "assignments"),
+        (Enrollment, "enrollments"),
+        (Course, "courses"),
+        (TeachingClass, "classes"),
+        (GuidancePolicy, "guidance_policies"),
+    ]
+    for model, table_name in delete_targets:
+        if await has_table(session, table_name):
+            await session.execute(delete(model))
+    await session.commit()
+
+
+async def ensure_tables() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def get_or_create_sop(session: AsyncSession) -> SOP:
-    result = await session.execute(select(SOP).where(SOP.name == DEMO_SOP_NAME))
+    result = await session.execute(select(SOP).where(SOP.name == DEFAULT_SOP_NAME))
     sop = result.scalar_one_or_none()
     if sop:
         return sop
 
     sop = SOP(
-        name=DEMO_SOP_NAME,
+        name=DEFAULT_SOP_NAME,
         description="教学闭环演示用 SOP",
         applicable_model="MOCK_HUMANOID_V1",
         category="教学",
@@ -81,19 +125,19 @@ async def get_or_create_sop(session: AsyncSession) -> SOP:
 
 
 async def get_or_create_policy(session: AsyncSession) -> GuidancePolicy:
-    result = await session.execute(select(GuidancePolicy).where(GuidancePolicy.name == DEMO_POLICY_NAME))
+    result = await session.execute(select(GuidancePolicy).where(GuidancePolicy.name == DEFAULT_POLICY_NAME))
     policy = result.scalar_one_or_none()
     if policy:
         return policy
 
     policy = GuidancePolicy(
-        name=DEMO_POLICY_NAME,
+        name=DEFAULT_POLICY_NAME,
         base_mode="teaching",
         allow_ghost_hand=True,
         allow_hint_button=True,
         show_error_details=True,
         max_retry_count=-1,
-        description="教学演示策略",
+        description="教学演示默认策略",
     )
     session.add(policy)
     await session.commit()
@@ -101,33 +145,31 @@ async def get_or_create_policy(session: AsyncSession) -> GuidancePolicy:
 
 
 async def get_or_create_class(session: AsyncSession) -> TeachingClass:
-    result = await session.execute(select(TeachingClass).where(TeachingClass.name == DEMO_CLASS_NAME))
+    result = await session.execute(select(TeachingClass).where(TeachingClass.name == DEFAULT_CLASS_NAME))
     teaching_class = result.scalar_one_or_none()
     if teaching_class:
         return teaching_class
 
     teaching_class = TeachingClass(
-        name=DEMO_CLASS_NAME,
+        name=DEFAULT_CLASS_NAME,
         term="2026 春季",
         teacher_id=1,
-        metadata_json={"source": "seed_teaching_demo"},
+        metadata_json={"source": "教学演示脚本"},
     )
     session.add(teaching_class)
     await session.commit()
     return teaching_class
 
 
-async def get_or_create_course(session: AsyncSession, class_id: int) -> Course:
-    result = await session.execute(
-        select(Course).where(Course.class_id == class_id, Course.name == DEMO_COURSE_NAME)
-    )
+async def get_or_create_course(session: AsyncSession, *, class_id: int) -> Course:
+    result = await session.execute(select(Course).where(Course.class_id == class_id, Course.name == DEFAULT_COURSE_NAME))
     course = result.scalar_one_or_none()
     if course:
         return course
 
     course = Course(
         class_id=class_id,
-        name=DEMO_COURSE_NAME,
+        name=DEFAULT_COURSE_NAME,
         description="教学演示课程",
         schedule={"weekday": "周三", "time": "10:00"},
         metadata_json={"level": "基础"},
@@ -135,6 +177,24 @@ async def get_or_create_course(session: AsyncSession, class_id: int) -> Course:
     session.add(course)
     await session.commit()
     return course
+
+
+async def get_or_create_enrollment(session: AsyncSession, *, class_id: int, student_id: int) -> Enrollment:
+    result = await session.execute(
+        select(Enrollment).where(Enrollment.class_id == class_id, Enrollment.student_id == student_id)
+    )
+    enrollment = result.scalar_one_or_none()
+    if enrollment:
+        return enrollment
+
+    enrollment = Enrollment(
+        class_id=class_id,
+        student_id=student_id,
+        role="student",
+    )
+    session.add(enrollment)
+    await session.commit()
+    return enrollment
 
 
 async def get_or_create_assignment(
@@ -146,7 +206,7 @@ async def get_or_create_assignment(
     guidance_policy_id: int,
 ) -> Assignment:
     result = await session.execute(
-        select(Assignment).where(Assignment.class_id == class_id, Assignment.title == DEMO_ASSIGNMENT_TITLE)
+        select(Assignment).where(Assignment.class_id == class_id, Assignment.title == DEFAULT_ASSIGNMENT_TITLE)
     )
     assignment = result.scalar_one_or_none()
     if assignment:
@@ -155,11 +215,11 @@ async def get_or_create_assignment(
     assignment = Assignment(
         class_id=class_id,
         course_id=course_id,
-        title=DEMO_ASSIGNMENT_TITLE,
+        title=DEFAULT_ASSIGNMENT_TITLE,
         sop_id=sop_id,
         guidance_policy_id=guidance_policy_id,
         max_attempts=3,
-        scoring_policy={"mode": "basic"},
+        scoring_policy={"description": DEFAULT_ASSIGNMENT_DESC, "sop_ref": sop_id},
         competition_mode=False,
         hidden_sop=False,
     )
@@ -168,65 +228,51 @@ async def get_or_create_assignment(
     return assignment
 
 
-async def get_or_create_task(session: AsyncSession, sop_id: int, assignment_id: int) -> Task:
-    result = await session.execute(select(Task).where(Task.title == DEMO_TASK_TITLE))
+async def get_or_create_task(
+    session: AsyncSession,
+    *,
+    sop_id: int,
+    assignment_id: int,
+    guidance_policy_id: int,
+    student_id: int,
+) -> Task:
+    result = await session.execute(select(Task).where(Task.title == DEFAULT_ASSIGNMENT_TITLE))
     task = result.scalar_one_or_none()
     if task:
         if task.assignment_id != assignment_id:
             task.assignment_id = assignment_id
-            await session.commit()
+        if task.guidance_policy_id != guidance_policy_id:
+            task.guidance_policy_id = guidance_policy_id
+        await session.commit()
         return task
 
     service = TaskService(session)
     task = await service.create_task(
         TaskCreate(
-            title=DEMO_TASK_TITLE,
+            title=DEFAULT_ASSIGNMENT_TITLE,
             sop_id=sop_id,
-            user_id=DEMO_STUDENT_ID,
+            user_id=student_id,
             pass_score=70,
         )
     )
     task.assignment_id = assignment_id
+    task.guidance_policy_id = guidance_policy_id
     await session.commit()
     return task
 
 
-async def get_or_create_attempt(
-    session: AsyncSession,
-    *,
-    assignment_id: int,
-    student_id: int,
-    task_id: int,
-) -> AssignmentAttempt:
-    result = await session.execute(
-        select(AssignmentAttempt).where(
-            AssignmentAttempt.assignment_id == assignment_id,
-            AssignmentAttempt.student_id == student_id,
-            AssignmentAttempt.task_id == task_id,
-        )
-    )
-    attempt = result.scalar_one_or_none()
-    if attempt:
-        return attempt
-
-    attempt = AssignmentAttempt(
-        assignment_id=assignment_id,
-        student_id=student_id,
-        task_id=task_id,
-        attempt_index=1,
-        status="in_progress",
-    )
-    session.add(attempt)
-    await session.commit()
-    return attempt
-
-
-async def seed_database():
+async def seed_database(args: argparse.Namespace) -> None:
+    student_id = parse_student_id(args.student_id)
+    await ensure_tables()
     async with AsyncSessionLocal() as session:
+        if args.reset:
+            await reset_teaching_domain(session)
+
         sop = await get_or_create_sop(session)
         policy = await get_or_create_policy(session)
         teaching_class = await get_or_create_class(session)
-        course = await get_or_create_course(session, teaching_class.id)
+        course = await get_or_create_course(session, class_id=teaching_class.id)
+        await get_or_create_enrollment(session, class_id=teaching_class.id, student_id=student_id)
         assignment = await get_or_create_assignment(
             session,
             class_id=teaching_class.id,
@@ -234,19 +280,36 @@ async def seed_database():
             sop_id=sop.id,
             guidance_policy_id=policy.id,
         )
-        task = await get_or_create_task(session, sop.id, assignment.id)
-        await get_or_create_attempt(
+        task = await get_or_create_task(
             session,
+            sop_id=sop.id,
             assignment_id=assignment.id,
-            student_id=DEMO_STUDENT_ID,
-            task_id=task.id,
+            guidance_policy_id=policy.id,
+            student_id=student_id,
         )
 
         print("✅ 教学演示数据已完成")
         print(f"- 班级：{teaching_class.name} ({teaching_class.id})")
+        print(f"- 课程：{course.name} ({course.id})")
         print(f"- 作业：{assignment.title} ({assignment.id})")
         print(f"- 任务：{task.title} ({task.id})")
+        print(f"- 学生：{args.student_id}（内部编号 {student_id}）")
+        print("\n后端健康检查：")
+        print("curl http://localhost:8000/api/v1/health")
+        print("\n尝试创建示例：")
+        print(
+            "curl -X POST http://localhost:8000/api/v1/assignments/"
+            f"{assignment.id}/attempts -H \"Content-Type: application/json\" "
+            f"-d '{{\"studentId\": {student_id}}}'"
+        )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="教学演示数据初始化")
+    parser.add_argument("--student-id", default="S001", help="学生编号")
+    parser.add_argument("--reset", action="store_true", help="清理教学域数据")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    asyncio.run(seed_database())
+    asyncio.run(seed_database(parse_args()))
