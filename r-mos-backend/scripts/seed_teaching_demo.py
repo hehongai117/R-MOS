@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.core.migration_contract import assert_migration_contract
 from app.models import Base
 from app.models.sop import SOP, SOPStep
 from app.models.task import Task
@@ -263,8 +264,12 @@ async def get_or_create_task(
 
 async def seed_database(args: argparse.Namespace) -> None:
     student_id = parse_student_id(args.student_id)
-    await ensure_tables()
+    bootstrap_enabled = args.bootstrap or os.getenv("ALLOW_BOOTSTRAP") == "1"
+    if bootstrap_enabled:
+        await ensure_tables()
     async with AsyncSessionLocal() as session:
+        if not bootstrap_enabled:
+            await assert_migration_contract(session)
         if args.reset:
             await reset_teaching_domain(session)
 
@@ -308,6 +313,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="教学演示数据初始化")
     parser.add_argument("--student-id", default="S001", help="学生编号")
     parser.add_argument("--reset", action="store_true", help="清理教学域数据")
+    parser.add_argument("--bootstrap", action="store_true", help="仅用于本地临时库的建表兜底")
     return parser.parse_args()
 
 

@@ -216,3 +216,39 @@
   - 期望结果（关键字段+状态码）：
     - `200`，页面显示 `summary` 关键字段（`duration_ms` 等）
   - 标签：P1
+
+### 任务8（默认 Postgres 迁移与契约校验）
+
+- 用例编号：T8-01
+  - 角色：开发
+  - 前置数据/种子命令：`export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+  - 接口验收（curl）：
+    ```bash
+    make migrate
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 命令成功完成，无报错
+  - 标签：P0
+
+- 用例编号：T8-02
+  - 角色：开发
+  - 前置数据/种子命令：`export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+  - 接口验收（curl）：
+    ```bash
+    make seed-demo
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 输出包含 `作业`、`任务`、`学生` 信息
+  - 标签：P0
+
+- 用例编号：T8-03
+  - 角色：开发
+  - 前置数据/种子命令：`ALLOW_BOOTSTRAP=1`
+  - 接口验收（curl）：
+    ```bash
+    ALLOW_BOOTSTRAP=1 DATABASE_URL=sqlite+aiosqlite:////tmp/rmos_demo.db \\
+      r-mos-backend/.venv/bin/python r-mos-backend/scripts/seed_teaching_demo.py --bootstrap --reset
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 输出包含 `作业` 与 `任务`，允许使用临时库
+  - 标签：P1

@@ -1,5 +1,36 @@
 # 运行与排障手册
 
+## Postgres 可用性探测与连接选择
+
+1) 探测命令（按顺序执行并记录输出）
+- `psql --version`
+- `pg_isready -h localhost -p 5432`
+- `lsof -nP -iTCP:5432 -sTCP:LISTEN`
+- `psql -h localhost -p 5432 -U postgres -d postgres -c "select 1;"`
+
+2) 选择规则
+- 若以上命令中 `psql ... select 1` 成功：使用本机 Postgres
+  - 示例：`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+- 若 `psql` 连接失败：使用 Docker 启动 Postgres 后再设置 `DATABASE_URL`
+  - 参见本节后续“Docker 启动方式”
+
+3) Docker 启动方式（本机不可用时）
+- `docker run --name rmos-postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=rmos_dev -p 5432:5432 -d postgres:16`
+- 启动后使用：`DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/rmos_dev`
+
+4) 配置落地
+- 将连接串写入 `.env`（参考 `r-mos-backend/.env.example`）
+
+## 一键迁移/种子/重置命令
+
+- 迁移：`make migrate`
+- 种子：`make seed-demo`
+- 重置：`make reset-db`
+
+使用说明：
+- 需先设置 `DATABASE_URL`（示例：`export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`）
+- `make reset-db` 仅用于本地开发环境
+
 ## 从零跑通教学闭环
 
 1) 准备数据库环境

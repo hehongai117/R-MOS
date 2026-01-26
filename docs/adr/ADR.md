@@ -29,3 +29,8 @@
 - 决策：`metadata` 字段冲突采用别名策略
 - 背景：`Base.metadata` 与业务字段冲突
 - 影响：使用 `metadata_json` 内部字段，外部保持 `metadata`
+
+## ADR-OPS-001
+- 决策：`seed_teaching_demo.py` 默认禁止隐式建表
+- 背景：避免脚本在默认 Postgres 上生成未迁移结构
+- 影响：仅允许 `--bootstrap` 或 `ALLOW_BOOTSTRAP=1` 启用建表兜底
