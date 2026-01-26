@@ -1,6 +1,6 @@
 # 开发日志索引
 
-## 任务索引（任务1-任务6）
+## 任务索引（任务1-任务8）
 
 - 任务1：提交 eae1caf；用例 T1-01~T1-02；ADR ADR-TEACH-001、ADR-TEACH-006
 - 任务2：提交 302a6f9；用例 T2-01~T2-02；ADR ADR-TEACH-005
@@ -8,3 +8,4 @@
 - 任务4：提交 3d8de00；用例 T4-01~T4-03；ADR ADR-TEACH-004
 - 任务5：提交 46ce3fc、bb14e62；用例 T5-01~T5-03；ADR ADR-TEACH-001、ADR-TEACH-003
 - 任务6：提交 67f3e4e；用例 T6-01~T6-02；ADR ADR-TEACH-005
+- 任务8：提交 2d97188；用例 T8-01~T8-03；ADR ADR-OPS-001
