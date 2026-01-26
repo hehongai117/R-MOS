@@ -83,6 +83,15 @@ export type {
     EvidenceBundleListResponse,
 } from './evidence'
 
+// 教学域类型
+export type {
+    AttemptStatus,
+    Assignment,
+    AssignmentAttempt,
+    AttemptEvidenceSummary,
+    AttemptEvidenceResponse,
+} from './teaching'
+
 // Observation 相关类型
 export type {
     ObservationType,

@@ -15,6 +15,7 @@ import {
     AuditOutlined,
     ToolOutlined,
     RobotOutlined,
+    ReadOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
@@ -41,6 +42,11 @@ const menuItems = [
         key: '/sops',
         icon: <FileTextOutlined />,
         label: 'SOP列表',
+    },
+    {
+        key: '/teaching/assignments',
+        icon: <ReadOutlined />,
+        label: '教学中心',
     },
     {
         key: '/monitor',
@@ -91,6 +97,7 @@ function AppLayout() {
         const path = location.pathname
         if (path.startsWith('/tasks')) return '/sops'
         if (path.startsWith('/reports')) return '/sops'
+        if (path.startsWith('/teaching')) return '/teaching/assignments'
         return path
     }
 

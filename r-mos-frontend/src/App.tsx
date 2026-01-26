@@ -17,6 +17,9 @@ import EvidencePage from './pages/EvidencePage'
 import AssessmentStatusPage from './pages/AssessmentStatusPage'
 import Atom01DemoPage from './pages/Atom01DemoPage'
 import SOPMaintenancePage from './pages/SOPMaintenancePage'
+import TeachingAssignmentsPage from './teaching/pages/TeachingAssignmentsPage'
+import TeachingAttemptPage from './teaching/pages/TeachingAttemptPage'
+import TeachingEvidencePage from './teaching/pages/TeachingEvidencePage'
 import { darkTheme } from './styles/theme'
 import './styles/index.css'
 
@@ -42,6 +45,9 @@ function App() {
                             <Route path="incidents" element={<IncidentListPage />} />
                             <Route path="evidence" element={<EvidencePage />} />
                             <Route path="assessments" element={<AssessmentStatusPage />} />
+                            <Route path="teaching/assignments" element={<TeachingAssignmentsPage />} />
+                            <Route path="teaching/attempts/:id" element={<TeachingAttemptPage />} />
+                            <Route path="teaching/attempts/:id/evidence" element={<TeachingEvidencePage />} />
 
                             {/* Atom01 3D 展示 */}
                             <Route path="atom01" element={<Atom01DemoPage />} />
@@ -61,4 +67,3 @@ function App() {
 }
 
 export default App
-

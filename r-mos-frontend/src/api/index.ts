@@ -62,6 +62,18 @@ export {
 } from './evidence'
 export type { ListEvidenceBundlesParams } from './evidence'
 
+// 教学域接口
+export {
+    listAssignments,
+    getAssignment,
+    listAssignmentAttempts,
+    createAttempt,
+    getAttempt,
+    updateAttemptStatus,
+    gradeAttempt,
+    getAttemptEvidence,
+} from './teaching'
+
 // Observation API
 export {
     listObservations,
