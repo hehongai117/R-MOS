@@ -231,7 +231,7 @@
 ## 2026-01-26 — 教学闭环 P0（任务1~6）
 
 ### 任务1：教学域模型与迁移
-- 新增教学域模型（Class/Course/Enrollment/Assignment/AssignmentAttempt/GuidancePolicy/EvidenceLink），Task 增加 assignment_id、guidance_policy_id 关系。
+- 新增教学域模型（`Class`/`Course`/`Enrollment`/`Assignment`/`AssignmentAttempt`/`GuidancePolicy`/`EvidenceLink`），`Task` 增加 `assignment_id`、`guidance_policy_id` 关系。
 - 新增数据库迁移脚本，补齐外键约束与索引。
 - 单测覆盖：教学模型关系与默认值。
 
@@ -244,17 +244,17 @@
 - Attempt 状态流转校验与 attempt_index 自增。
 
 ### 任务4：教学接口
-- 新增教学 API 路由并接入 v1 router。
+- 新增教学接口路由并接入 `v1` 路由。
 - 统一错误响应格式（BusinessRuleViolation 与 ResourceNotFound）。
 - 单测覆盖：作业、尝试、状态流转、重复报名、证据占位接口。
 
 ### 任务5：证据引擎与 EvidenceLink
-- 新增 EvidenceEngine，自动汇总 Task/Event/Snapshot 生成证据包摘要（summary 写入 machine_tags）。
-- Task 完成时自动生成 EvidenceBundle 与 EvidenceLink。
+- 新增 `EvidenceEngine`，自动汇总 `Task`/`Event`/`Snapshot` 生成证据包摘要（`summary` 写入 `machine_tags`）。
+- 任务完成时自动生成 `EvidenceBundle` 与 `EvidenceLink`。
 - 单测覆盖：证据包生成、尝试关联、完成钩子。
 
 ### 任务6：教学前端（最小闭环）
-- 新增教学前端 API：作业、尝试、证据查询。
+- 新增教学前端接口：作业、尝试、证据查询。
 - 新增教学状态管理 store（Zustand）。
 - 新增页面：作业列表（学生/教师视图）、尝试执行页、证据摘要页。
 - Ghost Hand Lite：目标部件高亮、相机聚焦、工具虚影占位。
@@ -264,3 +264,11 @@
 - `r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit -v`
 - `r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit/test_teaching_api.py -v`
 - `r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit/test_evidence_engine.py -v`
+
+### 回归矩阵索引（任务1–任务6）
+- 任务1 → eae1caf → 用例：T1-01、T1-02 → ADR-TEACH-001
+- 任务2 → 302a6f9 → 用例：T2-01、T2-02 → ADR-TEACH-002
+- 任务3 → abd22fc → 用例：T3-01、T3-02 → ADR-TEACH-003
+- 任务4 → 3d8de00 → 用例：T4-01、T4-02、T4-03 → ADR-TEACH-004
+- 任务5 → 46ce3fc、bb14e62 → 用例：T5-01、T5-02、T5-03 → ADR-TEACH-005
+- 任务6 → 67f3e4e → 用例：T6-01、T6-02、T6-03 → ADR-TEACH-006
