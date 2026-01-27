@@ -41,6 +41,19 @@
 - `make dev` 会同时启动后端与前端，请在独立终端观察日志
 - 若前端依赖未安装，请先处理“前端依赖安装故障”章节
 
+## 保持系统代理开启情况下的前端依赖安装与构建（已验证可用）
+
+按以下顺序执行（命令需原样）：
+- `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend`
+- `env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm install`
+- `env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm run build`
+
+安全检查（强烈建议先做）：
+- 检查：`echo $NODE_TLS_REJECT_UNAUTHORIZED`
+- 排查：`env | grep -i NODE_TLS_REJECT_UNAUTHORIZED`
+- 若为 `0`：说明 TLS 校验被禁用；修复：`unset NODE_TLS_REJECT_UNAUTHORIZED`
+- 提示：不要长期将 `NODE_TLS_REJECT_UNAUTHORIZED` 设为 `0`
+
 ## 从零跑通教学闭环
 
 1) 准备数据库环境

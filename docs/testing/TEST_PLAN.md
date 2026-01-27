@@ -299,3 +299,41 @@
   - 期望结果（关键字段+状态码）：
     - `200`，`summary` 包含 `total_steps`、`error_count`、`duration_ms`
   - 标签：P0
+
+### 任务10（前端路径修正与代理分流安装构建）
+
+- 用例编号：T10-01
+  - 角色：开发
+  - 前置数据/种子命令：系统代理保持开启
+  - 接口验收（curl）：
+    ```bash
+    curl http://localhost:8000/docs
+    ```
+  - 操作步骤（命令）：
+    ```bash
+    cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend
+    env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm install
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `npm install` 成功完成
+    - `curl` 返回 `200`
+  - 标签：P0
+
+- 用例编号：T10-02
+  - 角色：开发
+  - 前置数据/种子命令：已完成 T10-01
+  - 接口验收（curl）：
+    ```bash
+    curl http://localhost:8000/api/v1/assignments
+    ```
+  - 操作步骤（命令）：
+    ```bash
+    cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend
+    env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm run build
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 输出包含 `vite` 构建完成信息
+    - 生成 `dist` 目录
+    - 若出现 `chunk` 大小超过 `500 kB` 的警告，不判失败
+    - `curl` 返回 `200`
+  - 标签：P0
