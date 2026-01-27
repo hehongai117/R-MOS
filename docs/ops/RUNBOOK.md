@@ -41,6 +41,32 @@
 - `make dev` 会同时启动后端与前端，请在独立终端观察日志
 - 若前端依赖未安装，请先处理“前端依赖安装故障”章节
 
+## 一键 Phase1 E2E（真实 HTTP：127.0.0.1:8000）
+
+运行命令（单条命令完成迁移、种子、真实 HTTP 验收与报告追加）：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh
+```
+
+脚本行为说明：
+- 强制使用 `DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+- 所有 `curl` 请求均带 `--noproxy 127.0.0.1,localhost`
+- 会自动追加验收证据到 `docs/testing/TEST_REPORT.md`
+- 若未检测到后端，会尝试在后台启动 `uvicorn`（日志：`logs/phase1-e2e-backend.log`）
+
+常见失败与定位：
+- 端口 8000 无法监听或被占用：
+  - `lsof -nP -iTCP:8000 -sTCP:LISTEN`
+  - `python3 -m http.server 8000 --bind 127.0.0.1`
+  - `cd r-mos-backend && DATABASE_URL=... .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000`
+- 数据库不可用或连接失败：
+  - `pg_isready -h localhost -p 5432`
+  - `psql -h localhost -p 5432 -U postgres -d postgres -c "select 1;"`
+- 代理干扰本地请求：
+  - `env | grep -i proxy`
+  - 脚本会主动 `unset HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`，但仍建议在本机终端直接运行
+
 ## 保持系统代理开启情况下的前端依赖安装与构建（已验证可用）
 
 按以下顺序执行（命令需原样）：

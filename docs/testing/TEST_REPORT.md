@@ -184,3 +184,74 @@ make seed-demo
 make dev-backend
 make dev-frontend
 ```
+
+### Phase1 P0 自动验收（2026-01-27T06:36:45Z）
+
+- 提交：`6ddeaa0`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`5`，student_id=`1`，task_id=`1`，attempt_id=`8`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-27T06:36:44.804655Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+**attempt**
+```json
+{
+    "id": 8,
+    "assignmentId": 5,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-27T06:36:44.827991",
+    "updatedAt": "2026-01-27T06:36:44.827994"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "e7fb52e1-7028-448b-957e-f07113dd1ad5",
+    "taskId": 1,
+    "attemptId": 8,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 136,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
