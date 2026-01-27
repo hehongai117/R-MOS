@@ -28,6 +28,7 @@ from app.schemas.teaching import (
     AttemptEvidenceResponse,
 )
 from app.services.teaching_service import TeachingService
+from app.services.evidence_engine import EvidenceEngine
 
 
 router = APIRouter()
@@ -354,17 +355,33 @@ async def get_attempt_evidence(
 ):
     service = TeachingService(db)
     try:
-        await service.get_attempt(attempt_id)
+        attempt = await service.get_attempt(attempt_id)
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
 
-    result = await db.execute(
-        select(EvidenceLink)
-        .where(EvidenceLink.attempt_id == attempt_id)
-        .order_by(EvidenceLink.created_at.desc())
-    )
-    link = result.scalars().first()
+    async def load_latest_link() -> EvidenceLink | None:
+        result = await db.execute(
+            select(EvidenceLink)
+            .where(EvidenceLink.attempt_id == attempt_id)
+            .order_by(EvidenceLink.created_at.desc())
+        )
+        return result.scalars().first()
+
+    link = await load_latest_link()
+    if not link and attempt.task_id:
+        try:
+            engine = EvidenceEngine(db)
+            await engine.generate_bundle_for_task(
+                attempt.task_id,
+                preferred_attempt_id=attempt_id,
+            )
+        except BusinessRuleViolation as exc:
+            _raise_business_error(exc)
+        link = await load_latest_link()
+
     if not link:
+        if attempt.task_id is None:
+            raise HTTPException(status_code=404, detail="attempt未关联task，无法生成证据")
         raise HTTPException(status_code=404, detail="证据关联不存在")
 
     bundle = await db.get(EvidenceBundle, link.bundle_id)

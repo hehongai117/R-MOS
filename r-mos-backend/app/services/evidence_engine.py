@@ -24,7 +24,12 @@ class EvidenceEngine:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def generate_bundle_for_task(self, task_id: int) -> EvidenceBundle:
+    async def generate_bundle_for_task(
+        self,
+        task_id: int,
+        *,
+        preferred_attempt_id: Optional[int] = None,
+    ) -> EvidenceBundle:
         task = await self._load_task(task_id)
         events = await self._load_events(task_id)
         snapshots = await self._load_snapshots(task_id)
@@ -52,7 +57,7 @@ class EvidenceEngine:
         self.db.add(bundle)
         await self.db.flush()
 
-        await self._create_link(task, bundle_id)
+        await self._create_link(task, bundle_id, preferred_attempt_id=preferred_attempt_id)
 
         await self.db.commit()
         await self.db.refresh(bundle)
@@ -159,16 +164,32 @@ class EvidenceEngine:
                 AssignmentAttempt.status != "abandoned",
             )
             .order_by(desc(AssignmentAttempt.attempt_index))
+            .limit(1)
         )
         return result.scalar_one_or_none()
 
-    async def _create_link(self, task: Task, bundle_id: str) -> EvidenceLink:
+    async def _create_link(
+        self,
+        task: Task,
+        bundle_id: str,
+        *,
+        preferred_attempt_id: Optional[int],
+    ) -> EvidenceLink:
         attempt: Optional[AssignmentAttempt] = None
         class_id: Optional[int] = None
         student_id: Optional[int] = None
         attempt_id: Optional[int] = None
 
-        if task.assignment_id is not None:
+        if preferred_attempt_id is not None:
+            attempt = await self.db.get(AssignmentAttempt, preferred_attempt_id)
+            if attempt and attempt.task_id != task.id:
+                raise BusinessRuleViolation(
+                    message="Attempt与Task不匹配",
+                    code="ATTEMPT_TASK_MISMATCH",
+                    details={"attempt_id": preferred_attempt_id, "task_id": task.id},
+                )
+
+        if attempt is None:
             attempt = await self._find_attempt(task.id)
 
         if attempt:

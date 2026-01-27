@@ -191,6 +191,19 @@
     - `200`，`evidenceBundleId` 不为空
   - 标签：P1
 
+- 用例编号：T5-04
+  - 角色：教师
+  - 前置数据/种子命令：`python r-mos-backend/scripts/seed_teaching_demo.py --reset`
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/tasks/{task_id}/report
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/{attempt_id}/evidence
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 第一步 `200`
+    - 第二步 `200`，且 `summary` 包含 `total_steps`、`error_count`、`skip_count`、`duration_ms`
+  - 标签：P0
+
 ### 任务6（教学前端最小闭环）
 
 - 用例编号：T6-01

@@ -4,12 +4,14 @@ Teaching domain API tests.
 import asyncio
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from main import app
 from app.core.database import get_db
 from app.models.base import Base
+from app.models.teaching import EvidenceLink
 import app.models as app_models  # noqa: F401  # Ensure models are registered
 from app.schemas.sop import SOPCreate
 from app.schemas.task import TaskCreate, StepExecutionRequest
@@ -305,3 +307,164 @@ def test_get_attempt_evidence_link_not_found(client):
 
     resp = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
     assert resp.status_code == 404
+
+
+async def _setup_completed_attempt(session, *, set_task_assignment: bool) -> tuple[int, int]:
+    sop_service = SOPService(session)
+    sop = await sop_service.create_sop(
+        SOPCreate(
+            name="证据兜底SOP",
+            description="用于证据兜底测试",
+            applicable_model="MOCK_HUMANOID_V1",
+            category="unit-test",
+            difficulty_level="low",
+            estimated_time=120,
+            steps=[
+                {
+                    "step_index": 1,
+                    "title": "步骤一",
+                    "description": "第一个步骤",
+                    "target_part": "knee_right",
+                    "expected_action": "inspect",
+                    "is_critical": True,
+                    "timeout_seconds": 60,
+                    "allow_skip": False,
+                },
+                {
+                    "step_index": 2,
+                    "title": "步骤二",
+                    "description": "第二个步骤",
+                    "target_part": "knee_right",
+                    "expected_action": "execute",
+                    "is_critical": False,
+                    "timeout_seconds": 60,
+                    "allow_skip": False,
+                },
+            ],
+        )
+    )
+
+    teaching_service = TeachingService(session)
+    teaching_class = await teaching_service.create_class(name="证据兜底班级")
+    assignment = await teaching_service.create_assignment(
+        class_id=teaching_class.id,
+        title="证据兜底作业",
+    )
+
+    task_service = TaskService(session)
+    task = await task_service.create_task(
+        TaskCreate(title="证据兜底任务", sop_id=sop.id, user_id=1, pass_score=70)
+    )
+    if set_task_assignment:
+        task.assignment_id = assignment.id
+        await session.commit()
+
+    attempt = await teaching_service.create_attempt(
+        assignment_id=assignment.id,
+        student_id=201,
+        task_id=task.id,
+    )
+
+    await task_service.start_task(task.id)
+    await task_service.execute_step(
+        task.id,
+        StepExecutionRequest(step_index=1, action="inspect", parameters={}),
+    )
+    await task_service.execute_step(
+        task.id,
+        StepExecutionRequest(step_index=2, action="execute", parameters={}),
+    )
+
+    await teaching_service.update_attempt_status(attempt.id, "completed")
+    return attempt.id, task.id
+
+
+def test_evidence_completed_attempt_without_link_returns_200(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            attempt_id, task_id = await _setup_completed_attempt(
+                session, set_task_assignment=False
+            )
+            # 模拟历史数据缺失 EvidenceLink 的场景
+            await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
+            await session.commit()
+            return attempt_id, task_id
+
+    attempt_id, task_id = asyncio.run(setup_data())
+
+    resp = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["attemptId"] == attempt_id
+    assert data["taskId"] == task_id
+    assert data["bundleId"]
+    summary = data["summary"]
+    assert summary is not None
+    assert "total_steps" in summary
+    assert "error_count" in summary
+    assert "skip_count" in summary
+    assert "duration_ms" in summary
+
+
+def test_report_then_evidence_creates_link_and_returns_200(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            attempt_id, task_id = await _setup_completed_attempt(
+                session, set_task_assignment=False
+            )
+            await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
+            await session.commit()
+            return attempt_id, task_id
+
+    attempt_id, task_id = asyncio.run(setup_data())
+
+    report_resp = client.get(f"/api/v1/tasks/{task_id}/report")
+    assert report_resp.status_code == 200
+    evidence_resp = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
+    assert evidence_resp.status_code == 200
+
+    Session = client.app.state.test_sessionmaker
+
+    async def assert_link_exists():
+        async with Session() as session:
+            links = (
+                await session.execute(
+                    select(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id)
+                )
+            ).scalars().all()
+            assert links, "应至少存在一条 EvidenceLink"
+
+    asyncio.run(assert_link_exists())
+
+
+def test_report_and_evidence_are_idempotent(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            attempt_id, task_id = await _setup_completed_attempt(
+                session, set_task_assignment=False
+            )
+            await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
+            await session.commit()
+            return attempt_id, task_id
+
+    attempt_id, task_id = asyncio.run(setup_data())
+
+    # 首次触发
+    assert client.get(f"/api/v1/tasks/{task_id}/report").status_code == 200
+    first_evidence = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
+    assert first_evidence.status_code == 200
+
+    # 重复触发，仍应稳定返回 200
+    assert client.get(f"/api/v1/tasks/{task_id}/report").status_code == 200
+    second_evidence = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
+    assert second_evidence.status_code == 200
+
+    summary = second_evidence.json().get("summary") or {}
+    for key in ("total_steps", "error_count", "skip_count", "duration_ms"):
+        assert key in summary

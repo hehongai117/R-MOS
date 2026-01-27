@@ -168,6 +168,26 @@ sqlalchemy.exc.MultipleResultsFound: Multiple rows were found when one or none w
 - 本次处置：验收脚本内先将历史 attempt 标记为 `abandoned`
 - 影响：真实教学场景下可能触发证据生成失败，建议后续将查询改为“排序 + limit 1”
 
+### DEF-003：attempt 已完成但 evidence 仍返回 404
+
+- 复现现象（真实 HTTP）：
+  - `GET /api/v1/attempts/{id}` 显示 `status=completed` 且 `taskId` 存在
+  - `GET /api/v1/tasks/{task_id}/report` 返回 `200`
+  - `GET /api/v1/attempts/{id}/evidence` 返回 `404`（`证据关联不存在`）
+- 根因判定：
+  - `EvidenceEngine._create_link` 仅在 `task.assignment_id` 存在时才尝试绑定 attempt
+  - `teaching` 证据端点在缺少 `EvidenceLink` 时直接 `404`
+- 修复策略（最小改动，保持解耦）：
+  - `EvidenceEngine`：
+    - 去除对 `task.assignment_id` 的硬依赖
+    - `_find_attempt` 加 `limit(1)`，避免多行异常
+    - 支持 `preferred_attempt_id`，确保绑定到当前 attempt
+  - `/api/v1/attempts/{id}/evidence`：
+    - 当缺少 `EvidenceLink` 且 `attempt.task_id` 存在时，现场生成 bundle+link 再返回
+- 回归证据：
+  - 运行：`cd r-mos-backend && bash scripts/run_phase1_e2e.sh`
+  - 结果：新增的 “Phase1 P0 自动验收” 段落中，`evidence` 返回 `200` 且 `summary` 含关键字段
+
 ## 验收结论（当前环境）
 
 - 数据迁移：通过
@@ -250,6 +270,77 @@ make dev-frontend
         "skip_count": 0,
         "error_count": 0,
         "duration_ms": 136,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
+
+### Phase1 P0 自动验收（2026-01-27T07:41:27Z）
+
+- 提交：`44ba784`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`6`，student_id=`1`，task_id=`1`，attempt_id=`11`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-27T07:41:27.347269Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+**attempt**
+```json
+{
+    "id": 11,
+    "assignmentId": 6,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-27T07:41:27.387784",
+    "updatedAt": "2026-01-27T07:41:27.387786"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "aa1ae361-cde5-4cf2-a07b-115f86fb800b",
+    "taskId": 1,
+    "attemptId": 11,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 130,
         "final_score": 100,
         "is_passed": true
     }
