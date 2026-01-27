@@ -117,18 +117,30 @@ VITE v5.4.21  ready in 86 ms
 
 ## 阻塞项与缺陷记录
 
-### BLOCK-001：后端无法监听端口
+### BLOCK-001：后端监听在后台进程中被阻塞
 
-- 现象：`uvicorn` 在绑定端口时失败
-- 复现命令：
-  - `cd r-mos-backend && DATABASE_URL=... .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000`
-- 关键报错：
+- 环境说明：受限沙箱（Codex CLI 执行环境）
+- 现象归纳：
+  - 前台运行 `uvicorn` 可以监听端口
+  - 使用 `nohup ... &` 后台启动时，绑定端口失败并报 `operation not permitted`
+- 复现命令（后台失败）：
+  - `cd r-mos-backend && DATABASE_URL=... nohup .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 > ../logs/dev-backend-background.log 2>&1 &`
+- 关键报错（后台失败日志）：
 
 ```text
-ERROR: [Errno 1] error while attempting to bind on address (...): operation not permitted
+ERROR: [Errno 1] error while attempting to bind on address ('127.0.0.1', 8000): operation not permitted
 ```
 
+- 对照证据（用于排除“端口被占用/系统禁止监听”）：
+  - 端口占用检查为空：
+    - `lsof -nP -iTCP:8000 -sTCP:LISTEN`
+  - 标准库临时服务可监听：
+    - `python3 -m http.server 8000 --bind 127.0.0.1`
+  - `uvicorn` 前台可启动：
+    - `cd r-mos-backend && DATABASE_URL=... .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000`
+
 - 证据位置：
+  - `logs/dev-backend-background.log`
   - `logs/dev-backend.log`
   - `logs/dev-backend-3001.log`
 
@@ -172,4 +184,3 @@ make seed-demo
 make dev-backend
 make dev-frontend
 ```
-
