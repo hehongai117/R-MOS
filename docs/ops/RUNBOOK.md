@@ -31,6 +31,16 @@
 - 需先设置 `DATABASE_URL`（示例：`export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`）
 - `make reset-db` 仅用于本地开发环境
 
+## 一键启动与开发命令
+
+- 后端：`make dev-backend`
+- 前端：`make dev-frontend`
+- 联合启动：`make dev`
+
+说明：
+- `make dev` 会同时启动后端与前端，请在独立终端观察日志
+- 若前端依赖未安装，请先处理“前端依赖安装故障”章节
+
 ## 从零跑通教学闭环
 
 1) 准备数据库环境
@@ -66,6 +76,10 @@
   - `npm config get proxy`
   - `npm config get https-proxy`
   - `npm config get strict-ssl`
+  - `npm config list`
+  - `env | grep -i proxy`
+  - `lsof -nP -iTCP:10808 -sTCP:LISTEN`
+  - `nc -vz 127.0.0.1 10808`
 - 临时绕开本地代理端口（仅当前终端生效）：
   - `export npm_config_proxy=`
   - `export npm_config_https_proxy=`
@@ -73,6 +87,20 @@
   - `npm config set registry https://registry.npmjs.org/`
   - `npm config set registry https://registry.npmmirror.com/`
 - 处理建议：确认本地代理是否运行；若需使用代理，请确保端口可连通
+
+本次环境观测结果（供排障参考）：
+- `npm config get registry`：曾为 `https://registry.npmmirror.com`，已尝试切换为 `https://registry.npmjs.org/`
+- 项目级 `.npmrc` 已设置 `registry=https://registry.npmjs.org/`
+- `npm config get proxy` / `https-proxy`：`null`
+- `env | grep -i proxy`：存在 `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`，指向 `127.0.0.1:10808`
+- `nc -vz 127.0.0.1 10808`：返回 `Operation not permitted`
+- `python`/`node` 连接本地端口与外网均出现 `Operation not permitted`
+- `npm install` 失败并提示 `Exit handler never called!`，同时日志目录写入失败（`/Users/xuhehong/.npm/_logs`）
+- 即便固定 `registry` 并改用项目内缓存目录，仍报 `EPERM connect 127.0.0.1:10808`
+
+若出现 `Operation not permitted`：
+- 这通常意味着当前进程网络访问被系统策略限制（不是代理未运行）
+- 需要在本机真实终端或放开网络权限后再执行 `npm install`
 
 ### 409 `ALREADY_ENROLLED`
 - 现象：重复报名返回 `409`
@@ -101,9 +129,19 @@
   - 数据库表 `evidence_bundles` 与 `evidence_links`
 - 处理建议：检查 `evidence_links.bundle_id` 是否存在对应 `evidence_bundles.id`
 
+## 健康检查命令
+
+- 基础探测：`pg_isready -h localhost -p 5432`
+- 最终裁决：`psql -h localhost -p 5432 -U postgres -d postgres -c "select 1;"`
+- 后端可用性（示例）：`curl http://localhost:8000/docs`
+
+说明：
+- `pg_isready` 可能误判网络与权限问题，建议以 `psql ... select 1` 为准
+
 ## 常用命令
 
 - 单元测试：`r-mos-backend/.venv/bin/pytest r-mos-backend/tests/unit -v`
+- 一键启动：`make dev`（或 `make dev-backend` / `make dev-frontend`）
 - 前端启动：`cd r-mos-frontend && npm run dev`
 - 教学数据种子：`python r-mos-backend/scripts/seed_teaching_demo.py`
 - 教学数据清理：`python r-mos-backend/scripts/seed_teaching_demo.py --reset`

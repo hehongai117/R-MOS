@@ -252,3 +252,50 @@
   - 期望结果（关键字段+状态码）：
     - 输出包含 `作业` 与 `任务`，允许使用临时库
   - 标签：P1
+
+### 任务9（前端环境治理与一键启动）
+
+- 用例编号：T9-01
+  - 角色：开发
+  - 前置数据/种子命令：无
+  - 接口验收（curl）：
+    ```bash
+    curl http://localhost:8000/docs
+    ```
+  - 操作步骤（命令）：
+    ```bash
+    cd r-mos-frontend
+    npm install
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `npm install` 成功完成，无 `EPERM`
+    - `curl` 返回 `200`
+  - 标签：P0
+
+- 用例编号：T9-02
+  - 角色：开发
+  - 前置数据/种子命令：`make migrate && make seed-demo`
+  - 接口验收（curl）：
+    ```bash
+    curl http://localhost:8000/api/v1/assignments
+    ```
+  - 操作步骤（命令）：
+    ```bash
+    make dev
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 后端与前端均启动成功
+    - `curl` 返回 `200`
+  - 标签：P0
+
+- 用例编号：T9-03
+  - 角色：学生
+  - 前置数据/种子命令：`make seed-demo`
+  - 接口验收（curl）：
+    ```bash
+    curl http://localhost:8000/api/v1/attempts/{attempt_id}/evidence
+    ```
+  - 可选界面：`/teaching/assignments` → `/teaching/attempts/{attempt_id}` → `/teaching/attempts/{attempt_id}/evidence`
+  - 期望结果（关键字段+状态码）：
+    - `200`，`summary` 包含 `total_steps`、`error_count`、`duration_ms`
+  - 标签：P0

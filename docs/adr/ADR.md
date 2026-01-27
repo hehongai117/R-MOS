@@ -34,3 +34,8 @@
 - 决策：`seed_teaching_demo.py` 默认禁止隐式建表
 - 背景：避免脚本在默认 Postgres 上生成未迁移结构
 - 影响：仅允许 `--bootstrap` 或 `ALLOW_BOOTSTRAP=1` 启用建表兜底
+
+## ADR-OPS-002
+- 决策：统一开发一键启动命令与前端依赖诊断流程
+- 背景：降低环境差异导致的启动失败与排障成本
+- 影响：新增 `make dev/dev-backend/dev-frontend` 作为标准入口
