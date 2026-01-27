@@ -350,3 +350,27 @@
     - 若出现 `chunk` 大小超过 `500 kB` 的警告，不判失败
     - `curl` 返回 `200`
   - 标签：P0
+
+### Phase1 UI 冒烟
+
+- 用例编号：UI-01（PASS）
+  - 角色：学生/教师
+  - 前置数据/种子命令：
+    ```bash
+    export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+    make migrate
+    make seed-demo
+    make dev-backend
+    make dev-frontend
+    ```
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/tasks/4/report
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/13/evidence
+    ```
+  - UI 路径验收：
+    - 打开 `http://localhost:3000/teaching/attempts/13/evidence`
+  - 期望结果（关键字段+状态码）：
+    - 接口：两次请求均为 `200`
+    - 界面：显示 `task_status=completed`、`total_steps=2`、`error_count=0`、`final_score=100`、`is_passed=true`
+  - 标签：P0

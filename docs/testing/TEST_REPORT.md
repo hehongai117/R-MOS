@@ -346,3 +346,91 @@ make dev-frontend
     }
 }
 ```
+
+### Phase1 P0 自动验收（2026-01-27T08:02:54Z）
+
+- 提交：`eb4ce99`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`8`，student_id=`1`，task_id=`1`，attempt_id=`12`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-27T08:02:53.866051Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+### Phase1 UI 冒烟通过（2026-01-27）
+
+- 前端地址：`http://localhost:3000`
+- 验证路径：`/teaching/attempts/13/evidence`
+- 关键标识：
+  - attempt_id：`13`
+  - task_id：`4`
+  - evidence_bundle_id：`f10cb301-ab38-4f19-98db-dfe0db638f1a`
+- 关键结果（UI 可见）：
+  - `task_status=completed`
+  - `total_steps=2`
+  - `error_count=0`
+  - `final_score=100`
+  - `is_passed=true`
+- 结论：
+  - UI 端“查看证据摘要”路径已验证通过，未再出现 `404`
+
+**attempt**
+```json
+{
+    "id": 12,
+    "assignmentId": 8,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-27T08:02:53.888537",
+    "updatedAt": "2026-01-27T08:02:53.888538"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "26979603-b24f-4d3f-aa07-cdcfa40304f5",
+    "taskId": 1,
+    "attemptId": 12,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 138,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
