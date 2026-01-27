@@ -48,6 +48,19 @@
 - `env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm install`
 - `env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm run build`
 
+输出证据要点（本机已验证）：
+```bash
+pwd
+/Users/xuhehong/Desktop/r-mos/r-mos-frontend
+
+npm install
+up to date in 409ms
+
+npm run build
+vite v5.4.21 building for production...
+✓ built in 8.89s
+```
+
 安全检查（强烈建议先做）：
 - 检查：`echo $NODE_TLS_REJECT_UNAUTHORIZED`
 - 排查：`env | grep -i NODE_TLS_REJECT_UNAUTHORIZED`
