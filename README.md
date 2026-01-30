@@ -150,6 +150,19 @@ npm run dev
 - 所有本机 HTTP 验证必须使用：`curl --noproxy 127.0.0.1,localhost ...`
 - 验收时必须将后端/前端“实际使用端口”写入 `docs/testing/TEST_REPORT.md`
 
+### 验收脚本入口（Phase2 验收）
+
+- 唯一执行入口：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend/scripts/run_phase1_e2e.sh`
+- 执行目录：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 详细验收说明：`docs/testing/TEST_PLAN.md`
+
+### 环境探针（验收前必做）
+
+- 后端探针：`curl --noproxy 127.0.0.1,localhost http://localhost:{port}/openapi.json`
+- 前端探针：`curl --noproxy 127.0.0.1,localhost http://localhost:{port}/ | head`
+- 探针输出的状态码/首行必须粘贴进 `docs/testing/TEST_REPORT.md` 的 Phase2 段落
+
 ## API 路由规范
 
 ### HTTP REST API

@@ -92,6 +92,7 @@ start_backend_if_needed() {
   fi
 
   echo "未检测到后端服务，尝试由脚本启动 uvicorn..."
+  echo "提示：若 8000 端口出现 EPERM，请改用 18000 手动启动后端，并在 TEST_REPORT 记录实际端口。"
   (
     cd "${BACKEND_DIR}"
     .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 >"${BACKEND_LOG}" 2>&1 &
