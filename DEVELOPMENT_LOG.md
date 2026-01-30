@@ -13,4 +13,5 @@
 - 任务9：提交 65838e7；用例 T9-01~T9-03；ADR ADR-OPS-002
 - 任务10：提交 46d94ff；用例 T10-01~T10-02；ADR 无新增
 - 任务11（Phase1 收口）：提交 eb4ce99；用例 UI-01；ADR 无新增
+- 任务12（Phase2 P0 诊断报告）：提交 6fa463d；用例 T11-01~T11-07；ADR ADR-TEACH-007
 - Phase1 验收：基线 280878d；报告 docs/testing/TEST_REPORT.md；阻塞 BLOCK-001；缺陷 DEF-001、DEF-002（未修复）
