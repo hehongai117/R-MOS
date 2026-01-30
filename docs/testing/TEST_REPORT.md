@@ -574,6 +574,27 @@ make dev-frontend
 ```
 - 前端阻塞：`npm run dev` listen `EPERM` / `Operation not permitted`，已尝试端口 `3000` / `3100` / `18000`
 
+### 前端 listen EPERM 排查矩阵与结论
+
+**尝试矩阵**
+- python3 简易服务器：`python3 -m http.server 18000` 报 `PermissionError: [Errno 1] Operation not permitted`
+- python3 高位端口：`python3 -m http.server 45173` 报 `PermissionError: [Errno 1] Operation not permitted`
+- Node 高位端口：`node -e "http.createServer(...).listen(45173,'127.0.0.1')"` 报 `EPERM`
+- Vite dev（host=127.0.0.1）：`npm run dev -- --host 127.0.0.1 --port 3000` 报 `EPERM`
+- Vite dev（host=127.0.0.1）：`npm run dev -- --host 127.0.0.1 --port 3100` 报 `EPERM`
+- Vite dev（host=0.0.0.0）：`npm run dev -- --host 0.0.0.0 --port 55173` 报 `EPERM`
+
+**根因判断（策略/权限）**
+- 新进程 listen 被环境策略阻止（`EPERM` / `Operation not permitted` 在 Python/Node/Vite 均复现）。
+- 但后端现有进程可监听 `127.0.0.1:8000` 且 `curl --noproxy` 返回 `200`，说明非全局禁止网络。
+
+**最终可行方案**
+- 当前环境无法恢复前端 listen，UI 冒烟需在允许 listen 的本机执行。
+- 复现步骤（需解除策略/权限后执行）：
+  - `cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-frontend`
+  - `npm run dev -- --host 127.0.0.1 --port 3000`
+  - `curl --noproxy 127.0.0.1,localhost http://127.0.0.1:3000/ | head`
+
 ### 前端交付证据（无法 listen 的替代路径）
 
 - 构建命令：`npm run build`
