@@ -534,6 +534,41 @@ make dev-frontend
   - 覆盖 `GET /api/v1/attempts/{attempt_id}/diagnosis` 返回 `200`
   - 覆盖 fallback：无 `evidence_link` 仍返回 `200` 且 `source_refs.attempt_evidence_id` 有值
 
+### Phase2 P0 真实运行验收（后端）
+
+- backend_port=`8000` 探针：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/openapi.json` 返回 `200`
+- attempt_id=`16`（来源：`scripts/run_phase1_e2e.sh` 产物）
+- diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/diagnosis` 返回 `200`
+  - 关键字段：
+```json
+{
+  "reportVersion": "v1",
+  "attemptId": 16,
+  "diagnosisCode": "OK",
+  "ruleId": "R-DIAG-000",
+  "severity": "LOW",
+  "findings": [],
+  "recommendations": [],
+  "sourceRefs": {
+    "attemptEvidenceId": 10
+  }
+}
+```
+- evidence：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/evidence` 返回 `200`
+  - 关键字段：
+```json
+{
+  "attemptId": 16,
+  "summary": {
+    "total_steps": 2,
+    "skip_count": 0,
+    "error_count": 0,
+    "duration_ms": 133
+  }
+}
+```
+- 前端阻塞：`npm run dev` listen `EPERM` / `Operation not permitted`，已尝试端口 `3000` / `3100` / `18000`
+
 ### 前端交付证据（无法 listen 的替代路径）
 
 - 构建命令：`npm run build`
@@ -543,3 +578,145 @@ make dev-frontend
 
 - 后端失败日志：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend/logs/uvicorn-dev.log`
 - 前端失败日志：`/tmp/vite-dev.log`
+
+### Phase1 P0 自动验收（2026-01-30T12:23:36Z）
+
+- 提交：`c140d2e`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`10`，student_id=`1`，task_id=`1`，attempt_id=`15`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-30T12:23:35.973189Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+**attempt**
+```json
+{
+    "id": 15,
+    "assignmentId": 10,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-30T12:23:35.999429",
+    "updatedAt": "2026-01-30T12:23:35.999430"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "6a0c7772-874f-4f27-94c7-ea525160c127",
+    "taskId": 1,
+    "attemptId": 15,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 137,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
+
+### Phase1 P0 自动验收（2026-01-30T12:37:30Z）
+
+- 提交：`c140d2e`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`11`，student_id=`1`，task_id=`1`，attempt_id=`16`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-30T12:37:30.068149Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+**attempt**
+```json
+{
+    "id": 16,
+    "assignmentId": 11,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-30T12:37:30.090497",
+    "updatedAt": "2026-01-30T12:37:30.090498"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "59ef9925-c639-4a50-948f-7297b394ba36",
+    "taskId": 1,
+    "attemptId": 16,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 133,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
