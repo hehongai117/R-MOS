@@ -595,6 +595,26 @@ make dev-frontend
   - `npm run dev -- --host 127.0.0.1 --port 3000`
   - `curl --noproxy 127.0.0.1,localhost http://127.0.0.1:3000/ | head`
 
+### Phase2 阶段3 前端 listen EPERM 根因调查（不可交付 UI）
+
+- 结论：UI 未恢复，策略/权限阻止新进程 listen（Python/Node/Vite 复现 `EPERM` / `Operation not permitted`）。
+- 复现矩阵（含错误码）：
+  - `python3 -m http.server 18000` → `PermissionError: [Errno 1] Operation not permitted`
+  - `python3 -m http.server 45173` → `PermissionError: [Errno 1] Operation not permitted`
+  - `node -e "http.createServer(...).listen(45173,'127.0.0.1')"` → `EPERM`
+  - `npm run dev -- --host 127.0.0.1 --port 3000` → `EPERM`
+  - `npm run dev -- --host 127.0.0.1 --port 3100` → `EPERM`
+  - `npm run dev -- --host 0.0.0.0 --port 55173` → `EPERM`
+- 影响面：前端 dev server 无法启动；UI 冒烟不可在此环境完成。
+- 下一步入口：参考 `README.md` 的“端口策略（Phase2 验收）”与“环境探针（验收前必做）”段落。
+
+### 本次会话证据索引
+
+- attempt_id=`16`
+- 后端探针（200）：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/openapi.json`
+- diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/diagnosis`
+- evidence：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/evidence`
+
 ### 前端交付证据（无法 listen 的替代路径）
 
 - 构建命令：`npm run build`

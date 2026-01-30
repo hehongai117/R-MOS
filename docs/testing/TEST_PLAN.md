@@ -474,3 +474,35 @@
     - 三次均 `200`
     - 三次 `diagnosis_code` 一致
   - 标签：P0
+
+### 任务12（环境阻塞与验收收口）
+
+- 用例编号：T12-UI-01（前端 listen EPERM 复现）
+  - 角色：教师
+  - 前置数据/种子命令：无
+  - 接口验收（命令）：
+    ```bash
+    python3 -m http.server 18000
+    npm run dev -- --host 127.0.0.1 --port 3000
+    npm run dev -- --host 127.0.0.1 --port 3100
+    npm run dev -- --host 0.0.0.0 --port 55173
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 均报 `EPERM` / `Operation not permitted`
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 阶段3 前端 listen EPERM 根因调查（不可交付 UI）`
+  - 标签：P0
+
+- 用例编号：T12-API-01（Phase2 P0 后端诊断与证据 200）
+  - 角色：教师
+  - 前置数据/种子命令：Phase1 e2e 产物 attempt_id=`16`
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/diagnosis
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/evidence
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 两次均 `200`
+    - diagnosis 含 `reportVersion`、`diagnosisCode`、`ruleId`、`severity`、`sourceRefs.attemptEvidenceId`
+    - evidence 含 `summary`
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P0 真实运行验收（后端）`
+  - 标签：P0

@@ -149,6 +149,8 @@ npm run dev
 - 前端默认端口 `3000`；若出现 `EPERM`，切换到 `3100`
 - 所有本机 HTTP 验证必须使用：`curl --noproxy 127.0.0.1,localhost ...`
 - 验收时必须将后端/前端“实际使用端口”写入 `docs/testing/TEST_REPORT.md`
+- 已知限制：部分环境策略会阻止前端新进程 listen（`EPERM` / `Operation not permitted`），导致 UI 无法启动
+- 替代验收路径（仅后端）：运行 `scripts/run_phase1_e2e.sh` 后用 `curl --noproxy` 验证 diagnosis/evidence 200，证据写入 `docs/testing/TEST_REPORT.md`
 
 ### 验收脚本入口（Phase2 验收）
 
