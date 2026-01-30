@@ -52,3 +52,21 @@ export interface AttemptEvidenceResponse {
   attemptId: number
   summary?: AttemptEvidenceSummary | null
 }
+
+export type DiagnosisSeverity = 'LOW' | 'MEDIUM' | 'HIGH'
+
+export interface DiagnosisSourceRefs {
+  attemptEvidenceId: number
+}
+
+export interface DiagnosisReport {
+  reportVersion: string
+  attemptId: number
+  diagnosisCode: string
+  ruleId: string
+  severity: DiagnosisSeverity
+  findings: string[]
+  recommendations: string[]
+  generatedAt: string
+  sourceRefs: DiagnosisSourceRefs
+}

@@ -1,6 +1,7 @@
 """
 Teaching domain API endpoints.
 """
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,12 +27,15 @@ from app.schemas.teaching import (
     AssignmentResponse,
     AssignmentAttemptResponse,
     AttemptEvidenceResponse,
+    DiagnosisReport,
 )
+from app.services.diagnosis_service import DiagnosisService, EvidenceFallbackError
 from app.services.teaching_service import TeachingService
 from app.services.evidence_engine import EvidenceEngine
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class AttemptCreateRequest(BaseModel):
@@ -394,3 +398,26 @@ async def get_attempt_evidence(
         attempt_id=attempt_id,
         summary=bundle.machine_tags,
     )
+
+
+@router.get(
+    "/attempts/{attempt_id}/diagnosis",
+    response_model=DiagnosisReport,
+    response_model_by_alias=True,
+)
+async def get_attempt_diagnosis(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    service = DiagnosisService(db)
+    try:
+        return await service.get_diagnosis_report(attempt_id)
+    except EvidenceFallbackError as exc:
+        logger.error(
+            "Diagnosis evidence fallback failed: attempt_id=%s task_id=%s",
+            exc.attempt_id,
+            exc.task_id,
+        )
+        raise HTTPException(status_code=500, detail="EVIDENCE_FALLBACK_FAILED")
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)

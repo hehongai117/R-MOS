@@ -17,6 +17,10 @@ from app.schemas.teaching import (
     AttemptStatus,
     EvidenceLinkResponse,
     AttemptEvidenceResponse,
+    DiagnosisReport,
+    DiagnosisSeverity,
+    DiagnosisSourceRefs,
+    DiagnosisFinding,
 )
 
 __all__ = [
@@ -35,4 +39,8 @@ __all__ = [
     "AttemptStatus",
     "EvidenceLinkResponse",
     "AttemptEvidenceResponse",
+    "DiagnosisReport",
+    "DiagnosisSeverity",
+    "DiagnosisSourceRefs",
+    "DiagnosisFinding",
 ]

@@ -2,6 +2,9 @@
 Teaching domain API tests.
 """
 import asyncio
+from datetime import datetime
+from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
@@ -11,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from main import app
 from app.core.database import get_db
 from app.models.base import Base
+from app.models.evidence import EvidenceBundle
 from app.models.teaching import EvidenceLink
 import app.models as app_models  # noqa: F401  # Ensure models are registered
 from app.schemas.sop import SOPCreate
@@ -468,3 +472,122 @@ def test_report_and_evidence_are_idempotent(client):
     summary = second_evidence.json().get("summary") or {}
     for key in ("total_steps", "error_count", "skip_count", "duration_ms"):
         assert key in summary
+
+
+async def _setup_attempt_with_evidence(session, *, summary: dict) -> int:
+    teaching_service = TeachingService(session)
+    teaching_class = await teaching_service.create_class(name="诊断班级")
+    assignment = await teaching_service.create_assignment(
+        class_id=teaching_class.id,
+        title="诊断作业",
+    )
+    attempt = await teaching_service.create_attempt(
+        assignment_id=assignment.id,
+        student_id=101,
+        task_id=None,
+    )
+
+    bundle = EvidenceBundle(
+        id=str(uuid4()),
+        bundle_type="sop_execution",
+        bundle_hash="hash",
+        bundle_hash_algo="sha256",
+        observed_time_start=datetime.utcnow(),
+        ingest_time=datetime.utcnow(),
+        is_sealed=True,
+        sealed_at=datetime.utcnow(),
+        machine_tags=summary,
+    )
+    session.add(bundle)
+    await session.flush()
+
+    link = EvidenceLink(
+        bundle_id=bundle.id,
+        attempt_id=attempt.id,
+    )
+    session.add(link)
+    await session.commit()
+    return attempt.id
+
+
+def test_get_attempt_diagnosis_error_count_rule(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            return await _setup_attempt_with_evidence(
+                session,
+                summary={"error_count": 1, "skip_count": 0, "duration_ms": 1000},
+            )
+
+    attempt_id = asyncio.run(setup_data())
+
+    resp = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["diagnosisCode"] == "E_ERROR_OCCURRED"
+    assert data["ruleId"] == "R-DIAG-001"
+    assert data["severity"] == "HIGH"
+    assert "findings" in data
+    assert "recommendations" in data
+
+
+def test_get_attempt_diagnosis_no_match(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            return await _setup_attempt_with_evidence(
+                session,
+                summary={"error_count": 0, "skip_count": 0, "duration_ms": 5000},
+            )
+
+    attempt_id = asyncio.run(setup_data())
+
+    resp = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["diagnosisCode"] == "OK"
+    assert data["ruleId"] == "R-DIAG-000"
+    assert data["severity"] == "LOW"
+
+
+def test_get_attempt_diagnosis_fallback_generates_evidence(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            attempt_id, _task_id = await _setup_completed_attempt(
+                session, set_task_assignment=False
+            )
+            await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
+            await session.commit()
+            return attempt_id
+
+    attempt_id = asyncio.run(setup_data())
+
+    resp = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("sourceRefs", {}).get("attemptEvidenceId")
+
+
+def test_get_attempt_diagnosis_idempotent(client):
+    Session = client.app.state.test_sessionmaker
+
+    async def setup_data():
+        async with Session() as session:
+            return await _setup_attempt_with_evidence(
+                session,
+                summary={"error_count": 0, "skip_count": 1, "duration_ms": 1000},
+            )
+
+    attempt_id = asyncio.run(setup_data())
+
+    first = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
+    second = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
+    third = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert third.status_code == 200
+    assert first.json()["diagnosisCode"] == second.json()["diagnosisCode"] == third.json()["diagnosisCode"]

@@ -1,10 +1,15 @@
 """
 Teaching domain schema tests.
 """
+from datetime import datetime
+
 from app.schemas.teaching import (
     GuidancePolicyResponse,
     AttemptStatus,
     AssignmentAttemptResponse,
+    DiagnosisReport,
+    DiagnosisSeverity,
+    DiagnosisSourceRefs,
 )
 
 
@@ -58,3 +63,27 @@ def test_assignment_attempt_response_fields():
     assert "diagnosisCode" in data
     assert "pathScore" in data
     assert "evidenceQualityScore" in data
+
+
+def test_diagnosis_report_schema_fields():
+    payload = DiagnosisReport(
+        report_version="v1",
+        attempt_id=101,
+        diagnosis_code="OK",
+        rule_id="R-DIAG-000",
+        severity=DiagnosisSeverity.LOW,
+        findings=[],
+        recommendations=[],
+        generated_at=datetime(2026, 1, 1, 0, 0, 0),
+        source_refs=DiagnosisSourceRefs(attempt_evidence_id=555),
+    )
+    data = payload.model_dump(by_alias=True)
+    assert data["reportVersion"] == "v1"
+    assert data["attemptId"] == 101
+    assert data["diagnosisCode"] == "OK"
+    assert data["ruleId"] == "R-DIAG-000"
+    assert data["severity"] == "LOW"
+    assert "generatedAt" in data
+    assert isinstance(data["findings"], list)
+    assert isinstance(data["recommendations"], list)
+    assert data["sourceRefs"]["attemptEvidenceId"] == 555

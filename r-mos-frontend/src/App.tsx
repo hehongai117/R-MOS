@@ -20,6 +20,7 @@ import SOPMaintenancePage from './pages/SOPMaintenancePage'
 import TeachingAssignmentsPage from './teaching/pages/TeachingAssignmentsPage'
 import TeachingAttemptPage from './teaching/pages/TeachingAttemptPage'
 import TeachingEvidencePage from './teaching/pages/TeachingEvidencePage'
+import TeachingDiagnosisPage from './teaching/pages/TeachingDiagnosisPage'
 import { darkTheme } from './styles/theme'
 import './styles/index.css'
 
@@ -48,6 +49,7 @@ function App() {
                             <Route path="teaching/assignments" element={<TeachingAssignmentsPage />} />
                             <Route path="teaching/attempts/:id" element={<TeachingAttemptPage />} />
                             <Route path="teaching/attempts/:id/evidence" element={<TeachingEvidencePage />} />
+                            <Route path="teaching/attempts/:id/diagnosis" element={<TeachingDiagnosisPage />} />
 
                             {/* Atom01 3D 展示 */}
                             <Route path="atom01" element={<Atom01DemoPage />} />

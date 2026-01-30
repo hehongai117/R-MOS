@@ -7,6 +7,7 @@ import type {
   AssignmentAttempt,
   AttemptEvidenceResponse,
   AttemptStatus,
+  DiagnosisReport,
 } from '@/types/teaching'
 
 export async function listAssignments(): Promise<Assignment[]> {
@@ -66,5 +67,10 @@ export async function gradeAttempt(
 
 export async function getAttemptEvidence(attemptId: number): Promise<AttemptEvidenceResponse> {
   const response = await apiClient.get<AttemptEvidenceResponse>(`/attempts/${attemptId}/evidence`)
+  return response.data
+}
+
+export async function getAttemptDiagnosis(attemptId: number): Promise<DiagnosisReport> {
+  const response = await apiClient.get<DiagnosisReport>(`/attempts/${attemptId}/diagnosis`)
   return response.data
 }

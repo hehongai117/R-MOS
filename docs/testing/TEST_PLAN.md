@@ -374,3 +374,103 @@
     - 接口：两次请求均为 `200`
     - 界面：显示 `task_status=completed`、`total_steps=2`、`error_count=0`、`final_score=100`、`is_passed=true`
   - 标签：P0
+
+### 任务11（诊断报告 P0）
+
+- 用例编号：T11-01
+  - 角色：教师
+  - 前置数据/种子命令：教学 attempt，EvidenceBundle.summary 中 error_count > 0，且 skip_count=0、duration_ms<=5000
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - `diagnosis_code=E_ERROR_OCCURRED`
+    - `rule_id=R-DIAG-001`
+    - `severity=HIGH`
+    - `findings` 与 `recommendations` 为数组（可为空）
+  - 标签：P0
+
+- 用例编号：T11-02（No match / R-DIAG-000）
+  - 角色：教师
+  - 前置数据/种子命令：教学 attempt，EvidenceBundle.summary 中 error_count=0、skip_count=0、duration_ms<=5000
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - `diagnosis_code=OK`
+    - `rule_id=R-DIAG-000`
+    - `severity=LOW`
+    - `findings` 与 `recommendations` 为数组（可为空）
+  - 标签：P0
+
+- 用例编号：T11-03
+  - 角色：教师
+  - 前置数据/种子命令：教学 attempt，EvidenceBundle.summary 中 skip_count > 0，且 error_count=0、duration_ms<=5000
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - `diagnosis_code=E_STEP_SKIPPED`
+    - `rule_id=R-DIAG-002`
+    - `severity=MEDIUM`
+    - `findings` 与 `recommendations` 为数组（可为空）
+  - 标签：P0
+
+- 用例编号：T11-04
+  - 角色：教师
+  - 前置数据/种子命令：教学 attempt，EvidenceBundle.summary 中 duration_ms > 5000，且 error_count=0、skip_count=0
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - `diagnosis_code=E_TOO_SLOW`
+    - `rule_id=R-DIAG-003`
+    - `severity=LOW`
+    - `findings` 与 `recommendations` 为数组（可为空）
+  - 标签：P0
+
+- 用例编号：T11-05（规则不触发样例）
+  - 角色：教师
+  - 前置数据/种子命令：复用 T11-02 的 attempt（error_count=0、skip_count=0、duration_ms<=5000）
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - 未触发 R-DIAG-001/002/003（落入 R-DIAG-000）
+  - 标签：P0
+
+- 用例编号：T11-06（fallback 兜底）
+  - 角色：教师
+  - 前置数据/种子命令：教学 attempt，且不存在 evidence_link（允许触发兜底生成）
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - `source_refs.attempt_evidence_id` 非空
+  - 标签：P0
+
+- 用例编号：T11-07（并发一致性）
+  - 角色：教师
+  - 前置数据/种子命令：任一教学 attempt（输入源不变）
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    curl --noproxy 127.0.0.1,localhost http://localhost:8000/api/v1/attempts/{attempt_id}/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - 三次均 `200`
+    - 三次 `diagnosis_code` 一致
+  - 标签：P0

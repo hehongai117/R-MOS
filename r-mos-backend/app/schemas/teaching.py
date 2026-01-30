@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, AliasChoices
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices, RootModel
 from pydantic.alias_generators import to_camel
 
 
@@ -120,6 +120,12 @@ class AttemptStatus(str, Enum):
     ABANDONED = "abandoned"
 
 
+class DiagnosisSeverity(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
 class AssignmentAttemptCreate(TeachingBaseModel):
     assignment_id: int
     student_id: int
@@ -160,3 +166,23 @@ class AttemptEvidenceResponse(TeachingBaseModel):
     task_id: Optional[int] = None
     attempt_id: int
     summary: Optional[Dict[str, Any]] = None
+
+
+class DiagnosisFinding(RootModel[str]):
+    """诊断发现项（保持输出为 string）。"""
+
+
+class DiagnosisSourceRefs(TeachingBaseModel):
+    attempt_evidence_id: int
+
+
+class DiagnosisReport(TeachingBaseModel):
+    report_version: str = Field("v1")
+    attempt_id: int
+    diagnosis_code: str
+    rule_id: str
+    severity: DiagnosisSeverity
+    findings: list[DiagnosisFinding] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    generated_at: datetime
+    source_refs: DiagnosisSourceRefs

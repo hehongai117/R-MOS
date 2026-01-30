@@ -106,7 +106,10 @@ const TeachingEvidencePage = () => {
         )}
       </Card>
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+        <Button type="primary" onClick={() => navigate(`/teaching/attempts/${attemptId}/diagnosis`)}>
+          查看诊断报告
+        </Button>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/teaching/attempts/${attemptId}`)}>
           返回尝试页面
         </Button>

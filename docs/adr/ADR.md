@@ -30,6 +30,11 @@
 - 背景：`Base.metadata` 与业务字段冲突
 - 影响：使用 `metadata_json` 内部字段，外部保持 `metadata`
 
+## ADR-TEACH-007
+- 决策：P0 诊断报告不落库，实时生成
+- 背景：Phase2 P0 仅需 UI 展示诊断报告，避免引入新表或缓存一致性复杂度
+- 影响：诊断报告每次请求即时生成；如需缓存，仅记录 TODO 不实现
+
 ## ADR-OPS-001
 - 决策：`seed_teaching_demo.py` 默认禁止隐式建表
 - 背景：避免脚本在默认 Postgres 上生成未迁移结构
