@@ -15,6 +15,7 @@ node_modules/
 dist/
 .npm
 *.log
+*.tsbuildinfo
 
 # IDE
 .idea/
