@@ -11,7 +11,7 @@
  * 4. Adapter Info API
  */
 
-const API_BASE = 'http://localhost:8000/api/v1';
+const API_BASE = '/api/v1';
 
 interface HealthResponse {
     status: string;

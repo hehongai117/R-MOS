@@ -8,12 +8,12 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { message } from 'antd';
 
-// API基础路径配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// API基础路径配置（默认相对路径，配合 Vite proxy 消除 CORS）
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // 创建Axios实例（V1.1修正：添加/api/v1前缀）
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,  // ✅ 强制约束：统一添加前缀
+  baseURL: `${API_BASE_URL}/api/v1`,  // ✅ 强制约束：统一添加前缀（默认相对路径）
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
