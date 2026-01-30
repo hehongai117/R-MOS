@@ -536,10 +536,15 @@ make dev-frontend
 
 ### Phase2 P0 真实运行验收（后端）
 
-- backend_port=`8000` 探针：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/openapi.json` 返回 `200`
+- backend_port=`8000` 探针：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/openapi.json` 状态码 `200`
 - attempt_id=`16`（来源：`scripts/run_phase1_e2e.sh` 产物）
-- diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/diagnosis` 返回 `200`
-  - 关键字段：
+- diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/diagnosis` 状态码 `200`
+  - 关键字段（与响应字段对照）：
+    - report_version=`v1`（响应字段 `reportVersion`）
+    - diagnosis_code=`OK`（响应字段 `diagnosisCode`）
+    - rule_id=`R-DIAG-000`（响应字段 `ruleId`）
+    - severity=`LOW`
+    - source_refs.attempt_evidence_id=`10`（响应字段 `sourceRefs.attemptEvidenceId`）
 ```json
 {
   "reportVersion": "v1",
@@ -554,7 +559,7 @@ make dev-frontend
   }
 }
 ```
-- evidence：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/evidence` 返回 `200`
+- evidence：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/evidence` 状态码 `200`
   - 关键字段：
 ```json
 {
