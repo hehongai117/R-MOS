@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button, Card, Descriptions, Result, Spin, Tag, Typography } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { getAttemptEvidence } from '@/api/teaching'
-import type { AttemptEvidenceResponse, AttemptEvidenceSummary } from '@/types/teaching'
+import type { AttemptEvidenceResponse } from '@/types/teaching'
 import { formatTeachingError } from '@/teaching/utils/api'
 
 const { Title, Text } = Typography

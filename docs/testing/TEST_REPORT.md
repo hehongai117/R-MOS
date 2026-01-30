@@ -434,3 +434,112 @@ make dev-frontend
     }
 }
 ```
+
+### Phase1 P0 自动验收（2026-01-30T08:51:16Z）
+
+- 提交：`ce7483a`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`9`，student_id=`1`，task_id=`1`，attempt_id=`14`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-30T08:51:15.749530Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+**attempt**
+```json
+{
+    "id": 14,
+    "assignmentId": 9,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-30T08:51:15.792143",
+    "updatedAt": "2026-01-30T08:51:15.792145"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "261e4d76-2b3b-4fff-b2a6-47f3de445c5b",
+    "taskId": 1,
+    "attemptId": 14,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 142,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
+
+## Phase2 P0 诊断报告验收（2026-01-30）
+
+### 脚本定位
+
+- 脚本路径：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend/scripts/run_phase1_e2e.sh`
+
+### 端口监听判定与限制
+
+- 端口占用检查：`lsof -nP -iTCP:8000 -sTCP:LISTEN` 无输出
+- 监听失败：`uvicorn main:app --host 127.0.0.1 --port 8000` 报 `Errno 1` / `operation not permitted`
+- 对照端口：`uvicorn main:app --host 127.0.0.1 --port 18000` 可正常监听（环境并非全面禁止 listen，疑似 8000 受限）
+- 前端 dev 监听失败：`npm run dev` 报 `EPERM`（见 `/tmp/vite-dev.log`）
+
+### Phase1 回归脚本（用于“不破 Phase1”）
+
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 结果：脚本执行完成并追加报告，但末尾 `curl` 访问 `127.0.0.1:8000` 失败（与 8000 监听受限一致）
+
+### Phase2 API 证据（无端口条件下的替代验收）
+
+- 诊断服务单测：`pytest tests/unit/test_diagnosis_service.py -q` 通过
+  - 覆盖规则：`R-DIAG-001/002/003` 与 `R-DIAG-000`
+  - 覆盖字段：`diagnosis_code`、`rule_id`、`severity`、`findings`、`recommendations`
+  - 覆盖幂等：同一 attempt 多次请求一致
+- 诊断接口单测：`pytest tests/unit/test_teaching_api.py -q` 通过
+  - 覆盖 `GET /api/v1/attempts/{attempt_id}/diagnosis` 返回 `200`
+  - 覆盖 fallback：无 `evidence_link` 仍返回 `200` 且 `source_refs.attempt_evidence_id` 有值
+
+### 前端交付证据（无法 listen 的替代路径）
+
+- 构建命令：`npm run build`
+- 结果：构建通过，出现 `chunk` 体积告警但不影响结果
+
+### 日志落点
+
+- 后端失败日志：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend/logs/uvicorn-dev.log`
+- 前端失败日志：`/tmp/vite-dev.log`

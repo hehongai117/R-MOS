@@ -1,7 +1,7 @@
 /**
  * 教学尝试执行页面
  */
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, Card, Descriptions, Divider, message, Result, Spin, Steps, Tag } from 'antd'
 import { PlayCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons'
