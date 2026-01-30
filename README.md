@@ -143,6 +143,13 @@ npm run dev
 # 服务启动于 http://localhost:3000
 ```
 
+### 端口策略（Phase2 验收）
+
+- 后端默认端口 `8000`；若 `8000` 出现 `EPERM`，切换到 `18000`
+- 前端默认端口 `3000`；若出现 `EPERM`，切换到 `3100`
+- 所有本机 HTTP 验证必须使用：`curl --noproxy 127.0.0.1,localhost ...`
+- 验收时必须将后端/前端“实际使用端口”写入 `docs/testing/TEST_REPORT.md`
+
 ## API 路由规范
 
 ### HTTP REST API
