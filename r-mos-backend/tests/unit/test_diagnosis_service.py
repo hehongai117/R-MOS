@@ -130,3 +130,18 @@ async def test_diagnosis_idempotent(db_session):
     first = await service.get_diagnosis_report(attempt.id)
     second = await service.get_diagnosis_report(attempt.id)
     assert first.diagnosis_code == second.diagnosis_code
+
+
+@pytest.mark.asyncio
+async def test_diagnosis_report_placeholders(db_session):
+    attempt = await _create_attempt(db_session)
+    await _attach_evidence(
+        db_session,
+        attempt_id=attempt.id,
+        summary={},
+    )
+    service = DiagnosisService(db_session)
+    report = await service.get_diagnosis_report(attempt.id)
+    assert report.step_diagnoses == []
+    assert report.factors == []
+    assert report.attachments == []

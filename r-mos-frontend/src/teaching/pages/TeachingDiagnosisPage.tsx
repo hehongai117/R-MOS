@@ -17,6 +17,19 @@ const severityColor: Record<DiagnosisSeverity, string> = {
   HIGH: 'red',
 }
 
+const severityLabels: Record<DiagnosisSeverity, string> = {
+  LOW: '低',
+  MEDIUM: '中',
+  HIGH: '高',
+}
+
+const diagnosisCodeLabels: Record<string, string> = {
+  OK: '无异常',
+  E_ERROR_OCCURRED: '存在错误步骤',
+  E_STEP_SKIPPED: '存在跳过步骤',
+  E_TOO_SLOW: '步骤耗时偏长',
+}
+
 const TeachingDiagnosisPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -78,6 +91,8 @@ const TeachingDiagnosisPage = () => {
     )
   }
 
+  const diagnosisLabel = diagnosisCodeLabels[data.diagnosisCode] ?? data.diagnosisCode
+
   return (
     <div>
       <Title level={3} style={{ marginBottom: 8 }}>诊断报告</Title>
@@ -87,9 +102,18 @@ const TeachingDiagnosisPage = () => {
         <Descriptions column={2} size="small">
           <Descriptions.Item label="尝试编号">{data.attemptId}</Descriptions.Item>
           <Descriptions.Item label="规则编号">{data.ruleId}</Descriptions.Item>
-          <Descriptions.Item label="诊断代码">{data.diagnosisCode}</Descriptions.Item>
+          <Descriptions.Item label="诊断代码">
+            <span>
+              <Text strong>{diagnosisLabel}</Text>
+              {diagnosisLabel !== data.diagnosisCode && (
+                <Text type="secondary" style={{ marginLeft: 8 }}>
+                  ({data.diagnosisCode})
+                </Text>
+              )}
+            </span>
+          </Descriptions.Item>
           <Descriptions.Item label="严重等级">
-            <Tag color={severityColor[data.severity]}>{data.severity}</Tag>
+            <Tag color={severityColor[data.severity]}>{severityLabels[data.severity]}</Tag>
           </Descriptions.Item>
           <Descriptions.Item label="生成时间">{data.generatedAt}</Descriptions.Item>
           <Descriptions.Item label="证据关联">{data.sourceRefs?.attemptEvidenceId ?? '-'}</Descriptions.Item>
@@ -98,7 +122,7 @@ const TeachingDiagnosisPage = () => {
 
       <Card title="诊断发现" style={{ marginTop: 16 }}>
         {data.findings.length === 0 ? (
-          <div>暂无诊断发现</div>
+          <div>无</div>
         ) : (
           <List
             size="small"
@@ -110,7 +134,7 @@ const TeachingDiagnosisPage = () => {
 
       <Card title="建议" style={{ marginTop: 16 }}>
         {data.recommendations.length === 0 ? (
-          <div>暂无建议</div>
+          <div>无</div>
         ) : (
           <List
             size="small"

@@ -67,6 +67,9 @@ export interface DiagnosisReport {
   severity: DiagnosisSeverity
   findings: string[]
   recommendations: string[]
+  stepDiagnoses: Record<string, unknown>[]
+  factors: Record<string, unknown>[]
+  attachments: Record<string, unknown>[]
   generatedAt: string
   sourceRefs: DiagnosisSourceRefs
 }

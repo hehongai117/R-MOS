@@ -184,5 +184,8 @@ class DiagnosisReport(TeachingBaseModel):
     severity: DiagnosisSeverity
     findings: list[DiagnosisFinding] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
+    step_diagnoses: list[dict[str, Any]] = Field(default_factory=list)
+    factors: list[dict[str, Any]] = Field(default_factory=list)
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
     generated_at: datetime
     source_refs: DiagnosisSourceRefs
