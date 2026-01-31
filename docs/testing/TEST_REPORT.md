@@ -666,6 +666,32 @@ make dev-frontend
   - recommendations 列表可见（空态“暂无建议”）
 - UI 回归（证据页）：`http://127.0.0.1:55173/teaching/attempts/17/evidence` 可打开，摘要字段可见
 
+### Phase2 P1 验收证据（占位扩展点 + 教师文案）
+
+- frontend_port=`55173`
+- backend_port=`8000`
+- attempt_id=`17`
+- 端口监听（lsof）：
+```text
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+Python  89703 xuhehong 11u  IPv4 0x40c63fe75dde09de 0t0 TCP 127.0.0.1:8000 (LISTEN)
+COMMAND  PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+node    90141 xuhehong 22u  IPv4 0xaf2030067a625d43 0t0 TCP 127.0.0.1:55173 (LISTEN)
+```
+- openapi 探针：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/openapi.json` 返回 `HTTP/1.1 200 OK`，`x-trace-id: b18e61f7`
+- diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/17/diagnosis` 返回 `HTTP/1.1 200 OK`
+  - 关键字段（占位扩展点为 `[]`）：
+```json
+{"reportVersion":"v1","attemptId":17,"diagnosisCode":"OK","ruleId":"R-DIAG-000","severity":"LOW","findings":[],"recommendations":[],"stepDiagnoses":[],"factors":[],"attachments":[],"generatedAt":"2026-01-31T04:05:27.382297","sourceRefs":{"attemptEvidenceId":11}}
+```
+- UI 冒烟：`http://127.0.0.1:55173/teaching/attempts/17/diagnosis`
+  - diagnosis_code=无异常（OK）
+  - severity=低（LOW）
+  - rule_id=R-DIAG-000
+  - findings=无
+  - recommendations=无
+  - 证据关联=11
+
 ### 前端交付证据（无法 listen 的替代路径）
 
 - 构建命令：`npm run build`

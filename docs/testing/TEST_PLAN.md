@@ -517,3 +517,32 @@
     - evidence 含 `summary`
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P0 真实运行验收（后端）`
   - 标签：P0
+
+### 任务13（Phase2 P1 占位扩展点与教师文案）
+
+- 用例编号：T13-API-01（DiagnosisReport v1 占位扩展点字段返回）
+  - 角色：教师
+  - 前置数据/种子命令：completed attempt_id=`17`；backend_port=`8000`
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/17/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `200`
+    - `stepDiagnoses`、`factors`、`attachments` 均为 `[]`
+    - `reportVersion`、`attemptId`、`diagnosisCode`、`ruleId`、`severity` 存在
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P1 验收证据（占位扩展点 + 教师文案）`
+  - 标签：P1
+
+- 用例编号：T13-UI-01（诊断页教师文案与空态）
+  - 角色：教师
+  - 前置数据/种子命令：completed attempt_id=`17`；frontend_port=`55173`
+  - UI 路径验收：
+    - `http://127.0.0.1:55173/teaching/attempts/17/diagnosis`
+  - 期望结果（关键字段可见）：
+    - diagnosis_code 显示教师文案“无异常”
+    - severity 显示教师文案“低”
+    - findings 空态显示“无”
+    - recommendations 空态显示“无”
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P1 验收证据（占位扩展点 + 教师文案）`
+  - 标签：P1
