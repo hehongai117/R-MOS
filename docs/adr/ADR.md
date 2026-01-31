@@ -56,3 +56,15 @@
 - 决策：统一开发一键启动命令与前端依赖诊断流程
 - 背景：降低环境差异导致的启动失败与排障成本
 - 影响：新增 `make dev/dev-backend/dev-frontend` 作为标准入口
+
+## ADR-TEACH-009
+- 决策：Phase2 P2 引入步骤诊断占位结构，step_index 使用 EvidenceBundle.summary.total_steps 口径（从 1 开始）
+- 背景：当前证据仅提供 total_steps 维度，尚无步骤级事件统计；需先满足教师下钻结构与可验收字段
+- 备选项：
+  - 等待步骤级统计完善后再上线步骤诊断（阻塞 UI 下钻）
+  - 直接引入复杂归因引擎（成本高且超出 P2）
+- 取舍：
+  - 先生成占位 stepDiagnoses，保持结构稳定并可向后扩展
+  - 不引入因果引擎，降低复杂度与回滚成本
+- 影响范围：DiagnosisReport v1 新增 stepDiagnoses 填充逻辑与诊断页“步骤诊断”区块
+- 回滚方式：保留字段结构，将 stepDiagnoses 恢复为空数组即可

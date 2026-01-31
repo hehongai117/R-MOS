@@ -17,4 +17,5 @@
 - 任务13（Phase2 P0 验收与端口策略固化）：提交 ce7483a、53bc0ce、db3c464、c2c177b、c140d2e、5b93671；用例 T12-UI-01、T12-API-01；ADR ADR-TEACH-008；报告段落 Phase2 P0 真实运行验收（后端）/Phase2 阶段3 前端 listen EPERM 根因调查（不可交付 UI）/本次会话证据索引
 - 任务14（Phase2 P0 UI 冒烟补齐）：提交 b2f8b8e；用例 T12-UI-02；报告段落 Phase2 P0 UI 冒烟（前端 55173 + 后端 8000）
 - 任务15（Phase2 P1 占位扩展点+教师文案）：提交 6e88303、<待生成>；用例 T13-API-01、T13-UI-01；报告段落 Phase2 P1 验收证据（占位扩展点 + 教师文案）
+- 任务16（Phase2 P2 步骤诊断下钻）：提交 8160115、d3cc080、<待生成>；用例 T14-API-01、T14-UI-01；ADR ADR-TEACH-009；报告段落 Phase2 P2 验收证据（步骤诊断下钻）
 - Phase1 验收：基线 280878d；报告 docs/testing/TEST_REPORT.md；阻塞 BLOCK-001；缺陷 DEF-001、DEF-002（未修复）

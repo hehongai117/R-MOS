@@ -692,6 +692,32 @@ node    90141 xuhehong 22u  IPv4 0xaf2030067a625d43 0t0 TCP 127.0.0.1:55173 (LIS
   - recommendations=无
   - 证据关联=11
 
+### Phase2 P2 验收证据（步骤诊断下钻）
+
+- 失败证据（stepDiagnoses=[]）：
+  - diagnosis：`curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/17/diagnosis`
+  - 关键片段：
+```json
+{"reportVersion":"v1","attemptId":17,"diagnosisCode":"OK","ruleId":"R-DIAG-000","severity":"LOW","findings":[],"recommendations":[],"stepDiagnoses":[],"factors":[],"attachments":[],"generatedAt":"2026-01-31T10:18:50.984463","sourceRefs":{"attemptEvidenceId":11}}
+```
+- 修复证据（长度=2，对齐 total_steps）：
+  - diagnosis：`curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/17/diagnosis` 返回 `HTTP/1.1 200 OK`
+  - 关键片段：
+```json
+{"reportVersion":"v1","attemptId":17,"diagnosisCode":"OK","ruleId":"R-DIAG-000","severity":"LOW","findings":[],"recommendations":[],"stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"OK","severity":"LOW","findings":[],"recommendations":[],"ruleId":"R-DIAG-S-000","sourceRefs":{"stepId":null,"snapshotId":null}},{"stepIndex":2,"stepDiagnosisCode":"OK","severity":"LOW","findings":[],"recommendations":[],"ruleId":"R-DIAG-S-000","sourceRefs":{"stepId":null,"snapshotId":null}}],"factors":[],"attachments":[],"generatedAt":"2026-01-31T10:33:33.227817","sourceRefs":{"attemptEvidenceId":11}}
+```
+  - evidence：`curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/17/evidence` 返回 `HTTP/1.1 200 OK`
+  - 关键片段（对齐 total_steps=2）：
+```json
+{"bundleId":"03c0089e-46fb-44f3-aab0-9d469ad150c6","taskId":1,"attemptId":17,"summary":{"task_id":1,"task_status":"completed","total_events":6,"snapshot_count":2,"total_steps":2,"skip_count":0,"error_count":0,"duration_ms":135,"final_score":100,"is_passed":true}}
+```
+- UI 冒烟：`http://127.0.0.1:55173/teaching/attempts/17/diagnosis`
+  - “步骤诊断”区块可见且可展开：是
+  - 显示 2 步（与 summary.total_steps=2 一致）：是
+  - 每步 severity 标签可见（低/LOW 映射为“低”）：是
+  - 每步展开后 findings/recommendations 为空时显示“无”：是
+  - 当前页可见示例：步骤1/步骤2 均显示“低”“无异常”（与 stepDiagnosisCode=OK 一致）
+
 ### 前端交付证据（无法 listen 的替代路径）
 
 - 构建命令：`npm run build`
