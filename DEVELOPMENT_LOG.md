@@ -19,3 +19,5 @@
 - 任务15（Phase2 P1 占位扩展点+教师文案）：提交 6e88303、5c958a4；用例 T13-API-01、T13-UI-01；ADR 无新增；报告段落 Phase2 P1 验收证据（占位扩展点 + 教师文案）
 - 任务16（Phase2 P2 步骤诊断下钻）：提交 8160115、d3cc080、82897c7；用例 T14-API-01、T14-UI-01；ADR ADR-TEACH-009；报告段落 Phase2 P2 验收证据（步骤诊断下钻）
 - Phase1 验收：基线 280878d；报告 docs/testing/TEST_REPORT.md；阻塞 BLOCK-001；缺陷 DEF-001、DEF-002（未修复）
+
+- 主目录合并前备份路径：`/tmp/phase2-merge-backup-20260131-195012`；备份确认无差异已清理

@@ -20,6 +20,9 @@
 - 代理硬约束：V2rayN `10808`
 - 本机 HTTP 必须使用：`curl --noproxy 127.0.0.1,localhost ...`
 
+主目录 `.venv` 初始化/依赖校验（避免缺失 `aiosqlite`）：
+- `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pip install -r requirements.txt`
+
 端口策略（Phase2 验收）：
 - 后端默认端口 `8000`，若 `EPERM` 则使用 `18000`
 - 前端当前可验收端口 `55173`，若占用/受限则记录替代端口（如 `3000`/`3100`）

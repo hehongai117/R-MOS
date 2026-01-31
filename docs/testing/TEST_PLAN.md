@@ -551,11 +551,11 @@
 
 - 用例编号：T14-API-01（stepDiagnoses 长度与字段）（PASS）
   - 角色：教师
-  - 前置数据/种子命令：completed attempt_id=`21`；backend_port=`8000`
+  - 前置数据/种子命令：completed attempt_id=`22`；backend_port=`8000`
   - 接口验收（curl）：
     ```bash
-    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/21/evidence
-    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/21/diagnosis
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/22/evidence
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/22/diagnosis
     ```
   - 期望结果（关键字段+状态码）：
     - 两次均 `200`
@@ -566,9 +566,9 @@
 
 - 用例编号：T14-UI-01（步骤诊断区块下钻）（PASS）
   - 角色：教师
-  - 前置数据/种子命令：completed attempt_id=`21`；frontend_port=`55173`
+  - 前置数据/种子命令：completed attempt_id=`22`；frontend_port=`55173`
   - UI 路径验收：
-    - `http://127.0.0.1:55173/teaching/attempts/21/diagnosis`
+    - `http://127.0.0.1:55173/teaching/attempts/22/diagnosis`
   - 期望结果（关键字段可见）：
     - “步骤诊断”区块可见且可展开
     - 显示 2 步（与 summary.total_steps=2 一致）
