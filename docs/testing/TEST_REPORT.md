@@ -608,12 +608,63 @@ make dev-frontend
 - 影响面：前端 dev server 无法启动；UI 冒烟不可在此环境完成。
 - 下一步入口：参考 `README.md` 的“端口策略（Phase2 验收）”与“环境探针（验收前必做）”段落。
 
+#### 补充：前端 dev server 已恢复（127.0.0.1:55173）
+
+- 补充时间：2026-01-30
+- frontend_port=`55173`（Vite v5.4.21）
+- 探针：`curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/` 返回 `200`
+- UI 冒烟：`http://127.0.0.1:55173/teaching/attempts/17/diagnosis` 可打开，字段可见
+- 结论更正：此前 `EPERM` 结论在当时成立，但当前已解除
+
 ### 本次会话证据索引
 
 - attempt_id=`16`
 - 后端探针（200）：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/openapi.json`
 - diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/diagnosis`
 - evidence：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/16/evidence`
+- frontend_port=`55173` 探针（200）+ UI 冒烟通过
+
+### Phase2 P0 UI 冒烟（前端 55173 + 后端 8000）
+
+- frontend_port=`55173`（Vite v5.4.21）
+- backend_port=`8000`
+- completed_attempt_id=`17`（status=`completed`）
+- CORS 规避：前端 API 改为相对路径 `/api/v1`，Vite proxy 转发到 `http://127.0.0.1:8000`，控制台无 CORS 拦截
+- 前端探针：`curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/` 返回 `200`
+- 后端旁证：
+  - diagnosis：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/17/diagnosis` 返回 `200`
+  - evidence：`curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/17/evidence` 返回 `200`
+  - 关键字段（diagnosis）：
+```json
+{
+  "reportVersion": "v1",
+  "attemptId": 17,
+  "diagnosisCode": "OK",
+  "ruleId": "R-DIAG-000",
+  "severity": "LOW",
+  "sourceRefs": {
+    "attemptEvidenceId": 11
+  }
+}
+```
+  - 关键字段（evidence）：
+```json
+{
+  "attemptId": 17,
+  "summary": {
+    "task_status": "completed",
+    "total_steps": 2,
+    "skip_count": 0,
+    "error_count": 0,
+    "duration_ms": 135
+  }
+}
+```
+- UI 冒烟（诊断页）：`http://127.0.0.1:55173/teaching/attempts/17/diagnosis`
+  - 可见字段：diagnosis_code=`OK`、severity=`LOW`、rule_id=`R-DIAG-000`
+  - findings 列表可见（空态“暂无诊断发现”）
+  - recommendations 列表可见（空态“暂无建议”）
+- UI 回归（证据页）：`http://127.0.0.1:55173/teaching/attempts/17/evidence` 可打开，摘要字段可见
 
 ### 前端交付证据（无法 listen 的替代路径）
 
@@ -761,6 +812,77 @@ make dev-frontend
         "skip_count": 0,
         "error_count": 0,
         "duration_ms": 133,
+        "final_score": 100,
+        "is_passed": true
+    }
+}
+```
+
+### Phase1 P0 自动验收（2026-01-30T14:38:05Z）
+
+- 提交：`85a3619`
+- 命令：`cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh`
+- 关键 ID：assignment_id=`13`，student_id=`1`，task_id=`1`，attempt_id=`17`
+
+**health**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2026-01-30T14:38:05.543418Z",
+    "version": "2.2.0",
+    "checks": {
+        "adapter": {
+            "status": "up",
+            "message": "Adapter\u5df2\u8fde\u63a5",
+            "details": {
+                "type": "MockRobotAdapter",
+                "robot_id": "mock_robot_001",
+                "model": "MOCK_HUMANOID_V1"
+            }
+        },
+        "system": {
+            "status": "up",
+            "message": "\u7cfb\u7edf\u8fd0\u884c\u6b63\u5e38",
+            "details": null
+        }
+    }
+}
+```
+
+**attempt**
+```json
+{
+    "id": 17,
+    "assignmentId": 13,
+    "studentId": 1,
+    "taskId": 1,
+    "evidenceBundleId": null,
+    "status": "in_progress",
+    "score": null,
+    "attemptIndex": 1,
+    "diagnosisCode": null,
+    "pathScore": null,
+    "evidenceQualityScore": null,
+    "createdAt": "2026-01-30T14:38:05.579705",
+    "updatedAt": "2026-01-30T14:38:05.579707"
+}
+```
+
+**evidence**
+```json
+{
+    "bundleId": "03c0089e-46fb-44f3-aab0-9d469ad150c6",
+    "taskId": 1,
+    "attemptId": 17,
+    "summary": {
+        "task_id": 1,
+        "task_status": "completed",
+        "total_events": 6,
+        "snapshot_count": 2,
+        "total_steps": 2,
+        "skip_count": 0,
+        "error_count": 0,
+        "duration_ms": 135,
         "final_score": 100,
         "is_passed": true
     }

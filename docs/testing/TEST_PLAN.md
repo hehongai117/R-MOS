@@ -492,6 +492,17 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 阶段3 前端 listen EPERM 根因调查（不可交付 UI）`
   - 标签：P0
 
+- 用例编号：T12-UI-02（UI 冒烟：诊断页 completed attempt）
+  - 角色：教师
+  - 前置数据/种子命令：completed attempt_id=`17`
+  - UI 路径验收：
+    - `http://127.0.0.1:55173/teaching/attempts/17/diagnosis`
+  - 期望结果（关键字段可见）：
+    - diagnosis_code、severity、rule_id 可见
+    - findings、recommendations 列表可见（允许空态）
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P0 UI 冒烟（前端 55173 + 后端 8000）`
+  - 标签：P0
+
 - 用例编号：T12-API-01（Phase2 P0 后端诊断与证据 200）
   - 角色：教师
   - 前置数据/种子命令：Phase1 e2e 产物 attempt_id=`16`
