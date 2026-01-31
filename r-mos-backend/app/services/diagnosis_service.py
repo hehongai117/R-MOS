@@ -166,6 +166,8 @@ class DiagnosisService:
     def _build_step_diagnoses(self, summary: dict[str, Any]) -> list[StepDiagnosis]:
         total_steps = self._resolve_int(summary, "total_steps", None)
         if total_steps <= 0:
+            total_steps = self._resolve_int(summary, "totalSteps", None)
+        if total_steps <= 0:
             return []
         return [
             StepDiagnosis(
