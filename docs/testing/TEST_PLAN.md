@@ -549,30 +549,30 @@
 
 ### 任务14（Phase2 P2 步骤诊断下钻）
 
-- 用例编号：T14-API-01（stepDiagnoses 长度与字段）
+- 用例编号：T14-API-01（stepDiagnoses 长度与字段）（PASS）
   - 角色：教师
-  - 前置数据/种子命令：completed attempt_id=`17`；backend_port=`8000`
+  - 前置数据/种子命令：completed attempt_id=`21`；backend_port=`8000`
   - 接口验收（curl）：
     ```bash
-    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/17/evidence
-    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/17/diagnosis
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/21/evidence
+    curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/attempts/21/diagnosis
     ```
   - 期望结果（关键字段+状态码）：
     - 两次均 `200`
     - evidence `summary.total_steps=2`
     - diagnosis `stepDiagnoses` 长度=2，且包含 `stepIndex`、`stepDiagnosisCode`、`severity`、`ruleId`、`findings`、`recommendations`、`sourceRefs`
-  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P2 验收证据（步骤诊断下钻）`
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `主目录回归验收（Phase2 基线冻结）`
   - 标签：P2
 
-- 用例编号：T14-UI-01（步骤诊断区块下钻）
+- 用例编号：T14-UI-01（步骤诊断区块下钻）（PASS）
   - 角色：教师
-  - 前置数据/种子命令：completed attempt_id=`17`；frontend_port=`55173`
+  - 前置数据/种子命令：completed attempt_id=`21`；frontend_port=`55173`
   - UI 路径验收：
-    - `http://127.0.0.1:55173/teaching/attempts/17/diagnosis`
+    - `http://127.0.0.1:55173/teaching/attempts/21/diagnosis`
   - 期望结果（关键字段可见）：
     - “步骤诊断”区块可见且可展开
     - 显示 2 步（与 summary.total_steps=2 一致）
     - 每步 severity 标签可见（低）
     - 每步展开后 findings/recommendations 空态显示“无”
-  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase2 P2 验收证据（步骤诊断下钻）`
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `主目录回归验收（Phase2 基线冻结）`
   - 标签：P2

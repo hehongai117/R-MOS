@@ -1,5 +1,35 @@
 # 运行与排障手册
 
+## Phase2 基线入口（唯一事实源）
+
+按以下顺序查阅并以其为准（顺序不可改）：
+1) `docs/testing/TEST_REPORT.md`
+2) `docs/testing/TEST_PLAN.md`
+3) `docs/ops/RUNBOOK.md`
+4) `docs/adr/ADR.md`
+5) `DEVELOPMENT_LOG.md`
+
+## Phase2 基线运行入口（唯一启动/排障入口）
+
+固定路径与环境（必须原样）：
+- worktree：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0`
+- 后端：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend`
+- 前端：`/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-frontend`
+- 数据库：`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+- Python 必须在 `.venv` 内运行：`source /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend/.venv/bin/activate`
+- 代理硬约束：V2rayN `10808`
+- 本机 HTTP 必须使用：`curl --noproxy 127.0.0.1,localhost ...`
+
+端口策略（Phase2 验收）：
+- 后端默认端口 `8000`，若 `EPERM` 则使用 `18000`
+- 前端当前可验收端口 `55173`，若占用/受限则记录替代端口（如 `3000`/`3100`）
+- 实际使用端口必须写入 `docs/testing/TEST_REPORT.md`
+
+唯一验收脚本入口：
+```bash
+cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh
+```
+
 ## Postgres 可用性探测与连接选择
 
 1) 探测命令（按顺序执行并记录输出）
@@ -70,14 +100,14 @@ cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && 
 ## 保持系统代理开启情况下的前端依赖安装与构建（已验证可用）
 
 按以下顺序执行（命令需原样）：
-- `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend`
+- `cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-frontend`
 - `env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm install`
 - `env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy npm run build`
 
 输出证据要点（本机已验证）：
 ```bash
 pwd
-/Users/xuhehong/Desktop/r-mos/r-mos-frontend
+/Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-frontend
 
 npm install
 up to date in 409ms
