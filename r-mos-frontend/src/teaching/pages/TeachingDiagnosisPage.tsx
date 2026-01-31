@@ -3,10 +3,10 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Card, Descriptions, List, Result, Spin, Tag, Typography } from 'antd'
+import { Button, Card, Collapse, Descriptions, List, Result, Spin, Tag, Typography } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { getAttemptDiagnosis } from '@/api/teaching'
-import type { DiagnosisReport, DiagnosisSeverity } from '@/types/teaching'
+import type { DiagnosisReport, DiagnosisSeverity, StepDiagnosisSourceRefs } from '@/types/teaching'
 import { formatTeachingError } from '@/teaching/utils/api'
 
 const { Title, Text } = Typography
@@ -28,6 +28,22 @@ const diagnosisCodeLabels: Record<string, string> = {
   E_ERROR_OCCURRED: '存在错误步骤',
   E_STEP_SKIPPED: '存在跳过步骤',
   E_TOO_SLOW: '步骤耗时偏长',
+}
+
+const getDiagnosisLabel = (code: string) => diagnosisCodeLabels[code] ?? code
+
+const formatStepSourceRefs = (refs?: StepDiagnosisSourceRefs) => {
+  if (!refs) {
+    return '-'
+  }
+  const parts: string[] = []
+  if (refs.stepId !== undefined && refs.stepId !== null && refs.stepId !== '') {
+    parts.push(`step_id=${refs.stepId}`)
+  }
+  if (refs.snapshotId !== undefined && refs.snapshotId !== null && refs.snapshotId !== '') {
+    parts.push(`snapshot_id=${refs.snapshotId}`)
+  }
+  return parts.length > 0 ? parts.join(', ') : '-'
 }
 
 const TeachingDiagnosisPage = () => {
@@ -91,7 +107,8 @@ const TeachingDiagnosisPage = () => {
     )
   }
 
-  const diagnosisLabel = diagnosisCodeLabels[data.diagnosisCode] ?? data.diagnosisCode
+  const diagnosisLabel = getDiagnosisLabel(data.diagnosisCode)
+  const stepDiagnoses = data.stepDiagnoses ?? []
 
   return (
     <div>
@@ -140,6 +157,66 @@ const TeachingDiagnosisPage = () => {
             size="small"
             dataSource={data.recommendations}
             renderItem={(item) => <List.Item>{item}</List.Item>}
+          />
+        )}
+      </Card>
+
+      <Card title="步骤诊断" style={{ marginTop: 16 }}>
+        {stepDiagnoses.length === 0 ? (
+          <div>无</div>
+        ) : (
+          <Collapse
+            accordion
+            items={stepDiagnoses.map((step) => ({
+              key: String(step.stepIndex),
+              label: (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span>步骤 {step.stepIndex}</span>
+                  <Tag color={severityColor[step.severity]}>{severityLabels[step.severity]}</Tag>
+                  <Text type="secondary">{getDiagnosisLabel(step.stepDiagnosisCode)}</Text>
+                </div>
+              ),
+              children: (
+                <div>
+                  <Descriptions column={2} size="small">
+                    <Descriptions.Item label="诊断代码">{getDiagnosisLabel(step.stepDiagnosisCode)}</Descriptions.Item>
+                    <Descriptions.Item label="规则编号">{step.ruleId}</Descriptions.Item>
+                    <Descriptions.Item label="严重等级">
+                      <Tag color={severityColor[step.severity]}>{severityLabels[step.severity]}</Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="证据关联">{formatStepSourceRefs(step.sourceRefs)}</Descriptions.Item>
+                  </Descriptions>
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ marginBottom: 6 }}>
+                      <Text strong>诊断发现</Text>
+                    </div>
+                    {step.findings.length === 0 ? (
+                      <div>无</div>
+                    ) : (
+                      <List
+                        size="small"
+                        dataSource={step.findings}
+                        renderItem={(item) => <List.Item>{item}</List.Item>}
+                      />
+                    )}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ marginBottom: 6 }}>
+                      <Text strong>建议</Text>
+                    </div>
+                    {step.recommendations.length === 0 ? (
+                      <div>无</div>
+                    ) : (
+                      <List
+                        size="small"
+                        dataSource={step.recommendations}
+                        renderItem={(item) => <List.Item>{item}</List.Item>}
+                      />
+                    )}
+                  </div>
+                </div>
+              ),
+            }))}
           />
         )}
       </Card>

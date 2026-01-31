@@ -176,6 +176,21 @@ class DiagnosisSourceRefs(TeachingBaseModel):
     attempt_evidence_id: int
 
 
+class StepDiagnosisSourceRefs(TeachingBaseModel):
+    step_id: Optional[int] = None
+    snapshot_id: Optional[int] = None
+
+
+class StepDiagnosis(TeachingBaseModel):
+    step_index: int = Field(..., ge=1)
+    step_diagnosis_code: str
+    severity: DiagnosisSeverity
+    findings: list[DiagnosisFinding] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    rule_id: str
+    source_refs: StepDiagnosisSourceRefs = Field(default_factory=StepDiagnosisSourceRefs)
+
+
 class DiagnosisReport(TeachingBaseModel):
     report_version: str = Field("v1")
     attempt_id: int
@@ -184,7 +199,7 @@ class DiagnosisReport(TeachingBaseModel):
     severity: DiagnosisSeverity
     findings: list[DiagnosisFinding] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
-    step_diagnoses: list[dict[str, Any]] = Field(default_factory=list)
+    step_diagnoses: list[StepDiagnosis] = Field(default_factory=list)
     factors: list[dict[str, Any]] = Field(default_factory=list)
     attachments: list[dict[str, Any]] = Field(default_factory=list)
     generated_at: datetime

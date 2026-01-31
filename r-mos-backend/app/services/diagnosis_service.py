@@ -18,6 +18,8 @@ from app.schemas.teaching import (
     DiagnosisReport,
     DiagnosisSeverity,
     DiagnosisSourceRefs,
+    StepDiagnosis,
+    StepDiagnosisSourceRefs,
 )
 from app.services.evidence_engine import EvidenceEngine
 from app.services.event_service import EventService
@@ -57,6 +59,7 @@ class DiagnosisService:
             skip_count=skip_count,
             duration_ms=duration_ms,
         )
+        step_diagnoses = self._build_step_diagnoses(summary)
 
         report = DiagnosisReport(
             report_version="v1",
@@ -66,6 +69,7 @@ class DiagnosisService:
             severity=severity,
             findings=findings,
             recommendations=recommendations,
+            step_diagnoses=step_diagnoses,
             generated_at=datetime.utcnow(),
             source_refs=DiagnosisSourceRefs(attempt_evidence_id=evidence_link_id),
         )
@@ -158,6 +162,23 @@ class DiagnosisService:
         if isinstance(fallback_value, (int, float)):
             return int(fallback_value)
         return 0
+
+    def _build_step_diagnoses(self, summary: dict[str, Any]) -> list[StepDiagnosis]:
+        total_steps = self._resolve_int(summary, "total_steps", None)
+        if total_steps <= 0:
+            return []
+        return [
+            StepDiagnosis(
+                step_index=step_index,
+                step_diagnosis_code="OK",
+                severity=DiagnosisSeverity.LOW,
+                findings=[],
+                recommendations=[],
+                rule_id="R-DIAG-S-000",
+                source_refs=StepDiagnosisSourceRefs(),
+            )
+            for step_index in range(1, total_steps + 1)
+        ]
 
     def _apply_rules(
         self,

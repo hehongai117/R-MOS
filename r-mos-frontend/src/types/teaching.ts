@@ -59,6 +59,21 @@ export interface DiagnosisSourceRefs {
   attemptEvidenceId: number
 }
 
+export interface StepDiagnosisSourceRefs {
+  stepId?: number | string
+  snapshotId?: number | string
+}
+
+export interface StepDiagnosis {
+  stepIndex: number
+  stepDiagnosisCode: string
+  severity: DiagnosisSeverity
+  findings: string[]
+  recommendations: string[]
+  ruleId: string
+  sourceRefs: StepDiagnosisSourceRefs
+}
+
 export interface DiagnosisReport {
   reportVersion: string
   attemptId: number
@@ -67,7 +82,7 @@ export interface DiagnosisReport {
   severity: DiagnosisSeverity
   findings: string[]
   recommendations: string[]
-  stepDiagnoses: Record<string, unknown>[]
+  stepDiagnoses: StepDiagnosis[]
   factors: Record<string, unknown>[]
   attachments: Record<string, unknown>[]
   generatedAt: string

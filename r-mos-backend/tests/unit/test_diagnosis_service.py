@@ -145,3 +145,25 @@ async def test_diagnosis_report_placeholders(db_session):
     assert report.step_diagnoses == []
     assert report.factors == []
     assert report.attachments == []
+
+
+@pytest.mark.asyncio
+async def test_step_diagnoses_generated_from_total_steps(db_session):
+    attempt = await _create_attempt(db_session)
+    await _attach_evidence(
+        db_session,
+        attempt_id=attempt.id,
+        summary={"total_steps": 2},
+    )
+    service = DiagnosisService(db_session)
+    report = await service.get_diagnosis_report(attempt.id)
+    assert len(report.step_diagnoses) == 2
+    assert report.step_diagnoses[0].step_index == 1
+    assert report.step_diagnoses[1].step_index == 2
+    for step in report.step_diagnoses:
+        assert step.step_diagnosis_code == "OK"
+        assert step.severity == DiagnosisSeverity.LOW
+        assert step.rule_id == "R-DIAG-S-000"
+        assert step.findings == []
+        assert step.recommendations == []
+        assert step.source_refs is not None
