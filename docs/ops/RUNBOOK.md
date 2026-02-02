@@ -28,6 +28,21 @@
 - 前端当前可验收端口 `55173`，若占用/受限则记录替代端口（如 `3000`/`3100`）
 - 实际使用端口必须写入 `docs/testing/TEST_REPORT.md`
 
+## 后端端口绑定失败（EPERM / Operation not permitted）
+
+现象与判据：
+- `uvicorn` 报 `[Errno 1] Operation not permitted`
+- `lsof -nP -iTCP:8000 -sTCP:LISTEN` 无监听
+
+快速判定：纯宿主机终端会话验证
+- `python3 -m http.server 18000 --bind 127.0.0.1`
+- `lsof -nP -iTCP:18000 -sTCP:LISTEN`
+- 若 `http.server` 也 `EPERM`：系统级策略阻断（与项目无关），停止空转
+
+端口降级策略：
+- 默认 `8000`，`EPERM` 则改用 `18000`
+- 证据与文档必须记录实际端口（`docs/testing/TEST_REPORT.md`）
+
 唯一验收脚本入口：
 ```bash
 cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && bash scripts/run_phase1_e2e.sh
