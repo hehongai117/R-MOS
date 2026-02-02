@@ -37,10 +37,11 @@ start_backend() {
   return 1
 }
 
-if start_backend "$PRIMARY_PORT"; then
+status=0
+start_backend "$PRIMARY_PORT" || status=$?
+if [ "$status" -eq 0 ]; then
   exit 0
 fi
-status=$?
 if [ "$status" -eq 2 ]; then
   start_backend "$FALLBACK_PORT"
   exit $?
