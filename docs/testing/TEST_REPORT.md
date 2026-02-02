@@ -776,6 +776,38 @@ node    90141 xuhehong 22u  IPv4 0xaf2030067a625d43 0t0 TCP 127.0.0.1:55173 (LIS
   - “步骤诊断”区块可展开
   - 步骤 2 显示非 OK（步骤耗时偏长），展开后显示“步骤耗时偏长”
 
+### 主目录回归验收（Phase3 Step2 合并）
+
+- 后端端口：`18000`（8000 在受限会话曾 `EPERM`，本次使用 18000）
+
+**openapi**
+```
+HTTP/1.1 200 OK
+date: Mon, 02 Feb 2026 10:37:59 GMT
+server: uvicorn
+content-length: 107703
+content-type: application/json
+x-trace-id: 642f1fb8
+```
+
+**diagnosis（attempt_id=23）**
+```
+HTTP/1.1 200 OK
+{"attemptId":23,"diagnosisCode":"E_ERROR_OCCURRED","ruleId":"R-DIAG-001","severity":"HIGH","stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"E_ERROR_OCCURRED","severity":"HIGH","findings":["该步骤存在错误"]}]}
+```
+
+**diagnosis（attempt_id=24）**
+```
+HTTP/1.1 200 OK
+{"attemptId":24,"diagnosisCode":"E_STEP_SKIPPED","ruleId":"R-DIAG-002","severity":"MEDIUM","stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"E_STEP_SKIPPED","severity":"MEDIUM","findings":["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=25）**
+```
+HTTP/1.1 200 OK
+{"attemptId":25,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","stepDiagnoses":[{"stepIndex":2,"stepDiagnosisCode":"E_TOO_SLOW","severity":"LOW","findings":["步骤耗时偏长"]}]}
+```
+
 ### Phase2 P2 验收证据（步骤诊断下钻）
 
 - 失败证据（stepDiagnoses=[]）：
