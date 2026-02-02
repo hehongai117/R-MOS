@@ -75,15 +75,9 @@ fail() {
 }
 
 PORT=""
-for candidate in 8000 18000; do
-  if lsof -nP -iTCP:${candidate} -sTCP:LISTEN >/dev/null 2>&1; then
-    PORT="${candidate}"
-    echo "BACKEND_PORT=${PORT}"
-    break
-  fi
-done
+PORT_SOURCE=""
 
-if [[ -z "$PORT" ]]; then
+start_backend() {
   rm -f "$RUN_LOG"
   bash "$ROOT_DIR/scripts/run_dev.sh" >"$RUN_LOG" 2>&1 &
   RUN_PID=$!
@@ -104,12 +98,34 @@ if [[ -z "$PORT" ]]; then
     fail "BACKEND_PORT_NOT_DETECTED" 11
   fi
 
+  PORT_SOURCE="script"
   echo "BACKEND_PORT=${PORT}"
+}
+
+for candidate in 8000 18000; do
+  if lsof -nP -iTCP:${candidate} -sTCP:LISTEN >/dev/null 2>&1; then
+    PORT="${candidate}"
+    PORT_SOURCE="existing"
+    echo "BACKEND_PORT=${PORT}"
+    break
+  fi
+done
+
+if [[ -z "$PORT" ]]; then
+  start_backend
 fi
 
 OPENAPI_STATUS="$(curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:${PORT}/openapi.json" | head -n 1 || true)"
 if ! echo "$OPENAPI_STATUS" | rg -q "200"; then
-  fail "OPENAPI_FAILED" 20
+  if [[ "$PORT_SOURCE" == "existing" ]]; then
+    start_backend
+    OPENAPI_STATUS="$(curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:${PORT}/openapi.json" | head -n 1 || true)"
+    if ! echo "$OPENAPI_STATUS" | rg -q "200"; then
+      fail "OPENAPI_FAILED" 20
+    fi
+  else
+    fail "OPENAPI_FAILED" 20
+  fi
 fi
 
 python "$ROOT_DIR/scripts/seed_teaching_diagnosis_cases.py" --case all
