@@ -647,3 +647,50 @@
     - UI：教师文案显示“步骤耗时偏长”，步骤诊断区块可展开且步数与 `total_steps` 一致
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step1 规则命中证据（R-DIAG-001/002/003）`
   - 标签：P3
+
+### 任务16（Phase3 Step2 触发步骤定位）
+
+- 用例编号：T16-STEPDIAG-01（R-DIAG-001 触发步骤非 OK）（PASS）
+  - 角色：教师
+  - 前置数据/种子命令：attempt_id=`23`
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/23/diagnosis
+    ```
+  - UI 路径验收：
+    - `http://localhost:3000/teaching/attempts/23/diagnosis`
+  - 期望结果（关键字段+状态码）：
+    - diagnosis：`200` 且 `stepDiagnoses` 至少 1 条 `stepDiagnosisCode != OK`
+    - 非 OK 步骤展开后可见 findings “该步骤存在错误”
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step2 步骤诊断下钻证据`
+  - 标签：P3
+
+- 用例编号：T16-STEPDIAG-02（R-DIAG-002 触发步骤非 OK）（PASS）
+  - 角色：教师
+  - 前置数据/种子命令：attempt_id=`24`
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/24/diagnosis
+    ```
+  - UI 路径验收：
+    - `http://localhost:3000/teaching/attempts/24/diagnosis`
+  - 期望结果（关键字段+状态码）：
+    - diagnosis：`200` 且 `stepDiagnoses` 至少 1 条 `stepDiagnosisCode != OK`
+    - 非 OK 步骤展开后可见 findings “该步骤被跳过”
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step2 步骤诊断下钻证据`
+  - 标签：P3
+
+- 用例编号：T16-STEPDIAG-03（R-DIAG-003 触发步骤非 OK）（PASS）
+  - 角色：教师
+  - 前置数据/种子命令：attempt_id=`25`
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/25/diagnosis
+    ```
+  - UI 路径验收：
+    - `http://localhost:3000/teaching/attempts/25/diagnosis`
+  - 期望结果（关键字段+状态码）：
+    - diagnosis：`200` 且 `stepDiagnoses` 至少 1 条 `stepDiagnosisCode != OK`
+    - 非 OK 步骤展开后可见 findings “步骤耗时偏长”
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step2 步骤诊断下钻证据`
+  - 标签：P3
