@@ -740,6 +740,42 @@ node    90141 xuhehong 22u  IPv4 0xaf2030067a625d43 0t0 TCP 127.0.0.1:55173 (LIS
   - 教师文案命中：“步骤耗时偏长”
   - “步骤诊断”区块可展开：是（步骤 1/步骤 2 均可展开，severity 标签可见；无异常显示）
 
+### Phase3 Step2 步骤诊断下钻证据
+
+- 后端端口：`8000`
+- 前端端口：`3000`（Vite dev 实际端口）
+- 口径说明：步骤诊断 `ruleId` 与全局规则一致；stepDiagnoses 长度对齐 `summary.total_steps`
+
+#### attempt_id=23（R-DIAG-001，步骤 1 非 OK）
+
+- diagnosis（HTTP/1.1 200 OK）关键片段：
+```json
+{"attemptId":23,"diagnosisCode":"E_ERROR_OCCURRED","ruleId":"R-DIAG-001","severity":"HIGH","stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"E_ERROR_OCCURRED","severity":"HIGH","ruleId":"R-DIAG-001","findings":["该步骤存在错误"]},{"stepIndex":2,"stepDiagnosisCode":"OK","severity":"LOW","ruleId":"R-DIAG-S-000"}]}
+```
+- UI 冒烟：`http://localhost:3000/teaching/attempts/23/diagnosis`
+  - “步骤诊断”区块可展开
+  - 步骤 1 显示非 OK（存在错误步骤），展开后显示“该步骤存在错误”
+
+#### attempt_id=24（R-DIAG-002，步骤 1 非 OK）
+
+- diagnosis（HTTP/1.1 200 OK）关键片段：
+```json
+{"attemptId":24,"diagnosisCode":"E_STEP_SKIPPED","ruleId":"R-DIAG-002","severity":"MEDIUM","stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"E_STEP_SKIPPED","severity":"MEDIUM","ruleId":"R-DIAG-002","findings":["该步骤被跳过"]},{"stepIndex":2,"stepDiagnosisCode":"OK","severity":"LOW","ruleId":"R-DIAG-S-000"}]}
+```
+- UI 冒烟：`http://localhost:3000/teaching/attempts/24/diagnosis`
+  - “步骤诊断”区块可展开
+  - 步骤 1 显示非 OK（存在跳过步骤），展开后显示“该步骤被跳过”
+
+#### attempt_id=25（R-DIAG-003，步骤 2 非 OK）
+
+- diagnosis（HTTP/1.1 200 OK）关键片段：
+```json
+{"attemptId":25,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"OK","severity":"LOW","ruleId":"R-DIAG-S-000"},{"stepIndex":2,"stepDiagnosisCode":"E_TOO_SLOW","severity":"LOW","ruleId":"R-DIAG-003","findings":["步骤耗时偏长"]}]}
+```
+- UI 冒烟：`http://localhost:3000/teaching/attempts/25/diagnosis`
+  - “步骤诊断”区块可展开
+  - 步骤 2 显示非 OK（步骤耗时偏长），展开后显示“步骤耗时偏长”
+
 ### Phase2 P2 验收证据（步骤诊断下钻）
 
 - 失败证据（stepDiagnoses=[]）：

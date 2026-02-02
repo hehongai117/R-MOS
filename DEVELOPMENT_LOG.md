@@ -19,4 +19,5 @@
 - 任务15（Phase2 P1 占位扩展点+教师文案）：提交 6e88303、5c958a4；用例 T13-API-01、T13-UI-01；ADR 无新增；报告段落 Phase2 P1 验收证据（占位扩展点 + 教师文案）
 - 任务16（Phase2 P2 步骤诊断下钻）：提交 8160115、d3cc080、82897c7；用例 T14-API-01、T14-UI-01；ADR ADR-TEACH-009；报告段落 Phase2 P2 验收证据（步骤诊断下钻）
 - 任务17（Phase3 Step1 规则真实触发闭环）：提交 efbc7a5、47595a0、fa40ec0；用例 T15-RULE-01~T15-RULE-03；ADR N/A；报告段落 Phase3 Step1 规则命中证据（R-DIAG-001/002/003）
+- 任务18（Phase3 Step2 触发步骤定位）：提交 b409894、（本次文档提交）；用例 T16-STEPDIAG-01~T16-STEPDIAG-03；ADR N/A；报告段落 Phase3 Step2 步骤诊断下钻证据
 - Phase1 验收：基线 280878d；报告 docs/testing/TEST_REPORT.md；阻塞 BLOCK-001；缺陷 DEF-001、DEF-002（未修复）
