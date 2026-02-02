@@ -29,7 +29,7 @@ start_backend() {
     wait "$pid"
     return $?
   fi
-  if rg -q "Operation not permitted" "$log_file"; then
+  if grep -qE "Operation not permitted" "$log_file"; then
     echo "端口绑定失败（EPERM），切换端口 ${FALLBACK_PORT}" >&2
     return 2
   fi

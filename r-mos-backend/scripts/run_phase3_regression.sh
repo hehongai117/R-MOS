@@ -73,6 +73,11 @@ fail() {
   PLAN_STATUS="FAIL" PLAN_REASON="$reason" PLAN_PATH="$PLAN_PATH" update_plan_status "FAIL" "$reason"
   echo "ERROR_CODE=$reason"
   echo "LOG_PATH=$RUN_LOG"
+  if [[ -f "$RUN_LOG" ]]; then
+    echo "LOG_TAIL_BEGIN"
+    tail -n 30 "$RUN_LOG" || true
+    echo "LOG_TAIL_END"
+  fi
   exit "$code"
 }
 
@@ -89,7 +94,7 @@ start_backend() {
       tail -n 40 "$RUN_LOG" >&2 || true
       fail "BACKEND_START_FAILED" 10
     fi
-    PORT="$(rg -m1 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//' || true)"
+    PORT="$(grep -m1 -E 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//' || true)"
     if [[ -n "$PORT" ]]; then
       break
     fi
@@ -117,17 +122,21 @@ if [[ -z "$PORT" ]]; then
   start_backend
 fi
 
-OPENAPI_STATUS="$(curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:${PORT}/openapi.json" | head -n 1 || true)"
-if ! echo "$OPENAPI_STATUS" | rg -q "200"; then
+OPENAPI_HDR="/tmp/phase3-step4-openapi.hdr"
+OPENAPI_BODY="/tmp/phase3-step4-openapi.body"
+if ! curl --noproxy 127.0.0.1,localhost -sS -D "$OPENAPI_HDR" -o "$OPENAPI_BODY" "http://127.0.0.1:${PORT}/openapi.json"; then
   if [[ "$PORT_SOURCE" == "existing" ]]; then
     start_backend
-    OPENAPI_STATUS="$(curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:${PORT}/openapi.json" | head -n 1 || true)"
-    if ! echo "$OPENAPI_STATUS" | rg -q "200"; then
+    if ! curl --noproxy 127.0.0.1,localhost -sS -D "$OPENAPI_HDR" -o "$OPENAPI_BODY" "http://127.0.0.1:${PORT}/openapi.json"; then
       fail "OPENAPI_FAILED" 20
     fi
   else
     fail "OPENAPI_FAILED" 20
   fi
+fi
+OPENAPI_STATUS="$(sed -n '1p' "$OPENAPI_HDR" 2>/dev/null || true)"
+if ! echo "$OPENAPI_STATUS" | grep -qE "200"; then
+  fail "OPENAPI_FAILED" 20
 fi
 
 python "$ROOT_DIR/scripts/seed_teaching_diagnosis_cases.py" --case all
@@ -136,13 +145,17 @@ fetch_diagnosis() {
   local attempt_id="$1"
   local out_file="$2"
   local url="http://127.0.0.1:${PORT}/api/v1/attempts/${attempt_id}/diagnosis"
+  local hdr_file="/tmp/phase3-step4-${attempt_id}.hdr"
   local status_line
-  status_line="$(curl --noproxy 127.0.0.1,localhost -sS -i "$url" | head -n 1 || true)"
-  if ! echo "$status_line" | rg -q "200"; then
+  if ! curl --noproxy 127.0.0.1,localhost -sS -D "$hdr_file" -o "$out_file" "$url"; then
     echo "CURL_FAILED=$url"
     fail "CURL_FAILED_${attempt_id}" 30
   fi
-  curl --noproxy 127.0.0.1,localhost -sS "$url" > "$out_file"
+  status_line="$(sed -n '1p' "$hdr_file" 2>/dev/null || true)"
+  if ! echo "$status_line" | grep -qE "200"; then
+    echo "CURL_FAILED=$url"
+    fail "CURL_FAILED_${attempt_id}" 30
+  fi
 }
 
 TMP_23="/tmp/phase3-step4-23.json"
@@ -153,17 +166,17 @@ fetch_diagnosis 23 "$TMP_23"
 fetch_diagnosis 24 "$TMP_24"
 fetch_diagnosis 25 "$TMP_25"
 
-rg -q '"stepIndex":1' "$TMP_23" || fail "DIAG23_STEPINDEX" 40
-rg -q '"stepDiagnosisCode":"E_ERROR_OCCURRED"' "$TMP_23" || fail "DIAG23_CODE" 41
-rg -q '"ruleId":"R-DIAG-001"' "$TMP_23" || fail "DIAG23_RULE" 42
+grep -qE '"stepIndex":1' "$TMP_23" || fail "DIAG23_STEPINDEX" 40
+grep -qE '"stepDiagnosisCode":"E_ERROR_OCCURRED"' "$TMP_23" || fail "DIAG23_CODE" 41
+grep -qE '"ruleId":"R-DIAG-001"' "$TMP_23" || fail "DIAG23_RULE" 42
 
-rg -q '"stepIndex":1' "$TMP_24" || fail "DIAG24_STEPINDEX" 43
-rg -q '"stepDiagnosisCode":"E_STEP_SKIPPED"' "$TMP_24" || fail "DIAG24_CODE" 44
-rg -q '"ruleId":"R-DIAG-002"' "$TMP_24" || fail "DIAG24_RULE" 45
+grep -qE '"stepIndex":1' "$TMP_24" || fail "DIAG24_STEPINDEX" 43
+grep -qE '"stepDiagnosisCode":"E_STEP_SKIPPED"' "$TMP_24" || fail "DIAG24_CODE" 44
+grep -qE '"ruleId":"R-DIAG-002"' "$TMP_24" || fail "DIAG24_RULE" 45
 
-rg -q '"stepIndex":2' "$TMP_25" || fail "DIAG25_STEPINDEX" 46
-rg -q '"stepDiagnosisCode":"E_TOO_SLOW"' "$TMP_25" || fail "DIAG25_CODE" 47
-rg -q '步骤耗时偏长' "$TMP_25" || fail "DIAG25_FINDING" 48
+grep -qE '"stepIndex":2' "$TMP_25" || fail "DIAG25_STEPINDEX" 46
+grep -qE '"stepDiagnosisCode":"E_TOO_SLOW"' "$TMP_25" || fail "DIAG25_CODE" 47
+grep -qF '步骤耗时偏长' "$TMP_25" || fail "DIAG25_FINDING" 48
 
 SNIP_23="$(python - <<'PY'
 import json
@@ -255,6 +268,8 @@ block = f"""{start}
 
 - 运行时间：{datetime.utcnow().isoformat()}Z
 - 后端端口：`{port}`
+
+#### 最新一次运行
 
 **openapi**
 ```
