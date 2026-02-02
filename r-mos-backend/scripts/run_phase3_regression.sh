@@ -74,28 +74,38 @@ fail() {
   exit "$code"
 }
 
-rm -f "$RUN_LOG"
-bash "$ROOT_DIR/scripts/run_dev.sh" >"$RUN_LOG" 2>&1 &
-RUN_PID=$!
-
 PORT=""
-for _ in {1..30}; do
-  if ! kill -0 "$RUN_PID" >/dev/null 2>&1; then
-    tail -n 40 "$RUN_LOG" >&2 || true
-    fail "BACKEND_START_FAILED" 10
-  fi
-  PORT="$(rg -m1 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//')"
-  if [[ -n "$PORT" ]]; then
+for candidate in 8000 18000; do
+  if lsof -nP -iTCP:${candidate} -sTCP:LISTEN >/dev/null 2>&1; then
+    PORT="${candidate}"
+    echo "BACKEND_PORT=${PORT}"
     break
   fi
-  sleep 1
 done
 
 if [[ -z "$PORT" ]]; then
-  fail "BACKEND_PORT_NOT_DETECTED" 11
-fi
+  rm -f "$RUN_LOG"
+  bash "$ROOT_DIR/scripts/run_dev.sh" >"$RUN_LOG" 2>&1 &
+  RUN_PID=$!
 
-echo "BACKEND_PORT=${PORT}"
+  for _ in {1..30}; do
+    if ! kill -0 "$RUN_PID" >/dev/null 2>&1; then
+      tail -n 40 "$RUN_LOG" >&2 || true
+      fail "BACKEND_START_FAILED" 10
+    fi
+    PORT="$(rg -m1 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//')"
+    if [[ -n "$PORT" ]]; then
+      break
+    fi
+    sleep 1
+  done
+
+  if [[ -z "$PORT" ]]; then
+    fail "BACKEND_PORT_NOT_DETECTED" 11
+  fi
+
+  echo "BACKEND_PORT=${PORT}"
+fi
 
 OPENAPI_STATUS="$(curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:${PORT}/openapi.json" | head -n 1 || true)"
 if ! echo "$OPENAPI_STATUS" | rg -q "200"; then
