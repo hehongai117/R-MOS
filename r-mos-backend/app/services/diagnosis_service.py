@@ -210,7 +210,7 @@ class DiagnosisService:
                 "R-DIAG-003",
                 "E_TOO_SLOW",
                 DiagnosisSeverity.LOW,
-                ["完成耗时偏长"],
+                ["步骤耗时偏长"],
                 ["建议优化步骤执行效率"],
             )
         return (
