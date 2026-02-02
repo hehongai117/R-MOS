@@ -38,10 +38,10 @@ status = os.environ["PLAN_STATUS"]
 reason = os.environ.get("PLAN_REASON", "")
 content = plan_path.read_text()
 
-pattern = r"(T18-AUTO-01[^\n]*\()([A-Z]+)(\))"
+pattern = r"(T18-AUTO-01[^\n]*)([（(])([A-Z]+)([)）])"
 
 def repl(match):
-    return f"{match.group(1)}{status}{match.group(3)}"
+    return f"{match.group(1)}{match.group(2)}{status}{match.group(4)}"
 
 if re.search(pattern, content):
     content = re.sub(pattern, repl, content, count=1)
@@ -57,6 +57,8 @@ else:
         "  - 标签：P3\n"
     )
     content = content.rstrip() + appendix
+
+content = re.sub(r"^\\- T18 失败原因：.*$", "", content, flags=re.M)
 
 if reason:
     content = content.rstrip() + f"\n\n- T18 失败原因：{reason}\n"
