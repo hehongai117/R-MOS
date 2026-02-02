@@ -202,6 +202,13 @@ vite v5.4.21 building for production...
 - 这通常意味着当前进程网络访问被系统策略限制（不是代理未运行）
 - 需要在本机真实终端或放开网络权限后再执行 `npm install`
 
+## Phase3 单命令回归入口
+
+单命令回归（自动处理 8000→18000，seed+采证+回填）：
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && bash scripts/run_phase3_regression.sh
+```
+
 ### 409 `ALREADY_ENROLLED`
 - 现象：重复报名返回 `409`
 - 定位路径：
