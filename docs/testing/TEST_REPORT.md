@@ -1219,3 +1219,36 @@ node    90141 xuhehong 22u  IPv4 0xaf2030067a625d43 0t0 TCP 127.0.0.1:55173 (LIS
     }
 }
 ```
+
+### 主目录回归验收（Phase3 Step1 合并，2026-02-02）
+
+- 合并提交：`c9c2529`
+- 后端端口：`8000`
+
+**openapi**
+```
+HTTP/1.1 200 OK
+date: Mon, 02 Feb 2026 03:52:31 GMT
+server: uvicorn
+content-length: 107703
+content-type: application/json
+x-trace-id: bfbd2d1d
+```
+
+**diagnosis（attempt_id=23）**
+```
+HTTP/1.1 200 OK
+{"reportVersion":"v1","attemptId":23,"diagnosisCode":"E_ERROR_OCCURRED","ruleId":"R-DIAG-001","severity":"HIGH","findings":["存在错误步骤"]}
+```
+
+**diagnosis（attempt_id=24）**
+```
+HTTP/1.1 200 OK
+{"reportVersion":"v1","attemptId":24,"diagnosisCode":"E_STEP_SKIPPED","ruleId":"R-DIAG-002","severity":"MEDIUM","findings":["存在跳过步骤"]}
+```
+
+**diagnosis（attempt_id=25）**
+```
+HTTP/1.1 200 OK
+{"reportVersion":"v1","attemptId":25,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","findings":["步骤耗时偏长"]}
+```
