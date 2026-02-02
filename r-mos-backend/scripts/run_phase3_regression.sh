@@ -87,7 +87,7 @@ start_backend() {
       tail -n 40 "$RUN_LOG" >&2 || true
       fail "BACKEND_START_FAILED" 10
     fi
-    PORT="$(rg -m1 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//')"
+    PORT="$(rg -m1 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//' || true)"
     if [[ -n "$PORT" ]]; then
       break
     fi
