@@ -694,3 +694,17 @@
     - 非 OK 步骤展开后可见 findings “步骤耗时偏长”
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step2 步骤诊断下钻证据`
   - 标签：P3
+
+### 任务17（Phase3 Step3 运行入口稳态化）
+
+- 用例编号：T17-OPS-01（端口降级与开放接口验证）（PASS）
+  - 角色：开发
+  - 前置条件：主目录后端启动；8000 绑定失败时降级到 18000
+  - 验收命令（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:18000/openapi.json | head -n 5
+    ```
+  - 期望结果（关键字段+状态码）：
+    - `HTTP/1.1 200 OK`（或等价 `200`）
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step3 运行入口稳态化证据`
+  - 标签：P3

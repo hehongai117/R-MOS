@@ -808,6 +808,22 @@ HTTP/1.1 200 OK
 {"attemptId":25,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","stepDiagnoses":[{"stepIndex":2,"stepDiagnosisCode":"E_TOO_SLOW","severity":"LOW","findings":["步骤耗时偏长"]}]}
 ```
 
+### Phase3 Step3 运行入口稳态化证据
+
+- 验证方式：纯宿主机终端会话
+- http.server 端口验证：`python3 -m http.server 18000 --bind 127.0.0.1` 启动成功
+- RUNBOOK 章节：`后端端口绑定失败（EPERM / Operation not permitted）`
+
+**openapi（端口 18000）**
+```
+HTTP/1.1 200 OK
+date: Mon, 02 Feb 2026 10:37:59 GMT
+server: uvicorn
+content-length: 107703
+content-type: application/json
+x-trace-id: 642f1fb8
+```
+
 ### Phase2 P2 验收证据（步骤诊断下钻）
 
 - 失败证据（stepDiagnoses=[]）：
