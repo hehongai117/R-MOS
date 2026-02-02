@@ -692,6 +692,54 @@ node    90141 xuhehong 22u  IPv4 0xaf2030067a625d43 0t0 TCP 127.0.0.1:55173 (LIS
   - recommendations=无
   - 证据关联=11
 
+### Phase3 Step1 规则命中证据（R-DIAG-001/002/003）
+
+- 后端端口：`8000`
+- 前端端口：`3000`（Vite dev 实际端口）
+
+#### attempt_id=23（R-DIAG-001）
+
+- evidence（HTTP/1.1 200 OK）：
+```json
+{"bundleId":"07692176-027d-4ecd-b729-52fc4079b21d","taskId":7,"attemptId":23,"summary":{"total_steps":2,"skip_count":0,"error_count":1,"duration_ms":1000}}
+```
+- diagnosis（HTTP/1.1 200 OK）：
+```json
+{"attemptId":23,"diagnosisCode":"E_ERROR_OCCURRED","ruleId":"R-DIAG-001","severity":"HIGH","findings":["存在错误步骤"]}
+```
+- UI 冒烟：`http://localhost:3000/teaching/attempts/23/diagnosis`
+  - 教师文案命中：“存在错误步骤”
+  - “步骤诊断”区块可展开：是（步骤 1/步骤 2 均可展开，severity 标签可见；无异常显示）
+
+#### attempt_id=24（R-DIAG-002）
+
+- evidence（HTTP/1.1 200 OK）：
+```json
+{"bundleId":"4f5ce323-38c3-4510-bacf-45930f0d2ade","taskId":8,"attemptId":24,"summary":{"total_steps":2,"skip_count":1,"error_count":0,"duration_ms":1000}}
+```
+- diagnosis（HTTP/1.1 200 OK）：
+```json
+{"attemptId":24,"diagnosisCode":"E_STEP_SKIPPED","ruleId":"R-DIAG-002","severity":"MEDIUM","findings":["存在跳过步骤"]}
+```
+- UI 冒烟：`http://localhost:3000/teaching/attempts/24/diagnosis`
+  - 教师文案命中：“存在跳过步骤”
+  - “步骤诊断”区块可展开：是（步骤 1/步骤 2 均可展开，severity 标签可见；无异常显示）
+
+#### attempt_id=25（R-DIAG-003）
+
+- evidence（HTTP/1.1 200 OK）：
+```json
+{"bundleId":"ed8a85d6-5f29-47f6-8144-be9d85dac1a8","taskId":9,"attemptId":25,"summary":{"total_steps":2,"skip_count":0,"error_count":0,"duration_ms":10000}}
+```
+- 备注：`duration_ms` 口径已知差异，仅用于触发 R-DIAG-003
+- diagnosis（HTTP/1.1 200 OK）：
+```json
+{"reportVersion":"v1","attemptId":25,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","findings":["步骤耗时偏长"],"recommendations":["建议优化步骤执行效率"],"stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"OK","severity":"LOW","findings":[],"recommendations":[],"ruleId":"R-DIAG-S-000","sourceRefs":{"stepId":null,"snapshotId":null}},{"stepIndex":2,"stepDiagnosisCode":"OK","severity":"LOW","findings":[],"recommendations":[],"ruleId":"R-DIAG-S-000","sourceRefs":{"stepId":null,"snapshotId":null}}],"factors":[],"attachments":[],"generatedAt":"2026-02-02T02:53:39.325496","sourceRefs":{"attemptEvidenceId":17}}
+```
+- UI 冒烟：`http://localhost:3000/teaching/attempts/25/diagnosis`
+  - 教师文案命中：“步骤耗时偏长”
+  - “步骤诊断”区块可展开：是（步骤 1/步骤 2 均可展开，severity 标签可见；无异常显示）
+
 ### Phase2 P2 验收证据（步骤诊断下钻）
 
 - 失败证据（stepDiagnoses=[]）：

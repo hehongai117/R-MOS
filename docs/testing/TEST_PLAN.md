@@ -576,3 +576,74 @@
     - 每步展开后 findings/recommendations 空态显示“无”
   - 证据落点：`docs/testing/TEST_REPORT.md` → `主目录回归验收（Phase2 基线冻结）`
   - 标签：P2
+
+### 任务15（Phase3 Step 1 规则真实触发闭环）
+
+- 用例编号：T15-RULE-01（R-DIAG-001 error_count）（PASS）
+  - 角色：教师
+  - 前置数据/种子命令：attempt_id=`23`
+    ```bash
+    cd /Users/xuhehong/Desktop/r-mos/r-mos-backend
+    source .venv/bin/activate
+    export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+    python scripts/seed_teaching_diagnosis_cases.py --case error
+    ```
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/23/evidence
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/23/diagnosis
+    ```
+  - UI 路径验收：
+    - `http://localhost:3000/teaching/attempts/23/diagnosis`
+  - 期望结果（关键字段+状态码）：
+    - evidence：`200` 且 `summary.error_count>=1`、`summary.total_steps` 可见
+    - diagnosis：`200` 且 `ruleId=R-DIAG-001`、`diagnosisCode=E_ERROR_OCCURRED`、`severity=HIGH`
+    - UI：教师文案显示“存在错误步骤”，步骤诊断区块可展开且步数与 `total_steps` 一致
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step1 规则命中证据（R-DIAG-001/002/003）`
+  - 标签：P3
+
+- 用例编号：T15-RULE-02（R-DIAG-002 skip_count）（PASS）
+  - 角色：教师
+  - 前置数据/种子命令：attempt_id=`24`
+    ```bash
+    cd /Users/xuhehong/Desktop/r-mos/r-mos-backend
+    source .venv/bin/activate
+    export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+    python scripts/seed_teaching_diagnosis_cases.py --case skip
+    ```
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/24/evidence
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/24/diagnosis
+    ```
+  - UI 路径验收：
+    - `http://localhost:3000/teaching/attempts/24/diagnosis`
+  - 期望结果（关键字段+状态码）：
+    - evidence：`200` 且 `summary.skip_count>=1`、`summary.total_steps` 可见
+    - diagnosis：`200` 且 `ruleId=R-DIAG-002`、`diagnosisCode=E_STEP_SKIPPED`、`severity=MEDIUM`
+    - UI：教师文案显示“存在跳过步骤”，步骤诊断区块可展开且步数与 `total_steps` 一致
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step1 规则命中证据（R-DIAG-001/002/003）`
+  - 标签：P3
+
+- 用例编号：T15-RULE-03（R-DIAG-003 duration_ms）（PASS）
+  - 角色：教师
+  - 前置数据/种子命令：attempt_id=`25`
+    ```bash
+    cd /Users/xuhehong/Desktop/r-mos/r-mos-backend
+    source .venv/bin/activate
+    export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+    python scripts/seed_teaching_diagnosis_cases.py --case slow
+    ```
+  - 接口验收（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/25/evidence
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/25/diagnosis
+    ```
+  - UI 路径验收：
+    - `http://localhost:3000/teaching/attempts/25/diagnosis`
+  - 期望结果（关键字段+状态码）：
+    - evidence：`200` 且 `summary.duration_ms>5000`、`summary.total_steps` 可见（已知口径差异需在报告标注）
+    - diagnosis：`200` 且 `ruleId=R-DIAG-003`、`diagnosisCode=E_TOO_SLOW`、`severity=LOW`
+    - UI：教师文案显示“步骤耗时偏长”，步骤诊断区块可展开且步数与 `total_steps` 一致
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step1 规则命中证据（R-DIAG-001/002/003）`
+  - 标签：P3
