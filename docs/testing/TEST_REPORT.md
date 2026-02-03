@@ -10,6 +10,27 @@
   - `make migrate`
   - `make seed-demo`
 
+## 通用证据模板与收口规则
+
+### 证据模板（每条用例必填）
+- 用例编号：
+- 执行日期：
+- 执行人：
+- 环境信息（分支/提交/数据库/端口）：
+- 前置条件：
+- 步骤：
+- 期望结果：
+- 实际结果：
+- 证据片段（截图/日志/返回体）：
+- 结论（PASS/FAIL/BLOCKED）：
+- 关联缺陷（如有）：
+
+### 收口规则
+- 未提供证据片段不得标记 PASS。
+- FAIL/BLOCKED 必须记录到 `docs/testing/TEST_REPORT.md` 缺陷小节，并在 `DEVELOPMENT_LOG.md` 建索引。
+- 同一用例重复执行需保留历史记录，注明日期与环境差异。
+- 自动化用例需附带日志片段与截图路径，便于复核。
+
 ## 数据迁移与种子结果
 
 ### 迁移结果
@@ -1340,10 +1361,10 @@ HTTP/1.1 200 OK
 <!-- PHASE3_STEP4_START -->
 ### Phase3 Step4 单命令回归证据
 
-- 运行时间：2026-02-03T09:30:27.766668+00:00
-- 运行标识：6e3f307d52ef49268a4cbd7407ffd0b1
+- 运行时间：2026-02-03T12:13:17.017650+00:00
+- 运行标识：870b75b5ca8447098ba2f3e449637169
 - 后端端口：`8000`
-- attempt_id：error=35 skip=36 slow=37
+- attempt_id：error=38 skip=39 slow=40
 
 #### 最新一次运行
 
@@ -1352,19 +1373,19 @@ HTTP/1.1 200 OK
 HTTP/1.1 200 OK
 ```
 
-**diagnosis（attempt_id=35）**
+**diagnosis（attempt_id=38）**
 ```
-{"attemptId": 35, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
-```
-
-**diagnosis（attempt_id=36）**
-```
-{"attemptId": 36, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+{"attemptId": 38, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
 ```
 
-**diagnosis（attempt_id=37）**
+**diagnosis（attempt_id=39）**
 ```
-{"attemptId": 37, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
+{"attemptId": 39, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=40）**
+```
+{"attemptId": 40, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
 ```
 <!-- PHASE3_STEP4_END -->
 
