@@ -5,25 +5,33 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_ROOT="$(cd "$ROOT_DIR/.." && pwd)"
 LOG_DIR="$ROOT_DIR/logs"
 RUN_LOG="$LOG_DIR/phase3-step4-run.log"
+RUN_DEV_LOG="$LOG_DIR/phase3-step4-run-dev.log"
 
 REPORT_PATH="$PROJECT_ROOT/docs/testing/TEST_REPORT.md"
 PLAN_PATH="$PROJECT_ROOT/docs/testing/TEST_PLAN.md"
+DEVLOG_PATH="$PROJECT_ROOT/DEVELOPMENT_LOG.md"
+
+mkdir -p "$LOG_DIR"
+: > "$RUN_LOG"
+
+log_line() {
+  echo "$*" | tee -a "$RUN_LOG"
+}
 
 if [[ "$PWD" != "$ROOT_DIR" ]]; then
-  echo "ERROR_CODE=RUN_DIR_INVALID"
-  echo "必须在后端目录运行：$ROOT_DIR"
+  log_line "ERROR_CODE=RUN_DIR_INVALID"
+  log_line "必须在后端目录运行：$ROOT_DIR"
   exit 2
 fi
 
 if [[ ! -f "$ROOT_DIR/.venv/bin/activate" ]]; then
-  echo "ERROR_CODE=VENV_NOT_FOUND"
-  echo "未找到 .venv：$ROOT_DIR/.venv"
+  log_line "ERROR_CODE=VENV_NOT_FOUND"
+  log_line "未找到 .venv：$ROOT_DIR/.venv"
   exit 2
 fi
 
 source "$ROOT_DIR/.venv/bin/activate"
 export DATABASE_URL='postgresql+asyncpg://postgres@localhost:5432/postgres'
-mkdir -p "$LOG_DIR"
 
 update_plan_status() {
   local status="$1"
@@ -67,34 +75,44 @@ plan_path.write_text(content)
 PY
 }
 
+FAILED=0
+
 fail() {
   local reason="$1"
   local code="$2"
+  FAILED=1
   PLAN_STATUS="FAIL" PLAN_REASON="$reason" PLAN_PATH="$PLAN_PATH" update_plan_status "FAIL" "$reason"
-  echo "ERROR_CODE=$reason"
-  echo "LOG_PATH=$RUN_LOG"
+  log_line "ERROR_CODE=$reason"
+  log_line "LOG_PATH=$RUN_LOG"
   if [[ -f "$RUN_LOG" ]]; then
-    echo "LOG_TAIL_BEGIN"
-    tail -n 30 "$RUN_LOG" || true
-    echo "LOG_TAIL_END"
+    log_line "LOG_TAIL_BEGIN"
+    tail -n 30 "$RUN_LOG" | tee -a "$RUN_LOG" || true
+    log_line "LOG_TAIL_END"
+  fi
+  if [[ -f "$RUN_DEV_LOG" ]]; then
+    log_line "DEV_LOG_TAIL_BEGIN"
+    tail -n 30 "$RUN_DEV_LOG" | tee -a "$RUN_LOG" || true
+    log_line "DEV_LOG_TAIL_END"
   fi
   exit "$code"
 }
+
+trap 'if [[ $FAILED -eq 0 ]]; then fail "UNEXPECTED_ERROR" 99; fi' ERR
 
 PORT=""
 PORT_SOURCE=""
 
 start_backend() {
-  rm -f "$RUN_LOG"
-  bash "$ROOT_DIR/scripts/run_dev.sh" >"$RUN_LOG" 2>&1 &
+  : > "$RUN_DEV_LOG"
+  bash "$ROOT_DIR/scripts/run_dev.sh" >"$RUN_DEV_LOG" 2>&1 &
   RUN_PID=$!
 
   for _ in {1..30}; do
     if ! kill -0 "$RUN_PID" >/dev/null 2>&1; then
-      tail -n 40 "$RUN_LOG" >&2 || true
+      tail -n 40 "$RUN_DEV_LOG" | tee -a "$RUN_LOG" >&2 || true
       fail "BACKEND_START_FAILED" 10
     fi
-    PORT="$(grep -m1 -E 'BACKEND_PORT=' "$RUN_LOG" | sed 's/.*BACKEND_PORT=//' || true)"
+    PORT="$(grep -m1 -E 'BACKEND_PORT=' "$RUN_DEV_LOG" | sed 's/.*BACKEND_PORT=//' || true)"
     if [[ -n "$PORT" ]]; then
       break
     fi
@@ -106,14 +124,14 @@ start_backend() {
   fi
 
   PORT_SOURCE="script"
-  echo "BACKEND_PORT=${PORT}"
+  log_line "BACKEND_PORT=${PORT}"
 }
 
 for candidate in 8000 18000; do
   if lsof -nP -iTCP:${candidate} -sTCP:LISTEN >/dev/null 2>&1; then
     PORT="${candidate}"
     PORT_SOURCE="existing"
-    echo "BACKEND_PORT=${PORT}"
+    log_line "BACKEND_PORT=${PORT}"
     break
   fi
 done
@@ -138,12 +156,20 @@ OPENAPI_STATUS="$(sed -n '1p' "$OPENAPI_HDR" 2>/dev/null || true)"
 if ! echo "$OPENAPI_STATUS" | grep -qE "200"; then
   fail "OPENAPI_FAILED" 20
 fi
+log_line "OPENAPI_STATUS=${OPENAPI_STATUS}"
 
-SEED_OUTPUT="$(python "$ROOT_DIR/scripts/seed_teaching_diagnosis_cases.py" --case all 2>&1)"
-echo "$SEED_OUTPUT"
-ATTEMPT_ERROR="$(echo "$SEED_OUTPUT" | grep -nE 'case=error' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1)"
-ATTEMPT_SKIP="$(echo "$SEED_OUTPUT" | grep -nE 'case=skip' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1)"
-ATTEMPT_SLOW="$(echo "$SEED_OUTPUT" | grep -nE 'case=slow' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1)"
+if ! SEED_OUTPUT="$(python "$ROOT_DIR/scripts/seed_teaching_diagnosis_cases.py" --case all 2>&1)"; then
+  log_line "SEED_OUTPUT_BEGIN"
+  echo "$SEED_OUTPUT" | tee -a "$RUN_LOG"
+  log_line "SEED_OUTPUT_END"
+  fail "SEED_FAILED" 26
+fi
+log_line "SEED_OUTPUT_BEGIN"
+echo "$SEED_OUTPUT" | tee -a "$RUN_LOG"
+log_line "SEED_OUTPUT_END"
+ATTEMPT_ERROR="$(echo "$SEED_OUTPUT" | grep -nE 'case=error' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1 || true)"
+ATTEMPT_SKIP="$(echo "$SEED_OUTPUT" | grep -nE 'case=skip' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1 || true)"
+ATTEMPT_SLOW="$(echo "$SEED_OUTPUT" | grep -nE 'case=slow' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1 || true)"
 
 if [[ -z "$ATTEMPT_ERROR" || -z "$ATTEMPT_SKIP" || -z "$ATTEMPT_SLOW" ]]; then
   fail "SEED_PARSE_FAILED" 25
@@ -156,12 +182,12 @@ fetch_diagnosis() {
   local hdr_file="/tmp/phase3-step4-${attempt_id}.hdr"
   local status_line
   if ! curl --noproxy 127.0.0.1,localhost -sS -D "$hdr_file" -o "$out_file" "$url"; then
-    echo "CURL_FAILED=$url"
+    log_line "CURL_FAILED=$url"
     fail "CURL_FAILED_${attempt_id}" 30
   fi
   status_line="$(sed -n '1p' "$hdr_file" 2>/dev/null || true)"
   if ! echo "$status_line" | grep -qE "200"; then
-    echo "CURL_FAILED=$url"
+    log_line "CURL_FAILED=$url"
     fail "CURL_FAILED_${attempt_id}" 30
   fi
 }
@@ -258,7 +284,7 @@ print(json.dumps(snippet, ensure_ascii=False))
 PY
 )"
 
-export OPENAPI_STATUS PORT SNIP_ERROR SNIP_SKIP SNIP_SLOW REPORT_PATH ATTEMPT_ERROR ATTEMPT_SKIP ATTEMPT_SLOW
+export OPENAPI_STATUS PORT SNIP_ERROR SNIP_SKIP SNIP_SLOW REPORT_PATH ATTEMPT_ERROR ATTEMPT_SKIP ATTEMPT_SLOW DEVLOG_PATH
 python - <<'PY'
 import os
 from datetime import datetime, timezone
@@ -320,9 +346,48 @@ else:
 report_path.write_text(content)
 PY
 
+python - <<'PY'
+import os
+import re
+from pathlib import Path
+
+devlog_path = Path(os.environ["DEVLOG_PATH"])
+attempt_error = os.environ["ATTEMPT_ERROR"]
+attempt_skip = os.environ["ATTEMPT_SKIP"]
+attempt_slow = os.environ["ATTEMPT_SLOW"]
+
+entry = (
+    "- 任务22（Phase3 Step4 单命令回归）：提交 待提交；"
+    "用例 T18-AUTO-01；"
+    "报告段落 Phase3 Step4 单命令回归证据；"
+    "RUNBOOK 入口 Phase3 单命令回归入口；"
+    f"attempt_id error={attempt_error} skip={attempt_skip} slow={attempt_slow}"
+)
+
+content = devlog_path.read_text()
+pattern = r"^\\- 任务22（Phase3 Step4 单命令回归）：.*$"
+
+if re.search(pattern, content, flags=re.M):
+    content = re.sub(pattern, entry, content, count=1, flags=re.M)
+else:
+    lines = content.splitlines()
+    insert_idx = None
+    for idx, line in enumerate(lines):
+        if "任务21（Phase3 Step3 运行入口稳态化）" in line:
+            insert_idx = idx + 1
+            break
+    if insert_idx is None:
+        lines.append(entry)
+    else:
+        lines.insert(insert_idx, entry)
+    content = "\n".join(lines) + "\n"
+
+devlog_path.write_text(content)
+PY
+
 PLAN_STATUS="PASS" PLAN_REASON="" PLAN_PATH="$PLAN_PATH" update_plan_status "PASS" ""
 
-echo "SUMMARY: BACKEND_PORT=${PORT}"
-echo "SUMMARY: ATTEMPT_ERROR=${ATTEMPT_ERROR} DIAG=E_ERROR_OCCURRED"
-echo "SUMMARY: ATTEMPT_SKIP=${ATTEMPT_SKIP} DIAG=E_STEP_SKIPPED"
-echo "SUMMARY: ATTEMPT_SLOW=${ATTEMPT_SLOW} DIAG=E_TOO_SLOW"
+log_line "SUMMARY: BACKEND_PORT=${PORT}"
+log_line "SUMMARY: ATTEMPT_ERROR=${ATTEMPT_ERROR} DIAG=E_ERROR_OCCURRED"
+log_line "SUMMARY: ATTEMPT_SKIP=${ATTEMPT_SKIP} DIAG=E_STEP_SKIPPED"
+log_line "SUMMARY: ATTEMPT_SLOW=${ATTEMPT_SLOW} DIAG=E_TOO_SLOW"
