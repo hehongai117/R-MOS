@@ -708,3 +708,12 @@
     - `HTTP/1.1 200 OK`（或等价 `200`）
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step3 运行入口稳态化证据`
   - 标签：P3
+### 任务18（Phase3 Step4 单命令回归）
+
+- 用例编号：T18-AUTO-01（单命令 Phase3 回归）（PASS）
+  - 角色：开发
+  - 前置条件：后端可启动并生成诊断样本
+  - 命令：`bash r-mos-backend/scripts/run_phase3_regression.sh`
+  - 期望结果：自动完成启动、seed、采证与文档回填
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step4 单命令回归证据`
+  - 标签：P3

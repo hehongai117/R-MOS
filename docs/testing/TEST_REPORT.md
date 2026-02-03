@@ -1336,3 +1336,34 @@ HTTP/1.1 200 OK
 HTTP/1.1 200 OK
 {"reportVersion":"v1","attemptId":25,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","findings":["步骤耗时偏长"]}
 ```
+
+<!-- PHASE3_STEP4_START -->
+### Phase3 Step4 单命令回归证据
+
+- 运行时间：2026-02-03T09:17:26.711242+00:00
+- 运行标识：2098c54a94644627bab59ddda8d19123
+- 后端端口：`8000`
+- attempt_id：error=32 skip=33 slow=34
+
+#### 最新一次运行
+
+**openapi**
+```
+HTTP/1.1 200 OK
+```
+
+**diagnosis（attempt_id=32）**
+```
+{"attemptId": 32, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
+```
+
+**diagnosis（attempt_id=33）**
+```
+{"attemptId": 33, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=34）**
+```
+{"attemptId": 34, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
+```
+<!-- PHASE3_STEP4_END -->
