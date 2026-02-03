@@ -717,3 +717,49 @@
   - 期望结果：自动完成启动、seed、采证与文档回填
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step4 单命令回归证据`
   - 标签：P3
+
+### 任务19（Phase3 Step5 全栈端到端回归）
+
+- 用例编号：T19-E2E-API-01（规则命中与步骤诊断 API 回归）（PASS）
+  - 角色：开发
+  - 前置条件：后端启动；已生成本次回归 attempt_id
+  - 实测端口与样本：backend_port=8000，attempt_id error=35 skip=36 slow=37
+  - 验收命令（curl）：
+    ```bash
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:<BACKEND_PORT>/api/v1/attempts/<A_ERR>/evidence
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:<BACKEND_PORT>/api/v1/attempts/<A_ERR>/diagnosis
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:<BACKEND_PORT>/api/v1/attempts/<A_SKIP>/evidence
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:<BACKEND_PORT>/api/v1/attempts/<A_SKIP>/diagnosis
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:<BACKEND_PORT>/api/v1/attempts/<A_SLOW>/evidence
+    curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:<BACKEND_PORT>/api/v1/attempts/<A_SLOW>/diagnosis
+    ```
+  - 期望结果（关键字段+状态码）：
+    - evidence：`200` 且 `summary.total_steps`、`summary.error_count/skip_count/duration_ms` 可见
+    - diagnosis：`200` 且 `ruleId/diagnosisCode/severity` 命中；`stepDiagnoses` 存在非 OK 项
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step5 全栈端到端回归证据`
+  - 标签：P3
+
+- 用例编号：T19-E2E-UI-01（诊断页 UI 冒烟）（PASS）
+  - 角色：教师
+  - 前置条件：前端 dev server 启动；后端可用
+  - 实测端口与样本：frontend_port=3000，attempt_id error=35 skip=36 slow=37
+  - UI 路径验收：
+    - `http://localhost:<FRONTEND_PORT>/teaching/attempts/<A_ERR>/diagnosis`
+    - `http://localhost:<FRONTEND_PORT>/teaching/attempts/<A_SKIP>/diagnosis`
+    - `http://localhost:<FRONTEND_PORT>/teaching/attempts/<A_SLOW>/diagnosis`
+  - 期望结果：
+    - 文案命中：错误/跳过/耗时偏长
+    - 步骤诊断区块可展开；触发步骤非 OK 可见
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step5 全栈端到端回归证据`
+  - 标签：P3
+
+- 用例编号：T19-E2E-OPS-01（端口策略与入口验证）（PASS）
+  - 角色：开发
+  - 前置条件：按照 RUNBOOK 启动后端/前端
+  - 验收点：
+    - 记录实际 `BACKEND_PORT`/`FRONTEND_PORT`（本次为 8000/3000）
+    - openapi `200`
+  - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step5 全栈端到端回归证据`
+  - 标签：P3
+
+- T18 失败原因：BACKEND_START_FAILED

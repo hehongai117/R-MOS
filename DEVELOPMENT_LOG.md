@@ -23,7 +23,8 @@
 - 任务19（Phase3 Step2 触发步骤定位）：提交 b409894、（本次文档提交）；用例 T16-STEPDIAG-01~T16-STEPDIAG-03；ADR N/A；报告段落 Phase3 Step2 步骤诊断下钻证据
 - 任务20（Phase3 Step2 主目录合并回归）：提交 （本次文档提交）；用例 T16-STEPDIAG-01~T16-STEPDIAG-03；ADR N/A；报告段落 主目录回归验收（Phase3 Step2 合并）
 - 任务21（Phase3 Step3 运行入口稳态化）：提交 （本次脚本与文档提交）；用例 T17-OPS-01；ADR N/A；报告段落 Phase3 Step3 运行入口稳态化证据；RUNBOOK 章节 后端端口绑定失败（EPERM / Operation not permitted）
-- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=32 skip=33 slow=34
+- 任务22（Phase3 Step4 单命令回归）：提交 8ab844e；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=32 skip=33 slow=34
+- 任务23（Phase3 Step5 全栈端到端回归）：提交 本次收口提交；用例 T19-E2E-API-01/T19-E2E-UI-01/T19-E2E-OPS-01；报告段落 Phase3 Step5（T19）API + UI 证据；端口 backend=8000 frontend=3000；attempt_id 35/36/37；证据来源 宿主机终端 curl + 浏览器 UI 冒烟；未执行 git push（推送延后）
 - Phase1 验收：基线 280878d；报告 docs/testing/TEST_REPORT.md；阻塞 BLOCK-001；缺陷 DEF-001、DEF-002（未修复）
 
 - 主目录合并前备份路径：`/tmp/phase2-merge-backup-20260131-195012`；备份确认无差异已清理

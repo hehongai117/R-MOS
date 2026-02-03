@@ -1340,10 +1340,10 @@ HTTP/1.1 200 OK
 <!-- PHASE3_STEP4_START -->
 ### Phase3 Step4 单命令回归证据
 
-- 运行时间：2026-02-03T09:17:26.711242+00:00
-- 运行标识：2098c54a94644627bab59ddda8d19123
+- 运行时间：2026-02-03T09:30:27.766668+00:00
+- 运行标识：6e3f307d52ef49268a4cbd7407ffd0b1
 - 后端端口：`8000`
-- attempt_id：error=32 skip=33 slow=34
+- attempt_id：error=35 skip=36 slow=37
 
 #### 最新一次运行
 
@@ -1352,18 +1352,68 @@ HTTP/1.1 200 OK
 HTTP/1.1 200 OK
 ```
 
-**diagnosis（attempt_id=32）**
+**diagnosis（attempt_id=35）**
 ```
-{"attemptId": 32, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
-```
-
-**diagnosis（attempt_id=33）**
-```
-{"attemptId": 33, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+{"attemptId": 35, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
 ```
 
-**diagnosis（attempt_id=34）**
+**diagnosis（attempt_id=36）**
 ```
-{"attemptId": 34, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
+{"attemptId": 36, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=37）**
+```
+{"attemptId": 37, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
 ```
 <!-- PHASE3_STEP4_END -->
+
+### Phase3 Step5（T19）API + UI 证据
+
+- 前置：Step4 文档收口提交=8ab844e；未执行 git push
+- 环境：backend_port=8000；frontend_port=3000
+
+**回归脚本 SUMMARY**
+```
+SUMMARY: BACKEND_PORT=8000
+SUMMARY: ATTEMPT_ERROR=35 DIAG=E_ERROR_OCCURRED
+SUMMARY: ATTEMPT_SKIP=36 DIAG=E_STEP_SKIPPED
+SUMMARY: ATTEMPT_SLOW=37 DIAG=E_TOO_SLOW
+```
+
+**API 证据**
+- attempt 35 evidence
+```
+HTTP/1.1 200 OK
+{"bundleId":"db1a2fa1-f754-4577-981b-ef084dd05087","taskId":19,"attemptId":35,"summary":{"task_id":19,"task_status":"completed","total_events":2,"snapshot_count":0,"total_steps":2,"skip_count":0,"error_count":1,"duration_ms":1000,"final_score":100,"is_passed":true}}
+```
+- attempt 35 diagnosis
+```
+HTTP/1.1 200 OK
+{"reportVersion":"v1","attemptId":35,"diagnosisCode":"E_ERROR_OCCURRED","ruleId":"R-DIAG-001","severity":"HIGH","findings":["存在错误步骤"],"stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"E_ERROR_OCCURRED","severity":"HIGH","findings":["该步骤存在错误"]},{"stepIndex":2,"stepDiagnosisCode":"OK"}]}
+```
+- attempt 36 evidence
+```
+HTTP/1.1 200 OK
+{"bundleId":"fa86ed15-df3c-4687-b29b-94127d3dff22","taskId":20,"attemptId":36,"summary":{"task_id":20,"task_status":"completed","total_events":3,"snapshot_count":0,"total_steps":2,"skip_count":1,"error_count":0,"duration_ms":1000,"final_score":100,"is_passed":true}}
+```
+- attempt 36 diagnosis
+```
+HTTP/1.1 200 OK
+{"reportVersion":"v1","attemptId":36,"diagnosisCode":"E_STEP_SKIPPED","ruleId":"R-DIAG-002","severity":"MEDIUM","findings":["存在跳过步骤"],"stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"E_STEP_SKIPPED","severity":"MEDIUM","findings":["该步骤被跳过"]},{"stepIndex":2,"stepDiagnosisCode":"OK"}]}
+```
+- attempt 37 evidence
+```
+HTTP/1.1 200 OK
+{"bundleId":"ebdc6abf-d234-452e-a5a0-2ad4143cba45","taskId":21,"attemptId":37,"summary":{"task_id":21,"task_status":"completed","total_events":2,"snapshot_count":0,"total_steps":2,"skip_count":0,"error_count":0,"duration_ms":10000,"final_score":100,"is_passed":true}}
+```
+- attempt 37 diagnosis
+```
+HTTP/1.1 200 OK
+{"reportVersion":"v1","attemptId":37,"diagnosisCode":"E_TOO_SLOW","ruleId":"R-DIAG-003","severity":"LOW","findings":["步骤耗时偏长"],"stepDiagnoses":[{"stepIndex":1,"stepDiagnosisCode":"OK"},{"stepIndex":2,"stepDiagnosisCode":"E_TOO_SLOW","severity":"LOW","findings":["步骤耗时偏长"]}]}
+```
+
+**UI 冒烟（frontend_port=3000）**
+- http://localhost:3000/teaching/attempts/35/diagnosis：教师文案“存在错误步骤”，步骤诊断可展开，stepIndex=1 为 E_ERROR_OCCURRED
+- http://localhost:3000/teaching/attempts/36/diagnosis：教师文案“存在跳过步骤”，步骤诊断可展开，stepIndex=1 为 E_STEP_SKIPPED
+- http://localhost:3000/teaching/attempts/37/diagnosis：教师文案“步骤耗时偏长”，步骤诊断可展开，stepIndex=2 为 E_TOO_SLOW
