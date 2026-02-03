@@ -262,6 +262,7 @@ export OPENAPI_STATUS PORT SNIP_ERROR SNIP_SKIP SNIP_SLOW REPORT_PATH ATTEMPT_ER
 python - <<'PY'
 import os
 from datetime import datetime, timezone
+from uuid import uuid4
 from pathlib import Path
 
 report_path = Path(os.environ["REPORT_PATH"])
@@ -281,6 +282,7 @@ block = f"""{start}
 ### Phase3 Step4 单命令回归证据
 
 - 运行时间：{datetime.now(timezone.utc).isoformat()}
+- 运行标识：{uuid4().hex}
 - 后端端口：`{port}`
 - attempt_id：error={attempt_error} skip={attempt_skip} slow={attempt_slow}
 
