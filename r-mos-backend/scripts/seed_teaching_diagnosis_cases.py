@@ -41,6 +41,10 @@ CASE_SOP_NAME = "诊断规则样本SOP"
 CASE_ASSIGNMENT_TITLE = "诊断规则样本作业"
 CASE_TASK_PREFIX = "诊断规则样本"
 
+def now_utc_naive() -> datetime:
+    """Return naive UTC datetime for TIMESTAMP WITHOUT TIME ZONE columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 async def ensure_tables() -> None:
     async with engine.begin() as conn:
@@ -216,7 +220,7 @@ def _case_list(case: str) -> List[str]:
 
 
 async def create_case(session: AsyncSession, *, case: str, assignment: Assignment, sop: SOP, policy: GuidancePolicy) -> int:
-    now = datetime.now(timezone.utc)
+    now = now_utc_naive()
     if case == "slow":
         started_at = now - timedelta(seconds=10)
         completed_at = now
