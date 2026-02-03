@@ -334,6 +334,93 @@
 - P1：API-02、API-10、API-13、API-14、API-15、API-16、API-17、WS-02、WS-03、WS-04
 - P2：API-01、API-18、API-19、API-20
 
+## 任务6：自动化覆盖策略（`Playwright`）
+
+### 自动化范围
+- 覆盖 P0/P1 主流程与关键按钮
+- 关键接口做 `API` 级回归，前端做端到端冒烟
+- `WebSocket` 连接稳定性纳入自动化监控
+
+### 用例模板
+- 用例编号：AUTO-xx
+- 入口：URL/按钮
+- 步骤：操作序列
+- 断言：状态码/页面可见性/关键字段
+- 证据：截图/日志片段/返回体片段
+- 标签：P0/P1/P2
+
+### 自动化用例清单
+- 用例编号：AUTO-01
+  - 入口：`/sops`
+  - 步骤：加载列表 → 点击“开始训练”
+  - 断言：任务创建成功并跳转 `/tasks/:taskId`
+  - 证据：页面 URL + 任务 ID
+  - 标签：P0
+- 用例编号：AUTO-02
+  - 入口：`/tasks/:taskId`
+  - 步骤：执行下一步
+  - 断言：步骤执行成功，状态更新或进入报告
+  - 证据：任务状态/成功提示
+  - 标签：P0
+- 用例编号：AUTO-03
+  - 入口：`/reports/:taskId`
+  - 步骤：加载报告
+  - 断言：评分与步骤表格可见
+  - 证据：报告页面截图
+  - 标签：P0
+- 用例编号：AUTO-04
+  - 入口：`/teaching/assignments`
+  - 步骤：学生入口开始作业 → 跳转尝试页
+  - 断言：出现尝试详情与任务信息
+  - 证据：尝试编号与状态
+  - 标签：P0
+- 用例编号：AUTO-05
+  - 入口：`/teaching/attempts/:id/evidence`
+  - 步骤：加载证据摘要
+  - 断言：summary 字段可见
+  - 证据：摘要字段截图
+  - 标签：P0
+- 用例编号：AUTO-06
+  - 入口：`/teaching/attempts/:id/diagnosis`
+  - 步骤：加载诊断报告
+  - 断言：diagnosis_code、severity、rule_id 可见
+  - 证据：诊断页截图
+  - 标签：P0
+- 用例编号：AUTO-07
+  - 入口：`/admin/faults`
+  - 步骤：打开新建弹窗 → 提交 → 刷新列表
+  - 断言：列表出现新记录
+  - 证据：列表行截图
+  - 标签：P1
+- 用例编号：AUTO-08
+  - 入口：`/monitor`
+  - 步骤：建立 `WebSocket` 连接
+  - 断言：状态为 connected，收到 telemetry
+  - 证据：连接状态与日志
+  - 标签：P1
+
+### 裁决系统专项测试
+- 用例编号：ADJ-01
+  - 关联文件：`r-mos-frontend/src/adjudication/__tests__/p4_mode.test.ts`
+  - 场景：教学模式失败返回提示并允许重试
+  - 断言：hint 非空且 allowRetry=true
+  - 标签：P1
+- 用例编号：ADJ-02
+  - 关联文件：`r-mos-frontend/src/adjudication/__tests__/p4_mode.test.ts`
+  - 场景：教学模式失败后 retry 回到 IDLE
+  - 断言：retryStep=true 且状态为 IDLE
+  - 标签：P1
+- 用例编号：ADJ-03
+  - 关联文件：`r-mos-frontend/src/adjudication/__tests__/p4_mode.test.ts`
+  - 场景：考试倒计时格式与紧急判定
+  - 断言：格式为 `04:00` 且 urgent=true
+  - 标签：P2
+- 用例编号：ADJ-04
+  - 关联文件：`r-mos-frontend/src/adjudication/__tests__/p4_mode.test.ts`
+  - 场景：存储 Mock 就绪标记
+  - 断言：`__RMOS_TEST_STORAGE_READY__` 为 true
+  - 标签：P2
+
 ## 阶段一回归矩阵（任务1-任务6）
 
 > 说明：所有用例优先使用 `python r-mos-backend/scripts/seed_teaching_demo.py --reset` 生成教学演示数据。  
