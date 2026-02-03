@@ -5,7 +5,7 @@ import argparse
 import asyncio
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, List
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
@@ -216,7 +216,7 @@ def _case_list(case: str) -> List[str]:
 
 
 async def create_case(session: AsyncSession, *, case: str, assignment: Assignment, sop: SOP, policy: GuidancePolicy) -> int:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if case == "slow":
         started_at = now - timedelta(seconds=10)
         completed_at = now

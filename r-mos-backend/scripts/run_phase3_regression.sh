@@ -139,7 +139,15 @@ if ! echo "$OPENAPI_STATUS" | grep -qE "200"; then
   fail "OPENAPI_FAILED" 20
 fi
 
-python "$ROOT_DIR/scripts/seed_teaching_diagnosis_cases.py" --case all
+SEED_OUTPUT="$(python "$ROOT_DIR/scripts/seed_teaching_diagnosis_cases.py" --case all 2>&1)"
+echo "$SEED_OUTPUT"
+ATTEMPT_ERROR="$(echo "$SEED_OUTPUT" | grep -nE 'case=error' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1)"
+ATTEMPT_SKIP="$(echo "$SEED_OUTPUT" | grep -nE 'case=skip' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1)"
+ATTEMPT_SLOW="$(echo "$SEED_OUTPUT" | grep -nE 'case=slow' | sed -nE 's/.*attempt_id=([0-9]+).*/\1/p' | head -n 1)"
+
+if [[ -z "$ATTEMPT_ERROR" || -z "$ATTEMPT_SKIP" || -z "$ATTEMPT_SLOW" ]]; then
+  fail "SEED_PARSE_FAILED" 25
+fi
 
 fetch_diagnosis() {
   local attempt_id="$1"
@@ -158,30 +166,31 @@ fetch_diagnosis() {
   fi
 }
 
-TMP_23="/tmp/phase3-step4-23.json"
-TMP_24="/tmp/phase3-step4-24.json"
-TMP_25="/tmp/phase3-step4-25.json"
+TMP_ERROR="/tmp/phase3-step4-${ATTEMPT_ERROR}.json"
+TMP_SKIP="/tmp/phase3-step4-${ATTEMPT_SKIP}.json"
+TMP_SLOW="/tmp/phase3-step4-${ATTEMPT_SLOW}.json"
 
-fetch_diagnosis 23 "$TMP_23"
-fetch_diagnosis 24 "$TMP_24"
-fetch_diagnosis 25 "$TMP_25"
+fetch_diagnosis "$ATTEMPT_ERROR" "$TMP_ERROR"
+fetch_diagnosis "$ATTEMPT_SKIP" "$TMP_SKIP"
+fetch_diagnosis "$ATTEMPT_SLOW" "$TMP_SLOW"
 
-grep -qE '"stepIndex":1' "$TMP_23" || fail "DIAG23_STEPINDEX" 40
-grep -qE '"stepDiagnosisCode":"E_ERROR_OCCURRED"' "$TMP_23" || fail "DIAG23_CODE" 41
-grep -qE '"ruleId":"R-DIAG-001"' "$TMP_23" || fail "DIAG23_RULE" 42
+grep -qE '"stepIndex":1' "$TMP_ERROR" || fail "DIAG_ERROR_STEPINDEX" 40
+grep -qE '"stepDiagnosisCode":"E_ERROR_OCCURRED"' "$TMP_ERROR" || fail "DIAG_ERROR_CODE" 41
+grep -qE '"ruleId":"R-DIAG-001"' "$TMP_ERROR" || fail "DIAG_ERROR_RULE" 42
 
-grep -qE '"stepIndex":1' "$TMP_24" || fail "DIAG24_STEPINDEX" 43
-grep -qE '"stepDiagnosisCode":"E_STEP_SKIPPED"' "$TMP_24" || fail "DIAG24_CODE" 44
-grep -qE '"ruleId":"R-DIAG-002"' "$TMP_24" || fail "DIAG24_RULE" 45
+grep -qE '"stepIndex":1' "$TMP_SKIP" || fail "DIAG_SKIP_STEPINDEX" 43
+grep -qE '"stepDiagnosisCode":"E_STEP_SKIPPED"' "$TMP_SKIP" || fail "DIAG_SKIP_CODE" 44
+grep -qE '"ruleId":"R-DIAG-002"' "$TMP_SKIP" || fail "DIAG_SKIP_RULE" 45
 
-grep -qE '"stepIndex":2' "$TMP_25" || fail "DIAG25_STEPINDEX" 46
-grep -qE '"stepDiagnosisCode":"E_TOO_SLOW"' "$TMP_25" || fail "DIAG25_CODE" 47
-grep -qF '步骤耗时偏长' "$TMP_25" || fail "DIAG25_FINDING" 48
+grep -qE '"stepIndex":2' "$TMP_SLOW" || fail "DIAG_SLOW_STEPINDEX" 46
+grep -qE '"stepDiagnosisCode":"E_TOO_SLOW"' "$TMP_SLOW" || fail "DIAG_SLOW_CODE" 47
+grep -qF '步骤耗时偏长' "$TMP_SLOW" || fail "DIAG_SLOW_FINDING" 48
 
-SNIP_23="$(python - <<'PY'
+SNIP_ERROR="$(TMP_ERROR="$TMP_ERROR" python - <<'PY'
 import json
+import os
 from pathlib import Path
-data = json.loads(Path("/tmp/phase3-step4-23.json").read_text())
+data = json.loads(Path(os.environ["TMP_ERROR"]).read_text())
 step = next((s for s in data.get("stepDiagnoses", []) if s.get("stepIndex") == 1), {})
 snippet = {
     "attemptId": data.get("attemptId"),
@@ -201,10 +210,11 @@ print(json.dumps(snippet, ensure_ascii=False))
 PY
 )"
 
-SNIP_24="$(python - <<'PY'
+SNIP_SKIP="$(TMP_SKIP="$TMP_SKIP" python - <<'PY'
 import json
+import os
 from pathlib import Path
-data = json.loads(Path("/tmp/phase3-step4-24.json").read_text())
+data = json.loads(Path(os.environ["TMP_SKIP"]).read_text())
 step = next((s for s in data.get("stepDiagnoses", []) if s.get("stepIndex") == 1), {})
 snippet = {
     "attemptId": data.get("attemptId"),
@@ -224,10 +234,11 @@ print(json.dumps(snippet, ensure_ascii=False))
 PY
 )"
 
-SNIP_25="$(python - <<'PY'
+SNIP_SLOW="$(TMP_SLOW="$TMP_SLOW" python - <<'PY'
 import json
+import os
 from pathlib import Path
-data = json.loads(Path("/tmp/phase3-step4-25.json").read_text())
+data = json.loads(Path(os.environ["TMP_SLOW"]).read_text())
 step = next((s for s in data.get("stepDiagnoses", []) if s.get("stepIndex") == 2), {})
 snippet = {
     "attemptId": data.get("attemptId"),
@@ -247,18 +258,21 @@ print(json.dumps(snippet, ensure_ascii=False))
 PY
 )"
 
-export OPENAPI_STATUS PORT SNIP_23 SNIP_24 SNIP_25 REPORT_PATH
+export OPENAPI_STATUS PORT SNIP_ERROR SNIP_SKIP SNIP_SLOW REPORT_PATH ATTEMPT_ERROR ATTEMPT_SKIP ATTEMPT_SLOW
 python - <<'PY'
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 report_path = Path(os.environ["REPORT_PATH"])
 port = os.environ["PORT"]
 openapi_status = os.environ["OPENAPI_STATUS"]
-snip_23 = os.environ["SNIP_23"]
-snip_24 = os.environ["SNIP_24"]
-snip_25 = os.environ["SNIP_25"]
+snip_error = os.environ["SNIP_ERROR"]
+snip_skip = os.environ["SNIP_SKIP"]
+snip_slow = os.environ["SNIP_SLOW"]
+attempt_error = os.environ["ATTEMPT_ERROR"]
+attempt_skip = os.environ["ATTEMPT_SKIP"]
+attempt_slow = os.environ["ATTEMPT_SLOW"]
 
 start = "<!-- PHASE3_STEP4_START -->"
 end = "<!-- PHASE3_STEP4_END -->"
@@ -266,8 +280,9 @@ end = "<!-- PHASE3_STEP4_END -->"
 block = f"""{start}
 ### Phase3 Step4 单命令回归证据
 
-- 运行时间：{datetime.utcnow().isoformat()}Z
+- 运行时间：{datetime.now(timezone.utc).isoformat()}
 - 后端端口：`{port}`
+- attempt_id：error={attempt_error} skip={attempt_skip} slow={attempt_slow}
 
 #### 最新一次运行
 
@@ -276,19 +291,19 @@ block = f"""{start}
 {openapi_status}
 ```
 
-**diagnosis（attempt_id=23）**
+**diagnosis（attempt_id={attempt_error}）**
 ```
-{snip_23}
-```
-
-**diagnosis（attempt_id=24）**
-```
-{snip_24}
+{snip_error}
 ```
 
-**diagnosis（attempt_id=25）**
+**diagnosis（attempt_id={attempt_skip}）**
 ```
-{snip_25}
+{snip_skip}
+```
+
+**diagnosis（attempt_id={attempt_slow}）**
+```
+{snip_slow}
 ```
 {end}"""
 
@@ -306,6 +321,6 @@ PY
 PLAN_STATUS="PASS" PLAN_REASON="" PLAN_PATH="$PLAN_PATH" update_plan_status "PASS" ""
 
 echo "SUMMARY: BACKEND_PORT=${PORT}"
-echo "SUMMARY: DIAG23=E_ERROR_OCCURRED"
-echo "SUMMARY: DIAG24=E_STEP_SKIPPED"
-echo "SUMMARY: DIAG25=E_TOO_SLOW"
+echo "SUMMARY: ATTEMPT_ERROR=${ATTEMPT_ERROR} DIAG=E_ERROR_OCCURRED"
+echo "SUMMARY: ATTEMPT_SKIP=${ATTEMPT_SKIP} DIAG=E_STEP_SKIPPED"
+echo "SUMMARY: ATTEMPT_SLOW=${ATTEMPT_SLOW} DIAG=E_TOO_SLOW"
