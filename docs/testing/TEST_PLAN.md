@@ -322,6 +322,18 @@
   - 期望结果：`isDataStale=true`，显示“数据已过期”
   - 标签：P1
 
+## 任务5：风险分级（P0/P1/P2）
+
+### 分级原则
+- P0：核心闭环（创建任务、执行步骤、证据/诊断、评分报告）
+- P1：高频关键页与管理操作（列表/编辑/监控稳定性）
+- P2：低频或运维直测（适配器/观测等）
+
+### 分级汇总（按用例编号）
+- P0：API-03、API-04、API-05、API-06、API-07、API-08、API-09、API-11、API-12、WS-01
+- P1：API-02、API-10、API-13、API-14、API-15、API-16、API-17、WS-02、WS-03、WS-04
+- P2：API-01、API-18、API-19、API-20
+
 ## 阶段一回归矩阵（任务1-任务6）
 
 > 说明：所有用例优先使用 `python r-mos-backend/scripts/seed_teaching_demo.py --reset` 生成教学演示数据。  
