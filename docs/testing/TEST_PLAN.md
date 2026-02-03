@@ -156,6 +156,172 @@
 - 教师访问 `/admin/seed-data`：预期 403 或重定向到 `/` 并隐藏管理菜单。
 - 学生访问 `/teaching/attempts/:id/diagnosis`：预期 403 或不展示“查看诊断报告”按钮，直达 URL 被拦截。
 
+## 任务4：后端 API 清单与按钮交叉引用
+
+### Endpoint 文件覆盖（12）
+| 文件 | 主要路径 |
+| --- | --- |
+| `r-mos-backend/app/api/v1/endpoints/health.py` | `/api/v1/health` |
+| `r-mos-backend/app/api/v1/endpoints/adapter.py` | `/api/v1/adapter/*` |
+| `r-mos-backend/app/api/v1/endpoints/websocket.py` | `/ws/robot/status` |
+| `r-mos-backend/app/api/v1/endpoints/tasks.py` | `/api/v1/tasks/*` |
+| `r-mos-backend/app/api/v1/endpoints/sops.py` | `/api/v1/sops/*` |
+| `r-mos-backend/app/api/v1/endpoints/fault_cases.py` | `/api/v1/fault-cases/*` |
+| `r-mos-backend/app/api/v1/endpoints/incidents.py` | `/api/v1/incidents/*` |
+| `r-mos-backend/app/api/v1/endpoints/observations.py` | `/api/v1/observations/*` |
+| `r-mos-backend/app/api/v1/endpoints/evidence.py` | `/api/v1/evidence-bundles/*` |
+| `r-mos-backend/app/api/v1/endpoints/assessments.py` | `/api/v1/assessments/*`、`/api/v1/assessment-providers/*` |
+| `r-mos-backend/app/api/v1/endpoints/teaching.py` | `/api/v1/*`（教学域） |
+| `r-mos-backend/main.py` | `/` |
+
+### API 回归测试用例（含按钮映射）
+- 用例编号：API-01
+  - 关联文件：`r-mos-backend/main.py`
+  - 方法/路径：`GET /`
+  - 关联页面/按钮：系统可用性探针
+  - 期望结果：`200`，返回 service/version/status/health
+  - 标签：P2
+- 用例编号：API-02
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/health.py`
+  - 方法/路径：`GET /api/v1/health`
+  - 关联页面/按钮：系统可用性探针
+  - 期望结果：`200`，返回状态与依赖检查结果
+  - 标签：P1
+- 用例编号：API-03
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/sops.py`
+  - 方法/路径：`GET /api/v1/sops`
+  - 关联页面/按钮：`/sops` SOP 列表加载
+  - 期望结果：`200`，返回 SOP 列表
+  - 标签：P0
+- 用例编号：API-04
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/tasks.py`
+  - 方法/路径：`POST /api/v1/tasks`
+  - 关联页面/按钮：`/sops` → “开始训练”
+  - 期望结果：`201`，返回 task_id
+  - 标签：P0
+- 用例编号：API-05
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/tasks.py`
+  - 方法/路径：`GET /api/v1/tasks/{task_id}`
+  - 关联页面/按钮：`/tasks/:taskId` 加载
+  - 期望结果：`200`，返回任务详情
+  - 标签：P0
+- 用例编号：API-06
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/tasks.py`
+  - 方法/路径：`POST /api/v1/tasks/{task_id}/step`
+  - 关联页面/按钮：`/tasks/:taskId` → “执行下一步”
+  - 期望结果：`200`，返回步骤执行结果
+  - 标签：P0
+- 用例编号：API-07
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/tasks.py`
+  - 方法/路径：`GET /api/v1/tasks/{task_id}/report`
+  - 关联页面/按钮：`/reports/:taskId` 报告加载
+  - 期望结果：`200`，返回评分与步骤明细
+  - 标签：P0
+- 用例编号：API-08
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - 方法/路径：`GET /api/v1/assignments`
+  - 关联页面/按钮：`/teaching/assignments` 列表加载
+  - 期望结果：`200`，返回作业列表
+  - 标签：P0
+- 用例编号：API-09
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - 方法/路径：`POST /api/v1/assignments/{assignment_id}/attempts`
+  - 关联页面/按钮：`/teaching/assignments` → “开始”
+  - 期望结果：`201`，返回 attempt_id
+  - 标签：P0
+- 用例编号：API-10
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - 方法/路径：`GET /api/v1/assignments/{assignment_id}/attempts`
+  - 关联页面/按钮：`/teaching/assignments` → “查看提交”
+  - 期望结果：`200`，返回尝试列表
+  - 标签：P1
+- 用例编号：API-11
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - 方法/路径：`GET /api/v1/attempts/{attempt_id}/evidence`
+  - 关联页面/按钮：`/teaching/attempts/:id/evidence` 加载
+  - 期望结果：`200`，返回证据摘要
+  - 标签：P0
+- 用例编号：API-12
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - 方法/路径：`GET /api/v1/attempts/{attempt_id}/diagnosis`
+  - 关联页面/按钮：`/teaching/attempts/:id/diagnosis` 加载
+  - 期望结果：`200`，返回诊断报告
+  - 标签：P0
+- 用例编号：API-13
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/fault_cases.py`
+  - 方法/路径：`GET /api/v1/fault-cases`
+  - 关联页面/按钮：`/admin/faults` 列表加载
+  - 期望结果：`200`，返回故障案例列表
+  - 标签：P1
+- 用例编号：API-14
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/fault_cases.py`
+  - 方法/路径：`POST /api/v1/fault-cases`
+  - 关联页面/按钮：`/admin/faults` → “添加故障案例”
+  - 期望结果：`201`，新建成功
+  - 标签：P1
+- 用例编号：API-15
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/incidents.py`
+  - 方法/路径：`GET /api/v1/incidents`
+  - 关联页面/按钮：`/incidents` 列表加载
+  - 期望结果：`200`，返回事件列表
+  - 标签：P1
+- 用例编号：API-16
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/evidence.py`
+  - 方法/路径：`GET /api/v1/evidence-bundles`
+  - 关联页面/按钮：`/evidence` 列表加载
+  - 期望结果：`200`，返回证据包列表
+  - 标签：P1
+- 用例编号：API-17
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/assessments.py`
+  - 方法/路径：`GET /api/v1/assessments`
+  - 关联页面/按钮：`/assessments` 列表加载
+  - 期望结果：`200`，返回评估列表
+  - 标签：P1
+- 用例编号：API-18
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/observations.py`
+  - 方法/路径：`GET /api/v1/observations`
+  - 关联页面/按钮：接口直测
+  - 期望结果：`200`，返回观测数据列表
+  - 标签：P2
+- 用例编号：API-19
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/adapter.py`
+  - 方法/路径：`GET /api/v1/adapter/info`
+  - 关联页面/按钮：监控基础信息校验
+  - 期望结果：`200`，返回机器人信息
+  - 标签：P2
+- 用例编号：API-20
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/adapter.py`
+  - 方法/路径：`POST /api/v1/adapter/inject-fault`
+  - 关联页面/按钮：监控故障注入直测
+  - 期望结果：`200`，返回注入结果
+  - 标签：P2
+
+### `WebSocket` 连接测试用例
+- 用例编号：WS-01
+  - 关联文件：`r-mos-backend/app/api/v1/endpoints/websocket.py`
+  - 路径：`/ws/robot/status`
+  - 关联页面/按钮：`/monitor` 页面加载即连接
+  - 期望结果：连接成功，状态为 connected，收到 telemetry
+  - 标签：P0
+- 用例编号：WS-02
+  - 关联文件：`r-mos-frontend/src/hooks/useWebSocket.ts`
+  - 场景：收到 `type=ping` 时客户端返回 `pong`
+  - 关联页面/按钮：`/monitor` 心跳处理
+  - 期望结果：客户端发送 `pong`，连接不中断
+  - 标签：P1
+- 用例编号：WS-03
+  - 关联文件：`r-mos-frontend/src/hooks/useWebSocket.ts`
+  - 场景：服务端断开后指数退避重连
+  - 关联页面/按钮：`/monitor` → “点击重连”
+  - 期望结果：自动重连至上限，达到上限进入 failed
+  - 标签：P1
+- 用例编号：WS-04
+  - 关联文件：`r-mos-frontend/src/hooks/useWebSocket.ts`
+  - 场景：`5s` 无 telemetry 触发 stale
+  - 关联页面/按钮：`/monitor` 状态提示
+  - 期望结果：`isDataStale=true`，显示“数据已过期”
+  - 标签：P1
+
 ## 阶段一回归矩阵（任务1-任务6）
 
 > 说明：所有用例优先使用 `python r-mos-backend/scripts/seed_teaching_demo.py --reset` 生成教学演示数据。  
