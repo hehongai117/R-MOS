@@ -1,9 +1,21 @@
 """
 故障案例相关Pydantic Schema（V2.3修复版）
 """
-from pydantic import BaseModel, Field
+import re
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Any
 from datetime import datetime
+
+
+def sanitize_input(value: str) -> str:
+    """移除可能的脚本标签和危险字符"""
+    if not value:
+        return value
+    # 移除 <script> 标签及其内容
+    value = re.sub(r'<script[^>]*>.*?</script>', '', value, flags=re.IGNORECASE | re.DOTALL)
+    # 移除其他 HTML 标签
+    value = re.sub(r'<[^>]+>', '', value)
+    return value.strip()
 
 
 class FaultCaseBase(BaseModel):
@@ -17,6 +29,13 @@ class FaultCaseBase(BaseModel):
     symptoms: Optional[List[str]] = Field(None, description="故障症状")
     diagnosis_steps: Optional[List[str]] = Field(None, description="诊断步骤")
     solution_steps: Optional[List[str]] = Field(None, description="解决步骤")
+
+    @field_validator('name', 'description', 'category', mode='before')
+    @classmethod
+    def clean_text_fields(cls, v):
+        if isinstance(v, str):
+            return sanitize_input(v)
+        return v
 
 
 class FaultCaseCreate(FaultCaseBase):
@@ -34,6 +53,13 @@ class FaultCaseUpdate(BaseModel):
     symptoms: Optional[List[str]] = None
     diagnosis_steps: Optional[List[str]] = None
     solution_steps: Optional[List[str]] = None
+
+    @field_validator('name', 'description', 'category', mode='before')
+    @classmethod
+    def clean_text_fields(cls, v):
+        if isinstance(v, str):
+            return sanitize_input(v)
+        return v
 
 
 class FaultCaseResponse(FaultCaseBase):
