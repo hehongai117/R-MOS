@@ -1964,3 +1964,167 @@ retryStep 返回: true
 - BLOCK-NF-STAB-01：2 小时长跑需人工环境
 - BLOCK-NF-STAB-03：前端断线重连逻辑需浏览器环境
 - DEF-SEC-002：故障案例输入未清洗/未拒绝脚本注入
+
+## P2 测试批次（API/NF/ADJ）
+
+说明：P2 API 使用 `TestClient`；裁决系统使用 `node scripts/run-adjudication-tests.mjs`。  
+执行日期：2026-02-04 10:44~10:49  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+
+### API-01
+用例编号：API-01  
+执行日期：2026-02-04 10:44  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`GET /`  
+期望结果：`200`，返回服务信息  
+实际结果：`200`，service/version/status 正常  
+证据片段：
+```json
+{"status_code":200,"service":"R-MOS Backend","version":"2.2.0","status":"running"}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-18
+用例编号：API-18  
+执行日期：2026-02-04 10:44  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`GET /api/v1/observations`  
+期望结果：`200`，返回观测列表  
+实际结果：`500`，返回通用错误体  
+证据片段：
+```json
+{"status_code":500,"error_type":"InternalServerError","message":"服务器内部错误，请稍后重试","request_id":"72d9657c"}
+```
+结论：FAIL  
+关联缺陷：DEF-API-OBS-001（观测列表接口 500，疑似数据库连接权限问题）  
+
+### API-19
+用例编号：API-19  
+执行日期：2026-02-04 10:44  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`GET /api/v1/adapter/info`  
+期望结果：`200`，返回机器人信息  
+实际结果：`200`，robot_id=mock_robot_001  
+证据片段：
+```json
+{"status_code":200,"robot_id":"mock_robot_001","model":"MOCK_HUMANOID_V1"}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-20
+用例编号：API-20  
+执行日期：2026-02-04 10:44  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`POST /api/v1/adapter/inject-fault`（E001_OVERHEAT / knee_right / high）  
+期望结果：`200`，返回注入成功  
+实际结果：`200`，success=true  
+证据片段：
+```json
+{"status_code":200,"success":true,"fault_code":"E001_OVERHEAT","target_part":"knee_right"}
+```
+结论：PASS  
+关联缺陷：-  
+
+### NF-COMP-01
+用例编号：NF-COMP-01  
+执行日期：2026-02-04 10:45  
+执行人：Codex  
+环境信息：commit `e3935a4`  
+前置条件：可用浏览器环境  
+步骤：Chrome/Edge/Safari 打开核心页面  
+期望结果：页面布局正常  
+实际结果：无浏览器环境  
+证据片段：无（需人工/浏览器环境）  
+结论：BLOCKED  
+关联缺陷：BLOCK-NF-COMP-01（需浏览器环境）  
+
+### NF-COMP-02
+用例编号：NF-COMP-02  
+执行日期：2026-02-04 10:45  
+执行人：Codex  
+环境信息：commit `e3935a4`  
+前置条件：可用浏览器环境  
+步骤：窗口宽度 1280/1024/768 观察布局  
+期望结果：布局不溢出，关键按钮可见  
+实际结果：无浏览器环境  
+证据片段：无（需人工/浏览器环境）  
+结论：BLOCKED  
+关联缺陷：BLOCK-NF-COMP-02（需浏览器环境）  
+
+### NF-SEC-03
+用例编号：NF-SEC-03  
+执行日期：2026-02-04 10:44  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：构造非法观测数据触发 `500`，检查返回体是否泄露堆栈/敏感信息  
+期望结果：通用错误体，不含堆栈/数据库信息  
+实际结果：`500`，返回通用错误体，无堆栈信息  
+证据片段：
+```json
+{"status_code":500,"error_type":"InternalServerError","message":"服务器内部错误，请稍后重试","request_id":"40112687"}
+```
+结论：PASS  
+关联缺陷：-  
+
+### ADJ-03
+用例编号：ADJ-03  
+执行日期：2026-02-04 10:49  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `node scripts/run-adjudication-tests.mjs`  
+前置条件：无  
+步骤：运行裁决系统测试，读取考试倒计时格式与紧急判定  
+期望结果：格式为 `04:00` 且 urgent=true  
+实际结果：格式 `04:00`，urgent=true  
+证据片段：
+```text
+格式: 04:00
+紧急: true
+```
+结论：PASS  
+关联缺陷：-  
+
+### ADJ-04
+用例编号：ADJ-04  
+执行日期：2026-02-04 10:49  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `node scripts/run-adjudication-tests.mjs`  
+前置条件：无  
+步骤：运行裁决系统测试，检查存储 Mock 就绪标记  
+期望结果：`__RMOS_TEST_STORAGE_READY__ = true`  
+实际结果：标记已就绪  
+证据片段：
+```text
+预期：测试入口应设置 __RMOS_TEST_STORAGE_READY__ = true
+状态: ✅ PASSED
+```
+结论：PASS  
+关联缺陷：-  
+
+## 测试总结报告
+
+### 总体通过率
+- PASS：30
+- FAIL：3
+- BLOCKED：8
+- 总用例：41
+- 通过率：73.2%（PASS/总用例）
+
+### 未通过/阻塞用例清单
+- FAIL：NF-SEC-01、NF-SEC-02、API-18
+- BLOCKED：WS-01、NF-PERF-01、WS-03、WS-04、NF-STAB-01、NF-STAB-03、NF-COMP-01、NF-COMP-02
+
+### 缺陷清单及优先级建议
+- DEF-SEC-001：`/api/v1/fault-cases` 未鉴权可访问（已知设计缺口）｜建议优先级 P0
+- DEF-SEC-002：故障案例输入未清洗/未拒绝脚本注入｜建议优先级 P0
+- DEF-API-OBS-001：`/api/v1/observations` 返回 500（数据库连接权限/可用性问题）｜建议优先级 P1
