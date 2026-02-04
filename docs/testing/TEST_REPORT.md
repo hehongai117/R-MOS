@@ -1438,3 +1438,529 @@ HTTP/1.1 200 OK
 - http://localhost:3000/teaching/attempts/35/diagnosis：教师文案“存在错误步骤”，步骤诊断可展开，stepIndex=1 为 E_ERROR_OCCURRED
 - http://localhost:3000/teaching/attempts/36/diagnosis：教师文案“存在跳过步骤”，步骤诊断可展开，stepIndex=1 为 E_STEP_SKIPPED
 - http://localhost:3000/teaching/attempts/37/diagnosis：教师文案“步骤耗时偏长”，步骤诊断可展开，stepIndex=2 为 E_TOO_SLOW
+
+## P0 API 回归测试（API-03~API-12，TestClient）
+
+说明：本机端口绑定失败（Errno 1），本批次采用 `TestClient` 进程内方式执行。  
+执行日期：2026-02-03 22:46  
+环境信息：commit `e3935a4`，`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+
+### API-03
+用例编号：API-03  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：已执行 `r-mos-backend/scripts/seed_teaching_demo.py --reset`  
+步骤：`TestClient` 请求 `GET /api/v1/sops`  
+期望结果：`200`，返回 SOP 列表  
+实际结果：`200`，返回 `2` 条，首条 `sop_id=2`  
+证据片段：
+```json
+{"status_code":200,"count":2,"first_sop_id":2}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-04
+用例编号：API-04  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：存在 `sop_id=2`  
+步骤：`TestClient` 请求 `POST /api/v1/tasks`  
+期望结果：`200/201`，返回新建任务  
+实际结果：`200`，返回 `task_id=25`，`status=pending`  
+证据片段：
+```json
+{"status_code":200,"task_id":25,"status":"pending"}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-05
+用例编号：API-05  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`task_id=25`，已调用 `POST /api/v1/tasks/25/start`  
+步骤：`TestClient` 请求 `GET /api/v1/tasks/25`  
+期望结果：`200`，返回任务详情  
+实际结果：`200`，`status=in_progress`  
+证据片段：
+```json
+{"status_code":200,"task_id":25,"status":"in_progress"}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-06
+用例编号：API-06  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`task_id=25`，SOP 步骤数 `2`  
+步骤：`TestClient` 请求 `POST /api/v1/tasks/25/step`，按步骤序号依次执行  
+期望结果：每步 `200`，最终 `is_task_completed=true`  
+实际结果：执行 `2` 步，最后一步 `is_task_completed=true`  
+证据片段：
+```json
+{"status_code":200,"step_index":2,"snapshot_id":32,"is_task_completed":true}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-07
+用例编号：API-07  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`task_id=25` 已完成  
+步骤：`TestClient` 请求 `GET /api/v1/tasks/25/report`  
+期望结果：`200`，返回评分报告  
+实际结果：`200`，`final_score=100`，`is_passed=true`  
+证据片段：
+```json
+{"status_code":200,"final_score":100.0,"is_passed":true}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-08
+用例编号：API-08  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：已执行 `r-mos-backend/scripts/seed_teaching_demo.py --reset`  
+步骤：`TestClient` 请求 `GET /api/v1/assignments`  
+期望结果：`200`，返回作业列表  
+实际结果：`200`，列表数量 `1`，`assignment_id=18`  
+证据片段：
+```json
+{"status_code":200,"count":1,"assignment_id":18}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-09
+用例编号：API-09  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`assignment_id=18`，`student_id=1`，`task_id=25`  
+步骤：`TestClient` 请求 `POST /api/v1/assignments/18/attempts`  
+期望结果：`201`，返回尝试编号  
+实际结果：`201`，`attempt_id=41`，`attempt_index=1`  
+证据片段：
+```json
+{"status_code":201,"attempt_id":41,"attempt_index":1}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-10
+用例编号：API-10  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`assignment_id=18`  
+步骤：`TestClient` 请求 `GET /api/v1/assignments/18/attempts`  
+期望结果：`200`，返回尝试列表  
+实际结果：`200`，列表数量 `1`  
+证据片段：
+```json
+{"status_code":200,"count":1}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-11
+用例编号：API-11  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`attempt_id=41`  
+步骤：`TestClient` 请求 `GET /api/v1/attempts/41/evidence`  
+期望结果：`200`，返回证据摘要  
+实际结果：`200`，`bundleId=5daff4d9-4c8f-4cc3-876f-7dc01bda091c`，`summary.total_steps=2`  
+证据片段：
+```json
+{"status_code":200,"bundle_id":"5daff4d9-4c8f-4cc3-876f-7dc01bda091c","summary":{"total_steps":2,"error_count":0,"duration_ms":163}}
+```
+结论：PASS  
+关联缺陷：-
+
+### API-12
+用例编号：API-12  
+执行日期：2026-02-03 22:46  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`attempt_id=41`  
+步骤：`TestClient` 请求 `GET /api/v1/attempts/41/diagnosis`  
+期望结果：`200`，返回诊断报告  
+实际结果：`200`，`diagnosisCode=OK`，`ruleId=R-DIAG-000`，`severity=LOW`  
+证据片段：
+```json
+{"status_code":200,"diagnosis_code":"OK","rule_id":"R-DIAG-000","severity":"LOW"}
+```
+结论：PASS  
+关联缺陷：-
+
+## P0 非功能与 WebSocket 回归（TestClient/环境限制）
+
+### WS-01
+用例编号：WS-01  
+执行日期：2026-02-03 23:07  
+执行人：Codex  
+环境信息：commit `e3935a4`；尝试启动后端监听 `127.0.0.1:8000`  
+前置条件：无  
+步骤：启动 `uvicorn`，尝试绑定 `127.0.0.1:8000`  
+期望结果：WebSocket 连接可建立并接收 telemetry  
+实际结果：端口绑定失败，WebSocket 无法建立  
+证据片段：
+```text
+ERROR:    [Errno 1] error while attempting to bind on address ('127.0.0.1', 8000): operation not permitted
+```
+结论：BLOCKED  
+关联缺陷：BLOCK-WS-01（环境限制，端口绑定失败）
+
+### NF-PERF-01
+用例编号：NF-PERF-01  
+执行日期：2026-02-03 23:10  
+执行人：Codex  
+环境信息：commit `e3935a4`  
+前置条件：前端开发服务可访问  
+步骤：打开 `/teaching/assignments` 并记录首屏时间  
+期望结果：首屏 < 3s  
+实际结果：前端 dev server 未启动，无法测量  
+证据片段：无（需人工环境）  
+结论：BLOCKED  
+关联缺陷：BLOCK-NF-PERF-01（需前端 dev server）
+
+### NF-PERF-02
+用例编号：NF-PERF-02  
+执行日期：2026-02-03 23:09  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`  
+前置条件：已执行 `seed_teaching_demo.py --reset`  
+步骤：`GET /api/v1/assignments` 连续调用 20 次  
+期望结果：P95 < 500ms  
+实际结果：P95=13.19ms，min=6.95ms，max=15.18ms，avg=10.81ms  
+证据片段：
+```json
+{"p95_ms":13.19,"min_ms":6.95,"max_ms":15.18,"avg_ms":10.81}
+```
+结论：PASS  
+关联缺陷：-
+
+### NF-PERF-03
+用例编号：NF-PERF-03  
+执行日期：2026-02-03 23:09  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`  
+前置条件：`attempt_id=42`（稳定性批次首个尝试）  
+步骤：`GET /api/v1/attempts/42/evidence` 连续调用 20 次  
+期望结果：P95 < 800ms  
+实际结果：P95=18.66ms，min=14.95ms，max=19.44ms，avg=16.95ms  
+证据片段：
+```json
+{"attempt_id":42,"p95_ms":18.66,"min_ms":14.95,"max_ms":19.44,"avg_ms":16.95}
+```
+结论：PASS  
+关联缺陷：-
+
+### NF-STAB-02
+用例编号：NF-STAB-02  
+执行日期：2026-02-03 23:09  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`  
+前置条件：已执行 `seed_teaching_demo.py --reset`  
+步骤：连续执行 20 个完整尝试（创建任务 → 创建尝试 → 启动任务 → 执行步骤 → evidence/diagnosis）  
+期望结果：状态一致，全部返回 `200`  
+实际结果：20/20 一致  
+证据片段：
+```json
+{"total":20,"consistent":20,"first_task_id":26,"first_attempt_id":42}
+```
+结论：PASS  
+关联缺陷：-
+
+### NF-SEC-01
+用例编号：NF-SEC-01  
+执行日期：2026-02-03 23:10  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无鉴权头  
+步骤：`GET /api/v1/fault-cases`  
+期望结果：`401/403`  
+实际结果：`200`  
+证据片段：
+```json
+{"status_code":200}
+```
+结论：FAIL  
+关联缺陷：DEF-SEC-001（未鉴权可访问 `fault-cases`）
+
+## P1 测试批次（API/WS/NF/ADJ）
+
+说明：本机后端端口仍无法后台绑定，P1 API/WS 使用 `TestClient`；裁决系统使用 `node scripts/run-adjudication-tests.mjs`。
+执行日期：2026-02-04 10:00~10:05  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+
+### API-02
+用例编号：API-02  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：已执行 `r-mos-backend/scripts/seed_teaching_demo.py --reset`  
+步骤：`GET /api/v1/health`  
+期望结果：`200`，adapter/system 均为 up  
+实际结果：`200`，adapter=up，system=up，version=2.2.0  
+证据片段：
+```json
+{"status_code":200,"adapter_status":"up","system_status":"up","version":"2.2.0"}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-10
+用例编号：API-10  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：`assignment_id=20`，已创建 `POST /api/v1/assignments/20/attempts`（`attempt_id=64`）  
+步骤：`GET /api/v1/assignments/20/attempts`  
+期望结果：`200`，返回尝试列表  
+实际结果：`200`，列表包含 `attempt_id=63/64`  
+证据片段：
+```json
+{"status_code":200,"count":2,"attempt_ids":[63,64]}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-13
+用例编号：API-13  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：已有故障案例数据  
+步骤：`GET /api/v1/fault-cases`  
+期望结果：`200`，返回故障案例列表  
+实际结果：`200`，`total=3`，包含 `fault_code=E_P1_1770170410`  
+证据片段：
+```json
+{"status_code":200,"total":3,"last_fault_code":"E_P1_1770170410"}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-14
+用例编号：API-14  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`POST /api/v1/fault-cases`（`fault_code=E_P1_1770170410`）  
+期望结果：`201`，返回新建故障案例  
+实际结果：`201`，`id=3`  
+证据片段：
+```json
+{"status_code":201,"fault_code":"E_P1_1770170410","id":3}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-15
+用例编号：API-15  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`POST /api/v1/incidents` → `GET /api/v1/incidents`  
+期望结果：`201` 创建成功；列表可见  
+实际结果：`201`，`incident_id=f6235696-3ae0-437a-8896-1cce62b0089a`；列表 `total=2`  
+证据片段：
+```json
+{"create_status":201,"incident_id":"f6235696-3ae0-437a-8896-1cce62b0089a","list_total":2}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-16
+用例编号：API-16  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`POST /api/v1/evidence-bundles` → `GET /api/v1/evidence-bundles`  
+期望结果：`201` 创建成功；列表可见  
+实际结果：`201`，`evidence_bundle_id=77f4682f-a6d0-40f0-b5d2-9a8d00600907`；列表 `total=56`  
+证据片段：
+```json
+{"create_status":201,"evidence_bundle_id":"77f4682f-a6d0-40f0-b5d2-9a8d00600907","list_total":56}
+```
+结论：PASS  
+关联缺陷：-  
+
+### API-17
+用例编号：API-17  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`；执行方式 `TestClient`  
+前置条件：无  
+步骤：`POST /api/v1/assessment-providers` → `POST /api/v1/assessments` → `GET /api/v1/assessments`  
+期望结果：`201` 创建 provider/assessment；列表可见  
+实际结果：`201`，`provider_id=e2c6393d-d3c5-4ca1-bcf3-efa4fe21389f`；`assessment_id=c7096579-396c-4ec5-af60-ef37514b6c0f`  
+证据片段：
+```json
+{"provider_id":"e2c6393d-d3c5-4ca1-bcf3-efa4fe21389f","assessment_id":"c7096579-396c-4ec5-af60-ef37514b6c0f","list_total":2}
+```
+结论：PASS  
+关联缺陷：-  
+
+### WS-02
+用例编号：WS-02  
+执行日期：2026-02-04 10:04  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：连接 `/ws/robot/status`，收到 `ping` 后回 `pong`  
+期望结果：客户端回 `pong`，连接保持健康  
+实际结果：收到 `ping` 并回 `pong`，连接健康  
+证据片段：
+```json
+{"ping_received":true,"pong_sent":true,"connection_stats":{"total":1,"healthy":1},"state":{"is_healthy":true,"missed_pongs":0}}
+```
+结论：PASS  
+关联缺陷：-  
+
+### WS-03
+用例编号：WS-03  
+执行日期：2026-02-04 10:04  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：模拟断开 → 重新建立连接  
+期望结果：前端指数退避自动重连，达到上限进入 failed  
+实际结果：服务端侧可断开与重连；前端退避逻辑无法在无浏览器环境验证  
+证据片段：
+```json
+{"stats_after_connect":{"total":1},"stats_after_close":{"total":0},"stats_after_reconnect":{"total":1}}
+```
+结论：BLOCKED  
+关联缺陷：BLOCK-WS-03（需前端/浏览器验证重连退避）  
+
+### WS-04
+用例编号：WS-04  
+执行日期：2026-02-04 10:04  
+执行人：Codex  
+环境信息：commit `e3935a4`  
+前置条件：`/monitor` 前端可访问  
+步骤：保持 5s 无 telemetry，观察 stale 状态  
+期望结果：`isDataStale=true`，显示“数据已过期”  
+实际结果：前端 dev server 未启动，无法验证 UI stale 状态  
+证据片段：无（需人工/浏览器环境）  
+结论：BLOCKED  
+关联缺陷：BLOCK-WS-04（需前端/浏览器验证 stale 逻辑）  
+
+### NF-PERF-04
+用例编号：NF-PERF-04  
+执行日期：2026-02-04 10:04  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：WebSocket 可连接  
+步骤：统计 100 条 telemetry 消息间隔  
+期望结果：均值约 200ms，抖动 < 2x  
+实际结果：avg=201.44ms，p95=201.91ms，min=200.32ms，max=202.6ms  
+证据片段：
+```json
+{"samples":99,"avg_ms":201.44,"p95_ms":201.91,"min_ms":200.32,"max_ms":202.6}
+```
+结论：PASS  
+关联缺陷：-  
+
+### NF-STAB-01
+用例编号：NF-STAB-01  
+执行日期：2026-02-04 10:04  
+执行人：Codex  
+环境信息：commit `e3935a4`  
+前置条件：`/monitor` 前端可访问  
+步骤：持续运行 2 小时并观察状态  
+期望结果：无崩溃、无异常断开  
+实际结果：受时长与环境限制，未执行  
+证据片段：无（需人工长跑）  
+结论：BLOCKED  
+关联缺陷：BLOCK-NF-STAB-01（需人工长跑环境）  
+
+### NF-STAB-03
+用例编号：NF-STAB-03  
+执行日期：2026-02-04 10:04  
+执行人：Codex  
+环境信息：commit `e3935a4`  
+前置条件：`/monitor` 前端可访问  
+步骤：模拟断开 → 自动重连 → 手动点击重连  
+期望结果：退避重连生效，连接恢复后状态正常  
+实际结果：服务端侧可断开重连，但前端退避/按钮逻辑无法在无浏览器环境验证  
+证据片段：
+```json
+{"stats_after_connect":{"total":1,"healthy":1},"stats_after_close":{"total":0},"stats_after_reconnect":{"total":1,"healthy":1}}
+```
+结论：BLOCKED  
+关联缺陷：BLOCK-NF-STAB-03（需前端/浏览器验证重连逻辑）  
+
+### NF-SEC-02
+用例编号：NF-SEC-02  
+执行日期：2026-02-04 10:00  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `TestClient`  
+前置条件：无  
+步骤：故障案例创建提交脚本注入 payload  
+期望结果：后端拒绝或清洗输入  
+实际结果：`201` 创建成功，payload 原样保存  
+证据片段：
+```json
+{"status_code":201,"fault_code":"E_XSS_1770170411","name":"<script>alert('x')</script>"}
+```
+结论：FAIL  
+关联缺陷：DEF-SEC-002（故障案例输入未清洗/未拒绝脚本注入）  
+
+### ADJ-01
+用例编号：ADJ-01  
+执行日期：2026-02-04 10:05  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `node scripts/run-adjudication-tests.mjs`  
+前置条件：无  
+步骤：运行裁决系统测试，读取教学模式失败输出  
+期望结果：hint 非空且 allowRetry=true  
+实际结果：hint=“请先移除软胶，再继续拆卸。”，allowRetry=true  
+证据片段：
+```text
+hint: 请先移除软胶，再继续拆卸。
+allowRetry: true
+```
+结论：PASS  
+关联缺陷：-  
+
+### ADJ-02
+用例编号：ADJ-02  
+执行日期：2026-02-04 10:05  
+执行人：Codex  
+环境信息：commit `e3935a4`；执行方式 `node scripts/run-adjudication-tests.mjs`  
+前置条件：无  
+步骤：运行裁决系统测试，验证 retry 后状态  
+期望结果：retryStep=true 且状态为 IDLE  
+实际结果：retryStep=true，状态=idle  
+证据片段：
+```text
+retryStep 返回: true
+当前状态: idle
+```
+结论：PASS  
+关联缺陷：-  
+
+### P1 阻塞与缺陷汇总
+- BLOCK-WS-03：前端指数退避重连需浏览器/Playwright 验证
+- BLOCK-WS-04：`/monitor` stale 状态需前端环境
+- BLOCK-NF-STAB-01：2 小时长跑需人工环境
+- BLOCK-NF-STAB-03：前端断线重连逻辑需浏览器环境
+- DEF-SEC-002：故障案例输入未清洗/未拒绝脚本注入
