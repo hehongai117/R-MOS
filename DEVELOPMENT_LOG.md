@@ -85,3 +85,19 @@
 - Next Step:
   - 等待你确认后再进入阶段2的单一最小实现任务
 
+- DateTime: 2026-02-06 21:38:05 +0800
+- Task: Gate-1 C-001 统一审计写入（统一函数 + 访问拒绝/权限拒绝写入点）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/audit_event.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/audit_event_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260206_2200_8baf7d2f2c1a_add_audit_events_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest tests/unit/test_teaching_api.py -k "create_assignment_and_get or audit_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event or attempt_status_transitions" -q
+  - pytest tests/unit/test_migration_contract.py -q
+- Tests:
+  - AUDIT-T006 对齐：访问拒绝(404)仍写 audit_events 且 resource_id 为真实请求 ID（PASS）
+  - AUDIT-T001 对齐：基础 deny 审计写入（access_denied）存在（PASS）
+  - 权限拒绝写入点：permission_denied 事件可写入（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 当前权限拒绝写入点使用最小门控（X-RMOS-Role 头）以避免破坏现有无鉴权流程；后续 Gate-1 B-001/B-002 落地后应切换到真实鉴权上下文
+- Next Step:
+  - 进入 Gate-1 下一个最小任务（B-001 鉴权/RBAC 守卫）
+

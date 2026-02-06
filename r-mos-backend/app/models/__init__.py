@@ -14,6 +14,7 @@ from app.models.observation import Observation
 from app.models.evidence import EvidenceBundle, EvidenceItem
 from app.models.assessment import AssessmentProvider, ExternalAssessment, AssessmentAuditEvent
 from app.models.audit_log import SOPAuditLog, AuditAction, ActorType  # V2.3 新增
+from app.models.audit_event import AuditEvent
 from app.models.teaching import (
     GuidancePolicy,
     TeachingClass,
@@ -56,6 +57,7 @@ __all__ = [
     "SOPAuditLog",
     "AuditAction",
     "ActorType",
+    "AuditEvent",
     # Teaching domain
     "GuidancePolicy",
     "TeachingClass",

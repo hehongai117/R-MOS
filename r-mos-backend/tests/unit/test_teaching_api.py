@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from main import app
 from app.core.database import get_db
 from app.models.base import Base
+from app.models.audit_event import AuditEvent
 from app.models.evidence import EvidenceBundle
 from app.models.teaching import EvidenceLink
 import app.models as app_models  # noqa: F401  # Ensure models are registered
@@ -200,6 +201,63 @@ def test_attempt_status_transitions(client):
         json={"status": "completed"},
     )
     assert resp.status_code in (400, 409)
+
+
+def test_audit_access_denied_records_real_resource_id(client):
+    missing_attempt_id = 9999
+    resp = client.get(f"/api/v1/attempts/{missing_attempt_id}")
+    assert resp.status_code == 404
+
+    Session = client.app.state.test_sessionmaker
+
+    async def assert_audit_event():
+        async with Session() as session:
+            result = await session.execute(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.action == "access_denied",
+                    AuditEvent.resource_type == "AssignmentAttempt",
+                    AuditEvent.resource_id == str(missing_attempt_id),
+                    AuditEvent.decision == "deny",
+                )
+                .order_by(AuditEvent.id.desc())
+            )
+            event = result.scalars().first()
+            assert event is not None
+
+    asyncio.run(assert_audit_event())
+
+
+def test_audit_permission_denied_records_deny_event(client):
+    class_resp = client.post("/api/v1/classes", json={"name": "权限班级"})
+    class_id = class_resp.json()["id"]
+
+    resp = client.post(
+        "/api/v1/assignments",
+        headers={"X-RMOS-Role": "student", "X-User-ID": "1001"},
+        json={"classId": class_id, "title": "不应创建成功"},
+    )
+    assert resp.status_code == 403
+
+    Session = client.app.state.test_sessionmaker
+
+    async def assert_audit_event():
+        async with Session() as session:
+            result = await session.execute(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.action == "permission_denied",
+                    AuditEvent.resource_type == "Assignment",
+                    AuditEvent.decision == "deny",
+                )
+                .order_by(AuditEvent.id.desc())
+            )
+            event = result.scalars().first()
+            assert event is not None
+            assert event.actor_user_id == "1001"
+            assert event.reason == "missing_role:teacher_or_admin"
+
+    asyncio.run(assert_audit_event())
 
 
 def test_get_attempt_evidence(client):
