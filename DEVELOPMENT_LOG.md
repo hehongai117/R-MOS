@@ -144,6 +144,29 @@
 - Next Step:
   - 进入 Gate-1 下一最小任务（B-003 或按你指定继续）
 
+- DateTime: 2026-02-06 23:24:00 +0800
+- Task: Gate-1 B-002 最小修复（代码层单点收敛 + app 全目录核查 + WRITE 越权证据复核）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/audit_event_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - git restore -- README.md
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event"
+  - grep -RInE "_log_deny_event|AuditEventService\\(.*\\)\\.log_event\\(|decision=['\"]deny['\"]" app | head -n 80
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/classes
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/assignments（X-RMOS-Role: student, X-User-ID: 2002）> /tmp/b002_write_recheck.json
+  - python 解析 /tmp/b002_write_recheck.json 关键字段
+  - python 查询 Postgres audit_events（按 resource_type/resource_id 过滤）
+- Tests:
+  - 代码层收敛：`AuditEventService.log_event` 新增 deny 入口约束（仅允许 `access_control.log_deny_event`）并由 `access_control` 显式传入入口标识（PASS）
+  - app 目录核查命中：仅 `app/services/access_control.py:49 decision="deny"`（PASS）
+  - 最小回归：3 passed（PASS）
+  - WRITE 越权返回：HTTP 403，error_type=WriteAccessDeniedError，code=WRITE_ACCESS_DENIED（PASS）
+  - 审计落库：resource_type=TeachingClass，resource_id=24，decision='deny' 命中（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 未跟踪文件均为验收/规范基线文档输入，暂不移除；本次已清理与任务无关的 README.md 改动
+- Next Step:
+  - 等待复审结论，若通过则进入 Gate-1 下一最小任务
+
 - DateTime: 2026-02-06 22:52:00 +0800
 - Task: Gate-1 B-001 语义修复（区分 ResourceNotFound 与 ReadAccessDenied，修正越权证明路径）
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
