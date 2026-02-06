@@ -53,7 +53,6 @@ async def log_deny_event(
         reason=reason,
         request_meta=_build_request_meta(request),
         trace_id=getattr(request.state, "trace_id", None),
-        _deny_entrypoint="access_control.log_deny_event",
     )
 
 

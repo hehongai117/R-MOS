@@ -167,6 +167,23 @@
 - Next Step:
   - 等待复审结论，若通过则进入 Gate-1 下一最小任务
 
+- DateTime: 2026-02-06 23:40:00 +0800
+- Task: Gate-1 B-002 修复：移除运行时 deny 拦截，改为 pytest 门禁测试
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/audit_event_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_deny_audit_entrypoint_gate.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event"
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
+  - grep -RInE "_log_deny_event|AuditEventService\\(.*\\)\\.log_event\\(|decision=['\"]deny['\"]" app | head -n 120
+- Tests:
+  - 业务最小集合：3 passed（PASS）
+  - 门禁测试：test_deny_audit_entrypoint_gate.py 1 passed（PASS）
+  - 核查命中：仅 app/services/access_control.py:49（PASS）
+- Result: PASS
+- Risks/Notes:
+  - deny 审计入口约束已改为开发期门禁，不再引入运行时 500 风险
+- Next Step:
+  - 等待复审结论，若通过则继续 Gate-1 后续任务
+
 - DateTime: 2026-02-06 22:52:00 +0800
 - Task: Gate-1 B-001 语义修复（区分 ResourceNotFound 与 ReadAccessDenied，修正越权证明路径）
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md

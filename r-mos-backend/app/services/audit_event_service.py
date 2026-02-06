@@ -30,22 +30,11 @@ class AuditEventService:
         reason: str | None = None,
         request_meta: dict[str, Any] | None = None,
         trace_id: str | None = None,
-        _deny_entrypoint: str | None = None,
     ) -> AuditEvent | None:
         """写入审计事件。
 
         失败时不抛出异常，避免覆盖原始业务错误。
         """
-        # Gate-1 B-002 约束：deny 审计必须经由 access_control.log_deny_event 统一进入。
-        if decision == "deny" and _deny_entrypoint != "access_control.log_deny_event":
-            logger.error(
-                "拒绝写入散落入口: action=%s resource=%s:%s",
-                action,
-                resource_type,
-                resource_id,
-            )
-            raise ValueError("deny 审计必须通过 access_control.log_deny_event")
-
         event = AuditEvent(
             actor_user_id=actor_user_id,
             action=action,
