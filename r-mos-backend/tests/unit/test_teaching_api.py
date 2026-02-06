@@ -203,21 +203,20 @@ def test_attempt_status_transitions(client):
     assert resp.status_code in (400, 409)
 
 
-def test_audit_access_denied_records_real_resource_id(client):
+def test_not_found_attempt_returns_resource_not_found_without_deny_audit(client):
     missing_attempt_id = 9999
     resp = client.get(f"/api/v1/attempts/{missing_attempt_id}")
     assert resp.status_code == 404
-    assert resp.json()["error_type"] == "ReadAccessDeniedError"
-    assert resp.json()["details"]["code"] == "READ_ACCESS_DENIED"
+    assert resp.json()["error_type"] == "ResourceNotFoundError"
+    assert resp.json()["details"]["code"] == "RESOURCE_NOT_FOUND"
 
     Session = client.app.state.test_sessionmaker
 
-    async def assert_audit_event():
+    async def assert_no_deny_audit_event():
         async with Session() as session:
             result = await session.execute(
                 select(AuditEvent)
                 .where(
-                    AuditEvent.action == "access_denied",
                     AuditEvent.resource_type == "AssignmentAttempt",
                     AuditEvent.resource_id == str(missing_attempt_id),
                     AuditEvent.decision == "deny",
@@ -225,9 +224,52 @@ def test_audit_access_denied_records_real_resource_id(client):
                 .order_by(AuditEvent.id.desc())
             )
             event = result.scalars().first()
-            assert event is not None
+            assert event is None
 
-    asyncio.run(assert_audit_event())
+    asyncio.run(assert_no_deny_audit_event())
+
+
+def test_read_access_denied_records_real_resource_id(client):
+    class_resp = client.post("/api/v1/classes", json={"name": "读越权班级"})
+    class_id = class_resp.json()["id"]
+    assignment_resp = client.post(
+        "/api/v1/assignments",
+        json={"classId": class_id, "title": "读越权作业"},
+    )
+    assignment_id = assignment_resp.json()["id"]
+    attempt_resp = client.post(
+        f"/api/v1/assignments/{assignment_id}/attempts",
+        json={"studentId": 1001},
+    )
+    attempt_id = attempt_resp.json()["id"]
+
+    resp = client.get(
+        f"/api/v1/attempts/{attempt_id}",
+        headers={"X-RMOS-Role": "student", "X-User-ID": "2002"},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["error_type"] == "ReadAccessDeniedError"
+    assert resp.json()["details"]["code"] == "READ_ACCESS_DENIED"
+
+    Session = client.app.state.test_sessionmaker
+
+    async def assert_read_deny_audit_event():
+        async with Session() as session:
+            result = await session.execute(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.action == "read_access_denied",
+                    AuditEvent.resource_type == "AssignmentAttempt",
+                    AuditEvent.resource_id == str(attempt_id),
+                    AuditEvent.decision == "deny",
+                )
+                .order_by(AuditEvent.id.desc())
+            )
+            event = result.scalars().first()
+            assert event is not None
+            assert event.reason == "student_attempt_scope_mismatch"
+
+    asyncio.run(assert_read_deny_audit_event())
 
 
 def test_audit_permission_denied_records_deny_event(client):

@@ -63,6 +63,18 @@ def _raise_not_found(exc: ResourceNotFoundError) -> None:
     raise HTTPException(status_code=404, detail=str(exc))
 
 
+def _parse_user_id(raw_user_id: Optional[str]) -> Optional[int]:
+    if raw_user_id is None:
+        return None
+    value = raw_user_id.strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
 @router.get(
     "/guidance-policies",
     response_model=List[GuidancePolicyResponse],
@@ -323,20 +335,27 @@ async def get_attempt(
     attempt_id: int,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
+    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
 ):
     service = TeachingService(db)
-    try:
-        return await service.get_attempt(attempt_id)
-    except ResourceNotFoundError as exc:
-        await raise_read_access_denied(
-            db,
-            http_request,
-            action="access_denied",
-            resource_type=exc.resource_type,
-            resource_id=exc.resource_id,
-            reason="resource_not_found_or_access_denied",
-            message="资源不存在",
-        )
+    attempt = await service.get_attempt(attempt_id)
+
+    role = (x_rmos_role or "").strip().lower()
+    if role == "student":
+        actor_student_id = _parse_user_id(x_user_id)
+        if actor_student_id is None or actor_student_id != attempt.student_id:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="read_access_denied",
+                resource_type="AssignmentAttempt",
+                resource_id=attempt.id,
+                reason="student_attempt_scope_mismatch",
+                message="资源不存在",
+            )
+
+    return attempt
 
 
 @router.patch(

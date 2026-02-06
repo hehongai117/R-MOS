@@ -119,6 +119,25 @@
 - Next Step:
   - 进入 Gate-1 下一最小任务（保持单任务推进）
 
+- DateTime: 2026-02-06 22:52:00 +0800
+- Task: Gate-1 B-001 语义修复（区分 ResourceNotFound 与 ReadAccessDenied，修正越权证明路径）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event" -q
+  - curl --noproxy 127.0.0.1,localhost ... 创建 class/assignment/attempt 并以 student 身份读取他人 attempt
+  - curl --noproxy 127.0.0.1,localhost ... GET /api/v1/attempts/99999999（not found 对照）
+  - python 查询 Postgres audit_events（校验 read_access_denied + 真实 resource_id）
+- Tests:
+  - not found 语义：GET 不存在 attempt 返回 404 + ResourceNotFoundError，且不写 deny 审计（PASS）
+  - read deny 语义：GET 存在 attempt 但越权读取返回 404 + ReadAccessDeniedError（PASS）
+  - 审计一致性：越权读取写 deny，resource_id 为真实 attempt_id（PASS）
+  - write deny 语义：/assignments 越权写入仍返回 403 + WriteAccessDeniedError（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 当前“可见性”规则仍为最小实现（student 仅可读取 student_id 与 X-User-ID 匹配的 attempt）；后续 B-002 应替换为正式 RBAC/对象授权规则
+- Next Step:
+  - 进入 Gate-1 下一最小任务（B-002 鉴权守卫与权限键接入）
+
 - DateTime: 2026-02-06 22:35:00 +0800
 - Task: Gate-1 B-001 统一错误映射与语义裁决（Read=404 / Write=403 + deny 审计统一写入）
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/exceptions.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/main.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
