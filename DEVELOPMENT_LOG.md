@@ -119,6 +119,31 @@
 - Next Step:
   - 进入 Gate-1 下一最小任务（保持单任务推进）
 
+- DateTime: 2026-02-06 23:08:00 +0800
+- Task: Gate-1 B-002 deny 审计写入单点收敛核查 + WRITE 越权证据补齐
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - git status
+  - git rev-parse --short HEAD
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event"
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/classes
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/assignments（seed）
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/assignments（X-RMOS-Role: student, X-User-ID: 2002）> /tmp/b002_write.json
+  - grep/检索 teaching 与 services 的 deny 审计写入点（`rg` 不可用时回退 `grep -RInE`）
+  - python 查询 Postgres audit_events（按 resource_type/resource_id 过滤）
+- Tests:
+  - 基线最小集合：3 passed（PASS）
+  - WRITE 越权返回：HTTP 403（PASS）
+  - 返回体关键字段：error_type=WriteAccessDeniedError，code=WRITE_ACCESS_DENIED（PASS）
+  - 返回体对象标识：resource_type=TeachingClass，resource_id=23（PASS）
+  - 审计查询：decision='deny' 且 resource_type='TeachingClass' 且 resource_id='23' 命中记录（PASS）
+  - 单点收敛核查：teaching/services 范围内 deny 写入仅命中 `app/services/access_control.py:log_deny_event`（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 当前环境 `rg` 命令不可用，已按约定使用 `grep` 回退，不影响核查结论
+- Next Step:
+  - 进入 Gate-1 下一最小任务（B-003 或按你指定继续）
+
 - DateTime: 2026-02-06 22:52:00 +0800
 - Task: Gate-1 B-001 语义修复（区分 ResourceNotFound 与 ReadAccessDenied，修正越权证明路径）
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
