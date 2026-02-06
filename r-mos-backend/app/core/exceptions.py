@@ -57,3 +57,75 @@ class ResourceNotFoundError(Exception):
         self.message = f"{resource_type}不存在: {resource_id}"
         self.timestamp = datetime.utcnow()
         super().__init__(self.message)
+
+
+class AccessDeniedError(Exception):
+    """统一访问拒绝异常基类。"""
+
+    status_code: int = 403
+    error_code: str = "ACCESS_DENIED"
+
+    def __init__(
+        self,
+        *,
+        action: str,
+        resource_type: str,
+        resource_id: Any,
+        reason: str,
+        message: str,
+    ):
+        self.action = action
+        self.resource_type = resource_type
+        self.resource_id = str(resource_id) if resource_id is not None else None
+        self.reason = reason
+        self.message = message
+        self.timestamp = datetime.utcnow()
+        super().__init__(self.message)
+
+
+class ReadAccessDeniedError(AccessDeniedError):
+    """对象级 READ 越权（对外 404）。"""
+
+    status_code = 404
+    error_code = "READ_ACCESS_DENIED"
+
+    def __init__(
+        self,
+        *,
+        action: str,
+        resource_type: str,
+        resource_id: Any,
+        reason: str,
+        message: str = "资源不存在",
+    ):
+        super().__init__(
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason=reason,
+            message=message,
+        )
+
+
+class WriteAccessDeniedError(AccessDeniedError):
+    """对象级 WRITE 越权（对外 403）。"""
+
+    status_code = 403
+    error_code = "WRITE_ACCESS_DENIED"
+
+    def __init__(
+        self,
+        *,
+        action: str,
+        resource_type: str,
+        resource_id: Any,
+        reason: str,
+        message: str = "权限不足",
+    ):
+        super().__init__(
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason=reason,
+            message=message,
+        )

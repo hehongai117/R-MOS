@@ -16,7 +16,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.core.exceptions import BusinessRuleViolation, AdapterConnectionError
+from app.core.exceptions import (
+    AdapterConnectionError,
+    AccessDeniedError,
+    BusinessRuleViolation,
+    ResourceNotFoundError,
+)
 from app.adapters.factory import AdapterFactory
 from app.api.v1 import api_router, websocket_router
 
@@ -142,6 +147,56 @@ async def adapter_connection_error_handler(request: Request, exc: AdapterConnect
             "timestamp": exc.timestamp.isoformat(),
             "request_id": str(id(request))
         }
+    )
+
+
+@app.exception_handler(ResourceNotFoundError)
+async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError):
+    """资源不存在统一映射（404 Not Found）。"""
+    trace_id = getattr(request.state, "trace_id", str(id(request)))
+    return JSONResponse(
+        status_code=404,
+        content={
+            "status_code": 404,
+            "error_type": "ResourceNotFoundError",
+            "message": "资源不存在",
+            "details": {
+                "code": "RESOURCE_NOT_FOUND",
+                "message": "资源不存在",
+                "details": {
+                    "resource_type": exc.resource_type,
+                    "resource_id": str(exc.resource_id),
+                },
+            },
+            "timestamp": exc.timestamp.isoformat(),
+            "request_id": trace_id,
+        },
+    )
+
+
+@app.exception_handler(AccessDeniedError)
+async def access_denied_handler(request: Request, exc: AccessDeniedError):
+    """对象级越权统一映射（READ=404, WRITE=403）。"""
+    trace_id = getattr(request.state, "trace_id", str(id(request)))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status_code": exc.status_code,
+            "error_type": type(exc).__name__,
+            "message": exc.message,
+            "details": {
+                "code": exc.error_code,
+                "message": exc.message,
+                "details": {
+                    "action": exc.action,
+                    "reason": exc.reason,
+                    "resource_type": exc.resource_type,
+                    "resource_id": exc.resource_id,
+                },
+            },
+            "timestamp": exc.timestamp.isoformat(),
+            "request_id": trace_id,
+        },
     )
 
 

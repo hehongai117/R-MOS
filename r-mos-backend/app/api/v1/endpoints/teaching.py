@@ -30,7 +30,7 @@ from app.schemas.teaching import (
     DiagnosisReport,
 )
 from app.services.diagnosis_service import DiagnosisService, EvidenceFallbackError
-from app.services.audit_event_service import AuditEventService
+from app.services.access_control import raise_read_access_denied, raise_write_access_denied
 from app.services.teaching_service import TeachingService
 from app.services.evidence_engine import EvidenceEngine
 
@@ -61,45 +61,6 @@ def _raise_business_error(exc: BusinessRuleViolation) -> None:
 
 def _raise_not_found(exc: ResourceNotFoundError) -> None:
     raise HTTPException(status_code=404, detail=str(exc))
-
-
-def _extract_actor_user_id(request: Request) -> Optional[str]:
-    actor_user_id = request.headers.get("X-User-ID")
-    if not actor_user_id:
-        return None
-    return actor_user_id.strip() or None
-
-
-def _build_request_meta(request: Request) -> dict:
-    trace_id = getattr(request.state, "trace_id", None)
-    return {
-        "method": request.method,
-        "path": request.url.path,
-        "query": request.url.query,
-        "trace_id": trace_id,
-    }
-
-
-async def _log_deny_event(
-    db: AsyncSession,
-    request: Request,
-    *,
-    action: str,
-    resource_type: Optional[str],
-    resource_id: Optional[str],
-    reason: str,
-) -> None:
-    service = AuditEventService(db)
-    await service.log_event(
-        action=action,
-        decision="deny",
-        actor_user_id=_extract_actor_user_id(request),
-        resource_type=resource_type,
-        resource_id=resource_id,
-        reason=reason,
-        request_meta=_build_request_meta(request),
-        trace_id=getattr(request.state, "trace_id", None),
-    )
 
 
 @router.get(
@@ -284,15 +245,15 @@ async def create_assignment(
     x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
 ):
     if x_rmos_role and x_rmos_role.strip().lower() not in {"teacher", "admin"}:
-        await _log_deny_event(
+        await raise_write_access_denied(
             db,
             http_request,
             action="permission_denied",
-            resource_type="Assignment",
-            resource_id=None,
+            resource_type="TeachingClass",
+            resource_id=payload.class_id,
             reason="missing_role:teacher_or_admin",
+            message="权限不足：仅teacher/admin可创建assignment",
         )
-        raise HTTPException(status_code=403, detail="权限不足：仅teacher/admin可创建assignment")
 
     service = TeachingService(db)
     try:
@@ -367,15 +328,15 @@ async def get_attempt(
     try:
         return await service.get_attempt(attempt_id)
     except ResourceNotFoundError as exc:
-        await _log_deny_event(
+        await raise_read_access_denied(
             db,
             http_request,
             action="access_denied",
             resource_type=exc.resource_type,
-            resource_id=str(exc.resource_id),
+            resource_id=exc.resource_id,
             reason="resource_not_found_or_access_denied",
+            message="资源不存在",
         )
-        _raise_not_found(exc)
 
 
 @router.patch(

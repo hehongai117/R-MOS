@@ -207,6 +207,8 @@ def test_audit_access_denied_records_real_resource_id(client):
     missing_attempt_id = 9999
     resp = client.get(f"/api/v1/attempts/{missing_attempt_id}")
     assert resp.status_code == 404
+    assert resp.json()["error_type"] == "ReadAccessDeniedError"
+    assert resp.json()["details"]["code"] == "READ_ACCESS_DENIED"
 
     Session = client.app.state.test_sessionmaker
 
@@ -238,6 +240,8 @@ def test_audit_permission_denied_records_deny_event(client):
         json={"classId": class_id, "title": "不应创建成功"},
     )
     assert resp.status_code == 403
+    assert resp.json()["error_type"] == "WriteAccessDeniedError"
+    assert resp.json()["details"]["code"] == "WRITE_ACCESS_DENIED"
 
     Session = client.app.state.test_sessionmaker
 
@@ -247,7 +251,7 @@ def test_audit_permission_denied_records_deny_event(client):
                 select(AuditEvent)
                 .where(
                     AuditEvent.action == "permission_denied",
-                    AuditEvent.resource_type == "Assignment",
+                    AuditEvent.resource_type == "TeachingClass",
                     AuditEvent.decision == "deny",
                 )
                 .order_by(AuditEvent.id.desc())
@@ -255,6 +259,7 @@ def test_audit_permission_denied_records_deny_event(client):
             event = result.scalars().first()
             assert event is not None
             assert event.actor_user_id == "1001"
+            assert event.resource_id == str(class_id)
             assert event.reason == "missing_role:teacher_or_admin"
 
     asyncio.run(assert_audit_event())

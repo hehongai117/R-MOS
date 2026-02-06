@@ -118,3 +118,22 @@
   - 本地连接 Postgres 需沙箱外执行；已按审批执行验证命令
 - Next Step:
   - 进入 Gate-1 下一最小任务（保持单任务推进）
+
+- DateTime: 2026-02-06 22:35:00 +0800
+- Task: Gate-1 B-001 统一错误映射与语义裁决（Read=404 / Write=403 + deny 审计统一写入）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/exceptions.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/main.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest tests/unit/test_teaching_api.py -k "create_assignment_and_get or audit_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event or attempt_status_transitions" -q
+  - curl --noproxy 127.0.0.1,localhost ... GET /api/v1/attempts/999999
+  - curl --noproxy 127.0.0.1,localhost ... POST /api/v1/assignments (X-RMOS-Role: student)
+  - python 查询 Postgres audit_events（校验 deny 记录 resource_id）
+- Tests:
+  - OBJ-T002 / SEC-T005：对象级 READ 越权返回 404（PASS）
+  - OBJ-T008 / SEC-T006：对象级 WRITE 越权返回 403（PASS）
+  - AUDIT-T006：404 deny 仍记录真实 resource_id（PASS）
+  - AUDIT-T001：基础审计存在性（deny 可写入）（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 当前示例 WRITE 越权采用 `X-RMOS-Role` 最小门控；后续 RBAC 正式守卫接入时应复用同一异常与审计收敛路径
+- Next Step:
+  - 进入 Gate-1 下一最小任务（保持单任务推进）
