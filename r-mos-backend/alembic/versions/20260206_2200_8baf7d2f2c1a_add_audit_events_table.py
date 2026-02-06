@@ -30,7 +30,12 @@ def upgrade() -> None:
         sa.Column("reason", sa.String(length=256), nullable=True),
         sa.Column("request_meta", sa.JSON(), nullable=True),
         sa.Column("trace_id", sa.String(length=64), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_audit_events_id"), "audit_events", ["id"], unique=False)
@@ -53,4 +58,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_audit_events_actor_user_id"), table_name="audit_events")
     op.drop_index(op.f("ix_audit_events_id"), table_name="audit_events")
     op.drop_table("audit_events")
-

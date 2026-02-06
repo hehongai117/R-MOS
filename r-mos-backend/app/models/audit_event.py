@@ -7,7 +7,7 @@
 """
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, JSON, String
+from sqlalchemy import Column, DateTime, Integer, JSON, String, func
 
 from .base import Base
 
@@ -26,5 +26,10 @@ class AuditEvent(Base):
     reason = Column(String(256), nullable=True)
     request_meta = Column(JSON, nullable=True)
     trace_id = Column(String(64), nullable=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        server_default=func.now(),
+        index=True,
+    )

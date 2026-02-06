@@ -101,3 +101,20 @@
 - Next Step:
   - 进入 Gate-1 下一个最小任务（B-001 鉴权/RBAC 守卫）
 
+- DateTime: 2026-02-06 22:07:00 +0800
+- Task: Gate-1 C-001b 修复 audit_events 迁移一致性（created_at server_default + Postgres 真实迁移验证）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/audit_event.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260206_2200_8baf7d2f2c1a_add_audit_events_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260206_2230_f3c11f7a9a2b_fix_audit_events_created_at_default.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres alembic upgrade head
+  - pytest tests/unit/test_teaching_api.py -k "audit_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event" -q
+  - python - <<'PY' ... 查询 information_schema 校验 audit_events.id 主键与 created_at 默认值 ... PY
+- Tests:
+  - 迁移执行：8baf7d2f2c1a -> f3c11f7a9a2b（PASS）
+  - Postgres 表结构校验：`id` 为主键、`created_at` 非空且默认值 `CURRENT_TIMESTAMP`（PASS）
+  - AUDIT-T001 对齐：基础审计写入仍可通过（PASS）
+  - AUDIT-T006 对齐：deny 场景真实 `resource_id` 记录仍可通过（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本地连接 Postgres 需沙箱外执行；已按审批执行验证命令
+- Next Step:
+  - 进入 Gate-1 下一最小任务（保持单任务推进）
