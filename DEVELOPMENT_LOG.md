@@ -64,3 +64,24 @@
 - Next Step:
   - 等待你确认后进入阶段2，从 Gate-1 的单一最小任务（建议 A-001 注册接口）开始实现
 
+- DateTime: 2026-02-06 21:25:21 +0800
+- Task: DEV_PLAN_001 计划验收回执检查与最小补丁修正（仅文档）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - grep -n "Gate-1\|Gate-2\|Gate-3\|通过判定" docs/design/DEV_PLAN_001.md
+  - grep -n "验收点映射\|AUTH-T\|APPR-T\|RAG-T\|E2E-T" docs/design/DEV_PLAN_001.md
+  - grep -n "最小回归命令集\|DATABASE_URL\|curl --noproxy\|source .venv/bin/activate\|/api/v1/ai/approvals\|/api/v1/approvals" docs/design/DEV_PLAN_001.md
+  - apply_patch 更新 DEV_PLAN_001.md（新增环境硬约束、补齐回滚项、调整执行顺序）
+  - grep -n "### 2.4 环境硬约束引用\|DATABASE_URL\|CORS\|curl --noproxy\|.venv" docs/design/DEV_PLAN_001.md
+  - grep -n "权限误拒\|审批链断\|alembic downgrade -1" docs/design/DEV_PLAN_001.md
+  - grep -n "计划执行入口\|C-001\|B-001\|A-001\|A-002\|A-003\|B-002\|B-003\|C-002/C-003" docs/design/DEV_PLAN_001.md
+  - grep -n "/api/v1/approvals" docs/design/DEV_PLAN_001.md || true
+- Tests:
+  - 8 点验收检查：全部满足（PASS）
+  - 特别检查：DATABASE_URL 固定值、回归命令与 RUNBOOK 口径、approvals 路由前缀唯一（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅文档调整，无代码实现变更
+- Next Step:
+  - 等待你确认后再进入阶段2的单一最小实现任务
+

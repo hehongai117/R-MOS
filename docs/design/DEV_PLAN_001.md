@@ -53,6 +53,16 @@
 3. Timeline/Replay 可定位引用并可回放。
 4. E2E trace 链完整、指标达标（引用覆盖率、幻觉率、读工具成功率、红队通过率）。
 
+### 2.4 环境硬约束引用（AGENTS / RUNBOOK）
+
+本计划中的命令与环境口径必须与 `AGENTS.md`、`docs/ops/RUNBOOK.md` 保持一致，不使用“示例值”误导执行：
+
+1. `DATABASE_URL` 固定：`postgresql+asyncpg://postgres@localhost:5432/postgres`。
+2. CORS 固定允许：`http://127.0.0.1:55173`（不擅改）。
+3. Python 仅在 `.venv` 内执行（如 `source .venv/bin/activate`）。
+4. 本机 HTTP 调用必须使用 `curl --noproxy 127.0.0.1,localhost`。
+5. 代理约束：V2rayN `10808`；如需暂时清理代理变量，仅按 RUNBOOK 指令在当前终端临时处理。
+
 ---
 
 ## 3. Gate-1 开发计划（M1）
@@ -143,6 +153,8 @@ curl --noproxy 127.0.0.1,localhost -X PATCH -H "Authorization: Bearer ${TOKEN_ST
   - 回滚/缓解：统一异常映射中间件；失败时回滚到上一版本异常映射。
 - 风险 3：迁移导致历史数据不可读。
   - 回滚/缓解：迁移前快照备份；字段增量迁移（先 nullable 再回填）；失败执行 `alembic downgrade -1`。
+- 风险 4：权限误拒（合法请求被 403/404 拒绝）。
+  - 回滚/缓解：启用“策略回退开关 + 审计比对”；按 `AUTHZ-T005/T006` 与 `OBJ-T001/T003` 复测，定位规则误判后再灰度恢复。
 
 ---
 
@@ -240,6 +252,8 @@ curl --noproxy 127.0.0.1,localhost -X POST \
   - 回滚/缓解：版本不可变，发布失败回滚到上一个 published 版本；新版本灰度启用。
 - 风险 4：迁移后索引过慢。
   - 回滚/缓解：高成本索引分批创建；失败先禁用新链路，保留旧读路径。
+- 风险 5：审批链断（长期停留 `waiting_approval` 或 trace 断链）。
+  - 回滚/缓解：执行“审批补偿任务 + 状态修复脚本”；将命令降级为只读建议模式，待 `APPR-T001/T007/T008` 与 `AUDIT-T008` 通过后恢复写链路。
 
 ---
 
@@ -392,12 +406,13 @@ env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u al
 
 从 Gate-1 的最小任务开始，推荐顺序：
 
-1. A-001（注册接口）
-2. A-002（登录接口）
-3. A-003（刷新/登出）
-4. B-001（RBAC 守卫）
-5. B-002（对象级权限）
-6. C-001（统一审计写入）
+1. C-001（统一审计写入，先落地 deny/allow 统一审计接口）
+2. B-001（鉴权/RBAC 守卫与错误映射地基：Read 越权 404，Write 越权 403）
+3. A-001（注册接口）
+4. A-002（登录接口）
+5. A-003（刷新/登出）
+6. B-002（对象级权限校验）
+7. B-003（auditor 约束）
+8. C-002/C-003（审计查询与审批审计闭环）
 
 每完成一个任务即跑最小回归并记录证据，不跨 Gate 并行开发。
-
