@@ -857,3 +857,24 @@
   - 失败处置：首次在沙箱内执行 alembic upgrade head 因本机 Postgres 连接权限被拒（Errno 1），已按审批流程提权重跑并通过。
 - Next Step:
   - 进入 Gate-2 F-001（Approval Service 最小审批流），将 `pending_approval` 命令接入审批确认闭环。
+
+- DateTime: 2026-02-07 19:36:42 +0800
+- Task: Gate-2 F-001（Approval Service 最小审批流：pending→granted/rejected）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_2130_9d8c7b6a5e4f_add_approvals_table_and_links.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/approval.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/command_runtime.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/approval_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/approvals.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_approval_api.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads && alembic -c alembic.ini upgrade head && alembic -c alembic.ini current
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_approval_api.py tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - F-001 审批主链路：`test_write_tool_creates_pending_approval`、`test_admin_can_grant_pending_approval_records_audit_and_updates_status`、`test_admin_can_reject_pending_approval_records_audit_and_updates_status`（PASS）
+  - 迁移验证：`alembic heads/current` 均为 `9d8c7b6a5e4f (head)`，`upgrade head` 成功（PASS）
+  - 全量单测：`pytest tests/unit -q`（PASS，82 passed）
+  - smoke 回归：`./scripts/run_gate2_smoke.sh`（PASS，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次只实现 F-001 的审批状态流转与审计闭环，未实现写工具真实执行（E-002~E-004 不在本次范围）。
+  - 审批权限限定为 `admin/auditor` + `approvals:grant/reject`，并保持重复 grant/reject 幂等。
+  - 执行 `alembic upgrade head` 时沙箱直连本机 Postgres 会触发 `PermissionError: [Errno 1] Operation not permitted`，已按流程提权重跑并通过。
+- Next Step:
+  - 进入 Gate-2 F-002（审批查询与追踪视图）或按计划推进 G-001（trace 串联骨架）。

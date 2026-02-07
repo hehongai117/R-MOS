@@ -17,6 +17,7 @@ from app.models.audit_log import SOPAuditLog, AuditAction, ActorType  # V2.3 新
 from app.models.audit_event import AuditEvent
 from app.models.skill_registry import Skill, SkillReview, SkillRelease
 from app.models.command_runtime import Command, AIToolCall
+from app.models.approval import Approval
 from app.models.rbac import Role, Permission, UserRole, RolePermission
 from app.models.refresh_token import RefreshToken
 from app.models.access_token import AccessToken
@@ -70,6 +71,7 @@ __all__ = [
     "SkillRelease",
     "Command",
     "AIToolCall",
+    "Approval",
     # RBAC
     "Role",
     "Permission",

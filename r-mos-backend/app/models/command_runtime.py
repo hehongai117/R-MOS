@@ -20,7 +20,7 @@ class Command(Base):
     intent = Column(String(128), nullable=False, index=True)
     skill_id = Column(String(128), nullable=True, index=True)
     status = Column(String(32), nullable=False, default="created", index=True)
-    approval_id = Column(Integer, nullable=True, index=True)
+    approval_id = Column(Integer, ForeignKey("approvals.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -41,7 +41,7 @@ class AIToolCall(Base):
     tool_name = Column(String(128), nullable=False)
     side_effects = Column(JSON, nullable=False, default=list)
     status = Column(String(32), nullable=False, default="pending", index=True)
-    approval_id = Column(Integer, nullable=True, index=True)
+    approval_id = Column(Integer, ForeignKey("approvals.id", ondelete="SET NULL"), nullable=True, index=True)
     result_payload = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)

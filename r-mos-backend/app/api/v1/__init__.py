@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth,
     ai_commands,
+    approvals,
     audit,
     admin,
     skills,
@@ -28,6 +29,7 @@ api_router = APIRouter()
 # 注：各endpoint内部已定义完整路径（如 /tasks, /sops），无需再加prefix
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(ai_commands.router, tags=["ai_commands"])
+api_router.include_router(approvals.router, tags=["approvals"])
 api_router.include_router(audit.router, tags=["audit"])
 api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(skills.router, tags=["skills"])

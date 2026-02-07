@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.models.approval import Approval
 from app.models.command_runtime import AIToolCall, Command
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor
@@ -43,7 +44,7 @@ async def create_ai_command(
         intent=payload.intent,
         skill_id=payload.skill_id,
         status="created",
-        approval_id=payload.approval_id,
+        approval_id=None,
     )
     db.add(command)
     await db.commit()
@@ -67,7 +68,7 @@ async def create_ai_command(
         tool_name=payload.tool_name,
         side_effects=list(payload.side_effects),
         status="pending",
-        approval_id=payload.approval_id,
+        approval_id=None,
     )
     db.add(tool_call)
     await db.commit()
@@ -84,14 +85,39 @@ async def create_ai_command(
     )
 
     if payload.side_effects:
+        approval = Approval(
+            trace_id=trace_id,
+            command_id=command.id,
+            tool_call_id=tool_call.id,
+            status="pending",
+            reason="awaiting_approval",
+            created_by_user_id=str(actor.user_id),
+        )
+        db.add(approval)
+        await db.commit()
+        await db.refresh(approval)
+
+        command.approval_id = approval.id
+        tool_call.approval_id = approval.id
         command.status = "pending_approval"
         await db.commit()
+
+        await log_allow_event(
+            db,
+            request,
+            action="approval_created",
+            actor_user_id=str(actor.user_id),
+            resource_type="Approval",
+            resource_id=approval.id,
+            reason="approval_pending_created",
+        )
+
         return {
             "command_id": command.id,
             "tool_call_id": tool_call.id,
             "trace_id": trace_id,
             "status": command.status,
-            "approval_id": command.approval_id,
+            "approval_id": approval.id,
             "result": None,
         }
 
