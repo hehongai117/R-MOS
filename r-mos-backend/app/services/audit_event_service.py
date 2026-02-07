@@ -30,6 +30,11 @@ class AuditEventService:
         reason: str | None = None,
         request_meta: dict[str, Any] | None = None,
         trace_id: str | None = None,
+        skill_id: str | None = None,
+        skill_version: str | None = None,
+        tool_call_args: dict[str, Any] | None = None,
+        side_effects_applied: list[str] | None = None,
+        approval_id: int | None = None,
     ) -> AuditEvent | None:
         """写入审计事件。
 
@@ -44,6 +49,11 @@ class AuditEventService:
             reason=reason,
             request_meta=request_meta or {},
             trace_id=trace_id,
+            skill_id=skill_id,
+            skill_version=skill_version,
+            tool_call_args=tool_call_args,
+            side_effects_applied=side_effects_applied,
+            approval_id=approval_id,
         )
         try:
             self.db.add(event)

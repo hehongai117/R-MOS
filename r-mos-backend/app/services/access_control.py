@@ -43,6 +43,11 @@ async def log_deny_event(
     resource_id: Any,
     reason: str,
     actor_user_id: Optional[str] = None,
+    skill_id: Optional[str] = None,
+    skill_version: Optional[str] = None,
+    tool_call_args: Optional[dict[str, Any]] = None,
+    side_effects_applied: Optional[list[str]] = None,
+    approval_id: Optional[int] = None,
 ) -> None:
     service = AuditEventService(db)
     await service.log_event(
@@ -54,6 +59,11 @@ async def log_deny_event(
         reason=reason,
         request_meta=_build_request_meta(request),
         trace_id=getattr(request.state, "trace_id", None),
+        skill_id=skill_id,
+        skill_version=skill_version,
+        tool_call_args=tool_call_args,
+        side_effects_applied=side_effects_applied,
+        approval_id=approval_id,
     )
 
 
@@ -67,6 +77,11 @@ async def log_allow_event(
     reason: str,
     actor_user_id: Optional[str] = None,
     request_meta: Optional[dict[str, Any]] = None,
+    skill_id: Optional[str] = None,
+    skill_version: Optional[str] = None,
+    tool_call_args: Optional[dict[str, Any]] = None,
+    side_effects_applied: Optional[list[str]] = None,
+    approval_id: Optional[int] = None,
 ) -> None:
     service = AuditEventService(db)
     await service.log_event(
@@ -78,6 +93,11 @@ async def log_allow_event(
         reason=reason,
         request_meta=request_meta if request_meta is not None else _build_request_meta(request),
         trace_id=getattr(request.state, "trace_id", None),
+        skill_id=skill_id,
+        skill_version=skill_version,
+        tool_call_args=tool_call_args,
+        side_effects_applied=side_effects_applied,
+        approval_id=approval_id,
     )
 
 

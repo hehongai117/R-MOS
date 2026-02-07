@@ -7,7 +7,7 @@
 """
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, JSON, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, JSON, String, func
 
 from .base import Base
 
@@ -16,6 +16,9 @@ class AuditEvent(Base):
     """统一审计事件表。"""
 
     __tablename__ = "audit_events"
+    __table_args__ = (
+        Index("ix_audit_trace_created", "trace_id", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     actor_user_id = Column(String(64), nullable=True, index=True)
@@ -26,6 +29,11 @@ class AuditEvent(Base):
     reason = Column(String(256), nullable=True)
     request_meta = Column(JSON, nullable=True)
     trace_id = Column(String(64), nullable=True, index=True)
+    skill_id = Column(String(128), nullable=True)
+    skill_version = Column(String(32), nullable=True)
+    tool_call_args = Column(JSON, nullable=True)
+    side_effects_applied = Column(JSON, nullable=True)
+    approval_id = Column(Integer, ForeignKey("approvals.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(
         DateTime,
         nullable=False,

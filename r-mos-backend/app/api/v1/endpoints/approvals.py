@@ -54,6 +54,7 @@ async def grant_approval(
     approval = await service.get_by_id(id)
     if approval is None:
         raise ResourceNotFoundError("Approval", id)
+    _, runtime_tool_call = await service.get_runtime_bundle(approval)
 
     request.state.trace_id = approval.trace_id or getattr(request.state, "trace_id", None)
     result = await service.grant(
@@ -69,6 +70,9 @@ async def grant_approval(
         resource_type="Approval",
         resource_id=id,
         reason=result.reason,
+        skill_id=runtime_tool_call.skill_id,
+        side_effects_applied=runtime_tool_call.side_effects or [],
+        approval_id=approval.id,
     )
 
     tool_call_event_written = False
@@ -83,6 +87,9 @@ async def grant_approval(
             resource_type="AIToolCall",
             resource_id=tool_call.id,
             reason="approval_granted_execute_write_stub",
+            skill_id=tool_call.skill_id,
+            side_effects_applied=tool_call.side_effects or [],
+            approval_id=approval.id,
         )
 
     return {
@@ -127,6 +134,7 @@ async def reject_approval(
     approval = await service.get_by_id(id)
     if approval is None:
         raise ResourceNotFoundError("Approval", id)
+    _, runtime_tool_call = await service.get_runtime_bundle(approval)
 
     request.state.trace_id = approval.trace_id or getattr(request.state, "trace_id", None)
     result = await service.reject(
@@ -142,6 +150,9 @@ async def reject_approval(
         resource_type="Approval",
         resource_id=id,
         reason=result.reason,
+        skill_id=runtime_tool_call.skill_id,
+        side_effects_applied=runtime_tool_call.side_effects or [],
+        approval_id=approval.id,
     )
 
     tool_call_event_written = False
@@ -156,6 +167,9 @@ async def reject_approval(
             resource_id=tool_call.id,
             reason="approval_rejected",
             actor_user_id=str(actor.user_id),
+            skill_id=tool_call.skill_id,
+            side_effects_applied=tool_call.side_effects or [],
+            approval_id=approval.id,
         )
 
     return {

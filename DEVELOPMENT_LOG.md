@@ -903,3 +903,24 @@
   - 验收矩阵对 E-002 的专属 Test ID 未单列（缺乏数据）；本次以 `tests/unit/test_tool_execution_after_approval_api.py` 三条门禁用例 + 状态/审计断言自证。
 - Next Step:
   - 进入 Gate-2 E-003（Approval 已通过后的写工具真实执行策略）前，先补审批查询与可观测性细节（F-002）。
+
+- DateTime: 2026-02-07 20:05:17 +0800
+- Task: Gate-2 G2-004（审计扩展字段：skill_id/skill_version/tool_call_args/side_effects_applied/approval_id + ix_audit_trace_created）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_2210_b8c9d0e1f2a3_add_audit_event_extended_fields.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/audit_event.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/audit_event_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/approvals.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_tool_execution_after_approval_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads && alembic -c alembic.ini upgrade head && alembic -c alembic.ini current
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_approval_api.py tests/unit/test_ai_commands_api.py tests/unit/test_tool_execution_after_approval_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 迁移链路：`alembic heads/current` 均为 `b8c9d0e1f2a3 (head)`，`upgrade head` 成功（PASS）
+  - 定向回归：`test_approval_api + test_ai_commands_api + test_tool_execution_after_approval_api`（PASS，6 passed）
+  - 审计字段断言：同一 trace_id 下 `tool_call_pending` 写入 `tool_call_args/side_effects_applied`，`tool_call_success|failed` 写入 `approval_id`（PASS）
+  - 全量单测：`pytest tests/unit -q`（PASS，83 passed）
+  - smoke：`./scripts/run_gate2_smoke.sh`（PASS，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 定向回归与全量回归均出现 `PytestUnhandledThreadExceptionWarning(Event loop is closed)`（aiosqlite 线程收尾告警），未导致失败；后续可在测试基建中统一收敛。
+  - 本次仅做 G2-004 字段与索引增量，不改变现有审计决策口径与异常映射。
+- Next Step:
+  - 按计划进入 Gate-2 E-003 或 F-002，继续完善审批后执行与审批查询可观测性。

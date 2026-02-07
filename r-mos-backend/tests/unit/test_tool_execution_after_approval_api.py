@@ -237,8 +237,21 @@ def test_grant_approval_executes_write_stub_and_records_tool_success_audit() -> 
                 action="tool_call_success",
             )
         )
+        pending_event = asyncio.run(
+            _find_latest_audit(
+                session_factory,
+                trace_id=trace_id,
+                action="tool_call_pending",
+            )
+        )
+        assert pending_event is not None
+        assert pending_event.tool_call_args == {"title": "E002测试"}
+        assert pending_event.side_effects_applied == ["sops.write"]
+
         assert success_event is not None
         assert success_event.trace_id == trace_id
+        assert success_event.approval_id == approval_id
+        assert success_event.side_effects_applied == ["sops.write"]
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -299,8 +312,21 @@ def test_reject_approval_marks_runtime_failed_and_records_tool_failed_audit() ->
                 action="tool_call_failed",
             )
         )
+        pending_event = asyncio.run(
+            _find_latest_audit(
+                session_factory,
+                trace_id=trace_id,
+                action="tool_call_pending",
+            )
+        )
+        assert pending_event is not None
+        assert pending_event.tool_call_args == {"title": "E002测试"}
+        assert pending_event.side_effects_applied == ["sops.write"]
+
         assert failed_event is not None
         assert failed_event.trace_id == trace_id
+        assert failed_event.approval_id == approval_id
+        assert failed_event.side_effects_applied == ["sops.write"]
     finally:
         client.close()
         app.dependency_overrides.clear()

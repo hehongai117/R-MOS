@@ -82,6 +82,9 @@ async def create_ai_command(
         resource_type="AIToolCall",
         resource_id=tool_call.id,
         reason="tool_call_created",
+        skill_id=payload.skill_id,
+        tool_call_args=payload.tool_args,
+        side_effects_applied=list(payload.side_effects),
     )
 
     if payload.side_effects:
@@ -110,6 +113,10 @@ async def create_ai_command(
             resource_type="Approval",
             resource_id=approval.id,
             reason="approval_pending_created",
+            skill_id=payload.skill_id,
+            tool_call_args=payload.tool_args,
+            side_effects_applied=list(payload.side_effects),
+            approval_id=approval.id,
         )
 
         return {
@@ -141,6 +148,10 @@ async def create_ai_command(
             resource_type="AIToolCall",
             resource_id=tool_call.id,
             reason="read_tool_success",
+            skill_id=payload.skill_id,
+            tool_call_args=payload.tool_args,
+            side_effects_applied=list(payload.side_effects),
+            approval_id=command.approval_id,
         )
         return {
             "command_id": command.id,
@@ -164,5 +175,9 @@ async def create_ai_command(
             resource_id=tool_call.id,
             reason=f"read_tool_error:{type(exc).__name__}",
             actor_user_id=str(actor.user_id),
+            skill_id=payload.skill_id,
+            tool_call_args=payload.tool_args,
+            side_effects_applied=list(payload.side_effects),
+            approval_id=command.approval_id,
         )
         raise HTTPException(status_code=500, detail="读工具执行失败")
