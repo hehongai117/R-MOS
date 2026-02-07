@@ -1,5 +1,21 @@
 # DEVELOPMENT_LOG
 
+## Gate-1 计划项对照表（计划项 → commit → 证据行号）
+
+| 计划项 | 状态 | 对应 commit | DEVELOPMENT_LOG 证据行号范围 | 说明 |
+| --- | --- | --- | --- | --- |
+| C-001 | ✅完成 | d46386b, 1f60cad | 105-132 | 统一审计写入与迁移一致性已闭环 |
+| B-001 | ✅完成 | b5b9d04, f8468ed | 227-262 | 统一错误映射，Read=404 / Write=403 语义闭环 |
+| A-001 | ⏳未完成 | - | - | 待进入注册接口最小闭环 |
+| A-002 | ⏳未完成 | - | - | 待进入登录接口最小闭环 |
+| A-003 | ⏳未完成 | - | - | 待进入刷新/登出最小闭环 |
+| B-002 | ✅完成 | e74ba11, 4b94e2f | 162-281 | deny 审计入口门禁化并完成收敛 |
+| B-003 | ✅完成 | 624482c, ac05aa6 | 139-304 | TeachingClass 对象级越权语义与审计真实 ID 闭环 |
+| C-002 | ⏳未完成 | - | - | 审计查询能力未完成 |
+| C-003 | ⏳未完成 | - | - | 审批审计闭环能力未完成 |
+
+备注：Gate-2 A-001~A-007 已提前实现 smoke 入口与门禁，但不计入 Gate-1 通过判定。
+
 - DateTime: 2026-02-06 19:34:58 +0800
 - Task: 生成完整项目目录清单（含隐藏文件）
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/PROJECT_DIRECTORY_FULL.txt, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
