@@ -33,6 +33,7 @@
 | E-001 | ✅完成 | 105e34b | 834-857 | Tool Executor 最小读链路（无副作用工具） |
 | E-002 | ✅完成 | 57699b5 | 883-904 | 审批结果驱动 Tool Executor 闭环（grant执行/ reject收口/幂等） |
 | F-001 | ✅完成 | 02a2ea8 | 861-880 | Approval Service 最小审批流（pending→granted/rejected） |
+| G2-004 | ✅完成 | ab18540 | 907-926 | 审计扩展字段与索引（skill/args/side_effects/approval + ix_audit_trace_created） |
 
 - DateTime: 2026-02-06 19:34:58 +0800
 - Task: 生成完整项目目录清单（含隐藏文件）
