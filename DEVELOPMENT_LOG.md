@@ -785,3 +785,24 @@
   - 本次仅做文档结构澄清与日志补证，不涉及业务逻辑与固定配置改动。
 - Next Step:
   - 优先推进 Gate-2 D-002（Skill 治理 API：技能注册/提审/发布最小闭环）。
+
+- DateTime: 2026-02-07 18:32:38 +0800
+- Task: Gate-2 D-002（Skill 治理 API：技能注册/提审/发布最小闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/skills.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/skill_registry.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1905_2f7c9d5a8b31_add_skill_governance_fields_and_permissions.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_skill_governance_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_skill_governance_api.py
+  - /bin/zsh -lc "cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 新增 D-002 单测：pytest -q tests/unit/test_skill_governance_api.py（PASS，5 passed）
+  - 全量单测：pytest tests/unit -q（PASS，74 passed, 1 skipped）
+  - smoke 回归：./scripts/run_gate2_smoke.sh（PASS，末尾“全部通过：PASS”）
+  - 迁移验证：alembic -c alembic.ini upgrade head（PASS，6e7f8a9b1c2d -> 2f7c9d5a8b31）
+- Result: PASS
+- Risks/Notes:
+  - 风险规则落地：`side_effects` 非空且 `risk_level=low` 时拒绝发布（RISK-001）；关键资源低于 high 拒绝发布（RISK-002）；critical 缺 feature_flag 或 rollback_strategy 拒绝发布（RISK-003）。
+  - 验收矩阵映射：`docs/specs/ACCEPTANCE_TEST_MATRIX.md:102`（权限拒绝类比 SKILL-T002）、`docs/specs/ACCEPTANCE_TEST_MATRIX.md:107`（提审/发布流程 SKILL-T007）、`docs/specs/ACCEPTANCE_TEST_MATRIX.md:109-110`（风险门禁 SKILL-T009/T010）。
+  - 本次仅实现 D-002 最小闭环；未扩展 E/F/G 业务链路。
+- Next Step:
+  - 进入 Gate-2 D-003（风险规则执行与发布门禁加固）并补齐更细粒度风险断言。

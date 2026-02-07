@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     auth,
     audit,
     admin,
+    skills,
     health,      # 拆包A
     adapter,     # 拆包A
     websocket,   # 拆包A
@@ -27,6 +28,7 @@ api_router = APIRouter()
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(audit.router, tags=["audit"])
 api_router.include_router(admin.router, tags=["admin"])
+api_router.include_router(skills.router, tags=["skills"])
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(adapter.router, tags=["adapter"])
 api_router.include_router(tasks.router, tags=["tasks"])
