@@ -82,8 +82,8 @@
 - A-003 ✅
 - B-002 ✅
 - B-003 ✅
-- C-002
-- C-003
+- C-002 ✅
+- C-003 ✅
 
 证据来源：`DEVELOPMENT_LOG.md` 对照表（见 `DEVELOPMENT_LOG.md` 的 Gate-1 对照段落）。
 备注：历史 Teaching 头部门控（`X-RMOS-Role/X-User-ID`）仅用于语义证明；本轮已补齐 Bearer + RBAC 路由守卫地基，不再以头部门控作为 B-001 完成依据。

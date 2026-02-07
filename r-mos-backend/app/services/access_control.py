@@ -57,6 +57,30 @@ async def log_deny_event(
     )
 
 
+async def log_allow_event(
+    db: AsyncSession,
+    request: Request,
+    *,
+    action: str,
+    resource_type: str,
+    resource_id: Any,
+    reason: str,
+    actor_user_id: Optional[str] = None,
+    request_meta: Optional[dict[str, Any]] = None,
+) -> None:
+    service = AuditEventService(db)
+    await service.log_event(
+        action=action,
+        decision="allow",
+        actor_user_id=actor_user_id if actor_user_id is not None else _extract_actor_user_id(request),
+        resource_type=resource_type,
+        resource_id=str(resource_id) if resource_id is not None else None,
+        reason=reason,
+        request_meta=request_meta if request_meta is not None else _build_request_meta(request),
+        trace_id=getattr(request.state, "trace_id", None),
+    )
+
+
 async def raise_read_access_denied(
     db: AsyncSession,
     request: Request,

@@ -11,8 +11,8 @@
 | A-003 | ✅完成 | 545b8cb, d5d782a | 562-616 | 刷新/登出闭环与迁移顺序纠偏已完成（AUTH-T006/T007/T008） |
 | B-002 | ✅完成 | e74ba11, 4b94e2f | 162-281 | deny 审计入口门禁化并完成收敛 |
 | B-003 | ✅完成 | 624482c, ac05aa6 | 139-304 | TeachingClass 对象级越权语义与审计真实 ID 闭环 |
-| C-002 | ⏳未完成 | - | - | 审计查询能力未完成 |
-| C-003 | ⏳未完成 | - | - | 审批审计闭环能力未完成 |
+| C-002 | ✅完成 | （本次提交） | 689-714 | 审计查询接口与过滤能力已闭环（GET /api/v1/audit/events） |
+| C-003 | ✅完成 | （本次提交） | 689-714 | 审计查询动作写入 audit_query allow 审计闭环已完成（Gate-1 最小范围） |
 
 备注：Gate-2 A-001~A-007 已提前实现 smoke 入口与门禁，但不计入 Gate-1 通过判定。
 
@@ -685,3 +685,30 @@
   - 数据库存在历史表结构，执行新 DAG 时触发 DuplicateTableError；已按流程用 stamp 对齐版本并保留错误栈证据。
 - Next Step:
   - 继续 Gate-1 计划中的 B-002，保持 Gate-1 链路不依赖 Gate-2。
+
+- DateTime: 2026-02-07 17:24:08 +0800
+- Task: Gate-1 C-002/C-003（审计查询与审批审计闭环最小实现：GET /api/v1/audit/events）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/audit.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_audit_events_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,360p' docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && grep -n "Gate-1 对照表\|C-002\|C-003\|Task: Gate-1" DEVELOPMENT_LOG.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_audit_events_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+  - （修复后复验）pytest -q tests/unit/test_audit_events_api.py
+  - （修复后复验）pytest tests/unit -q
+  - （修复后复验）./scripts/run_gate2_smoke.sh
+- Tests:
+  - AUDIT-T003：GET /api/v1/audit/events 查询过滤（actor_user_id/user_id、decision、分页）返回 200，结构字段完整（PASS）
+  - AUDIT-T004：资源维度查询能力已实现（resource_type/resource_id 过滤），在 test_audit_events_api 中覆盖最小结构断言（PASS）
+  - AUDIT-T001/AUDIT-T006：teacher 访问审计查询被拒（403），deny 审计记录真实路由 resource_id=/api/v1/audit/events（PASS）
+  - 缺乏数据：矩阵未单列“audit_query allow 审计”Test ID；本次以 test_audit_events_api.py::test_audit_events_admin_query_records_audit_query_allow 自证（PASS）
+  - 全量单测：pytest tests/unit -q（PASS，69 passed, 1 skipped）
+  - smoke：./scripts/run_gate2_smoke.sh（PASS，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 首次全量回归 FAIL：tests/unit/test_deny_audit_entrypoint_gate.py 误判新路由含散落 deny 入口（因出现 .log_event 组合）；处置为将 allow 审计写入收敛至 access_control.log_allow_event 后复验通过。
+  - C-003 在 Gate-1 范围内仅完成“audit_query allow 审计闭环”最小实现，Gate-2 审批动作审计（AUDIT-T007/T008）未纳入本次。
+- Next Step:
+  - 进入 Gate-1 下一最小缺口任务，保持每次仅交付 1 个可验收切片。
