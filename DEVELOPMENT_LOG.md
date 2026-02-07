@@ -451,3 +451,23 @@
   - 仅做计划文档回填、测试与回归入口调整，不改业务逻辑
 - Next Step:
   - 继续 Gate-2 后续最小任务（保持计划与回归实现一致）
+
+- DateTime: 2026-02-07 15:32:43 +0800
+- Task: Gate-2 D-001（G2-001：Skill 治理数据迁移 + ORM + 门禁测试）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/skill_registry.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1530_6e7f8a9b1c2d_add_skill_registry_tables.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_skill_registry_migration_gate.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "skill_registry_migration_gate or deny_audit_entrypoint_gate or smoke_help_gate"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 基线 smoke：PASS（全部通过）
+  - alembic upgrade head：PASS（升级到 6e7f8a9b1c2d）
+  - pytest 最小集合：PASS（3 passed）
+  - 变更后 smoke：PASS（全部通过）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅完成 G2-001 数据层，不涉及 Gate-2 E/F/G 业务链路。
+  - 迁移与 pytest 首次在沙箱内访问 Postgres 被拒（Operation not permitted），按流程提权重跑后通过。
+- Next Step:
+  - 继续 Gate-2 D-002（仅在明确任务指令下推进）。
