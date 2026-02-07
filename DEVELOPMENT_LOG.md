@@ -4,11 +4,11 @@
 
 | 计划项 | 状态 | 对应 commit | DEVELOPMENT_LOG 证据行号范围 | 说明 |
 | --- | --- | --- | --- | --- |
-| C-001 | ✅完成 | d46386b, 1f60cad | 105-132 | 统一审计写入与迁移一致性已闭环 |
-| B-001 | ✅完成 | b5b9d04, f8468ed | 227-262 | 统一错误映射，Read=404 / Write=403 语义闭环 |
-| A-001 | ⏳未完成 | - | - | 待进入注册接口最小闭环 |
-| A-002 | ⏳未完成 | - | - | 待进入登录接口最小闭环 |
-| A-003 | ⏳未完成 | - | - | 待进入刷新/登出最小闭环 |
+| C-001 | ✅完成 | d46386b, 1f60cad | 105-138 | 统一审计写入与迁移一致性已闭环 |
+| B-001 | ✅完成 | b5b9d04, f8468ed,（本次提交） | 227-262, 635-657 | 路由级 Bearer + RBAC 守卫地基已补齐，历史头部门控不再作为完成依据 |
+| A-001 | ✅完成 | 86a988d, 9a5946d | 492-534 | 注册接口与迁移顺序纠偏已闭环（AUTH-T001/T002/T003） |
+| A-002 | ✅完成 | d76f469 | 535-561 | 登录接口最小闭环已完成（AUTH-T004/T005） |
+| A-003 | ✅完成 | 545b8cb, d5d782a | 562-616 | 刷新/登出闭环与迁移顺序纠偏已完成（AUTH-T006/T007/T008） |
 | B-002 | ✅完成 | e74ba11, 4b94e2f | 162-281 | deny 审计入口门禁化并完成收敛 |
 | B-003 | ✅完成 | 624482c, ac05aa6 | 139-304 | TeachingClass 对象级越权语义与审计真实 ID 闭环 |
 | C-002 | ⏳未完成 | - | - | 审计查询能力未完成 |
@@ -614,3 +614,44 @@
   - 本地数据库存在历史表状态，需通过 `alembic stamp 6e7f8a9b1c2d` 对齐版本戳后与新 DAG 一致。
 - Next Step:
   - 继续 Gate-1 后续缺口（保持 Gate-1 任务不依赖 Gate-2）。
+
+- DateTime: 2026-02-07 16:42:36 +0800
+- Task: Gate-1 计划✅对齐（A-001~A-003/C-001 已完成标记；B-001 进入实现）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - sed -n '1,320p' /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md
+  - sed -n '1,700p' /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+  - grep -n "Task: Gate-1 A-001\|Task: Gate-1 A-002\|Task: Gate-1 A-003\|Task: Gate-1 C-001\|Task: Gate-1 B-001" /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+  - git --no-pager log --oneline --decorate -80 | grep -E "Gate-1 A-001|Gate-1 A-002|Gate-1 A-003|Gate-1 C-001|Gate-1 B-001"
+- Tests:
+  - 文档一致性自检：DEV_PLAN_001 Gate-1 进度与 DEVELOPMENT_LOG 对照表一致（PASS）
+  - 证据可追溯性自检：A-001/A-002/A-003/C-001 均可定位 commit 与日志行号（PASS）
+- Result: PASS
+- Risks/Notes:
+  - B-001 历史记录为临时头部门控语义证明，未满足真实 RBAC 守卫上下文，故保持“⏳未完成”。
+- Next Step:
+  - 实现 Gate-1 B-001 最小闭环（RBAC 守卫 + AUTHZ-T001/T002 门禁测试）。
+
+- DateTime: 2026-02-07 16:49:42 +0800
+- Task: Gate-1 B-001（鉴权/RBAC 守卫地基最小闭环：roles/permissions + AUTHZ-T001/T002/T004）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1655_9f2b6c1d4e7a_add_rbac_guard_foundation_tables.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/rbac.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/access_token.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/exceptions.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/authz_guard.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/admin.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/auth.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/main.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_authz_guard_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_authz_guard_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads && alembic -c alembic.ini current && alembic -c alembic.ini history | head -n 60
+- Tests:
+  - AUTHZ-T001：admin 访问 /api/v1/admin/users 返回 200（PASS）
+  - AUTHZ-T002：teacher 访问 /api/v1/admin/users 返回 403 + AUTHZ_002（PASS）
+  - AUTHZ-T004：无 token 访问受保护路由返回 401 + AUTH_003（PASS）
+  - deny 审计：RBAC 拒绝写入 audit_events（resource_type=Route, resource_id=/api/v1/admin/users）（PASS）
+  - alembic upgrade head：PASS（6e7f8a9b1c2d -> 9f2b6c1d4e7a）
+  - pytest tests/unit -q：PASS（65 passed, 1 skipped）
+  - ./scripts/run_gate2_smoke.sh：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 沙箱内二次执行 `alembic current/history` 时出现本机 Postgres 连接权限限制（Operation not permitted），按流程提权重跑后通过。
+  - 本轮仅实现路由级 RBAC 地基与最小 admin 路由验证，未扩散到全部业务路由。
+- Next Step:
+  - 进入 Gate-1 B-002（将更多业务路由切换到 Bearer + 权限键守卫，并逐步淘汰临时头部门控）。

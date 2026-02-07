@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import hash_password, hash_token, is_strong_password, verify_password
+from app.models.access_token import AccessToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.auth import (
@@ -129,6 +130,15 @@ async def login(
     now = datetime.utcnow()
     user.last_login_at = now
     db.add(
+        AccessToken(
+            user_id=user.id,
+            access_token_hash=hash_token(access_token),
+            issued_at=now,
+            expires_at=now + timedelta(seconds=ACCESS_TOKEN_EXPIRES_SECONDS),
+            is_revoked=False,
+        )
+    )
+    db.add(
         RefreshToken(
             user_id=user.id,
             refresh_token_hash=hash_token(refresh_token),
@@ -179,6 +189,15 @@ async def refresh_token(
 
     new_access_token, new_refresh_token = _issue_token_pair()
     db.add(
+        AccessToken(
+            user_id=session.user_id,
+            access_token_hash=hash_token(new_access_token),
+            issued_at=now,
+            expires_at=now + timedelta(seconds=ACCESS_TOKEN_EXPIRES_SECONDS),
+            is_revoked=False,
+        )
+    )
+    db.add(
         RefreshToken(
             user_id=session.user_id,
             refresh_token_hash=hash_token(new_refresh_token),
@@ -209,7 +228,19 @@ async def logout(
 
     if session is not None and not session.is_revoked:
         session.is_revoked = True
-        session.revoked_at = datetime.utcnow()
+        now = datetime.utcnow()
+        session.revoked_at = now
+
+        access_tokens_result = await db.execute(
+            select(AccessToken).where(
+                AccessToken.user_id == session.user_id,
+                AccessToken.is_revoked.is_(False),
+            )
+        )
+        for access_token in access_tokens_result.scalars().all():
+            access_token.is_revoked = True
+            access_token.revoked_at = now
+
         await db.commit()
 
     return MessageResponse(message="登出成功", success=True)

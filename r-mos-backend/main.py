@@ -19,6 +19,7 @@ from app.core.logging import setup_logging
 from app.core.exceptions import (
     AdapterConnectionError,
     AccessDeniedError,
+    AuthenticationRequiredError,
     BusinessRuleViolation,
     ResourceNotFoundError,
 )
@@ -167,6 +168,27 @@ async def resource_not_found_handler(request: Request, exc: ResourceNotFoundErro
                     "resource_type": exc.resource_type,
                     "resource_id": str(exc.resource_id),
                 },
+            },
+            "timestamp": exc.timestamp.isoformat(),
+            "request_id": trace_id,
+        },
+    )
+
+
+@app.exception_handler(AuthenticationRequiredError)
+async def authentication_required_handler(request: Request, exc: AuthenticationRequiredError):
+    """未登录或令牌无效统一映射（401）。"""
+    trace_id = getattr(request.state, "trace_id", str(id(request)))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status_code": exc.status_code,
+            "error_type": "AuthenticationRequiredError",
+            "message": exc.message,
+            "details": {
+                "code": exc.error_code,
+                "message": exc.message,
+                "details": {},
             },
             "timestamp": exc.timestamp.isoformat(),
             "request_id": trace_id,

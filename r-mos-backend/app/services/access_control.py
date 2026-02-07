@@ -42,12 +42,13 @@ async def log_deny_event(
     resource_type: str,
     resource_id: Any,
     reason: str,
+    actor_user_id: Optional[str] = None,
 ) -> None:
     service = AuditEventService(db)
     await service.log_event(
         action=action,
         decision="deny",
-        actor_user_id=_extract_actor_user_id(request),
+        actor_user_id=actor_user_id if actor_user_id is not None else _extract_actor_user_id(request),
         resource_type=resource_type,
         resource_id=str(resource_id) if resource_id is not None else None,
         reason=reason,

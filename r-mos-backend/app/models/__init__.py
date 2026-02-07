@@ -16,7 +16,9 @@ from app.models.assessment import AssessmentProvider, ExternalAssessment, Assess
 from app.models.audit_log import SOPAuditLog, AuditAction, ActorType  # V2.3 新增
 from app.models.audit_event import AuditEvent
 from app.models.skill_registry import Skill, SkillReview, SkillRelease
+from app.models.rbac import Role, Permission, UserRole, RolePermission
 from app.models.refresh_token import RefreshToken
+from app.models.access_token import AccessToken
 from app.models.user import User
 from app.models.teaching import (
     GuidancePolicy,
@@ -65,6 +67,13 @@ __all__ = [
     "Skill",
     "SkillReview",
     "SkillRelease",
+    # RBAC
+    "Role",
+    "Permission",
+    "UserRole",
+    "RolePermission",
+    # Auth tokens
+    "AccessToken",
     "RefreshToken",
     # Auth
     "User",

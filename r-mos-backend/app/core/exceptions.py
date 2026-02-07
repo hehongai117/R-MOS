@@ -42,6 +42,18 @@ class AdapterConnectionError(Exception):
         super().__init__(self.message)
 
 
+class AuthenticationRequiredError(Exception):
+    """未登录或令牌无效（401）。"""
+
+    status_code = 401
+    error_code = "AUTH_003"
+
+    def __init__(self, message: str = "未登录或令牌无效"):
+        self.message = message
+        self.timestamp = datetime.utcnow()
+        super().__init__(self.message)
+
+
 class ResourceNotFoundError(Exception):
     """资源不存在异常（404 Not Found）
     
@@ -121,6 +133,54 @@ class WriteAccessDeniedError(AccessDeniedError):
         resource_id: Any,
         reason: str,
         message: str = "权限不足",
+    ):
+        super().__init__(
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason=reason,
+            message=message,
+        )
+
+
+class PermissionDeniedError(AccessDeniedError):
+    """API 级权限不足（403）。"""
+
+    status_code = 403
+    error_code = "AUTHZ_001"
+
+    def __init__(
+        self,
+        *,
+        action: str,
+        resource_type: str,
+        resource_id: Any,
+        reason: str,
+        message: str = "权限不足",
+    ):
+        super().__init__(
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason=reason,
+            message=message,
+        )
+
+
+class RoleRequiredError(AccessDeniedError):
+    """缺少必需角色（403）。"""
+
+    status_code = 403
+    error_code = "AUTHZ_002"
+
+    def __init__(
+        self,
+        *,
+        action: str,
+        resource_type: str,
+        resource_id: Any,
+        reason: str,
+        message: str = "缺少必需角色",
     ):
         super().__init__(
             action=action,
