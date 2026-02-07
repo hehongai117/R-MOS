@@ -49,3 +49,8 @@ def verify_password(password: str, stored_hash: str) -> bool:
         iterations,
     )
     return hmac.compare_digest(calculated_digest, expected_digest)
+
+
+def hash_token(token: str) -> str:
+    """刷新令牌哈希（避免明文落库）。"""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

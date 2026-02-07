@@ -557,3 +557,33 @@
   - `rg` 在当前环境不可用，文档定位改用 `grep`，不影响实现与验收。
 - Next Step:
   - 进入 Gate-1 A-003（刷新/登出）前，先对齐 refresh token 持久化与撤销策略。
+
+- DateTime: 2026-02-07 16:19:34 +0800
+- Task: Gate-1 A-003（刷新/登出最小闭环：AUTH-T006/AUTH-T007/AUTH-T008）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/refresh_token.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1618_c1f4a8b2d9e0_add_refresh_tokens_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/security.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/auth.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_auth_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,320p' docs/specs/ACCEPTANCE_TEST_MATRIX.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' docs/design/DEV_TASK_BRIEFING_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && grep -RInE "A-003|刷新|refresh|登出|logout|AUTH-T006|AUTH-T007|AUTH-T008" docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/design/DEV_TASK_BRIEFING_001.md docs/testing/ACCEPTANCE_CHARTER.md docs/design/DEV_PLAN_001.md | head -n 200
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && alembic -c alembic.ini heads && alembic -c alembic.ini history | head -n 80
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py -k "auth_refresh_success or auth_refresh_revoked_or_expired or auth_logout_revokes"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads && alembic -c alembic.ini current && alembic -c alembic.ini history | head -n 40
+- Tests:
+  - AUTH-T006：POST /api/v1/auth/refresh 成功返回 200，返回新 access_token（PASS）
+  - AUTH-T007：已登出 refresh_token 再刷新返回 401 + AUTH_004（PASS）
+  - AUTH-T008：POST /api/v1/auth/logout 返回 200，refresh_tokens.is_revoked=true（PASS）
+  - A-003 最小回归：pytest -q tests/unit/test_auth_api.py -k "auth_refresh_success or auth_refresh_revoked_or_expired or auth_logout_revokes"（PASS，3 passed）
+  - 全量 auth 单测：PASS（9 passed）
+  - Alembic：heads/current/history 单 head（c1f4a8b2d9e0）且 upgrade head 成功（PASS）
+- Result: PASS
+- Risks/Notes:
+  - refresh_token 采用哈希落库（sha256）并在 refresh 时轮换旧令牌（旧令牌置 revoked）。
+  - 基线阶段在沙箱内执行 alembic 连接本机 Postgres 失败（PermissionError: Operation not permitted），已按流程提权重跑通过。
+  - `rg` 不可用，文档检索改用 `grep`，不影响验收结论。
+- Next Step:
+  - 进入 Gate-1 B/C 缺口补齐前，先明确 AUTH-T009（access token 过期）的最小实现边界。

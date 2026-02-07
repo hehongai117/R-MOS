@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import get_db
+from app.core.security import hash_token
 from app.models.base import Base
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from main import app
 import app.models as app_models  # noqa: F401  # 确保所有模型注册到 metadata
@@ -173,6 +175,136 @@ def test_auth_login_unknown_user_returns_auth_001() -> None:
         )
         assert login_resp.status_code == 401
         assert login_resp.json()["details"]["code"] == "AUTH_001"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_auth_refresh_success_returns_new_access_token() -> None:
+    client, session_factory = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "refresh_user@example.com",
+                "password": "StrongPass123",
+                "full_name": "刷新用户",
+            },
+        )
+        assert register_resp.status_code == 201
+
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "refresh_user@example.com", "password": "StrongPass123"},
+        )
+        assert login_resp.status_code == 200
+        old_tokens = login_resp.json()
+
+        refresh_resp = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": old_tokens["refresh_token"]},
+        )
+        assert refresh_resp.status_code == 200
+        new_tokens = refresh_resp.json()
+        assert new_tokens["access_token"] != old_tokens["access_token"]
+        assert new_tokens["refresh_token"] != old_tokens["refresh_token"]
+        assert new_tokens["expires_in"] == 900
+
+        async def assert_refresh_rotation() -> None:
+            async with session_factory() as session:
+                old_result = await session.execute(
+                    select(RefreshToken).where(
+                        RefreshToken.refresh_token_hash == hash_token(old_tokens["refresh_token"])
+                    )
+                )
+                old_token = old_result.scalar_one()
+                assert old_token.is_revoked is True
+                assert old_token.revoked_at is not None
+
+                new_result = await session.execute(
+                    select(RefreshToken).where(
+                        RefreshToken.refresh_token_hash == hash_token(new_tokens["refresh_token"])
+                    )
+                )
+                new_token = new_result.scalar_one()
+                assert new_token.is_revoked is False
+
+        asyncio.run(assert_refresh_rotation())
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_auth_refresh_revoked_or_expired_returns_401_code() -> None:
+    client, _ = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "refresh_denied_user@example.com",
+                "password": "StrongPass123",
+                "full_name": "刷新拒绝用户",
+            },
+        )
+        assert register_resp.status_code == 201
+
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "refresh_denied_user@example.com", "password": "StrongPass123"},
+        )
+        assert login_resp.status_code == 200
+        refresh_token = login_resp.json()["refresh_token"]
+
+        logout_resp = client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token})
+        assert logout_resp.status_code == 200
+
+        refresh_resp = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+        assert refresh_resp.status_code == 401
+        assert refresh_resp.json()["details"]["code"] == "AUTH_004"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_auth_logout_revokes_refresh_token() -> None:
+    client, session_factory = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "logout_user@example.com",
+                "password": "StrongPass123",
+                "full_name": "登出用户",
+            },
+        )
+        assert register_resp.status_code == 201
+
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "logout_user@example.com", "password": "StrongPass123"},
+        )
+        assert login_resp.status_code == 200
+        refresh_token = login_resp.json()["refresh_token"]
+
+        logout_resp = client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token})
+        assert logout_resp.status_code == 200
+        assert logout_resp.json()["success"] is True
+
+        async def assert_token_revoked() -> None:
+            async with session_factory() as session:
+                token_result = await session.execute(
+                    select(RefreshToken).where(
+                        RefreshToken.refresh_token_hash == hash_token(refresh_token)
+                    )
+                )
+                token_row = token_result.scalar_one()
+                assert token_row.is_revoked is True
+                assert token_row.revoked_at is not None
+
+        asyncio.run(assert_token_revoked())
     finally:
         client.close()
         app.dependency_overrides.clear()
