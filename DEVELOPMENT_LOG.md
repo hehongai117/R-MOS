@@ -28,7 +28,9 @@
 | A-006 | ✅完成 | ec1a31d | 442-454 | 帮助输出补齐退出码 21 |
 | A-007 | ✅完成 | 5a64b4e | 455-484 | `--help` 一致性门禁测试并纳入默认 smoke |
 | D-001 | ✅完成 | a743fe5 | 485-504 | G2-001 Skill 治理数据迁移 + ORM + 门禁测试 |
-| D-002 | ⏳未完成 | - | - | Skill 治理 API（技能注册/提审/发布最小闭环） |
+| D-002 | ✅完成 | 80136ea | 789-808 | Skill 治理 API（技能注册/提审/发布最小闭环） |
+| D-003 | ✅完成 | 2a403ab | 810-832 | Skill 风险规则执行与发布门禁加固 |
+| E-001 | ✅完成 | 105e34b | 834-857 | Tool Executor 最小读链路（无副作用工具） |
 
 - DateTime: 2026-02-06 19:34:58 +0800
 - Task: 生成完整项目目录清单（含隐藏文件）
@@ -830,3 +832,28 @@
   - 规则触发策略：本次保持“仅 publish 阶段强制校验”，create/submit-review 不提前拦截。
 - Next Step:
   - 进入 Gate-2 E-001（Tool Executor 最小读链路）或按计划补 D-003 后续扩展断言（如 unknown risk_level 迁移数据巡检）。
+
+- DateTime: 2026-02-07 19:02:12 +0800
+- Task: Gate-2 E-001（Tool Executor 最小读链路：无副作用工具）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_2000_7a1b2c3d4e5f_add_commands_and_tool_calls_tables.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/command_runtime.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_ai_commands_api.py（先红灯后绿灯）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini current
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 新增门禁：tests/unit/test_ai_commands_api.py（PASS，2 passed）
+  - 全量单测：pytest tests/unit -q（PASS，80 passed）
+  - smoke 回归：./scripts/run_gate2_smoke.sh（PASS，末尾“全部通过：PASS”）
+  - 迁移链：alembic heads/current = 7a1b2c3d4e5f（single head，PASS）
+- Result: PASS
+- Risks/Notes:
+  - E-001 仅实现无副作用读工具执行；`side_effects` 非空路径仅落 `tool_call_pending`，不执行写工具（待 F-001 审批链路）。
+  - 验收矩阵映射：AGENT-T001（读工具成功）、AGENT-T006（写工具进入 pending）、AUDIT-T008（trace_id 串联审计链）。
+  - 缺乏数据：矩阵未单列 “command_created/tool_call_pending/tool_call_success” 的最小 API 用例，本次以 tests/unit/test_ai_commands_api.py 的断言与审计链自证。
+  - 失败处置：首次在沙箱内执行 alembic upgrade head 因本机 Postgres 连接权限被拒（Errno 1），已按审批流程提权重跑并通过。
+- Next Step:
+  - 进入 Gate-2 F-001（Approval Service 最小审批流），将 `pending_approval` 命令接入审批确认闭环。
