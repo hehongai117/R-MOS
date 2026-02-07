@@ -530,3 +530,30 @@
   - 本地库因历史执行状态导致 `skills` 表已存在但版本号停在 b4d2c7f8e3a1，故首次 `upgrade head` 失败；通过 `alembic stamp 6e7f8a9b1c2d` 对齐版本后验证通过。
 - Next Step:
   - 继续 Gate-1 A-002（登录接口）最小闭环开发。
+
+- DateTime: 2026-02-07 16:06:57 +0800
+- Task: Gate-1 A-002（登录接口最小闭环：实现 + AUTH-T004/AUTH-T005 单测）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/security.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/auth.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_auth_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,200p' AGENTS.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' docs/specs/ACCEPTANCE_TEST_MATRIX.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/design/DEV_TASK_BRIEFING_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && grep -RInE "A-002|登录|login|AUTH-T004|AUTH-T005" docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/design/DEV_TASK_BRIEFING_001.md docs/testing/ACCEPTANCE_CHARTER.md docs/design/DEV_PLAN_001.md | head -n 200
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py -k "auth_login_success or auth_login_wrong_password or auth_login_unknown_user"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py
+- Tests:
+  - AUTH-T004：登录成功返回 200，包含 access_token/refresh_token，expires_in=900（PASS）
+  - AUTH-T005：密码错误返回 401 + AUTH_001（PASS）
+  - 缺乏数据：矩阵未单列“未知用户登录”用例；本次按凭证错误同口径返回 401 + AUTH_001（PASS）
+  - alembic -c alembic.ini upgrade head：PASS
+  - 全量 auth 单测：PASS（6 passed）
+- Result: PASS
+- Risks/Notes:
+  - 当前为最小闭环，令牌采用本地随机串发放；A-003 再补刷新/登出链路。
+  - `rg` 在当前环境不可用，文档定位改用 `grep`，不影响实现与验收。
+- Next Step:
+  - 进入 Gate-1 A-003（刷新/登出）前，先对齐 refresh token 持久化与撤销策略。

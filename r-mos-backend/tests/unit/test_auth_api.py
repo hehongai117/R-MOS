@@ -108,3 +108,72 @@ def test_auth_register_weak_password_returns_user_002() -> None:
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+def test_auth_login_success_returns_tokens() -> None:
+    client, _ = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "login_user@example.com",
+                "password": "StrongPass123",
+                "full_name": "登录用户",
+            },
+        )
+        assert register_resp.status_code == 201
+
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "login_user@example.com", "password": "StrongPass123"},
+        )
+        assert login_resp.status_code == 200
+        payload = login_resp.json()
+        assert isinstance(payload.get("access_token"), str)
+        assert isinstance(payload.get("refresh_token"), str)
+        assert payload.get("expires_in") == 900
+        assert payload.get("token_type") == "bearer"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_auth_login_wrong_password_returns_auth_001() -> None:
+    client, _ = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "wrong_pass_user@example.com",
+                "password": "StrongPass123",
+                "full_name": "登录失败用户",
+            },
+        )
+        assert register_resp.status_code == 201
+
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "wrong_pass_user@example.com", "password": "WrongPass123"},
+        )
+        assert login_resp.status_code == 401
+        assert login_resp.json()["details"]["code"] == "AUTH_001"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_auth_login_unknown_user_returns_auth_001() -> None:
+    client, _ = _build_client()
+    try:
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "unknown_user@example.com", "password": "StrongPass123"},
+        )
+        assert login_resp.status_code == 401
+        assert login_resp.json()["details"]["code"] == "AUTH_001"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None

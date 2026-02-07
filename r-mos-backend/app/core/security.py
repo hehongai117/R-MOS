@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import base64
+import binascii
+import hmac
 import hashlib
 import os
 import re
@@ -26,3 +28,24 @@ def hash_password(password: str) -> str:
     salt_b64 = base64.b64encode(salt).decode("ascii")
     digest_b64 = base64.b64encode(digest).decode("ascii")
     return f"pbkdf2_sha256${iterations}${salt_b64}${digest_b64}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """校验明文密码是否与已存摘要匹配。"""
+    try:
+        algorithm, iterations_text, salt_b64, digest_b64 = stored_hash.split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        iterations = int(iterations_text)
+        salt = base64.b64decode(salt_b64.encode("ascii"), validate=True)
+        expected_digest = base64.b64decode(digest_b64.encode("ascii"), validate=True)
+    except (ValueError, binascii.Error):
+        return False
+
+    calculated_digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return hmac.compare_digest(calculated_digest, expected_digest)
