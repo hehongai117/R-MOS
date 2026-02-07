@@ -377,3 +377,19 @@
   - 数据库连接失败/查询失败/动作缺失分别退出码 `21/22/23/24`
 - Next Step:
   - 继续 Gate-2 下一最小任务（在不改业务逻辑前提下扩展可复现证据）
+
+- DateTime: 2026-02-07 14:42:08 +0800
+- Task: Gate-2 A-004（smoke 脚本新增 --help/-h 帮助输出）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ./scripts/run_gate2_smoke.sh --help
+  - ./scripts/run_gate2_smoke.sh
+- Tests:
+  - --help：PASS（输出包含参数说明、前置条件、退出码表）
+  - 默认 smoke：PASS（末尾输出“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - `--help/-h` 为纯帮助路径，直接退出 `0`，不依赖 `.venv`/服务/数据库
+  - 保持既有语义不变：默认 smoke、`--e2e`、`--e2e --audit`
+- Next Step:
+  - 继续 Gate-2 后续最小任务（在不改业务逻辑前提下提升脚本可用性）

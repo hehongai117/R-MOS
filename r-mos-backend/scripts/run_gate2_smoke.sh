@@ -1,8 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Gate-2 A-001：回归入口脚本（smoke）"
-echo "说明：默认仅跑 pytest 与门禁；如需端到端 curl 证据，传参 --e2e；如需审计落库断言，传参 --audit（需与 --e2e 一起使用）"
+print_help() {
+  cat <<'EOF'
+Gate-2 A-001/A-002/A-003 回归入口脚本（smoke）
+
+用法：
+  ./scripts/run_gate2_smoke.sh
+  ./scripts/run_gate2_smoke.sh --e2e
+  ./scripts/run_gate2_smoke.sh --e2e --audit
+  ./scripts/run_gate2_smoke.sh --help
+
+参数说明：
+  --e2e     要求服务已启动在 127.0.0.1:18080；会创建 class 并断言 READ=404/WRITE=403 + 对应 error_type/code
+  --audit   必须与 --e2e 同用；要求已设置 DATABASE_URL；会校验 audit_events 命中 read_access_denied 与 permission_denied（AUDIT-T006）
+  --help/-h 显示帮助
+
+前置条件：
+  - 建议在后端目录运行（脚本会自动 cd 到后端根目录）
+  - .venv 存在
+  - --e2e 需要 uvicorn 已启动（openapi.json 返回 200）
+  - --audit 需要 DATABASE_URL 指向本机 Postgres
+  - 本机 HTTP 调用必须 curl --noproxy 127.0.0.1,localhost（脚本已内置）
+
+退出码：
+  2   参数错误
+  3   服务不可达
+  4   无 class_id
+  10  READ 状态码不符
+  11  WRITE 状态码不符
+  12  READ 字段断言失败
+  13  WRITE 字段断言失败
+  20  未设置 DATABASE_URL
+  21  数据库连接失败
+  22  审计查询失败
+  23  缺少 read_access_denied
+  24  缺少 permission_denied
+EOF
+}
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -11,6 +46,10 @@ E2E=false
 AUDIT=false
 for arg in "$@"; do
   case "$arg" in
+    --help|-h)
+      print_help
+      exit 0
+      ;;
     --e2e)
       E2E=true
       ;;
@@ -19,11 +58,14 @@ for arg in "$@"; do
       ;;
     *)
       echo "错误：不支持的参数：$arg"
-      echo "用法：./scripts/run_gate2_smoke.sh [--e2e] [--audit]"
+      echo "用法：./scripts/run_gate2_smoke.sh [--e2e] [--audit] [--help]"
       exit 2
       ;;
   esac
 done
+
+echo "Gate-2 A-001：回归入口脚本（smoke）"
+echo "说明：默认仅跑 pytest 与门禁；如需端到端 curl 证据，传参 --e2e；如需审计落库断言，传参 --audit（需与 --e2e 一起使用）"
 
 if [[ "$AUDIT" == "true" && "$E2E" != "true" ]]; then
   echo "错误：--audit 需与 --e2e 同时使用。"
