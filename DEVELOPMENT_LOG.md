@@ -278,6 +278,7 @@
   - 新增覆盖用例：test_class_write_permission_denied_records_real_resource_id（PASS）
   - 最小回归集合：5 passed（PASS）
   - 门禁测试：1 passed（PASS）
+  - 门禁补证：pytest -q tests/unit/test_deny_audit_entrypoint_gate.py -> PASS（1 passed）
 - Result: PASS
 - Risks/Notes:
   - read_status=404，error_type=ReadAccessDeniedError，code=READ_ACCESS_DENIED
@@ -285,3 +286,28 @@
   - audit_events 命中 action=read_access_denied 与 action=permission_denied，resource_id=真实 class_id=27
 - Next Step:
   - 继续按 Gate-1 最小任务推进
+
+- DateTime: 2026-02-07 12:02:30 +0800
+- Task: Gate-1 B-004（TeachingClass READ/WRITE deny 端到端证据固化）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py（基线补证）
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/classes（创建真实 class_id=28）
+  - curl --noproxy 127.0.0.1,localhost GET /api/v1/classes/28（X-RMOS-Role: student, X-User-ID: 2002）
+  - curl --noproxy 127.0.0.1,localhost -X PATCH /api/v1/classes/28（X-RMOS-Role: student, X-User-ID: 2002）
+  - python 查询 Postgres audit_events（条件：decision='deny' and resource_type='TeachingClass' and resource_id='28'）
+  - pytest -q tests/unit/test_teaching_api.py -k "class_read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
+- Tests:
+  - 门禁测试：PASS（1 passed）
+  - class 定向回归：PASS（2 passed）
+  - 门禁复跑：PASS（1 passed）
+- Result: PASS
+- Risks/Notes:
+  - class_id=28（真实对象）
+  - read_status=404，error_type=ReadAccessDeniedError，code=READ_ACCESS_DENIED
+  - write_status=403，error_type=WriteAccessDeniedError，code=WRITE_ACCESS_DENIED
+  - audit_events 命中两条 deny：action=read_access_denied 与 action=permission_denied，resource_id=28（真实）
+  - not found 场景未包装为 deny（语义边界保持不变）
+- Next Step:
+  - 继续按 Gate-1 后续最小任务推进
