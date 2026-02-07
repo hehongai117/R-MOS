@@ -262,3 +262,26 @@
   - 现场确认：未检出 `_deny_entrypoint` 与 deny 运行时 `raise ValueError` 拦截逻辑
 - Next Step:
   - 继续按 Gate-1 最小任务推进
+
+- DateTime: 2026-02-07 11:41:12 +0800
+- Task: Gate-1 B-003（TeachingClass：READ=404、WRITE=403、deny 审计真实 resource_id）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event or class_read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/classes（创建真实 class_id=27）
+  - curl --noproxy 127.0.0.1,localhost GET /api/v1/classes/27（X-RMOS-Role: student, X-User-ID: 2002）
+  - curl --noproxy 127.0.0.1,localhost PATCH /api/v1/classes/27（X-RMOS-Role: student, X-User-ID: 2002）
+  - python 查询 Postgres audit_events（decision='deny' and resource_type='TeachingClass' and resource_id='27'）
+- Tests:
+  - 新增覆盖用例：test_class_read_access_denied_records_real_resource_id（PASS）
+  - 新增覆盖用例：test_class_write_permission_denied_records_real_resource_id（PASS）
+  - 最小回归集合：5 passed（PASS）
+  - 门禁测试：1 passed（PASS）
+- Result: PASS
+- Risks/Notes:
+  - read_status=404，error_type=ReadAccessDeniedError，code=READ_ACCESS_DENIED
+  - write_status=403，error_type=WriteAccessDeniedError，code=WRITE_ACCESS_DENIED
+  - audit_events 命中 action=read_access_denied 与 action=permission_denied，resource_id=真实 class_id=27
+- Next Step:
+  - 继续按 Gate-1 最小任务推进
