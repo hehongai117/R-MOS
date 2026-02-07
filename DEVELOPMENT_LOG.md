@@ -655,3 +655,33 @@
   - 本轮仅实现路由级 RBAC 地基与最小 admin 路由验证，未扩散到全部业务路由。
 - Next Step:
   - 进入 Gate-1 B-002（将更多业务路由切换到 Bearer + 权限键守卫，并逐步淘汰临时头部门控）。
+
+- DateTime: 2026-02-07 17:02:08 +0800
+- Task: Gate-1 B-001 修复：alembic 迁移顺序纠偏（RBAC 迁移位于 Gate-2 之前）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1655_9f2b6c1d4e7a_add_rbac_guard_foundation_tables.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1530_6e7f8a9b1c2d_add_skill_registry_tables.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+  - sed -n '1,80p' alembic/versions/20260207_1618_c1f4a8b2d9e0_add_refresh_tokens_table.py
+  - sed -n '1,80p' alembic/versions/20260207_1655_9f2b6c1d4e7a_add_rbac_guard_foundation_tables.py
+  - sed -n '1,80p' alembic/versions/20260207_1530_6e7f8a9b1c2d_add_skill_registry_tables.py
+  - alembic -c alembic.ini heads
+  - alembic -c alembic.ini history | head -n 220
+  - alembic -c alembic.ini history | grep -n "c1f4a8b2d9e0\|9f2b6c1d4e7a\|6e7f8a9b1c2d"
+  - alembic -c alembic.ini current && alembic -c alembic.ini upgrade head && alembic -c alembic.ini current
+  - alembic -c alembic.ini stamp 6e7f8a9b1c2d && alembic -c alembic.ini upgrade head && alembic -c alembic.ini current
+  - pytest -q tests/unit/test_authz_guard_api.py
+  - pytest -q tests/unit/test_auth_api.py
+  - ./scripts/run_gate2_smoke.sh
+- Tests:
+  - alembic heads/history：PASS（顺序为 c1f4a8b2d9e0 -> 9f2b6c1d4e7a -> 6e7f8a9b1c2d）
+  - alembic upgrade head：先 FAIL（DuplicateTableError: relation "skills" already exists），随后通过 stamp 对齐后 PASS
+  - pytest -q tests/unit/test_authz_guard_api.py：PASS（3 passed）
+  - pytest -q tests/unit/test_auth_api.py：PASS（9 passed）
+  - ./scripts/run_gate2_smoke.sh：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 纠偏原因：Gate-1 B-001 的 RBAC 迁移不能依赖 Gate-2 skill_registry，已改为 Gate-1 链尾之后、Gate-2 之前。
+  - 数据库存在历史表结构，执行新 DAG 时触发 DuplicateTableError；已按流程用 stamp 对齐版本并保留错误栈证据。
+- Next Step:
+  - 继续 Gate-1 计划中的 B-002，保持 Gate-1 链路不依赖 Gate-2。
