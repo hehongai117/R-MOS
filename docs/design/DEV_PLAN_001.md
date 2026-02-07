@@ -191,7 +191,7 @@ curl --noproxy 127.0.0.1,localhost -X PATCH -H "Authorization: Bearer ${TOKEN_ST
 
 - D-001 ✅
 - D-002 ✅
-- D-003 ⏳
+- D-003 ✅
 - E-001 ⏳
 - E-002 ⏳
 - E-003 ⏳
@@ -519,6 +519,6 @@ Gate-2 后续计划任务（A-007 之后）：
 
 - D-001 ✅：Skill 治理数据迁移 + ORM + 门禁测试（`a743fe5`，证据见 `DEVELOPMENT_LOG.md:485-504`）
 - D-002 ✅：Skill 治理 API（技能注册/提审/发布最小闭环）（本次提交，证据见 `DEVELOPMENT_LOG.md:789-808`）
-- D-003 ⏳：Skill 风险规则执行与发布门禁加固
+- D-003 ✅：Skill 风险规则执行与发布门禁加固（本次提交，证据见 `DEVELOPMENT_LOG.md` D-003 条目）
 - E-001 ⏳：Tool Executor 最小读链路（无副作用工具）
 - F-001 ⏳：Approval Service 最小审批流（pending→granted/rejected）

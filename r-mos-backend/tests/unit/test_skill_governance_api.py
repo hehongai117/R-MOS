@@ -134,7 +134,16 @@ def _register_and_login(client: TestClient, *, email: str, password: str, full_n
     return login_resp.json()["access_token"]
 
 
-def _create_skill(client: TestClient, token: str, *, skill_id: str, risk_level: str, side_effects: list[str]) -> dict[str, Any]:
+def _create_skill(
+    client: TestClient,
+    token: str,
+    *,
+    skill_id: str,
+    risk_level: str,
+    side_effects: list[str],
+    feature_flag: str | None = None,
+    rollback_strategy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     response = client.post(
         "/api/v1/ai/skills",
         headers={"Authorization": f"Bearer {token}"},
@@ -146,8 +155,8 @@ def _create_skill(client: TestClient, token: str, *, skill_id: str, risk_level: 
             "side_effects": side_effects,
             "allowlist_resources": ["sops"],
             "description": "测试技能",
-            "feature_flag": "ff_skill" if risk_level == "critical" else None,
-            "rollback_strategy": {"type": "undo"} if risk_level == "critical" else None,
+            "feature_flag": feature_flag if risk_level == "critical" else None,
+            "rollback_strategy": rollback_strategy if risk_level == "critical" else None,
         },
     )
     assert response.status_code == 201
@@ -388,6 +397,169 @@ def test_skill_publish_risk_denied_records_audit() -> None:
         app.state.test_sessionmaker = None
 
 
+def test_skill_publish_risk002_denied_records_audit() -> None:
+    client, session_factory = _build_client()
+    try:
+        admin_token = _register_and_login(
+            client,
+            email="skill_admin_publish_risk2@example.com",
+            password="StrongPass123",
+            full_name="管理员",
+        )
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="skill_admin_publish_risk2@example.com",
+                role_name="admin",
+                permission_keys=["skills:write", "skills:publish"],
+            )
+        )
+        created = _create_skill(
+            client,
+            admin_token,
+            skill_id="skill-publish-risk2",
+            risk_level="medium",
+            side_effects=["assignments.write"],
+        )
+        skill_pk = int(created["id"])
+
+        publish_resp = client.post(
+            f"/api/v1/ai/skills/{skill_pk}/publish",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"release_notes": "RISK-002 拒绝"},
+        )
+        assert publish_resp.status_code == 403
+        body = publish_resp.json()
+        assert body["details"]["code"] == "WRITE_ACCESS_DENIED"
+        assert body["details"]["details"]["reason"] == "violates_RISK_002"
+
+        event = asyncio.run(
+            _latest_audit_event(
+                session_factory,
+                action="skill_publish_denied",
+                decision="deny",
+                resource_type="Skill",
+                resource_id=str(skill_pk),
+            )
+        )
+        assert event is not None
+        assert event.reason == "violates_RISK_002"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_skill_publish_critical_missing_feature_flag_denied_records_audit() -> None:
+    client, session_factory = _build_client()
+    try:
+        admin_token = _register_and_login(
+            client,
+            email="skill_admin_publish_no_flag@example.com",
+            password="StrongPass123",
+            full_name="管理员",
+        )
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="skill_admin_publish_no_flag@example.com",
+                role_name="admin",
+                permission_keys=["skills:write", "skills:publish"],
+            )
+        )
+        created = _create_skill(
+            client,
+            admin_token,
+            skill_id="skill-publish-no-flag",
+            risk_level="critical",
+            side_effects=["faults.write"],
+            feature_flag=None,
+            rollback_strategy={"type": "undo"},
+        )
+        skill_pk = int(created["id"])
+
+        publish_resp = client.post(
+            f"/api/v1/ai/skills/{skill_pk}/publish",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"release_notes": "critical 缺 feature_flag"},
+        )
+        assert publish_resp.status_code == 403
+        body = publish_resp.json()
+        assert body["details"]["code"] == "WRITE_ACCESS_DENIED"
+        assert body["details"]["details"]["reason"] == "violates_RISK_003_missing_feature_flag"
+
+        event = asyncio.run(
+            _latest_audit_event(
+                session_factory,
+                action="skill_publish_denied",
+                decision="deny",
+                resource_type="Skill",
+                resource_id=str(skill_pk),
+            )
+        )
+        assert event is not None
+        assert event.reason == "violates_RISK_003_missing_feature_flag"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_skill_publish_critical_missing_rollback_denied_records_audit() -> None:
+    client, session_factory = _build_client()
+    try:
+        admin_token = _register_and_login(
+            client,
+            email="skill_admin_publish_no_rollback@example.com",
+            password="StrongPass123",
+            full_name="管理员",
+        )
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="skill_admin_publish_no_rollback@example.com",
+                role_name="admin",
+                permission_keys=["skills:write", "skills:publish"],
+            )
+        )
+        created = _create_skill(
+            client,
+            admin_token,
+            skill_id="skill-publish-no-rollback",
+            risk_level="critical",
+            side_effects=["faults.write"],
+            feature_flag="ff_critical_skill",
+            rollback_strategy=None,
+        )
+        skill_pk = int(created["id"])
+
+        publish_resp = client.post(
+            f"/api/v1/ai/skills/{skill_pk}/publish",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"release_notes": "critical 缺 rollback_strategy"},
+        )
+        assert publish_resp.status_code == 403
+        body = publish_resp.json()
+        assert body["details"]["code"] == "WRITE_ACCESS_DENIED"
+        assert body["details"]["details"]["reason"] == "violates_RISK_003_missing_rollback_strategy"
+
+        event = asyncio.run(
+            _latest_audit_event(
+                session_factory,
+                action="skill_publish_denied",
+                decision="deny",
+                resource_type="Skill",
+                resource_id=str(skill_pk),
+            )
+        )
+        assert event is not None
+        assert event.reason == "violates_RISK_003_missing_rollback_strategy"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
 def test_skill_publish_success_records_audit() -> None:
     client, session_factory = _build_client()
     try:
@@ -409,8 +581,10 @@ def test_skill_publish_success_records_audit() -> None:
             client,
             admin_token,
             skill_id="skill-publish-success",
-            risk_level="medium",
-            side_effects=["sops"],
+            risk_level="critical",
+            side_effects=["faults.write"],
+            feature_flag="ff_skill_publish_ok",
+            rollback_strategy={"type": "undo", "steps": ["revert_fault"]},
         )
         skill_pk = int(created["id"])
 

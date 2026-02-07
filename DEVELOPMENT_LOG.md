@@ -806,3 +806,27 @@
   - 本次仅实现 D-002 最小闭环；未扩展 E/F/G 业务链路。
 - Next Step:
   - 进入 Gate-2 D-003（风险规则执行与发布门禁加固）并补齐更细粒度风险断言。
+
+- DateTime: 2026-02-07 18:44:30 +0800
+- Task: Gate-2 D-003（Skill 风险规则执行与发布门禁加固）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/skills.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_skill_governance_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_skill_governance_api.py
+  - /bin/zsh -lc "cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - RISK-001：side_effects 非空且 risk_level=low，publish 被拒绝并记录 deny 审计（PASS）
+  - RISK-002：关键资源 side_effects（assignments）且 risk_level=medium，publish 被拒绝并记录 deny 审计（PASS）
+  - RISK-003：critical 缺 feature_flag/rollback_strategy，publish 分支分别拒绝并记录 deny 审计（PASS）
+  - 允许分支：满足约束后 publish 成功并记录 allow 审计（PASS）
+  - 单文件回归：pytest -q tests/unit/test_skill_governance_api.py（PASS，8 passed）
+  - 全量单测：pytest tests/unit -q（PASS，77 passed, 1 skipped）
+  - smoke 回归：./scripts/run_gate2_smoke.sh（PASS，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 验收矩阵已覆盖：SKILL-T009（RISK-001）、SKILL-T010（RISK-002），对应 `docs/specs/ACCEPTANCE_TEST_MATRIX.md:109-110`。
+  - 缺乏数据：矩阵未单列 RISK-003 的 Test ID；本次以 `tests/unit/test_skill_governance_api.py` 中 critical 缺字段拒绝断言与审计断言作为替代自证。
+  - 规则触发策略：本次保持“仅 publish 阶段强制校验”，create/submit-review 不提前拦截。
+- Next Step:
+  - 进入 Gate-2 E-001（Tool Executor 最小读链路）或按计划补 D-003 后续扩展断言（如 unknown risk_level 迁移数据巡检）。

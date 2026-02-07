@@ -64,8 +64,12 @@ def _contains_critical_side_effects(side_effects: list[str]) -> bool:
 
 
 def _validate_publish_risk(skill: Skill) -> str | None:
+    """D-003 策略：风险规则仅在 publish 阶段强制校验。"""
     side_effects: list[str] = list(skill.side_effects or [])
     risk_level = (skill.risk_level or "").lower()
+
+    if risk_level not in RISK_LEVEL_ORDER:
+        return "violates_RISK_unknown_level"
 
     if side_effects and risk_level == "low":
         return "violates_RISK_001"
