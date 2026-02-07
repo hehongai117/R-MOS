@@ -416,3 +416,35 @@ env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u al
 8. C-002/C-003（审计查询与审批审计闭环）
 
 每完成一个任务即跑最小回归并记录证据，不跨 Gate 并行开发。
+
+---
+
+## 10. Gate-2 A-001 回归入口
+
+新增脚本：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh`
+
+默认执行（仅 smoke，不依赖服务已启动）：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh
+```
+
+端到端证据模式（可选，需先启动后端）：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend
+source .venv/bin/activate
+export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+uvicorn main:app --host 127.0.0.1 --port 18080
+```
+
+另开终端：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --e2e
+```
+
+执行约束：
+- 脚本内 curl 全部使用 `--noproxy 127.0.0.1,localhost`
+- 脚本失败即非零退出码
+- 严禁在未获许可时执行 `git push`

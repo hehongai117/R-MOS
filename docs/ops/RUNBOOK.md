@@ -252,3 +252,30 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && bash scripts/run_phase3_regres
 - 前端启动：`cd r-mos-frontend && npm run dev`
 - 教学数据种子：`python r-mos-backend/scripts/seed_teaching_demo.py`
 - 教学数据清理：`python r-mos-backend/scripts/seed_teaching_demo.py --reset`
+
+## Gate-2 A-001 回归入口脚本
+
+一键回归入口（默认仅 pytest + 门禁 + grep 证据）：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh
+```
+
+如需端到端 curl 证据（需先启动服务）：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend
+source .venv/bin/activate
+export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+uvicorn main:app --host 127.0.0.1 --port 18080
+```
+
+另开终端执行：
+
+```bash
+cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --e2e
+```
+
+约束提醒：
+- 本机 HTTP 调用必须 `curl --noproxy 127.0.0.1,localhost`
+- 不得擅自 `git push`

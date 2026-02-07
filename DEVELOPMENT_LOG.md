@@ -311,3 +311,31 @@
   - not found 场景未包装为 deny（语义边界保持不变）
 - Next Step:
   - 继续按 Gate-1 后续最小任务推进
+
+- DateTime: 2026-02-07 12:33:48 +0800
+- Task: Gate-1 收口点检 + Gate-1 通过项清单（commit 追溯）+ Gate-2 A-001 回归入口脚本
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event or class_read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
+  - grep -RInE "_log_deny_event|AuditEventService\\(.*\\)\\.log_event\\(|decision=['\"]deny['\"]" app | head -n 120
+  - grep -n "Gate-1 B-00" DEVELOPMENT_LOG.md | tail -n 80
+  - git --no-pager log -20 --oneline
+  - git --no-pager log --oneline --grep="B-001|Gate-1 B-002|Gate-1 B-003|Gate-1 B-004"
+  - ./scripts/run_gate2_smoke.sh
+- Tests:
+  - Step1 最小回归：PASS（5 passed）
+  - Step1 deny 门禁：PASS（1 passed）
+  - Step1 grep 证据：仅命中 app/services/access_control.py:49（PASS）
+  - Gate-2 A-001 脚本自检：PASS（脚本输出“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - Gate-1 通过项清单（commit 追溯）：
+    - Gate-1 B-001：b5b9d04（统一 Read=404 / Write=403 + deny 审计收敛），f8468ed（语义边界修复）
+    - Gate-1 B-002：e74ba11（单点收敛与证据补齐），4b94e2f（入口门禁化，移除运行时拦截）
+    - Gate-1 B-003：624482c（TeachingClass 语义扩展），ac05aa6（证据与日志收口）
+    - Gate-1 B-004：691b7dd（端到端 curl+SQL 证据固化）
+  - 本次仅新增脚本与文档，不改业务逻辑；未变更 DATABASE_URL/CORS 固定约束
+  - `docs/ops/RUNBOOK.md` 与 `docs/design/DEV_PLAN_001.md` 均存在并已追加 Gate-2 A-001 入口说明
+- Next Step:
+  - 进入 Gate-2 A-001 后续最小任务（围绕脚本入口扩展自动化证据采集）
