@@ -770,3 +770,18 @@
   - 本次仅文档与日志对齐，不涉及业务逻辑、数据库结构或固定配置改动。
 - Next Step:
   - 按计划进入 Gate-2 后续业务任务（如 D-002），继续保持“单任务最小闭环”。
+
+- DateTime: 2026-02-07 18:11:39 +0800
+- Task: Docs: Gate-2 计划结构澄清（A-001~A-007 归类为回归入口扩展项）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git diff --name-only
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+  - cd /Users/xuhehong/Desktop/r-mos && git add -- DEVELOPMENT_LOG.md docs/design/DEV_PLAN_001.md
+- Tests:
+  - ./scripts/run_gate2_smoke.sh：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅做文档结构澄清与日志补证，不涉及业务逻辑与固定配置改动。
+- Next Step:
+  - 优先推进 Gate-2 D-002（Skill 治理 API：技能注册/提审/发布最小闭环）。
