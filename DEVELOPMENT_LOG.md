@@ -436,3 +436,18 @@
   - 本次仅新增测试与回归入口调用，不改业务逻辑
 - Next Step:
   - 继续 Gate-2 后续最小任务（保持帮助输出与脚本行为一致）
+
+- DateTime: 2026-02-07 15:10:08 +0800
+- Task: Gate-2 A-007（按计划回填映射表并固化 --help 一致性门禁）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_smoke_help_gate.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_smoke_help_gate.py
+  - ./scripts/run_gate2_smoke.sh
+- Tests:
+  - pytest 门禁：PASS（--help 关键参数与退出码标记齐全）
+  - smoke 默认：PASS（门禁纳入默认回归，末尾输出“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 仅做计划文档回填、测试与回归入口调整，不改业务逻辑
+- Next Step:
+  - 继续 Gate-2 后续最小任务（保持计划与回归实现一致）

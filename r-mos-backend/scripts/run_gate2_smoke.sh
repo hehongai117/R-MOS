@@ -85,7 +85,7 @@ pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource
 echo "2) deny 入口门禁"
 pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
 
-echo "3) help 输出门禁"
+echo "2.5) --help 输出一致性门禁"
 pytest -q tests/unit/test_smoke_help_gate.py
 
 echo "4) 附加 grep 核查（证据）"

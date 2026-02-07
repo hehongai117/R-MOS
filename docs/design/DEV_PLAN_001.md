@@ -458,3 +458,15 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh -
 - 脚本内 curl 全部使用 `--noproxy 127.0.0.1,localhost`
 - 脚本失败即非零退出码
 - 严禁在未获许可时执行 `git push`
+
+回归入口扩展项映射表（A-001~A-007）：
+
+| 编号 | 目的 | 命令 | 证据落点 |
+| --- | --- | --- | --- |
+| A-001 | 新增 smoke 脚本入口 | `./scripts/run_gate2_smoke.sh` | `DEVELOPMENT_LOG.md`、脚本输出摘要 |
+| A-002 | `--e2e` 响应语义自动断言 | `./scripts/run_gate2_smoke.sh --e2e` | `/tmp/a001_*.json` 摘要、`DEVELOPMENT_LOG.md` |
+| A-003 | `--audit` 审计落库断言 | `./scripts/run_gate2_smoke.sh --e2e --audit` | 审计查询输出摘要、`DEVELOPMENT_LOG.md` |
+| A-004 | 提供 `--help/-h` 帮助入口 | `./scripts/run_gate2_smoke.sh --help` | help 输出 |
+| A-005 | 退出码“码→含义”说明 | `./scripts/run_gate2_smoke.sh --help` | help 输出中的退出码说明 |
+| A-006 | 补齐 21 并核对 20/21/22/23/24 | `./scripts/run_gate2_smoke.sh --help` | help 输出中的 audit 退出码段 |
+| A-007 | `--help` 一致性 pytest 门禁并纳入默认 smoke | `pytest -q tests/unit/test_smoke_help_gate.py` | pytest PASS 输出、`run_gate2_smoke.sh` 默认回归输出 |
