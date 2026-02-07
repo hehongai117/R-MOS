@@ -4,6 +4,7 @@ API路由统一注册（拆包C补充）
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth,
+    ai_commands,
     audit,
     admin,
     skills,
@@ -26,6 +27,7 @@ api_router = APIRouter()
 # 注册所有端点（统一使用/api/v1前缀，在main.py中添加）
 # 注：各endpoint内部已定义完整路径（如 /tasks, /sops），无需再加prefix
 api_router.include_router(auth.router, tags=["auth"])
+api_router.include_router(ai_commands.router, tags=["ai_commands"])
 api_router.include_router(audit.router, tags=["audit"])
 api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(skills.router, tags=["skills"])
