@@ -358,3 +358,22 @@
   - JSON 字段断言失败退出码：READ=`12`，WRITE=`13`
 - Next Step:
   - 继续 Gate-2 后续最小任务（在 smoke 入口基础上扩展更多可复现证据）
+
+- DateTime: 2026-02-07 13:07:43 +0800
+- Task: Gate-2 A-003（smoke 脚本：--audit 可选审计落库断言 AUDIT-T006）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ./scripts/run_gate2_smoke.sh
+  - ./scripts/run_gate2_smoke.sh --e2e
+  - export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh --e2e --audit
+- Tests:
+  - 默认 smoke：PASS（末尾输出“全部通过：PASS”）
+  - --e2e：PASS（class_id=30，read_status=404，write_status=403）
+  - --e2e --audit：PASS（class_id=31，action 命中 read_access_denied + permission_denied，resource_id=31）
+- Result: PASS
+- Risks/Notes:
+  - `--audit` 仅在与 `--e2e` 同时使用时生效，单独使用会退出码 `2`
+  - 启用 `--audit` 且未设置 `DATABASE_URL` 时退出码 `20`
+  - 数据库连接失败/查询失败/动作缺失分别退出码 `21/22/23/24`
+- Next Step:
+  - 继续 Gate-2 下一最小任务（在不改业务逻辑前提下扩展可复现证据）

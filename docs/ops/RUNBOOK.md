@@ -278,6 +278,10 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh -
 
 `--e2e` 模式会自动断言：READ=404 + `ReadAccessDeniedError/READ_ACCESS_DENIED`，WRITE=403 + `WriteAccessDeniedError/WRITE_ACCESS_DENIED`，任一不符即非零退出。
 若脚本提示服务不可达，请先按本节命令启动 `uvicorn` 后再执行 `--e2e`。
+可选参数 `--audit`（需与 `--e2e` 同时使用）会按 `DATABASE_URL` 连接 Postgres，校验 `audit_events` 命中 `read_access_denied` 与 `permission_denied`（AUDIT-T006）。
+示例：
+`export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+`cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --e2e --audit`
 
 约束提醒：
 - 本机 HTTP 调用必须 `curl --noproxy 127.0.0.1,localhost`

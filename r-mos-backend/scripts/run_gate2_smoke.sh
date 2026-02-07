@@ -2,10 +2,33 @@
 set -euo pipefail
 
 echo "Gate-2 A-001：回归入口脚本（smoke）"
-echo "说明：默认仅跑 pytest 与门禁；如需端到端 curl 证据，传参 --e2e（要求服务已在 127.0.0.1:18080 启动）"
+echo "说明：默认仅跑 pytest 与门禁；如需端到端 curl 证据，传参 --e2e；如需审计落库断言，传参 --audit（需与 --e2e 一起使用）"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+
+E2E=false
+AUDIT=false
+for arg in "$@"; do
+  case "$arg" in
+    --e2e)
+      E2E=true
+      ;;
+    --audit)
+      AUDIT=true
+      ;;
+    *)
+      echo "错误：不支持的参数：$arg"
+      echo "用法：./scripts/run_gate2_smoke.sh [--e2e] [--audit]"
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "$AUDIT" == "true" && "$E2E" != "true" ]]; then
+  echo "错误：--audit 需与 --e2e 同时使用。"
+  exit 2
+fi
 
 if [[ ! -f ".venv/bin/activate" ]]; then
   echo "错误：未找到 .venv，请先创建并安装依赖。"
@@ -23,7 +46,7 @@ pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
 echo "3) 附加 grep 核查（证据）"
 grep -RInE "_log_deny_event|AuditEventService\\(.*\\)\\.log_event\\(|decision=['\\\"]deny['\\\"]" app | head -n 120 || true
 
-if [[ "${1:-}" == "--e2e" ]]; then
+if [[ "$E2E" == "true" ]]; then
   echo "4) 端到端证据（TeachingClass）"
   echo "要求：服务已启动在 http://127.0.0.1:18080"
   echo "创建真实 class -> student GET 404 -> student PATCH 403（curl 必须 --noproxy）"
@@ -139,6 +162,66 @@ PY
   echo "class_id=${CLASS_ID}"
   echo "read_status=${READ_CODE} write_status=${WRITE_CODE}"
   echo "已生成：/tmp/a001_class.json /tmp/a001_read.json /tmp/a001_write.json"
+
+  if [[ "$AUDIT" == "true" ]]; then
+    echo "5) 审计落库断言（AUDIT-T006）"
+    if [[ -z "${DATABASE_URL:-}" ]]; then
+      echo "错误：启用 --audit 但未设置 DATABASE_URL。"
+      exit 20
+    fi
+    DB_DSN="${DATABASE_URL/postgresql+asyncpg:\/\//postgresql://}"
+    CLASS_ID="$CLASS_ID" DB_DSN="$DB_DSN" python - <<'PY'
+import asyncio
+import asyncpg
+import os
+import sys
+
+class_id = os.environ.get("CLASS_ID", "").strip()
+dsn = os.environ.get("DB_DSN", "").strip()
+
+if not class_id or not dsn:
+    print("错误：审计断言环境变量缺失（class_id 或 DB_DSN）")
+    sys.exit(22)
+
+
+async def main():
+    try:
+        conn = await asyncpg.connect(dsn)
+    except Exception as exc:
+        print(f"错误：数据库连接失败：{exc}")
+        sys.exit(21)
+
+    try:
+        rows = await conn.fetch(
+            """
+            select action, resource_type, resource_id, decision
+            from audit_events
+            where decision='deny' and resource_type='TeachingClass' and resource_id=$1
+            order by id desc limit 10
+            """,
+            str(class_id),
+        )
+    except Exception as exc:
+        await conn.close()
+        print(f"错误：审计查询失败：{exc}")
+        sys.exit(22)
+
+    await conn.close()
+    actions = {row["action"] for row in rows}
+    print(f"audit: resource_id={class_id} actions={sorted(actions)} count={len(rows)}")
+
+    if "read_access_denied" not in actions:
+        print("错误：未命中 action=read_access_denied")
+        sys.exit(23)
+    if "permission_denied" not in actions:
+        print("错误：未命中 action=permission_denied")
+        sys.exit(24)
+    print("审计断言：PASS（AUDIT-T006）")
+
+
+asyncio.run(main())
+PY
+  fi
 fi
 
 echo "全部通过：PASS"
