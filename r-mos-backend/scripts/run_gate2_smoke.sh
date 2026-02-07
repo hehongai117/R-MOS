@@ -85,11 +85,14 @@ pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource
 echo "2) deny 入口门禁"
 pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
 
-echo "3) 附加 grep 核查（证据）"
+echo "3) help 输出门禁"
+pytest -q tests/unit/test_smoke_help_gate.py
+
+echo "4) 附加 grep 核查（证据）"
 grep -RInE "_log_deny_event|AuditEventService\\(.*\\)\\.log_event\\(|decision=['\\\"]deny['\\\"]" app | head -n 120 || true
 
 if [[ "$E2E" == "true" ]]; then
-  echo "4) 端到端证据（TeachingClass）"
+  echo "5) 端到端证据（TeachingClass）"
   echo "要求：服务已启动在 http://127.0.0.1:18080"
   echo "创建真实 class -> student GET 404 -> student PATCH 403（curl 必须 --noproxy）"
   OPENAPI_CODE="$(curl --noproxy 127.0.0.1,localhost -sS -o /dev/null -w "%{http_code}" \
@@ -206,7 +209,7 @@ PY
   echo "已生成：/tmp/a001_class.json /tmp/a001_read.json /tmp/a001_write.json"
 
   if [[ "$AUDIT" == "true" ]]; then
-    echo "5) 审计落库断言（AUDIT-T006）"
+    echo "6) 审计落库断言（AUDIT-T006）"
     if [[ -z "${DATABASE_URL:-}" ]]; then
       echo "错误：启用 --audit 但未设置 DATABASE_URL。"
       exit 20

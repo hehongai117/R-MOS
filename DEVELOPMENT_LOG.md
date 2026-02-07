@@ -421,3 +421,18 @@
   - 本次仅调整帮助文本与日志，不改动业务逻辑与退出码行为
 - Next Step:
   - 继续 Gate-2 后续最小任务（保持帮助信息与实现一致）
+
+- DateTime: 2026-02-07 15:01:30 +0800
+- Task: Gate-2 A-007（--help 输出一致性门禁测试）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_smoke_help_gate.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_smoke_help_gate.py
+  - ./scripts/run_gate2_smoke.sh
+- Tests:
+  - help 门禁：PASS（退出码 0，关键字齐全）
+  - smoke 默认：PASS（末尾输出“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅新增测试与回归入口调用，不改业务逻辑
+- Next Step:
+  - 继续 Gate-2 后续最小任务（保持帮助输出与脚本行为一致）
