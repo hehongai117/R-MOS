@@ -408,3 +408,16 @@
   - 本次仅优化帮助文案，不改变业务逻辑与脚本执行语义
 - Next Step:
   - 继续 Gate-2 后续最小任务（保持脚本可用性与可审计性）
+
+- DateTime: 2026-02-07 14:55:20 +0800
+- Task: Gate-2 A-006（--help 补齐退出码 21 含义）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ./scripts/run_gate2_smoke.sh --help
+- Tests:
+  - PASS（帮助中包含 21=数据库连接失败，且 audit 退出码 20/21/22/23/24 与实现一致）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅调整帮助文本与日志，不改动业务逻辑与退出码行为
+- Next Step:
+  - 继续 Gate-2 后续最小任务（保持帮助信息与实现一致）

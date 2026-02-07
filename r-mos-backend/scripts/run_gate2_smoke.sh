@@ -23,7 +23,7 @@ Gate-2 A-001/A-002/A-003 回归入口脚本（smoke）
   - --audit 需要 DATABASE_URL 指向本机 Postgres
   - 本机 HTTP 调用必须 curl --noproxy 127.0.0.1,localhost（脚本已内置）
 
-退出码说明（码→含义）：
+退出码说明（码→含义，audit 相关码为 20/21/22/23/24）：
   2   参数错误（不支持参数或 --audit 未与 --e2e 同用）
   3   服务不可达（openapi 非 200）
   4   无法取得 class_id
