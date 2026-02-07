@@ -307,6 +307,74 @@ def test_audit_permission_denied_records_deny_event(client):
     asyncio.run(assert_audit_event())
 
 
+def test_class_read_access_denied_records_real_resource_id(client):
+    class_resp = client.post("/api/v1/classes", json={"name": "班级读越权"})
+    class_id = class_resp.json()["id"]
+
+    resp = client.get(
+        f"/api/v1/classes/{class_id}",
+        headers={"X-RMOS-Role": "student", "X-User-ID": "2002"},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["error_type"] == "ReadAccessDeniedError"
+    assert resp.json()["details"]["code"] == "READ_ACCESS_DENIED"
+
+    Session = client.app.state.test_sessionmaker
+
+    async def assert_read_deny_audit_event():
+        async with Session() as session:
+            result = await session.execute(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.action == "read_access_denied",
+                    AuditEvent.resource_type == "TeachingClass",
+                    AuditEvent.resource_id == str(class_id),
+                    AuditEvent.decision == "deny",
+                )
+                .order_by(AuditEvent.id.desc())
+            )
+            event = result.scalars().first()
+            assert event is not None
+            assert event.reason == "student_class_scope_mismatch"
+
+    asyncio.run(assert_read_deny_audit_event())
+
+
+def test_class_write_permission_denied_records_real_resource_id(client):
+    class_resp = client.post("/api/v1/classes", json={"name": "班级写越权"})
+    class_id = class_resp.json()["id"]
+
+    resp = client.patch(
+        f"/api/v1/classes/{class_id}",
+        headers={"X-RMOS-Role": "student", "X-User-ID": "2002"},
+        json={"name": "不应修改成功"},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error_type"] == "WriteAccessDeniedError"
+    assert resp.json()["details"]["code"] == "WRITE_ACCESS_DENIED"
+
+    Session = client.app.state.test_sessionmaker
+
+    async def assert_write_deny_audit_event():
+        async with Session() as session:
+            result = await session.execute(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.action == "permission_denied",
+                    AuditEvent.resource_type == "TeachingClass",
+                    AuditEvent.resource_id == str(class_id),
+                    AuditEvent.decision == "deny",
+                )
+                .order_by(AuditEvent.id.desc())
+            )
+            event = result.scalars().first()
+            assert event is not None
+            assert event.actor_user_id == "2002"
+            assert event.reason == "missing_role:teacher_or_admin"
+
+    asyncio.run(assert_write_deny_audit_event())
+
+
 def test_get_attempt_evidence(client):
     Session = client.app.state.test_sessionmaker
 

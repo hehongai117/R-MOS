@@ -2,7 +2,7 @@
 Teaching domain API endpoints.
 """
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.models.evidence import EvidenceBundle
-from app.models.teaching import EvidenceLink
+from app.models.teaching import Enrollment, EvidenceLink
 from app.schemas.teaching import (
     GuidancePolicyCreate,
     GuidancePolicyResponse,
@@ -53,6 +53,14 @@ class AttemptStatusUpdateRequest(BaseModel):
 class AttemptGradeRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
     score: float
+
+
+class ClassUpdateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    name: Optional[str] = None
+    term: Optional[str] = None
+    teacher_id: Optional[int] = None
+    metadata_json: Optional[dict[str, Any]] = None
 
 
 def _raise_business_error(exc: BusinessRuleViolation) -> None:
@@ -148,10 +156,90 @@ async def create_class(request: ClassCreate, db: AsyncSession = Depends(get_db))
     response_model=ClassResponse,
     response_model_by_alias=True,
 )
-async def get_class(class_id: int, db: AsyncSession = Depends(get_db)):
+async def get_class(
+    class_id: int,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+):
     service = TeachingService(db)
     try:
-        return await service.get_class(class_id)
+        teaching_class = await service.get_class(class_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+    role = (x_rmos_role or "").strip().lower()
+    if role == "student":
+        actor_student_id = _parse_user_id(x_user_id)
+        if actor_student_id is None:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="read_access_denied",
+                resource_type="TeachingClass",
+                resource_id=teaching_class.id,
+                reason="invalid_actor_student_id",
+                message="资源不存在",
+            )
+
+        enrollment_result = await db.execute(
+            select(Enrollment.id).where(
+                Enrollment.class_id == teaching_class.id,
+                Enrollment.student_id == actor_student_id,
+            )
+        )
+        if enrollment_result.scalar_one_or_none() is None:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="read_access_denied",
+                resource_type="TeachingClass",
+                resource_id=teaching_class.id,
+                reason="student_class_scope_mismatch",
+                message="资源不存在",
+            )
+
+    return teaching_class
+
+
+@router.patch(
+    "/classes/{class_id}",
+    response_model=ClassResponse,
+    response_model_by_alias=True,
+)
+async def update_class(
+    class_id: int,
+    request: ClassUpdateRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+):
+    service = TeachingService(db)
+    try:
+        teaching_class = await service.get_class(class_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+    if x_rmos_role and x_rmos_role.strip().lower() not in {"teacher", "admin"}:
+        await raise_write_access_denied(
+            db,
+            http_request,
+            action="permission_denied",
+            resource_type="TeachingClass",
+            resource_id=teaching_class.id,
+            reason="missing_role:teacher_or_admin",
+            message="权限不足：仅teacher/admin可修改class",
+        )
+
+    payload = request.model_dump(exclude_unset=True)
+    metadata = payload.pop("metadata_json", None)
+    if metadata is not None:
+        payload["metadata"] = metadata
+    try:
+        return await service.update_class(class_id, **payload)
+    except BusinessRuleViolation as exc:
+        _raise_business_error(exc)
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
 

@@ -93,6 +93,29 @@ class TeachingService:
             raise ResourceNotFoundError("Class", class_id)
         return teaching_class
 
+    async def update_class(
+        self,
+        class_id: int,
+        *,
+        name: Optional[str] = None,
+        term: Optional[str] = None,
+        teacher_id: Optional[int] = None,
+        metadata: Optional[dict] = None,
+    ) -> TeachingClass:
+        teaching_class = await self.get_class(class_id)
+        if name is not None:
+            teaching_class.name = name
+        if term is not None:
+            teaching_class.term = term
+        if teacher_id is not None:
+            teaching_class.teacher_id = teacher_id
+        if metadata is not None:
+            teaching_class.metadata_json = metadata
+
+        await self.db.commit()
+        await self.db.refresh(teaching_class)
+        return teaching_class
+
     async def create_course(
         self,
         *,

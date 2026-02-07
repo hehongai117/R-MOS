@@ -119,6 +119,29 @@
 - Next Step:
   - 进入 Gate-1 下一最小任务（保持单任务推进）
 
+- DateTime: 2026-02-07 11:16:55 +0800
+- Task: Gate-1 B-003（TeachingClass 语义覆盖：READ=404、WRITE=403、deny 审计真实 resource_id）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/teaching_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teaching_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or read_access_denied_records_real_resource_id or audit_permission_denied_records_deny_event or class_read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
+  - curl --noproxy 127.0.0.1,localhost -X POST /api/v1/classes（创建真实 class_id）
+  - curl --noproxy 127.0.0.1,localhost GET /api/v1/classes/{class_id}（X-RMOS-Role: student, X-User-ID: 2002）
+  - curl --noproxy 127.0.0.1,localhost PATCH /api/v1/classes/{class_id}（X-RMOS-Role: student, X-User-ID: 2002）
+  - python 查询 Postgres audit_events（decision='deny' 且 resource_id=真实 class_id）
+- Tests:
+  - SEC-T005/OBJ-T002 代表性覆盖：TeachingClass READ 越权返回 404 + ReadAccessDeniedError（PASS）
+  - SEC-T006/OBJ-T008 代表性覆盖：TeachingClass WRITE 越权返回 403 + WriteAccessDeniedError（PASS）
+  - AUDIT-T006：READ/WRITE deny 均记录真实 resource_id（PASS）
+  - AUDIT-T001：deny 审计写入存在性（PASS）
+  - 门禁测试：tests/unit/test_deny_audit_entrypoint_gate.py（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅扩展 TeachingClass 最小范围；更完整对象级授权规则需在后续 RBAC 任务中统一收敛
+  - 关键证据：read_status=404（ReadAccessDeniedError/READ_ACCESS_DENIED），write_status=403（WriteAccessDeniedError/WRITE_ACCESS_DENIED），audit_events 命中 action=read_access_denied 与 permission_denied，resource_id=真实 class_id=26
+- Next Step:
+  - 进入 Gate-1 后续最小任务（按你指定继续）
+
 - DateTime: 2026-02-06 23:08:00 +0800
 - Task: Gate-1 B-002 deny 审计写入单点收敛核查 + WRITE 越权证据补齐
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
