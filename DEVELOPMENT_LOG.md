@@ -507,3 +507,26 @@
   - 当前密码摘要采用标准库 PBKDF2（`pbkdf2_sha256$...`）；与 AUTHZ 规范中的 bcrypt 口径存在实现差异，待后续在不新增依赖或补 ADR 的前提下收敛。
 - Next Step:
   - 进入 Gate-1 A-002（登录接口）前先确认密码摘要算法口径收敛方案。
+
+- DateTime: 2026-02-07 16:00:37 +0800
+- Task: Gate-1 A-001 修复：alembic 迁移顺序纠偏（users 不再依赖 Gate-2）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1610_b4d2c7f8e3a1_add_users_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1530_6e7f8a9b1c2d_add_skill_registry_tables.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini current
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && alembic -c alembic.ini history | head -n 80
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini stamp 6e7f8a9b1c2d && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_auth_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - alembic heads/history：PASS（单 head=6e7f8a9b1c2d，顺序为 f3c11f7a9a2b -> b4d2c7f8e3a1 -> 6e7f8a9b1c2d）
+  - alembic upgrade head：先 FAIL（DuplicateTableError: relation "skills" already exists），对齐本地版本戳后 PASS
+  - pytest -q tests/unit/test_auth_api.py：PASS（3 passed）
+  - ./scripts/run_gate2_smoke.sh：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 纠偏原因：原先 users 迁移依赖 Gate-2 skill_registry，违反 Gate 顺序；本次已改为 users 依赖 Gate-1 链尾，skill_registry 依赖 users。
+  - 本地库因历史执行状态导致 `skills` 表已存在但版本号停在 b4d2c7f8e3a1，故首次 `upgrade head` 失败；通过 `alembic stamp 6e7f8a9b1c2d` 对齐版本后验证通过。
+- Next Step:
+  - 继续 Gate-1 A-002（登录接口）最小闭环开发。
