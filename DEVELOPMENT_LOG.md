@@ -244,3 +244,21 @@
   - 当前示例 WRITE 越权采用 `X-RMOS-Role` 最小门控；后续 RBAC 正式守卫接入时应复用同一异常与审计收敛路径
 - Next Step:
   - 进入 Gate-1 下一最小任务（保持单任务推进）
+
+- DateTime: 2026-02-07 11:24:57 +0800
+- Task: Gate-1 B-002 回退：移除运行时 deny 拦截，恢复 pytest 门禁测试方案
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/audit_event_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_deny_audit_entrypoint_gate.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - pytest -q tests/unit/test_teaching_api.py -k "not_found_attempt_returns_resource_not_found_without_deny_audit or audit_permission_denied_records_deny_event or (read_access_denied_records_real_resource_id and not class_read_access_denied_records_real_resource_id)"
+  - pytest -q tests/unit/test_deny_audit_entrypoint_gate.py
+  - grep -RInE "_log_deny_event|AuditEventService\\(.*\\)\\.log_event\\(|decision=['\\\"]deny['\\\"]" app | head -n 120
+- Tests:
+  - 最小业务回归：3 passed（PASS）
+  - 门禁测试：1 passed（PASS）
+  - grep 核查：仅命中 app/services/access_control.py:49（PASS）
+- Result: PASS
+- Risks/Notes:
+  - deny 入口约束采用开发期门禁测试，不引入运行时 500 风险
+  - 现场确认：未检出 `_deny_entrypoint` 与 deny 运行时 `raise ValueError` 拦截逻辑
+- Next Step:
+  - 继续按 Gate-1 最小任务推进
