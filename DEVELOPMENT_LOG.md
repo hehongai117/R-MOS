@@ -587,3 +587,30 @@
   - `rg` 不可用，文档检索改用 `grep`，不影响验收结论。
 - Next Step:
   - 进入 Gate-1 B/C 缺口补齐前，先明确 AUTH-T009（access token 过期）的最小实现边界。
+
+- DateTime: 2026-02-07 16:27:47 +0800
+- Task: Gate-1 A-003 修复：alembic 迁移顺序纠偏（refresh_tokens 不依赖 Gate-2）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1618_c1f4a8b2d9e0_add_refresh_tokens_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1530_6e7f8a9b1c2d_add_skill_registry_tables.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres
+  - sed -n '1,80p' alembic/versions/20260207_1610_b4d2c7f8e3a1_add_users_table.py
+  - sed -n '1,80p' alembic/versions/20260207_1530_6e7f8a9b1c2d_add_skill_registry_tables.py
+  - sed -n '1,80p' alembic/versions/20260207_1618_c1f4a8b2d9e0_add_refresh_tokens_table.py
+  - alembic -c alembic.ini heads
+  - alembic -c alembic.ini current
+  - alembic -c alembic.ini history | head -n 140
+  - alembic -c alembic.ini history | grep -n "b4d2c7f8e3a1\|c1f4a8b2d9e0\|6e7f8a9b1c2d"
+  - alembic -c alembic.ini upgrade head
+  - alembic -c alembic.ini stamp 6e7f8a9b1c2d && alembic -c alembic.ini upgrade head && alembic -c alembic.ini current
+  - pytest -q tests/unit/test_auth_api.py
+- Tests:
+  - alembic heads/history：PASS（顺序纠偏为 b4d2c7f8e3a1 -> c1f4a8b2d9e0 -> 6e7f8a9b1c2d）
+  - alembic upgrade head：先 FAIL（DuplicateTableError: relation "skills" already exists），随后 stamp 对齐后 PASS
+  - pytest -q tests/unit/test_auth_api.py：PASS（9 passed）
+- Result: PASS
+- Risks/Notes:
+  - 纠偏原因：Gate-1 A-003 的 refresh_tokens 迁移不应依赖 Gate-2 skill_registry，已改为 users 之后、Gate-2 之前。
+  - 本地数据库存在历史表状态，需通过 `alembic stamp 6e7f8a9b1c2d` 对齐版本戳后与新 DAG 一致。
+- Next Step:
+  - 继续 Gate-1 后续缺口（保持 Gate-1 任务不依赖 Gate-2）。
