@@ -339,3 +339,22 @@
   - `docs/ops/RUNBOOK.md` 与 `docs/design/DEV_PLAN_001.md` 均存在并已追加 Gate-2 A-001 入口说明
 - Next Step:
   - 进入 Gate-2 A-001 后续最小任务（围绕脚本入口扩展自动化证据采集）
+
+- DateTime: 2026-02-07 12:45:00 +0800
+- Task: Gate-2 A-002（smoke 脚本：cd/.venv 检查 + --e2e 自动断言）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ./scripts/run_gate2_smoke.sh
+  - ./scripts/run_gate2_smoke.sh --e2e（服务已在 127.0.0.1:18080 启动）
+- Tests:
+  - 默认 smoke：PASS（末尾输出“全部通过：PASS”）
+  - --e2e 自动断言：PASS（class_id=29，read_status=404，write_status=403）
+  - --e2e 字段断言：PASS（read=ReadAccessDeniedError/READ_ACCESS_DENIED，write=WriteAccessDeniedError/WRITE_ACCESS_DENIED）
+- Result: PASS
+- Risks/Notes:
+  - 服务不可达时会明确提示并以退出码 `3` 失败（需先启动 `uvicorn main:app --host 127.0.0.1 --port 18080`）
+  - 创建 class 未取到有效 id 时退出码 `4`
+  - 状态码断言失败退出码：READ=`10`，WRITE=`11`
+  - JSON 字段断言失败退出码：READ=`12`，WRITE=`13`
+- Next Step:
+  - 继续 Gate-2 后续最小任务（在 smoke 入口基础上扩展更多可复现证据）

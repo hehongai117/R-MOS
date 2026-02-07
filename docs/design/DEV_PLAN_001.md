@@ -444,6 +444,9 @@ uvicorn main:app --host 127.0.0.1 --port 18080
 cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --e2e
 ```
 
+`--e2e` 模式自动校验 READ/WRITE 越权语义：READ 必须 `404 + ReadAccessDeniedError/READ_ACCESS_DENIED`，WRITE 必须 `403 + WriteAccessDeniedError/WRITE_ACCESS_DENIED`，失败即非零退出。
+若提示服务不可达，需先按计划命令启动 `uvicorn main:app --host 127.0.0.1 --port 18080` 后再执行 `--e2e`。
+
 执行约束：
 - 脚本内 curl 全部使用 `--noproxy 127.0.0.1,localhost`
 - 脚本失败即非零退出码

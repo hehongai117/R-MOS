@@ -27,31 +27,117 @@ if [[ "${1:-}" == "--e2e" ]]; then
   echo "4) 端到端证据（TeachingClass）"
   echo "要求：服务已启动在 http://127.0.0.1:18080"
   echo "创建真实 class -> student GET 404 -> student PATCH 403（curl 必须 --noproxy）"
+  OPENAPI_CODE="$(curl --noproxy 127.0.0.1,localhost -sS -o /dev/null -w "%{http_code}" \
+    http://127.0.0.1:18080/openapi.json 2>/dev/null || true)"
+  if [[ "$OPENAPI_CODE" != "200" ]]; then
+    echo "错误：服务不可达（openapi 状态码=${OPENAPI_CODE:-N/A}）。请先启动 uvicorn："
+    echo "cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 18080"
+    exit 3
+  fi
+
   curl --noproxy 127.0.0.1,localhost -sS -X POST 'http://127.0.0.1:18080/api/v1/classes' \
     -H 'Content-Type: application/json' \
     -d '{"name":"A001端到端证据班级"}' > /tmp/a001_class.json
 
-  python - <<'PY'
-import json
-data=json.load(open("/tmp/a001_class.json","r",encoding="utf-8"))
-print("class_id=", data.get("id"))
-PY
-
   CLASS_ID="$(python - <<'PY'
 import json
-print(json.load(open("/tmp/a001_class.json","r",encoding="utf-8")).get("id"))
+import sys
+data = json.load(open("/tmp/a001_class.json", "r", encoding="utf-8"))
+cid = data.get("id")
+if cid in (None, "", "None"):
+    sys.exit(1)
+print(cid)
 PY
-)"
-  curl --noproxy 127.0.0.1,localhost -sS -o /tmp/a001_read.json -w "%{http_code}\n" \
-    "http://127.0.0.1:18080/api/v1/classes/${CLASS_ID}" \
-    -H 'X-RMOS-Role: student' -H 'X-User-ID: 2002'
+)" || {
+  echo "错误：创建班级后未获得有效 class_id（/tmp/a001_class.json）"
+  exit 4
+}
 
-  curl --noproxy 127.0.0.1,localhost -sS -o /tmp/a001_write.json -w "%{http_code}\n" \
+  if ! READ_CODE="$(curl --noproxy 127.0.0.1,localhost -sS -o /tmp/a001_read.json -w "%{http_code}" \
+    "http://127.0.0.1:18080/api/v1/classes/${CLASS_ID}" \
+    -H 'X-RMOS-Role: student' -H 'X-User-ID: 2002')"; then
+    echo "错误：READ 越权请求执行失败"
+    exit 10
+  fi
+
+  if ! WRITE_CODE="$(curl --noproxy 127.0.0.1,localhost -sS -o /tmp/a001_write.json -w "%{http_code}" \
     -X PATCH "http://127.0.0.1:18080/api/v1/classes/${CLASS_ID}" \
     -H 'Content-Type: application/json' \
     -H 'X-RMOS-Role: student' -H 'X-User-ID: 2002' \
-    -d '{"name":"A001越权修改不应成功"}'
+    -d '{"name":"A001越权修改不应成功"}')"; then
+    echo "错误：WRITE 越权请求执行失败"
+    exit 11
+  fi
 
+  if [[ "$READ_CODE" != "404" ]]; then
+    echo "错误：READ 状态码不符合（期望 404，实际 ${READ_CODE}）"
+    exit 10
+  fi
+  if [[ "$WRITE_CODE" != "403" ]]; then
+    echo "错误：WRITE 状态码不符合（期望 403，实际 ${WRITE_CODE}）"
+    exit 11
+  fi
+
+  if ! python - <<'PY'
+import json
+import sys
+
+path = "/tmp/a001_read.json"
+data = json.load(open(path, "r", encoding="utf-8"))
+details = data.get("details") or {}
+inner = details.get("details") or {}
+error_type = data.get("error_type")
+code = details.get("code")
+action = inner.get("action")
+resource_type = inner.get("resource_type")
+resource_id = inner.get("resource_id")
+reason = inner.get("reason")
+if error_type != "ReadAccessDeniedError" or code != "READ_ACCESS_DENIED":
+    print("错误：READ 返回体字段不符合预期")
+    print(f"  error_type={error_type}")
+    print(f"  code={code}")
+    print(f"  action={action}")
+    print(f"  resource_type={resource_type}")
+    print(f"  resource_id={resource_id}")
+    print(f"  reason={reason}")
+    sys.exit(1)
+print(f"read: error_type={error_type} code={code} action={action} resource_type={resource_type} resource_id={resource_id} reason={reason}")
+PY
+  then
+    exit 12
+  fi
+
+  if ! python - <<'PY'
+import json
+import sys
+
+path = "/tmp/a001_write.json"
+data = json.load(open(path, "r", encoding="utf-8"))
+details = data.get("details") or {}
+inner = details.get("details") or {}
+error_type = data.get("error_type")
+code = details.get("code")
+action = inner.get("action")
+resource_type = inner.get("resource_type")
+resource_id = inner.get("resource_id")
+reason = inner.get("reason")
+if error_type != "WriteAccessDeniedError" or code != "WRITE_ACCESS_DENIED":
+    print("错误：WRITE 返回体字段不符合预期")
+    print(f"  error_type={error_type}")
+    print(f"  code={code}")
+    print(f"  action={action}")
+    print(f"  resource_type={resource_type}")
+    print(f"  resource_id={resource_id}")
+    print(f"  reason={reason}")
+    sys.exit(1)
+print(f"write: error_type={error_type} code={code} action={action} resource_type={resource_type} resource_id={resource_id} reason={reason}")
+PY
+  then
+    exit 13
+  fi
+
+  echo "class_id=${CLASS_ID}"
+  echo "read_status=${READ_CODE} write_status=${WRITE_CODE}"
   echo "已生成：/tmp/a001_class.json /tmp/a001_read.json /tmp/a001_write.json"
 fi
 

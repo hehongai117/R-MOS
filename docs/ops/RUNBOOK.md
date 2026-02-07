@@ -276,6 +276,9 @@ uvicorn main:app --host 127.0.0.1 --port 18080
 cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --e2e
 ```
 
+`--e2e` 模式会自动断言：READ=404 + `ReadAccessDeniedError/READ_ACCESS_DENIED`，WRITE=403 + `WriteAccessDeniedError/WRITE_ACCESS_DENIED`，任一不符即非零退出。
+若脚本提示服务不可达，请先按本节命令启动 `uvicorn` 后再执行 `--e2e`。
+
 约束提醒：
 - 本机 HTTP 调用必须 `curl --noproxy 127.0.0.1,localhost`
 - 不得擅自 `git push`
