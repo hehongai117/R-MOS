@@ -4,14 +4,14 @@
 用于登录、Token等请求和响应
 """
 from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 
 
 # ============ 请求Schema ============
 
 class LoginRequest(BaseModel):
     """登录请求"""
-    email: EmailStr = Field(..., description="用户邮箱")
+    email: str = Field(..., description="用户邮箱")
     password: str = Field(..., description="密码")
 
     class Config:
@@ -26,6 +26,23 @@ class LoginRequest(BaseModel):
 class RefreshTokenRequest(BaseModel):
     """刷新Token请求"""
     refresh_token: str = Field(..., description="刷新Token")
+
+
+class RegisterRequest(BaseModel):
+    """注册请求。"""
+
+    email: str = Field(..., description="用户邮箱")
+    password: str = Field(..., description="密码")
+    full_name: Optional[str] = Field(default=None, description="用户姓名")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "password": "StrongPass123",
+                "full_name": "R-MOS User",
+            }
+        }
 
 
 # ============ 响应Schema ============
@@ -52,3 +69,11 @@ class MessageResponse(BaseModel):
     """消息响应"""
     message: str = Field(..., description="消息内容")
     success: bool = Field(default=True, description="是否成功")
+
+
+class RegisterResponse(BaseModel):
+    """注册响应。"""
+
+    user_id: int = Field(..., description="用户ID")
+    email: str = Field(..., description="用户邮箱")
+    message: str = Field(default="注册成功", description="提示消息")

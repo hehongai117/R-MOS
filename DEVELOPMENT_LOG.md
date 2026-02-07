@@ -487,3 +487,23 @@
   - 迁移与 pytest 首次在沙箱内访问 Postgres 被拒（Operation not permitted），按流程提权重跑后通过。
 - Next Step:
   - 继续 Gate-2 D-002（仅在明确任务指令下推进）。
+
+- DateTime: 2026-02-07 15:48:23 +0800
+- Task: Gate-1 A-001（注册接口最小闭环：实现 + AUTH-T001/T002/T003 单测）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/auth.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/user.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/security.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/auth.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260207_1610_b4d2c7f8e3a1_add_users_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_auth_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit -k "auth_register_success_returns_user_id or auth_register_duplicate_email_returns_user_001 or auth_register_weak_password_returns_user_002"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - AUTH-T001：注册成功返回 201 + user_id（PASS）
+  - AUTH-T002：重复邮箱返回 400 + USER_001（PASS）
+  - AUTH-T003：弱密码返回 400 + USER_002（PASS）
+  - 迁移校验：alembic 升级到 b4d2c7f8e3a1（PASS）
+  - 变更后 smoke：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 首次执行 pytest 收集失败：`ImportError: email-validator is not installed`；处置为将 auth schema 从 `EmailStr` 调整为 `str` 后重跑通过。
+  - 当前密码摘要采用标准库 PBKDF2（`pbkdf2_sha256$...`）；与 AUTHZ 规范中的 bcrypt 口径存在实现差异，待后续在不新增依赖或补 ADR 的前提下收敛。
+- Next Step:
+  - 进入 Gate-1 A-002（登录接口）前先确认密码摘要算法口径收敛方案。
