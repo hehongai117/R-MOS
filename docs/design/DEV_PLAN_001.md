@@ -479,10 +479,18 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh -
 
 | 编号 | 状态 | 目的 | 命令 | 对应 commit | 证据落点（DEVELOPMENT_LOG 行号范围） |
 | --- | --- | --- | --- | --- | --- |
-| A-001 | ✅ | 新增 smoke 脚本入口 | `./scripts/run_gate2_smoke.sh` | `d943fff` | `DEVELOPMENT_LOG.md:344-369` |
-| A-002 | ✅ | `--e2e` 响应语义自动断言 | `./scripts/run_gate2_smoke.sh --e2e` | `820fddb` | `DEVELOPMENT_LOG.md:372-388` |
-| A-003 | ✅ | `--audit` 审计落库断言 | `./scripts/run_gate2_smoke.sh --e2e --audit` | `0814c33` | `DEVELOPMENT_LOG.md:391-407` |
-| A-004 | ✅ | 提供 `--help/-h` 帮助入口 | `./scripts/run_gate2_smoke.sh --help` | `ac278dc` | `DEVELOPMENT_LOG.md:410-423` |
-| A-005 | ✅ | 退出码“码→含义”说明 | `./scripts/run_gate2_smoke.sh --help` | `4f565dd` | `DEVELOPMENT_LOG.md:426-438` |
-| A-006 | ✅ | 补齐 21 并核对 20/21/22/23/24 | `./scripts/run_gate2_smoke.sh --help` | `ec1a31d` | `DEVELOPMENT_LOG.md:441-451` |
-| A-007 | ✅ | `--help` 一致性 pytest 门禁并纳入默认 smoke | `pytest -q tests/unit/test_smoke_help_gate.py` | `5a64b4e` | `DEVELOPMENT_LOG.md:454-481` |
+| A-001 | ✅ | 新增 smoke 脚本入口 | `./scripts/run_gate2_smoke.sh` | `d943fff` | `DEVELOPMENT_LOG.md:345-372` |
+| A-002 | ✅ | `--e2e` 响应语义自动断言 | `./scripts/run_gate2_smoke.sh --e2e` | `820fddb` | `DEVELOPMENT_LOG.md:373-391` |
+| A-003 | ✅ | `--audit` 审计落库断言 | `./scripts/run_gate2_smoke.sh --e2e --audit` | `0814c33` | `DEVELOPMENT_LOG.md:392-410` |
+| A-004 | ✅ | 提供 `--help/-h` 帮助入口 | `./scripts/run_gate2_smoke.sh --help` | `ac278dc` | `DEVELOPMENT_LOG.md:411-426` |
+| A-005 | ✅ | 退出码“码→含义”说明 | `./scripts/run_gate2_smoke.sh --help` | `4f565dd` | `DEVELOPMENT_LOG.md:427-441` |
+| A-006 | ✅ | 补齐 21 并核对 20/21/22/23/24 | `./scripts/run_gate2_smoke.sh --help` | `ec1a31d` | `DEVELOPMENT_LOG.md:442-454` |
+| A-007 | ✅ | `--help` 一致性 pytest 门禁并纳入默认 smoke | `pytest -q tests/unit/test_smoke_help_gate.py` | `5a64b4e` | `DEVELOPMENT_LOG.md:455-484` |
+
+Gate-2 后续计划任务（A-007 之后）：
+
+- D-001 ✅：Skill 治理数据迁移 + ORM + 门禁测试（`a743fe5`，证据见 `DEVELOPMENT_LOG.md:485-504`）
+- D-002 ⏳：Skill 治理 API（技能注册/提审/发布最小闭环）
+- D-003 ⏳：Skill 风险规则执行与发布门禁加固
+- E-001 ⏳：Tool Executor 最小读链路（无副作用工具）
+- F-001 ⏳：Approval Service 最小审批流（pending→granted/rejected）
