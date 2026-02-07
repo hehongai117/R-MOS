@@ -26,3 +26,27 @@ def execute_read_tool(
         "summary": summary,
         "echo_args": normalized_args,
     }
+
+
+def execute_write_tool_stub(
+    *,
+    intent: str,
+    tool_name: str,
+    skill_id: str | None,
+    side_effects: list[str],
+) -> dict[str, Any]:
+    """执行最小写工具桩（不触发外部 IO）。
+
+    约束：
+    - 仅用于审批通过后的最小闭环
+    - 仅返回确定性结果，不访问外部系统
+    """
+    normalized_effects = list(side_effects)
+    return {
+        "tool_name": tool_name,
+        "intent": intent,
+        "skill_id": skill_id,
+        "mode": "write_stub",
+        "applied_side_effects": normalized_effects,
+        "summary": f"write_stub::{tool_name}::{intent}",
+    }

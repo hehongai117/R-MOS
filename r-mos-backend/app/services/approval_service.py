@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessRuleViolation
 from app.models.approval import Approval
+from app.models.command_runtime import AIToolCall, Command
+from app.services.tool_executor import execute_write_tool_stub
 
 
 @dataclass
@@ -27,6 +29,29 @@ class ApprovalService:
     async def get_by_id(self, approval_id: int) -> Approval | None:
         result = await self.db.execute(select(Approval).where(Approval.id == approval_id))
         return result.scalar_one_or_none()
+
+    async def get_runtime_bundle(self, approval: Approval) -> tuple[Command, AIToolCall]:
+        command_result = await self.db.execute(
+            select(Command).where(Command.id == approval.command_id)
+        )
+        command = command_result.scalar_one_or_none()
+
+        tool_call_result = await self.db.execute(
+            select(AIToolCall).where(AIToolCall.id == approval.tool_call_id)
+        )
+        tool_call = tool_call_result.scalar_one_or_none()
+
+        if command is None or tool_call is None:
+            raise BusinessRuleViolation(
+                message="审批关联的命令或工具调用不存在",
+                code="APPROVAL_RUNTIME_MISSING",
+                details={
+                    "approval_id": approval.id,
+                    "command_id": approval.command_id,
+                    "tool_call_id": approval.tool_call_id,
+                },
+            )
+        return command, tool_call
 
     async def grant(
         self,
@@ -91,3 +116,40 @@ class ApprovalService:
         await self.db.commit()
         await self.db.refresh(approval)
         return ApprovalTransitionResult(approval=approval, changed=True, reason=reason)
+
+    async def execute_after_grant(self, approval: Approval) -> tuple[Command, AIToolCall, bool]:
+        command, tool_call = await self.get_runtime_bundle(approval)
+
+        if tool_call.status == "success" and command.status == "succeeded":
+            return command, tool_call, False
+
+        result_payload = execute_write_tool_stub(
+            intent=command.intent,
+            tool_name=tool_call.tool_name,
+            skill_id=tool_call.skill_id,
+            side_effects=tool_call.side_effects or [],
+        )
+        tool_call.status = "success"
+        tool_call.result_payload = result_payload
+        tool_call.error_message = None
+        command.status = "succeeded"
+        command.updated_at = datetime.utcnow()
+        await self.db.commit()
+        await self.db.refresh(command)
+        await self.db.refresh(tool_call)
+        return command, tool_call, True
+
+    async def fail_after_reject(self, approval: Approval) -> tuple[Command, AIToolCall, bool]:
+        command, tool_call = await self.get_runtime_bundle(approval)
+
+        if tool_call.status in {"failed", "rejected"} and command.status == "failed":
+            return command, tool_call, False
+
+        tool_call.status = "failed"
+        tool_call.error_message = "approval_rejected"
+        command.status = "failed"
+        command.updated_at = datetime.utcnow()
+        await self.db.commit()
+        await self.db.refresh(command)
+        await self.db.refresh(tool_call)
+        return command, tool_call, True

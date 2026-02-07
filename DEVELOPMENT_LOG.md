@@ -879,3 +879,26 @@
   - 执行 `alembic upgrade head` 时沙箱直连本机 Postgres 会触发 `PermissionError: [Errno 1] Operation not permitted`，已按流程提权重跑并通过。
 - Next Step:
   - 进入 Gate-2 F-002（审批查询与追踪视图）或按计划推进 G-001（trace 串联骨架）。
+
+- DateTime: 2026-02-07 19:56:04 +0800
+- Task: Gate-2 E-002（审批结果驱动 Tool Executor 闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/approval_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/approvals.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_tool_execution_after_approval_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_approval_api.py tests/unit/test_ai_commands_api.py tests/unit/test_tool_execution_after_approval_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 用例1（grant）：pending approval -> grant 后写工具 stub 执行，`tool_call_success` 审计存在且 trace_id 一致（PASS）
+  - 用例2（reject）：pending approval -> reject 后状态收口为 failed，`tool_call_failed` 审计存在且 trace_id 一致（PASS）
+  - 用例3（幂等）：重复 grant 不重复写 `tool_call_success` 审计（PASS）
+  - 指定子集回归：`test_approval_api + test_ai_commands_api + test_tool_execution_after_approval_api`（PASS，7 passed）
+  - 全量单测：`pytest tests/unit -q`（PASS，83 passed）
+  - smoke：`./scripts/run_gate2_smoke.sh`（PASS，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅实现审批驱动后的“写工具最小 stub”闭环，不触发外部 IO，不涉及 E-003/E-004 真正写执行链路。
+  - 审计口径保持收敛：允许分支 `log_allow_event`，拒绝分支 `log_deny_event`，并复用 request trace_id 链路。
+  - 验收矩阵对 E-002 的专属 Test ID 未单列（缺乏数据）；本次以 `tests/unit/test_tool_execution_after_approval_api.py` 三条门禁用例 + 状态/审计断言自证。
+- Next Step:
+  - 进入 Gate-2 E-003（Approval 已通过后的写工具真实执行策略）前，先补审批查询与可观测性细节（F-002）。

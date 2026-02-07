@@ -71,11 +71,28 @@ async def grant_approval(
         reason=result.reason,
     )
 
+    tool_call_event_written = False
+    command, tool_call, runtime_changed = await service.execute_after_grant(approval)
+    if runtime_changed:
+        tool_call_event_written = True
+        await log_allow_event(
+            db,
+            request,
+            action="tool_call_success",
+            actor_user_id=str(actor.user_id),
+            resource_type="AIToolCall",
+            resource_id=tool_call.id,
+            reason="approval_granted_execute_write_stub",
+        )
+
     return {
         "approval_id": approval.id,
         "trace_id": approval.trace_id,
         "status": approval.status,
         "changed": result.changed,
+        "command_status": command.status,
+        "tool_call_status": tool_call.status,
+        "tool_call_event_written": tool_call_event_written,
     }
 
 
@@ -127,9 +144,26 @@ async def reject_approval(
         reason=result.reason,
     )
 
+    tool_call_event_written = False
+    command, tool_call, runtime_changed = await service.fail_after_reject(approval)
+    if runtime_changed:
+        tool_call_event_written = True
+        await log_deny_event(
+            db,
+            request,
+            action="tool_call_failed",
+            resource_type="AIToolCall",
+            resource_id=tool_call.id,
+            reason="approval_rejected",
+            actor_user_id=str(actor.user_id),
+        )
+
     return {
         "approval_id": approval.id,
         "trace_id": approval.trace_id,
         "status": approval.status,
         "changed": result.changed,
+        "command_status": command.status,
+        "tool_call_status": tool_call.status,
+        "tool_call_event_written": tool_call_event_written,
     }
