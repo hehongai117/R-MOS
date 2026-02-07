@@ -452,6 +452,7 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh -
 `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --e2e --audit`
 查看帮助：`cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh --help`
 帮助输出包含参数说明、前置条件与退出码表。
+退出码含义见：`./scripts/run_gate2_smoke.sh --help`
 
 执行约束：
 - 脚本内 curl 全部使用 `--noproxy 127.0.0.1,localhost`

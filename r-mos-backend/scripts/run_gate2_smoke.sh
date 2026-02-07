@@ -23,19 +23,19 @@ Gate-2 A-001/A-002/A-003 回归入口脚本（smoke）
   - --audit 需要 DATABASE_URL 指向本机 Postgres
   - 本机 HTTP 调用必须 curl --noproxy 127.0.0.1,localhost（脚本已内置）
 
-退出码：
-  2   参数错误
-  3   服务不可达
-  4   无 class_id
-  10  READ 状态码不符
-  11  WRITE 状态码不符
-  12  READ 字段断言失败
-  13  WRITE 字段断言失败
-  20  未设置 DATABASE_URL
+退出码说明（码→含义）：
+  2   参数错误（不支持参数或 --audit 未与 --e2e 同用）
+  3   服务不可达（openapi 非 200）
+  4   无法取得 class_id
+  10  READ 状态码不符合（期望 404）
+  11  WRITE 状态码不符合（期望 403）
+  12  READ 字段断言失败（error_type/code）
+  13  WRITE 字段断言失败（error_type/code）
+  20  启用 --audit 时未设置 DATABASE_URL
   21  数据库连接失败
-  22  审计查询失败
-  23  缺少 read_access_denied
-  24  缺少 permission_denied
+  22  数据库查询失败
+  23  审计缺少 read_access_denied
+  24  审计缺少 permission_denied
 EOF
 }
 

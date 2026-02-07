@@ -393,3 +393,18 @@
   - 保持既有语义不变：默认 smoke、`--e2e`、`--e2e --audit`
 - Next Step:
   - 继续 Gate-2 后续最小任务（在不改业务逻辑前提下提升脚本可用性）
+
+- DateTime: 2026-02-07 14:49:16 +0800
+- Task: Gate-2 A-005（--help 退出码表补全为码→含义）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_gate2_smoke.sh, /Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ./scripts/run_gate2_smoke.sh --help
+  - ./scripts/run_gate2_smoke.sh
+- Tests:
+  - --help：PASS（退出码含义可读，且不泄露环境变量）
+  - 默认 smoke：PASS（末尾输出“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅优化帮助文案，不改变业务逻辑与脚本执行语义
+- Next Step:
+  - 继续 Gate-2 后续最小任务（保持脚本可用性与可审计性）
