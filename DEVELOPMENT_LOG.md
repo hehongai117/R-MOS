@@ -16,6 +16,18 @@
 
 备注：Gate-2 A-001~A-007 已提前实现 smoke 入口与门禁，但不计入 Gate-1 通过判定。
 
+## Gate-2 计划项对照表（计划项 → commit → 证据行号）
+
+| 计划项 | 状态 | 对应 commit | DEVELOPMENT_LOG 证据行号范围 | 说明 |
+| --- | --- | --- | --- | --- |
+| A-001 | ✅完成 | d943fff | 344-369 | 新增 smoke 回归脚本入口 |
+| A-002 | ✅完成 | 820fddb | 372-388 | `--e2e` 响应语义自动断言 |
+| A-003 | ✅完成 | 0814c33 | 391-407 | `--audit` 审计落库断言（AUDIT-T006） |
+| A-004 | ✅完成 | ac278dc | 410-423 | 新增 `--help/-h` 帮助输出 |
+| A-005 | ✅完成 | 4f565dd | 426-438 | 帮助输出退出码“码→含义” |
+| A-006 | ✅完成 | ec1a31d | 441-451 | 帮助输出补齐退出码 21 |
+| A-007 | ✅完成 | 5a64b4e | 454-481 | `--help` 一致性门禁测试并纳入默认 smoke |
+
 - DateTime: 2026-02-06 19:34:58 +0800
 - Task: 生成完整项目目录清单（含隐藏文件）
 - Scope (files changed): /Users/xuhehong/Desktop/r-mos/PROJECT_DIRECTORY_FULL.txt, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
@@ -735,3 +747,24 @@
   - `docs/testing/ACCEPTANCE_TEST_MATRIX.md` 在仓库中不存在，矩阵实际路径为 `docs/specs/ACCEPTANCE_TEST_MATRIX.md`，本次按实际路径进行行号补证。
 - Next Step:
   - 继续按“每次 1 个最小可验收任务”推进下一个 Gate-1 缺口。
+
+- DateTime: 2026-02-07 18:05:42 +0800
+- Task: Gate-2 收口：DEV_PLAN ✅对齐与证据落点补齐（A-001~A-007）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '240,520p' docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,120p' DEVELOPMENT_LOG.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '240,520p' DEVELOPMENT_LOG.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '520,820p' DEVELOPMENT_LOG.md
+  - cd /Users/xuhehong/Desktop/r-mos && git --no-pager log --oneline -40
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 文档一致性：DEV_PLAN Gate-2 A-001~A-007 与 DEVELOPMENT_LOG Gate-2 对照段落一致（PASS）
+  - 回归脚本：./scripts/run_gate2_smoke.sh（PASS，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅文档与日志对齐，不涉及业务逻辑、数据库结构或固定配置改动。
+- Next Step:
+  - 按计划进入 Gate-2 后续业务任务（如 D-002），继续保持“单任务最小闭环”。

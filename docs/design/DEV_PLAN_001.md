@@ -477,12 +477,12 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && ./scripts/run_gate2_smoke.sh -
 
 回归入口扩展项映射表（A-001~A-007）：
 
-| 编号 | 目的 | 命令 | 证据落点 |
-| --- | --- | --- | --- |
-| A-001 | 新增 smoke 脚本入口 | `./scripts/run_gate2_smoke.sh` | `DEVELOPMENT_LOG.md`、脚本输出摘要 |
-| A-002 | `--e2e` 响应语义自动断言 | `./scripts/run_gate2_smoke.sh --e2e` | `/tmp/a001_*.json` 摘要、`DEVELOPMENT_LOG.md` |
-| A-003 | `--audit` 审计落库断言 | `./scripts/run_gate2_smoke.sh --e2e --audit` | 审计查询输出摘要、`DEVELOPMENT_LOG.md` |
-| A-004 | 提供 `--help/-h` 帮助入口 | `./scripts/run_gate2_smoke.sh --help` | help 输出 |
-| A-005 | 退出码“码→含义”说明 | `./scripts/run_gate2_smoke.sh --help` | help 输出中的退出码说明 |
-| A-006 | 补齐 21 并核对 20/21/22/23/24 | `./scripts/run_gate2_smoke.sh --help` | help 输出中的 audit 退出码段 |
-| A-007 | `--help` 一致性 pytest 门禁并纳入默认 smoke | `pytest -q tests/unit/test_smoke_help_gate.py` | pytest PASS 输出、`run_gate2_smoke.sh` 默认回归输出 |
+| 编号 | 状态 | 目的 | 命令 | 对应 commit | 证据落点（DEVELOPMENT_LOG 行号范围） |
+| --- | --- | --- | --- | --- | --- |
+| A-001 | ✅ | 新增 smoke 脚本入口 | `./scripts/run_gate2_smoke.sh` | `d943fff` | `DEVELOPMENT_LOG.md:344-369` |
+| A-002 | ✅ | `--e2e` 响应语义自动断言 | `./scripts/run_gate2_smoke.sh --e2e` | `820fddb` | `DEVELOPMENT_LOG.md:372-388` |
+| A-003 | ✅ | `--audit` 审计落库断言 | `./scripts/run_gate2_smoke.sh --e2e --audit` | `0814c33` | `DEVELOPMENT_LOG.md:391-407` |
+| A-004 | ✅ | 提供 `--help/-h` 帮助入口 | `./scripts/run_gate2_smoke.sh --help` | `ac278dc` | `DEVELOPMENT_LOG.md:410-423` |
+| A-005 | ✅ | 退出码“码→含义”说明 | `./scripts/run_gate2_smoke.sh --help` | `4f565dd` | `DEVELOPMENT_LOG.md:426-438` |
+| A-006 | ✅ | 补齐 21 并核对 20/21/22/23/24 | `./scripts/run_gate2_smoke.sh --help` | `ec1a31d` | `DEVELOPMENT_LOG.md:441-451` |
+| A-007 | ✅ | `--help` 一致性 pytest 门禁并纳入默认 smoke | `pytest -q tests/unit/test_smoke_help_gate.py` | `5a64b4e` | `DEVELOPMENT_LOG.md:454-481` |
