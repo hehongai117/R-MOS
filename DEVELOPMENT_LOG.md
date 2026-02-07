@@ -5,14 +5,14 @@
 | 计划项 | 状态 | 对应 commit | DEVELOPMENT_LOG 证据行号范围 | 说明 |
 | --- | --- | --- | --- | --- |
 | C-001 | ✅完成 | d46386b, 1f60cad | 105-138 | 统一审计写入与迁移一致性已闭环 |
-| B-001 | ✅完成 | b5b9d04, f8468ed,（本次提交） | 227-262, 635-657 | 路由级 Bearer + RBAC 守卫地基已补齐，历史头部门控不再作为完成依据 |
+| B-001 | ✅完成 | b5b9d04, d7dd307 | 227-262, 635-657 | 路由级 Bearer + RBAC 守卫地基已补齐，历史头部门控不再作为完成依据 |
 | A-001 | ✅完成 | 86a988d, 9a5946d | 492-534 | 注册接口与迁移顺序纠偏已闭环（AUTH-T001/T002/T003） |
 | A-002 | ✅完成 | d76f469 | 535-561 | 登录接口最小闭环已完成（AUTH-T004/T005） |
 | A-003 | ✅完成 | 545b8cb, d5d782a | 562-616 | 刷新/登出闭环与迁移顺序纠偏已完成（AUTH-T006/T007/T008） |
 | B-002 | ✅完成 | e74ba11, 4b94e2f | 162-281 | deny 审计入口门禁化并完成收敛 |
 | B-003 | ✅完成 | 624482c, ac05aa6 | 139-304 | TeachingClass 对象级越权语义与审计真实 ID 闭环 |
-| C-002 | ✅完成 | （本次提交） | 689-714 | 审计查询接口与过滤能力已闭环（GET /api/v1/audit/events） |
-| C-003 | ✅完成 | （本次提交） | 689-714 | 审计查询动作写入 audit_query allow 审计闭环已完成（Gate-1 最小范围） |
+| C-002 | ✅完成 | 2c2b450 | 689-715 | 审计查询接口与过滤能力已闭环（GET /api/v1/audit/events） |
+| C-003 | ✅完成 | 2c2b450 | 689-715 | 审计查询动作写入 audit_query allow 审计闭环已完成（Gate-1 最小范围） |
 
 备注：Gate-2 A-001~A-007 已提前实现 smoke 入口与门禁，但不计入 Gate-1 通过判定。
 
@@ -710,5 +710,28 @@
 - Risks/Notes:
   - 首次全量回归 FAIL：tests/unit/test_deny_audit_entrypoint_gate.py 误判新路由含散落 deny 入口（因出现 .log_event 组合）；处置为将 allow 审计写入收敛至 access_control.log_allow_event 后复验通过。
   - C-003 在 Gate-1 范围内仅完成“audit_query allow 审计闭环”最小实现，Gate-2 审批动作审计（AUDIT-T007/T008）未纳入本次。
+  - 验收矩阵行号补证：`docs/specs/ACCEPTANCE_TEST_MATRIX.md:220`（AUDIT-T003）、`docs/specs/ACCEPTANCE_TEST_MATRIX.md:221`（AUDIT-T004）；`docs/testing/` 下无同名矩阵文件，按仓库实际路径引用。
 - Next Step:
   - 进入 Gate-1 下一最小缺口任务，保持每次仅交付 1 个可验收切片。
+
+- DateTime: 2026-02-07 17:35:07 +0800
+- Task: Gate-1 收口核对补证（DEV_PLAN ✅清单与 DEVELOPMENT_LOG 对照一致 + AUDIT-T003/T004 行号引用）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,240p' docs/testing/ACCEPTANCE_TEST_MATRIX.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,240p' docs/specs/ACCEPTANCE_TEST_MATRIX.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_audit_events_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - 文档一致性：DEV_PLAN Gate-1（A-001~A-003、B-001~B-003、C-001~C-003）与 DEVELOPMENT_LOG 对照表一致（PASS）
+  - 验收矩阵补证：AUDIT-T003/AUDIT-T004 存在于 `docs/specs/ACCEPTANCE_TEST_MATRIX.md:220-221`，已回填到 C-002/C-003 对应日志条目（PASS）
+  - pytest -q tests/unit/test_audit_events_api.py：PASS（4 passed）
+  - ./scripts/run_gate2_smoke.sh：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - `docs/testing/ACCEPTANCE_TEST_MATRIX.md` 在仓库中不存在，矩阵实际路径为 `docs/specs/ACCEPTANCE_TEST_MATRIX.md`，本次按实际路径进行行号补证。
+- Next Step:
+  - 继续按“每次 1 个最小可验收任务”推进下一个 Gate-1 缺口。
