@@ -226,18 +226,34 @@ async def grant_approval(
     command, tool_call, runtime_changed = await service.execute_after_grant(approval)
     if runtime_changed:
         tool_call_event_written = True
-        await log_allow_event(
-            db,
-            request,
-            action="tool_call_success",
-            actor_user_id=str(actor.user_id),
-            resource_type="AIToolCall",
-            resource_id=tool_call.id,
-            reason="approval_granted_execute_write_stub",
-            skill_id=tool_call.skill_id,
-            side_effects_applied=tool_call.side_effects or [],
-            approval_id=approval.id,
-        )
+        if tool_call.status == "success":
+            await log_allow_event(
+                db,
+                request,
+                action="tool_call_success",
+                actor_user_id=str(actor.user_id),
+                resource_type="AIToolCall",
+                resource_id=tool_call.id,
+                reason="approval_granted_execute_write_stub",
+                skill_id=tool_call.skill_id,
+                side_effects_applied=tool_call.side_effects or [],
+                approval_id=approval.id,
+            )
+        elif tool_call.status == "failed":
+            await log_deny_event(
+                db,
+                request,
+                action="tool_call_failed",
+                resource_type="AIToolCall",
+                resource_id=tool_call.id,
+                reason=tool_call.error_message or "write_tool_execution_failed",
+                actor_user_id=str(actor.user_id),
+                skill_id=tool_call.skill_id,
+                side_effects_applied=tool_call.side_effects or [],
+                approval_id=approval.id,
+            )
+        else:
+            tool_call_event_written = False
 
     return {
         "approval_id": approval.id,

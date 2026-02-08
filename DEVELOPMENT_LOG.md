@@ -32,6 +32,7 @@
 | D-003 | ✅完成 | 2a403ab | 810-832 | Skill 风险规则执行与发布门禁加固 |
 | E-001 | ✅完成 | 105e34b | 834-857 | Tool Executor 最小读链路（无副作用工具） |
 | E-002 | ✅完成 | 57699b5 | 883-904 | 审批结果驱动 Tool Executor 闭环（grant执行/ reject收口/幂等） |
+| E-003 | ✅完成 | 本次提交 | 1028-1051 | 审批通过后写工具执行策略加固（critical 禁用失败分支 + 审计闭环） |
 | F-001 | ✅完成 | 02a2ea8 | 861-880 | Approval Service 最小审批流（pending→granted/rejected） |
 | F-002 | ✅完成 | 本次提交 | 930-951 | Approvals Query API（GET /api/v1/ai/approvals）+ approval_query 审计闭环 |
 | F-003 | ✅完成 | 本次提交 | 954-978 | Approval Detail Query API（GET /api/v1/ai/approvals/{id}）+ approval_read 审计闭环 |
@@ -1024,3 +1025,28 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1000-1026
 - Next Step:
   - 进入 Gate-2 E-003（写工具真实执行策略）或按计划先补 F 后续口径收敛。
+
+- DateTime: 2026-02-08 10:56:02 +0800
+- Task: Gate-2 E-003（审批通过后写工具执行策略加固：critical 禁用失败分支 + 审计闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/approval_service.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/approvals.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_tool_execution_after_approval_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_tool_execution_after_approval_api.py -k "grant_critical_tool_when_feature_disabled_records_failed_audit"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_tool_execution_after_approval_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - RED 阶段：新增 `test_grant_critical_tool_when_feature_disabled_records_failed_audit` 首次执行 FAIL（`command_status` 实际为 `succeeded`），确认缺口真实存在。
+  - GREEN 阶段：`pytest -q tests/unit/test_tool_execution_after_approval_api.py` -> PASS（4 passed）。
+  - 全量回归：`pytest -q tests/unit -q` 首次在沙箱内因本机 Postgres 连接权限报错（`PermissionError: [Errno 1] Operation not permitted`），按流程切换沙箱外重跑后 PASS。
+  - smoke：`./scripts/run_gate2_smoke.sh` -> PASS（末尾“全部通过：PASS”）。
+  - DoD Checklist（Test ID 绑定）：
+    - [x] AGENT-T010：`adapter.inject_fault` 在审批通过后进入失败分支，返回 `tool_call_failed` 审计。
+    - [x] AGENT-T012：失败结果写入 `rollback_instructions`，命令/工具状态收口为 failed。
+    - [x] AUDIT-T008：`command_created -> tool_call_pending -> approval_granted -> tool_call_failed` 共享同一 `trace_id`。
+    - [x] 红线回归：对象级 READ 越权 404 / WRITE 越权 403 / deny 真实 `resource_id` 由既有 `tests/unit/test_approval_read_api.py` 与 `tests/unit/test_teaching_api.py` 在全量回归中继续通过。
+- Result: PASS
+- Risks/Notes:
+  - `E-003` 当前实现为最小可测策略：critical 故障注入工具默认禁用（`feature_flag_disabled`）并拒绝执行；未引入外部 IO。
+  - 验收矩阵中未给出 E-003 独立编号，按最接近条目 AGENT-T010/AGENT-T012 + AUDIT-T008 进行闭环自证。
+- Next Step:
+  - 继续 Gate-2 E-004（写工具外部执行能力接入与失败补偿策略），保持单任务最小闭环。

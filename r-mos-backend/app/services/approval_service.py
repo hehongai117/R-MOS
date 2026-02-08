@@ -122,17 +122,36 @@ class ApprovalService:
 
         if tool_call.status == "success" and command.status == "succeeded":
             return command, tool_call, False
+        if tool_call.status == "failed" and command.status == "failed":
+            return command, tool_call, False
 
-        result_payload = execute_write_tool_stub(
-            intent=command.intent,
-            tool_name=tool_call.tool_name,
-            skill_id=tool_call.skill_id,
-            side_effects=tool_call.side_effects or [],
-        )
-        tool_call.status = "success"
-        tool_call.result_payload = result_payload
-        tool_call.error_message = None
-        command.status = "succeeded"
+        try:
+            result_payload = execute_write_tool_stub(
+                intent=command.intent,
+                tool_name=tool_call.tool_name,
+                skill_id=tool_call.skill_id,
+                side_effects=tool_call.side_effects or [],
+            )
+            tool_call.status = "success"
+            tool_call.result_payload = result_payload
+            tool_call.error_message = None
+            command.status = "succeeded"
+        except Exception as exc:
+            error_reason = str(exc) or "write_tool_execution_failed"
+            tool_call.status = "failed"
+            tool_call.error_message = error_reason
+            tool_call.result_payload = {
+                "mode": "write_stub_failed",
+                "error": error_reason,
+                "rollback_instructions": [
+                    {
+                        "type": "manual_review",
+                        "reason": error_reason,
+                    }
+                ],
+            }
+            command.status = "failed"
+
         command.updated_at = datetime.utcnow()
         await self.db.commit()
         await self.db.refresh(command)

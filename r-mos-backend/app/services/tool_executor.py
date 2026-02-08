@@ -4,6 +4,13 @@ from __future__ import annotations
 from typing import Any
 
 
+def _is_disabled_critical_tool(tool_name: str, skill_id: str | None) -> bool:
+    """最小风险策略：critical 故障注入工具默认禁用。"""
+    normalized_tool_name = tool_name.strip().lower()
+    normalized_skill_id = (skill_id or "").strip().lower()
+    return normalized_tool_name == "adapter.inject_fault" or normalized_skill_id == "adapter.inject_fault"
+
+
 def execute_read_tool(
     *,
     intent: str,
@@ -41,6 +48,9 @@ def execute_write_tool_stub(
     - 仅用于审批通过后的最小闭环
     - 仅返回确定性结果，不访问外部系统
     """
+    if _is_disabled_critical_tool(tool_name, skill_id):
+        raise RuntimeError("feature_flag_disabled")
+
     normalized_effects = list(side_effects)
     return {
         "tool_name": tool_name,

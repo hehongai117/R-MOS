@@ -390,3 +390,77 @@ def test_repeated_grant_is_idempotent_without_duplicate_tool_success_audit() -> 
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+def test_grant_critical_tool_when_feature_disabled_records_failed_audit() -> None:
+    client, session_factory = _build_client()
+    try:
+        creator_token = _register_and_login(
+            client,
+            email="e003_creator_disabled_feature@example.com",
+            full_name="创建者",
+        )
+        payload = client.post(
+            "/api/v1/ai/commands",
+            headers={"Authorization": f"Bearer {creator_token}"},
+            json={
+                "intent": "inject_fault",
+                "skill_id": "adapter.inject_fault",
+                "tool_name": "adapter.inject_fault",
+                "tool_args": {"fault_code": "E003"},
+                "side_effects": ["fault.inject"],
+            },
+        ).json()
+        assert payload["status"] == "pending_approval"
+        trace_id = payload["trace_id"]
+        approval_id = payload["approval_id"]
+
+        admin_token = _register_and_login(
+            client,
+            email="e003_admin_disabled_feature@example.com",
+            full_name="管理员",
+        )
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="e003_admin_disabled_feature@example.com",
+                role_name="admin",
+                permission_keys=["approvals:grant"],
+            )
+        )
+
+        grant_resp = client.post(
+            f"/api/v1/ai/approvals/{approval_id}/grant",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"reason": "E-003审批通过"},
+        )
+        assert grant_resp.status_code == 200
+        grant_payload = grant_resp.json()
+        assert grant_payload["status"] == "granted"
+        assert grant_payload["command_status"] == "failed"
+        assert grant_payload["tool_call_status"] == "failed"
+        assert grant_payload["tool_call_event_written"] is True
+
+        success_count = asyncio.run(
+            _count_audit_by_action(
+                session_factory,
+                trace_id=trace_id,
+                action="tool_call_success",
+            )
+        )
+        failed_event = asyncio.run(
+            _find_latest_audit(
+                session_factory,
+                trace_id=trace_id,
+                action="tool_call_failed",
+            )
+        )
+        assert success_count == 0
+        assert failed_event is not None
+        assert failed_event.reason == "feature_flag_disabled"
+        assert failed_event.approval_id == approval_id
+        assert failed_event.trace_id == trace_id
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
