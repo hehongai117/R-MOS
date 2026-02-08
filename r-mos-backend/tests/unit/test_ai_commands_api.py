@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 import app.api.v1.endpoints.ai_commands as ai_commands_endpoint
 from app.core.database import get_db
+from app.models.approval import Approval
 from app.models.audit_event import AuditEvent
 from app.models.base import Base
 from app.models.command_runtime import AIToolCall, Command
@@ -92,6 +93,36 @@ async def _latest_command_and_tool_call(
         return command, tool_call
 
 
+async def _latest_runtime_bundle(
+    session_factory: async_sessionmaker,
+    *,
+    trace_id: str,
+) -> tuple[Command | None, AIToolCall | None, Approval | None]:
+    async with session_factory() as session:
+        command_result = await session.execute(
+            select(Command)
+            .where(Command.trace_id == trace_id)
+            .order_by(Command.id.desc())
+        )
+        command = command_result.scalars().first()
+
+        tool_result = await session.execute(
+            select(AIToolCall)
+            .where(AIToolCall.trace_id == trace_id)
+            .order_by(AIToolCall.id.desc())
+        )
+        tool_call = tool_result.scalars().first()
+
+        approval_result = await session.execute(
+            select(Approval)
+            .where(Approval.trace_id == trace_id)
+            .order_by(Approval.id.desc())
+        )
+        approval = approval_result.scalars().first()
+
+        return command, tool_call, approval
+
+
 def test_ai_command_read_tool_success_records_trace_audits() -> None:
     client, session_factory = _build_client()
     try:
@@ -126,6 +157,63 @@ def test_ai_command_read_tool_success_records_trace_audits() -> None:
         assert command.status == "succeeded"
         assert tool_call is not None
         assert tool_call.status == "success"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_ai_command_dispatch_without_tool_name_builds_minimal_plan_and_waiting_approval() -> None:
+    client, session_factory = _build_client()
+    try:
+        token = _register_and_login(client, email="command_dispatch_planner@example.com")
+        response = client.post(
+            "/api/v1/ai/commands",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "intent": "dispatch",
+                "input_text": "创建中级电机故障作业",
+                "tool_args": {"course_id": "COURSE-001"},
+                "side_effects": [],
+            },
+        )
+        assert response.status_code == 201
+        payload = response.json()
+        assert payload["status"] == "waiting_approval"
+        assert payload["approval_id"] is not None
+        assert payload["trace_id"]
+
+        result_payload = payload["result"]
+        assert result_payload["status"] == "waiting_approval"
+        assert result_payload["sop_draft_id"].startswith("sop-draft-")
+        assert result_payload["task_chain_draft_id"].startswith("task-chain-")
+        assert result_payload["rubric_draft_id"].startswith("rubric-")
+        assert result_payload["citations"]
+        assert result_payload["tool_plan"]["tool_name"] == "assignments.create_draft"
+        assert result_payload["tool_plan"]["side_effects"] == ["assignments.write"]
+
+        trace_id = payload["trace_id"]
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=trace_id))
+        actions = [event.action for event in audits]
+        assert "command_created" in actions
+        assert "tool_plan_generated" in actions
+        assert "tool_call_pending" in actions
+        assert "approval_created" in actions
+        approval_created = next(event for event in audits if event.action == "approval_created")
+        assert approval_created.trace_id == trace_id
+        assert approval_created.tool_call_args is not None
+        assert approval_created.tool_call_args.get("input_text") == "创建中级电机故障作业"
+
+        command, tool_call, approval = asyncio.run(
+            _latest_runtime_bundle(session_factory, trace_id=trace_id)
+        )
+        assert command is not None
+        assert tool_call is not None
+        assert approval is not None
+        assert command.status == "waiting_approval"
+        assert tool_call.status == "pending"
+        assert tool_call.side_effects == ["assignments.write"]
+        assert command.approval_id == approval.id
     finally:
         client.close()
         app.dependency_overrides.clear()

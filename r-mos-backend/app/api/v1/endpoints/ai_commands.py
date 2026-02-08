@@ -1,6 +1,7 @@
 """Gate-2 E-001：AI Command 最小读链路入口。"""
 from __future__ import annotations
 
+from dataclasses import dataclass
 import uuid
 from typing import Any
 
@@ -26,11 +27,53 @@ router = APIRouter()
 
 class CommandCreateRequest(BaseModel):
     intent: str = Field(min_length=1, max_length=128)
+    input_text: str | None = Field(default=None, max_length=2048)
     skill_id: str | None = Field(default=None, max_length=128)
-    tool_name: str = Field(min_length=1, max_length=128)
+    tool_name: str | None = Field(default=None, min_length=1, max_length=128)
     tool_args: dict[str, Any] = Field(default_factory=dict)
     side_effects: list[str] = Field(default_factory=list)
     approval_id: int | None = None
+
+
+@dataclass
+class PlannedToolCall:
+    tool_name: str
+    skill_id: str | None
+    tool_args: dict[str, Any]
+    side_effects: list[str]
+    via_planner: bool
+
+
+def _plan_tool_call(payload: CommandCreateRequest) -> PlannedToolCall:
+    """G-003 最小规划器：在 dispatch 场景补齐 Tool Plan。"""
+    if payload.tool_name:
+        return PlannedToolCall(
+            tool_name=payload.tool_name,
+            skill_id=payload.skill_id,
+            tool_args=dict(payload.tool_args),
+            side_effects=list(payload.side_effects),
+            via_planner=False,
+        )
+
+    normalized_intent = payload.intent.strip().lower()
+    if normalized_intent != "dispatch":
+        raise HTTPException(status_code=422, detail="缺少 tool_name，且当前意图未命中最小规划器")
+
+    input_text = str(payload.input_text or "").strip()
+    if not input_text:
+        raise HTTPException(status_code=422, detail="dispatch 意图缺少 input_text")
+
+    planned_args = dict(payload.tool_args)
+    planned_args.setdefault("input_text", input_text)
+    planned_args.setdefault("dispatch_mode", "draft_only")
+
+    return PlannedToolCall(
+        tool_name="assignments.create_draft",
+        skill_id=payload.skill_id or "teaching.dispatch.draft",
+        tool_args=planned_args,
+        side_effects=list(payload.side_effects or ["assignments.write"]),
+        via_planner=True,
+    )
 
 
 @router.post("/ai/commands", status_code=201)
@@ -42,11 +85,12 @@ async def create_ai_command(
 ):
     trace_id = getattr(request.state, "trace_id", None) or str(uuid.uuid4())[:8]
     request.state.trace_id = trace_id
+    planned_tool = _plan_tool_call(payload)
 
     try:
         validate_tool_request_security(
-            tool_name=payload.tool_name,
-            tool_args=payload.tool_args,
+            tool_name=planned_tool.tool_name,
+            tool_args=planned_tool.tool_args,
         )
     except SecurityViolationError as exc:
         await log_deny_event(
@@ -54,12 +98,12 @@ async def create_ai_command(
             request,
             action="tool_call_failed",
             resource_type="Skill",
-            resource_id=payload.skill_id or payload.tool_name,
+            resource_id=planned_tool.skill_id or planned_tool.tool_name,
             reason=exc.code,
             actor_user_id=str(actor.user_id),
-            skill_id=payload.skill_id,
-            tool_call_args=payload.tool_args,
-            side_effects_applied=list(payload.side_effects),
+            skill_id=planned_tool.skill_id,
+            tool_call_args=planned_tool.tool_args,
+            side_effects_applied=list(planned_tool.side_effects),
         )
         raise
 
@@ -67,7 +111,7 @@ async def create_ai_command(
         trace_id=trace_id,
         actor_user_id=str(actor.user_id),
         intent=payload.intent,
-        skill_id=payload.skill_id,
+        skill_id=planned_tool.skill_id,
         status="created",
         approval_id=None,
     )
@@ -85,13 +129,27 @@ async def create_ai_command(
         reason="command_received",
     )
 
+    if planned_tool.via_planner:
+        await log_allow_event(
+            db,
+            request,
+            action="tool_plan_generated",
+            actor_user_id=str(actor.user_id),
+            resource_type="Command",
+            resource_id=command.id,
+            reason="dispatch_minimal_planner",
+            skill_id=planned_tool.skill_id,
+            tool_call_args=planned_tool.tool_args,
+            side_effects_applied=list(planned_tool.side_effects),
+        )
+
     tool_call = AIToolCall(
         command_id=command.id,
         trace_id=trace_id,
         actor_user_id=str(actor.user_id),
-        skill_id=payload.skill_id,
-        tool_name=payload.tool_name,
-        side_effects=list(payload.side_effects),
+        skill_id=planned_tool.skill_id,
+        tool_name=planned_tool.tool_name,
+        side_effects=list(planned_tool.side_effects),
         status="pending",
         approval_id=None,
     )
@@ -107,12 +165,12 @@ async def create_ai_command(
         resource_type="AIToolCall",
         resource_id=tool_call.id,
         reason="tool_call_created",
-        skill_id=payload.skill_id,
-        tool_call_args=payload.tool_args,
-        side_effects_applied=list(payload.side_effects),
+        skill_id=planned_tool.skill_id,
+        tool_call_args=planned_tool.tool_args,
+        side_effects_applied=list(planned_tool.side_effects),
     )
 
-    if payload.side_effects:
+    if planned_tool.side_effects:
         approval = Approval(
             trace_id=trace_id,
             command_id=command.id,
@@ -127,7 +185,7 @@ async def create_ai_command(
 
         command.approval_id = approval.id
         tool_call.approval_id = approval.id
-        command.status = "pending_approval"
+        command.status = "waiting_approval" if planned_tool.via_planner else "pending_approval"
         await db.commit()
 
         await log_allow_event(
@@ -138,11 +196,31 @@ async def create_ai_command(
             resource_type="Approval",
             resource_id=approval.id,
             reason="approval_pending_created",
-            skill_id=payload.skill_id,
-            tool_call_args=payload.tool_args,
-            side_effects_applied=list(payload.side_effects),
+            skill_id=planned_tool.skill_id,
+            tool_call_args=planned_tool.tool_args,
+            side_effects_applied=list(planned_tool.side_effects),
             approval_id=approval.id,
         )
+
+        result_payload: dict[str, Any] | None = None
+        if planned_tool.via_planner:
+            result_payload = {
+                "status": "waiting_approval",
+                "sop_draft_id": f"sop-draft-{command.id}",
+                "task_chain_draft_id": f"task-chain-{command.id}",
+                "rubric_draft_id": f"rubric-{command.id}",
+                "citations": [
+                    {
+                        "ref_id": "dispatch-plan-stub",
+                        "title": "口述派单最小规划草案",
+                    }
+                ],
+                "tool_plan": {
+                    "tool_name": planned_tool.tool_name,
+                    "skill_id": planned_tool.skill_id,
+                    "side_effects": list(planned_tool.side_effects),
+                },
+            }
 
         return {
             "command_id": command.id,
@@ -150,20 +228,20 @@ async def create_ai_command(
             "trace_id": trace_id,
             "status": command.status,
             "approval_id": approval.id,
-            "result": None,
+            "result": result_payload,
         }
 
     try:
         result_payload = execute_read_tool(
             intent=payload.intent,
-            tool_name=payload.tool_name,
-            skill_id=payload.skill_id,
-            tool_args=payload.tool_args,
+            tool_name=planned_tool.tool_name,
+            skill_id=planned_tool.skill_id,
+            tool_args=planned_tool.tool_args,
         )
         insufficient_template = build_insufficient_data_template(
             intent=payload.intent,
-            tool_name=payload.tool_name,
-            tool_args=payload.tool_args,
+            tool_name=planned_tool.tool_name,
+            tool_args=planned_tool.tool_args,
             execution_result=result_payload,
         )
         if insufficient_template is not None:
@@ -188,9 +266,9 @@ async def create_ai_command(
             resource_type="AIToolCall",
             resource_id=tool_call.id,
             reason=success_reason,
-            skill_id=payload.skill_id,
-            tool_call_args=payload.tool_args,
-            side_effects_applied=list(payload.side_effects),
+            skill_id=planned_tool.skill_id,
+            tool_call_args=planned_tool.tool_args,
+            side_effects_applied=list(planned_tool.side_effects),
             approval_id=command.approval_id,
         )
         return {
@@ -215,9 +293,9 @@ async def create_ai_command(
             resource_id=tool_call.id,
             reason=f"read_tool_error:{type(exc).__name__}",
             actor_user_id=str(actor.user_id),
-            skill_id=payload.skill_id,
-            tool_call_args=payload.tool_args,
-            side_effects_applied=list(payload.side_effects),
+            skill_id=planned_tool.skill_id,
+            tool_call_args=planned_tool.tool_args,
+            side_effects_applied=list(planned_tool.side_effects),
             approval_id=command.approval_id,
         )
         raise HTTPException(status_code=500, detail="读工具执行失败")

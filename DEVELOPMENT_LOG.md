@@ -1150,3 +1150,34 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1130-1152
 - Next Step:
   - Gate-3 G-003（Command → Tool Plan → ToolCall 最小规划器）。
+
+- DateTime: 2026-02-08 20:14:21 +0800
+- Task: Gate-3 G-003（Command → Tool Plan → ToolCall 最小规划器）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && grep -nE "G-003|Gate-3|MVP-001|AGENT-T011|AGENT-T012|TEACHER-T001|RAG-T006" docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '160,176p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '228,238p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '156,176p'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（5 passed）
+  - `pytest -q tests/unit -q`：沙箱内首次 FAIL（`PermissionError: [Errno 1] Operation not permitted`，连接本机 Postgres 受限），提权重跑 `pytest tests/unit -q` 后 PASS
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:304-372`（Gate-3 G-003）
+  - [x] 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:170-171`（G-003 DoD=最小规划器）+ `:232-234`（MVP 依赖链）
+  - [x] Test ID 对齐：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:162`（AGENT-T011）与 `:171`（TEACHER-T001）
+  - [x] `/api/v1/ai/commands` 支持 dispatch 场景最小规划：自动生成 Tool Plan，返回 `waiting_approval + 草案ID + citations`
+  - [x] 审计闭环：`command_created -> tool_plan_generated -> tool_call_pending -> approval_created`，trace_id 一致
+  - [x] 审批红线保持：`side_effects != []` 仍进入 `waiting_approval/pending_approval`，未绕过审批执行写工具
+- Result: PASS
+- Risks/Notes:
+  - G-003 仅实现最小规划器，不扩展 H/I/J 或真实外部执行。
+  - 当前 `dispatch` 规划结果为确定性草案桩数据，满足最小可验收闭环；后续可在 E2E 阶段替换为真实业务草案生成。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1154-1183
+- Next Step:
+  - 按 DEV_PLAN 进入 Gate-3 下一未完成项（H-001）。

@@ -313,7 +313,7 @@ curl --noproxy 127.0.0.1,localhost -X POST \
 ### 5.1.1 Gate-3 进度（✅=证据闭环已完成）
 
 - G-002 ✅（证据：`DEVELOPMENT_LOG.md:1094-1123`；commit：本次提交）
-- G-003 ⏳
+- G-003 ✅（证据：`DEVELOPMENT_LOG.md:1154-1183`；commit：本次提交）
 - H-001 ⏳
 - H-002 ⏳
 - H-003 ⏳
