@@ -1229,3 +1229,33 @@
   - `docs/testing/TEST_PLAN.md` 的改动为脚本运行副产物（失败原因行重复），本次不纳入提交。
 - Next Step:
   - 后续可单独修复 `run_phase3_regression.sh` 对 `TEST_PLAN.md` 失败原因重复追加的问题（不影响本次目标）。
+
+- DateTime: 2026-02-08 22:47:00 +0800
+- Task: Gate-3 G-003 状态/审计口径修复补证（保留 waiting_approval 与 tool_plan_generated）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/DEV_PLAN_001.md | sed -n '304,317p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '159,172p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/testing/ACCEPTANCE_CHARTER.md | sed -n '33,37p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '157,171p'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（5 passed，新增 G-003 审计 reason/resource_type 稳定断言）
+  - `pytest tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（`BACKEND_PORT=8000`，attempt_id error=75 skip=76 slow=77）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 状态口径保留依据：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:160-162,170-171`（明确 `waiting_approval` 与 G-003 DoD）
+  - [x] 测试矩阵口径一致：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:157,162,171`（写工具与派单均为 `waiting_approval`，并要求每步审计）
+  - [x] 门禁条款一致：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 trace 串联）
+  - [x] 计划条目一致：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:308-317`（G-003 已纳入 Gate-3）
+- Result: PASS
+- Risks/Notes:
+  - 本次未引入新状态/新审计事件，只补强 G-003 最小断言，确保 `tool_plan_generated` 与 `approval_created` 的 `reason/resource_type` 可回归。
+  - `run_phase3_regression.sh` 会更新 `docs/testing/TEST_PLAN.md` 与 `docs/testing/TEST_REPORT.md` 证据段落；本任务提交前已回退这两个副产物，避免越界文档变更。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1233-1261
+- Next Step:
+  - 进入 Gate-3 下一未完成项（H-001）。

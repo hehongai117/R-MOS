@@ -199,8 +199,14 @@ def test_ai_command_dispatch_without_tool_name_builds_minimal_plan_and_waiting_a
         assert "tool_plan_generated" in actions
         assert "tool_call_pending" in actions
         assert "approval_created" in actions
+        tool_plan_generated = next(event for event in audits if event.action == "tool_plan_generated")
+        assert tool_plan_generated.trace_id == trace_id
+        assert tool_plan_generated.reason == "dispatch_minimal_planner"
+        assert tool_plan_generated.resource_type == "Command"
         approval_created = next(event for event in audits if event.action == "approval_created")
         assert approval_created.trace_id == trace_id
+        assert approval_created.reason == "approval_pending_created"
+        assert approval_created.resource_type == "Approval"
         assert approval_created.tool_call_args is not None
         assert approval_created.tool_call_args.get("input_text") == "创建中级电机故障作业"
 
