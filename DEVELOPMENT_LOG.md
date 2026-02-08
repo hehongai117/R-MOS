@@ -976,3 +976,22 @@
   - approval_id 不存在时返回 `ResourceNotFoundError(404)`，本次未额外写 deny 审计（遵循“not found 不是 deny”的既有语义）。
 - Next Step:
   - 进入 Gate-2 G-001 或 F-后续项，补齐审批详情扩展字段与课程范围口径收敛。
+
+- DateTime: 2026-02-08 10:16:53 +0800
+- Task: Gate-2 F-003 修复补证（对外路径口径 + teacher 越权 404 红线断言）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_approval_read_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_approval_read_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q --disable-warnings
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_approval_read_api.py`：PASS（5 passed）
+  - `pytest tests/unit -q --disable-warnings`：PASS（提权重跑通过）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 补证重点：测试显式断言请求路径为 `/api/v1/ai/approvals/{approval_id}`，并锁定 teacher 越权读取返回 404。
+  - 全量测试首次在沙箱内因 `localhost:5432` 连接权限报错失败，提权重跑后通过，判定为环境限制而非代码回归。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:980-997
+- Next Step:
+  - 继续 Gate-2 下一未完成项（按 DEV_PLAN_001 与矩阵优先级执行）。

@@ -190,6 +190,7 @@ def test_admin_can_read_approval_detail_and_records_allow_audit() -> None:
             f"/api/v1/ai/approvals/{approval_id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
+        assert response.request.url.path == f"/api/v1/ai/approvals/{approval_id}"
         assert response.status_code == 200
         body = response.json()
         assert body["id"] == approval_id
@@ -279,6 +280,7 @@ def test_teacher_read_approval_detail_returns_404_and_records_deny() -> None:
             f"/api/v1/ai/approvals/{approval_id}",
             headers={"Authorization": f"Bearer {teacher_token}"},
         )
+        assert response.request.url.path == f"/api/v1/ai/approvals/{approval_id}"
         assert response.status_code == 404
         body = response.json()
         assert body["error_type"] == "ReadAccessDeniedError"
