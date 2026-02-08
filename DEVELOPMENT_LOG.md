@@ -36,6 +36,7 @@
 | F-002 | ✅完成 | 本次提交 | 930-951 | Approvals Query API（GET /api/v1/ai/approvals）+ approval_query 审计闭环 |
 | F-003 | ✅完成 | 本次提交 | 954-978 | Approval Detail Query API（GET /api/v1/ai/approvals/{id}）+ approval_read 审计闭环 |
 | G2-004 | ✅完成 | ab18540 | 907-926 | 审计扩展字段与索引（skill/args/side_effects/approval + ix_audit_trace_created） |
+| G-001 | ✅完成 | 本次提交 | 1000-1026 | 审计查询索引加固 + 查询路径索引计划门禁（EXPLAIN） |
 
 - DateTime: 2026-02-06 19:34:58 +0800
 - Task: 生成完整项目目录清单（含隐藏文件）
@@ -995,3 +996,31 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:980-997
 - Next Step:
   - 继续 Gate-2 下一未完成项（按 DEV_PLAN_001 与矩阵优先级执行）。
+
+- DateTime: 2026-02-08 10:40:43 +0800
+- Task: Gate-2 G-001（Audit 查询索引加固 + 查询路径索引计划门禁）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260208_1030_d4e5f6a7b8c9_add_audit_query_hardening_indexes.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/audit_event.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/audit.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_audit_events_api.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_audit_query_index_gate.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_audit_events_api.py tests/unit/test_audit_query_index_gate.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads && alembic -c alembic.ini current && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `alembic -c alembic.ini upgrade head`：PASS（升级到 `d4e5f6a7b8c9`）
+  - `pytest -q tests/unit/test_audit_events_api.py tests/unit/test_audit_query_index_gate.py`：首次在沙箱内因 `localhost:5432` 权限限制 FAIL，提权重跑 PASS（5 passed）
+  - `alembic -c alembic.ini heads && alembic -c alembic.ini current`：PASS（单 head=`d4e5f6a7b8c9`）
+  - `pytest tests/unit -q`：PASS（全量通过）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 审计查询高频组合索引补齐（trace/action/actor/resource/approval/skill + created_at）
+  - [x] 审计查询最小入口补齐过滤参数（`action`、`approval_id`、`skill_id`）
+  - [x] 索引存在性门禁测试通过（G-001 自证）
+  - [x] EXPLAIN 命中 `ix_audit_trace_created` 门禁测试通过（G-001 自证）
+  - [x] 对齐矩阵：`AUDIT-T003`（按用户过滤）、`AUDIT-T004`（按资源过滤）、`AUDIT-T008`（按 trace 查询）
+- Result: PASS
+- Risks/Notes:
+  - `ACCEPTANCE_TEST_MATRIX` 未定义“索引/EXPLAIN 门槛”专门 Test ID，已按 Charter 采用“迁移+门禁测试”替代证据并固定在 `tests/unit/test_audit_query_index_gate.py`。
+  - 本次仅做查询索引与查询过滤增强，不涉及业务语义改写。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1000-1026
+- Next Step:
+  - 进入 Gate-2 E-003（写工具真实执行策略）或按计划先补 F 后续口径收敛。

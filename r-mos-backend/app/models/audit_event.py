@@ -18,6 +18,11 @@ class AuditEvent(Base):
     __tablename__ = "audit_events"
     __table_args__ = (
         Index("ix_audit_trace_created", "trace_id", "created_at"),
+        Index("ix_audit_action_created", "action", "created_at"),
+        Index("ix_audit_actor_created", "actor_user_id", "created_at"),
+        Index("ix_audit_resource_created", "resource_type", "resource_id", "created_at"),
+        Index("ix_audit_approval_created", "approval_id", "created_at"),
+        Index("ix_audit_skill_created", "skill_id", "created_at"),
     )
 
     id = Column(Integer, primary_key=True, index=True)

@@ -113,13 +113,17 @@ async def _seed_audit_events(session_factory: async_sessionmaker) -> None:
                 ),
                 AuditEvent(
                     actor_user_id="1002",
-                    action="login_success",
-                    resource_type="Auth",
-                    resource_id="*",
+                    action="tool_call_pending",
+                    resource_type="AIToolCall",
+                    resource_id="301",
                     decision="allow",
-                    reason="credentials_ok",
-                    request_meta={"path": "/api/v1/auth/login"},
+                    reason="tool_call_created",
+                    request_meta={"path": "/api/v1/ai/commands"},
                     trace_id="trace-allow-1",
+                    skill_id="skill.demo",
+                    skill_version="1.0.0",
+                    tool_call_args={"course_id": 1001},
+                    side_effects_applied=["assignment.write"],
                 ),
             ]
         )
@@ -305,6 +309,40 @@ def test_audit_events_admin_query_records_audit_query_allow() -> None:
                 assert event.resource_id == "*"
 
         asyncio.run(assert_query_audit())
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_audit_events_admin_can_filter_by_action_and_skill_id() -> None:
+    client, session_factory = _build_client()
+    try:
+        _, token = _register_and_login(client, "audit_admin_filter@example.com")
+        asyncio.run(
+            _grant_role(
+                session_factory,
+                email="audit_admin_filter@example.com",
+                role_name="admin",
+                permission_keys=["audit_events:read"],
+            )
+        )
+        asyncio.run(_seed_audit_events(session_factory))
+
+        resp = client.get(
+            "/api/v1/audit/events",
+            params={"action": "tool_call_pending", "skill_id": "skill.demo"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["count"] == 1
+        assert len(payload["items"]) == 1
+        item = payload["items"][0]
+        assert item["action"] == "tool_call_pending"
+        assert item["skill_id"] == "skill.demo"
+        assert item["tool_call_args"] == {"course_id": 1001}
+        assert item["side_effects_applied"] == ["assignment.write"]
     finally:
         client.close()
         app.dependency_overrides.clear()

@@ -29,6 +29,11 @@ def _serialize_event(event: AuditEvent) -> dict[str, Any]:
         "resource_id": event.resource_id,
         "reason": event.reason,
         "trace_id": event.trace_id,
+        "skill_id": event.skill_id,
+        "skill_version": event.skill_version,
+        "tool_call_args": event.tool_call_args,
+        "side_effects_applied": event.side_effects_applied,
+        "approval_id": event.approval_id,
         "created_at": event.created_at.isoformat() if event.created_at else None,
     }
 
@@ -39,9 +44,12 @@ async def list_audit_events(
     trace_id: str | None = Query(default=None),
     actor_user_id: str | None = Query(default=None),
     user_id: str | None = Query(default=None),
+    action: str | None = Query(default=None),
     decision: str | None = Query(default=None),
     resource_type: str | None = Query(default=None),
     resource_id: str | None = Query(default=None),
+    approval_id: int | None = Query(default=None, ge=1),
+    skill_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -73,12 +81,18 @@ async def list_audit_events(
     actor_filter_user_id = actor_user_id or user_id
     if actor_filter_user_id:
         conditions.append(AuditEvent.actor_user_id == actor_filter_user_id)
+    if action:
+        conditions.append(AuditEvent.action == action)
     if decision:
         conditions.append(AuditEvent.decision == decision)
     if resource_type:
         conditions.append(AuditEvent.resource_type == resource_type)
     if resource_id:
         conditions.append(AuditEvent.resource_id == resource_id)
+    if approval_id is not None:
+        conditions.append(AuditEvent.approval_id == approval_id)
+    if skill_id:
+        conditions.append(AuditEvent.skill_id == skill_id)
 
     items_stmt = select(AuditEvent)
     count_stmt = select(func.count()).select_from(AuditEvent)
@@ -86,7 +100,11 @@ async def list_audit_events(
         items_stmt = items_stmt.where(*conditions)
         count_stmt = count_stmt.where(*conditions)
 
-    items_stmt = items_stmt.order_by(AuditEvent.id.desc()).offset(offset).limit(limit)
+    items_stmt = (
+        items_stmt.order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     result = await db.execute(items_stmt)
     events = result.scalars().all()
 
