@@ -1098,7 +1098,9 @@
   - cd /Users/xuhehong/Desktop/r-mos && sed -n '300,370p' docs/design/DEV_PLAN_001.md
   - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '159,175p'
   - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '226,240p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/DEV_PLAN_001.md | sed -n '533,542p'
   - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | grep -n "RAG-T006\|OBJ-T002\|OBJ-T008\|AUDIT-T006\|AGENT-T006"
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/testing/ACCEPTANCE_CHARTER.md | sed -n '33,52p'
   - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
   - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_teaching_api.py -k "read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"
   - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
@@ -1118,6 +1120,9 @@
 - Risks/Notes:
   - 本次仅完成 G-002 最小闭环：在 `/api/v1/ai/commands` 读链路补齐 `insufficient_data` 模板，不涉及 G-003/H/I/J 后续能力。
   - `F-004` 在当前 `DEV_PLAN_001.md` 不存在，按“E-004 之后下一未完成项”顺序进入 Gate-3 G-002。
-  - Evidence Line Range: DEVELOPMENT_LOG.md:1094-1123
+  - Gate-3 前置证据：Gate-2 的 D-001~G-001 已闭环（`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:533-542`，对照表见 `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:19-41`）。
+  - RAG-T006 条款引用：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:142`（检索无结果返回模板）与 `/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:35,51`（RAG 过滤返回空/insufficient_data）。
+  - 触发条件已从关键词启发式改为“rag.query 空命中/空证据判定”，避免误触发。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1094-1128
 - Next Step:
   - Gate-3 下一未完成项：G-003（Command → Tool Plan → ToolCall 最小规划器）。

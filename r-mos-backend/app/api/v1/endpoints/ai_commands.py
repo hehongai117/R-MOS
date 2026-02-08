@@ -154,18 +154,20 @@ async def create_ai_command(
         }
 
     try:
-        result_payload = build_insufficient_data_template(
+        result_payload = execute_read_tool(
+            intent=payload.intent,
+            tool_name=payload.tool_name,
+            skill_id=payload.skill_id,
+            tool_args=payload.tool_args,
+        )
+        insufficient_template = build_insufficient_data_template(
             intent=payload.intent,
             tool_name=payload.tool_name,
             tool_args=payload.tool_args,
+            execution_result=result_payload,
         )
-        if result_payload is None:
-            result_payload = execute_read_tool(
-                intent=payload.intent,
-                tool_name=payload.tool_name,
-                skill_id=payload.skill_id,
-                tool_args=payload.tool_args,
-            )
+        if insufficient_template is not None:
+            result_payload = insufficient_template
 
         tool_call.status = "success"
         tool_call.result_payload = result_payload

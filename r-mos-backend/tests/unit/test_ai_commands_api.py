@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+import app.api.v1.endpoints.ai_commands as ai_commands_endpoint
 from app.core.database import get_db
 from app.models.audit_event import AuditEvent
 from app.models.base import Base
@@ -131,9 +132,29 @@ def test_ai_command_read_tool_success_records_trace_audits() -> None:
         app.state.test_sessionmaker = None
 
 
-def test_ai_command_no_result_returns_insufficient_data_template() -> None:
+def test_ai_command_no_result_returns_insufficient_data_template(monkeypatch) -> None:
     client, session_factory = _build_client()
     try:
+        def _fake_execute_read_tool(
+            *,
+            intent: str,
+            tool_name: str,
+            skill_id: str | None,
+            tool_args: dict[str, object],
+        ) -> dict[str, object]:
+            return {
+                "tool_name": tool_name,
+                "intent": intent,
+                "skill_id": skill_id,
+                "summary": "fake-rag-result",
+                "echo_args": dict(tool_args),
+                "status": "ok",
+                "hits": [],
+                "items": [],
+            }
+
+        monkeypatch.setattr(ai_commands_endpoint, "execute_read_tool", _fake_execute_read_tool)
+
         token = _register_and_login(client, email="command_rag_insufficient_data@example.com")
         response = client.post(
             "/api/v1/ai/commands",
@@ -142,7 +163,7 @@ def test_ai_command_no_result_returns_insufficient_data_template() -> None:
                 "intent": "explain",
                 "skill_id": "rag.read.explain",
                 "tool_name": "rag.query",
-                "tool_args": {"input_text": "不存在的主题"},
+                "tool_args": {"input_text": "主题A-空命中"},
                 "side_effects": [],
             },
         )
@@ -151,6 +172,7 @@ def test_ai_command_no_result_returns_insufficient_data_template() -> None:
         assert payload["status"] == "succeeded"
         result_payload = payload["result"]
         assert result_payload["status"] == "insufficient_data"
+        assert result_payload["query"] == "主题A-空命中"
         assert isinstance(result_payload["missing_items"], list)
         assert result_payload["missing_items"]
 
