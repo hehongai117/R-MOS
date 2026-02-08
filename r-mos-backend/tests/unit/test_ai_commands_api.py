@@ -189,6 +189,37 @@ def test_ai_command_no_result_returns_insufficient_data_template(monkeypatch) ->
         app.state.test_sessionmaker = None
 
 
+def test_ai_command_force_empty_without_monkeypatch_returns_insufficient_data_template() -> None:
+    client, session_factory = _build_client()
+    try:
+        token = _register_and_login(client, email="command_rag_force_empty@example.com")
+        response = client.post(
+            "/api/v1/ai/commands",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "intent": "explain",
+                "skill_id": "rag.read.explain",
+                "tool_name": "rag.query",
+                "tool_args": {"input_text": "主题B-强制空命中", "force_empty": True},
+                "side_effects": [],
+            },
+        )
+        assert response.status_code == 201
+        payload = response.json()
+        assert payload["status"] == "succeeded"
+        result_payload = payload["result"]
+        assert result_payload["status"] == "insufficient_data"
+        assert result_payload["query"] == "主题B-强制空命中"
+
+        trace_id = payload["trace_id"]
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=trace_id))
+        assert any(event.action == "tool_call_success" and event.reason == "insufficient_data" for event in audits)
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
 def test_ai_command_write_tool_keeps_pending_without_success_audit() -> None:
     client, session_factory = _build_client()
     try:

@@ -171,17 +171,24 @@ def execute_read_tool(
     normalized_args = dict(tool_args)
     normalized_tool_name = tool_name.strip().lower()
     if normalized_tool_name in {"rag.query", "ai.rag.query"}:
-        raw_hits = normalized_args.get("hits")
-        hits = raw_hits if isinstance(raw_hits, list) else [{"ref_id": "stub-evidence-1", "score": 0.92}]
+        # 仅用于测试稳定复现“空命中”；默认读链路不伪造命中结果。
+        force_empty = bool(normalized_args.pop("force_empty", False))
+        if force_empty:
+            return {
+                "tool_name": tool_name,
+                "intent": intent,
+                "skill_id": skill_id,
+                "summary": f"read_stub::{tool_name}::{intent}",
+                "echo_args": normalized_args,
+                "hits": [],
+                "items": [],
+            }
         return {
             "tool_name": tool_name,
             "intent": intent,
             "skill_id": skill_id,
             "summary": f"read_stub::{tool_name}::{intent}",
             "echo_args": normalized_args,
-            "status": "no_result" if len(hits) == 0 else "ok",
-            "hits": hits,
-            "items": hits,
         }
 
     summary = f"read_stub::{tool_name}::{intent}"

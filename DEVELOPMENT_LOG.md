@@ -1126,3 +1126,27 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1094-1128
 - Next Step:
   - Gate-3 下一未完成项：G-003（Command → Tool Plan → ToolCall 最小规划器）。
+
+- DateTime: 2026-02-08 20:04:00 +0800
+- Task: Gate-3 G-002 修复补证（移除 rag.query stub 命中注入与状态伪造，改为基于真实空命中触发 insufficient_data）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（4 passed）
+  - `pytest tests/unit -q`：PASS
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 移除 rag.query 默认 stub 命中注入（不再默认注入 `stub-evidence-1`）
+  - [x] 移除 rag.query 默认状态伪造（不再默认写入 `status=ok/no_result`）
+  - [x] 保留空命中判定模板触发：`hits/items` 为空或 `status in {no_result, empty}`
+  - [x] 保留 monkeypatch 用例 + 新增非 monkeypatch 默认路径（`force_empty=true`）用例
+- Result: PASS
+- Risks/Notes:
+  - 权威条款：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:142`（RAG-T006 检索无结果返回模板）；`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:35,51`（RAG 返回空/insufficient_data 语义）。
+  - `force_empty` 为仅测试注入开关，用于稳定构造“空命中”场景；默认生产路径不伪造命中与状态。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1130-1152
+- Next Step:
+  - Gate-3 G-003（Command → Tool Plan → ToolCall 最小规划器）。
