@@ -464,3 +464,70 @@ def test_grant_critical_tool_when_feature_disabled_records_failed_audit() -> Non
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+def test_grant_unexpected_tool_status_records_deny_audit(
+    monkeypatch,
+) -> None:
+    client, session_factory = _build_client()
+    try:
+        creator_token = _register_and_login(
+            client,
+            email="e003_creator_unexpected_status@example.com",
+            full_name="创建者",
+        )
+        payload = _create_pending_write_command(client, creator_token)
+        trace_id = payload["trace_id"]
+        approval_id = payload["approval_id"]
+
+        admin_token = _register_and_login(
+            client,
+            email="e003_admin_unexpected_status@example.com",
+            full_name="管理员",
+        )
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="e003_admin_unexpected_status@example.com",
+                role_name="admin",
+                permission_keys=["approvals:grant"],
+            )
+        )
+
+        from app.services.approval_service import ApprovalService
+
+        async def _fake_execute_after_grant(self, approval):
+            command, tool_call = await self.get_runtime_bundle(approval)
+            tool_call.status = "pending"
+            command.status = "pending_approval"
+            return command, tool_call, True
+
+        monkeypatch.setattr(ApprovalService, "execute_after_grant", _fake_execute_after_grant)
+
+        grant_resp = client.post(
+            f"/api/v1/ai/approvals/{approval_id}/grant",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"reason": "E-003未知状态分支"},
+        )
+        assert grant_resp.status_code == 200
+        grant_payload = grant_resp.json()
+        assert grant_payload["tool_call_status"] == "pending"
+        assert grant_payload["tool_call_event_written"] is True
+
+        _command, tool_call, _approval = asyncio.run(
+            _load_runtime_by_trace(session_factory, trace_id=trace_id)
+        )
+        failed_event = asyncio.run(
+            _find_latest_audit(
+                session_factory,
+                trace_id=trace_id,
+                action="tool_call_failed",
+            )
+        )
+        assert failed_event is not None
+        assert failed_event.reason == "unexpected_tool_call_status:pending"
+        assert failed_event.resource_id == str(tool_call.id)
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None

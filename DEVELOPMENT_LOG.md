@@ -1036,7 +1036,9 @@
   - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
 - Tests:
   - RED 阶段：新增 `test_grant_critical_tool_when_feature_disabled_records_failed_audit` 首次执行 FAIL（`command_status` 实际为 `succeeded`），确认缺口真实存在。
-  - GREEN 阶段：`pytest -q tests/unit/test_tool_execution_after_approval_api.py` -> PASS（4 passed）。
+  - GREEN 阶段：`pytest -q tests/unit/test_tool_execution_after_approval_api.py` -> PASS（5 passed）。
+  - 分支补证：新增 `test_grant_unexpected_tool_status_records_deny_audit`，确认未知状态分支会写 `tool_call_failed` deny 审计且 `resource_id` 为真实 `tool_call.id`。
+  - 幂等补证：`test_repeated_grant_is_idempotent_without_duplicate_tool_success_audit` 继续通过，确认重复 grant 不重复执行、不重复写 success 审计。
   - 全量回归：`pytest -q tests/unit -q` 首次在沙箱内因本机 Postgres 连接权限报错（`PermissionError: [Errno 1] Operation not permitted`），按流程切换沙箱外重跑后 PASS。
   - smoke：`./scripts/run_gate2_smoke.sh` -> PASS（末尾“全部通过：PASS”）。
   - DoD Checklist（Test ID 绑定）：
@@ -1047,6 +1049,13 @@
 - Result: PASS
 - Risks/Notes:
   - `E-003` 当前实现为最小可测策略：critical 故障注入工具默认禁用（`feature_flag_disabled`）并拒绝执行；未引入外部 IO。
+  - 稳定错误码收敛：写工具策略失败统一使用 `feature_flag_disabled`（不再使用裸字符串 RuntimeError reason）。
+  - 权威口径依据（文件 + 行号范围）：
+    - `/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:160-163`（AGENT-T009/T010/T012：成功审计、critical 禁用、失败回滚）
+    - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:252-255`（Gate-2 风险约束：critical 需 feature_flag/rollback_strategy）
+    - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:289-293`（审批链风险回滚：feature flag 作为门控）
+    - `/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:28-32`（Gate-2 审计链必须可追踪）
+    - `/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:43-45`（越权语义与 deny 审计必写）
   - 验收矩阵中未给出 E-003 独立编号，按最接近条目 AGENT-T010/AGENT-T012 + AUDIT-T008 进行闭环自证。
 - Next Step:
   - 继续 Gate-2 E-004（写工具外部执行能力接入与失败补偿策略），保持单任务最小闭环。

@@ -4,6 +4,17 @@ from __future__ import annotations
 from typing import Any
 
 
+TOOL_EXECUTION_ERR_FEATURE_FLAG_DISABLED = "feature_flag_disabled"
+
+
+class ToolExecutionPolicyError(RuntimeError):
+    """写工具执行策略错误。"""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 def _is_disabled_critical_tool(tool_name: str, skill_id: str | None) -> bool:
     """最小风险策略：critical 故障注入工具默认禁用。"""
     normalized_tool_name = tool_name.strip().lower()
@@ -49,7 +60,10 @@ def execute_write_tool_stub(
     - 仅返回确定性结果，不访问外部系统
     """
     if _is_disabled_critical_tool(tool_name, skill_id):
-        raise RuntimeError("feature_flag_disabled")
+        raise ToolExecutionPolicyError(
+            TOOL_EXECUTION_ERR_FEATURE_FLAG_DISABLED,
+            "critical_tool_feature_disabled",
+        )
 
     normalized_effects = list(side_effects)
     return {

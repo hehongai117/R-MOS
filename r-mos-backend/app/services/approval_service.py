@@ -137,16 +137,18 @@ class ApprovalService:
             tool_call.error_message = None
             command.status = "succeeded"
         except Exception as exc:
-            error_reason = str(exc) or "write_tool_execution_failed"
+            error_code = getattr(exc, "code", None) or "write_tool_execution_failed"
+            error_message = str(exc) or "write_tool_execution_failed"
             tool_call.status = "failed"
-            tool_call.error_message = error_reason
+            tool_call.error_message = error_code
             tool_call.result_payload = {
                 "mode": "write_stub_failed",
-                "error": error_reason,
+                "error_code": error_code,
+                "error_message": error_message,
                 "rollback_instructions": [
                     {
                         "type": "manual_review",
-                        "reason": error_reason,
+                        "reason": error_code,
                     }
                 ],
             }

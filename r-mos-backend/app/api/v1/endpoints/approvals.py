@@ -253,7 +253,18 @@ async def grant_approval(
                 approval_id=approval.id,
             )
         else:
-            tool_call_event_written = False
+            await log_deny_event(
+                db,
+                request,
+                action="tool_call_failed",
+                resource_type="AIToolCall",
+                resource_id=tool_call.id,
+                reason=f"unexpected_tool_call_status:{tool_call.status}",
+                actor_user_id=str(actor.user_id),
+                skill_id=tool_call.skill_id,
+                side_effects_applied=tool_call.side_effects or [],
+                approval_id=approval.id,
+            )
 
     return {
         "approval_id": approval.id,
