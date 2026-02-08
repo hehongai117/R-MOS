@@ -1090,3 +1090,34 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1064-1092
 - Next Step:
   - 进入 Gate-2 下一未完成项（按 DEV_PLAN 序列，优先 F 后续或 E 扩展子任务）。
+
+- DateTime: 2026-02-08 19:46:16 +0800
+- Task: Gate-3 G-002（POST /api/v1/ai/commands 无结果返回 insufficient_data 模板最小闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '300,370p' docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '159,175p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '226,240p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | grep -n "RAG-T006\|OBJ-T002\|OBJ-T008\|AUDIT-T006\|AGENT-T006"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_teaching_api.py -k "read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（3 passed，新增 insufficient_data 用例通过）
+  - `pytest -q tests/unit/test_teaching_api.py -k "read_access_denied_records_real_resource_id or class_write_permission_denied_records_real_resource_id"`：PASS（3 passed）
+  - `pytest -q tests/unit -q`：沙箱内首次 FAIL（`PermissionError: [Errno 1] Operation not permitted` 连接本机 Postgres），提权重跑 PASS
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 计划项定位：G-002（`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:308-318`）
+  - [x] 范围与依赖：G-002 命令入口与 DoD（`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:167-169`）；依赖链 `G-002 + E-003 + F-001`（`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:232-234`）
+  - [x] Test ID 绑定：`RAG-T006`（`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:142`）
+  - [x] 红线回归（对象级 READ/WRITE + deny 真实 resource_id）：`OBJ-T002`（`.../ACCEPTANCE_TEST_MATRIX.md:86`）、`OBJ-T008`（`.../ACCEPTANCE_TEST_MATRIX.md:92`）、`AUDIT-T006`（`.../ACCEPTANCE_TEST_MATRIX.md:223`）
+  - [x] 审批门禁（side_effects 非空不得绕过）：`AGENT-T006`（`.../ACCEPTANCE_TEST_MATRIX.md:157`），写工具保持 `pending_approval`
+- Result: PASS
+- Risks/Notes:
+  - 本次仅完成 G-002 最小闭环：在 `/api/v1/ai/commands` 读链路补齐 `insufficient_data` 模板，不涉及 G-003/H/I/J 后续能力。
+  - `F-004` 在当前 `DEV_PLAN_001.md` 不存在，按“E-004 之后下一未完成项”顺序进入 Gate-3 G-002。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1094-1123
+- Next Step:
+  - Gate-3 下一未完成项：G-003（Command → Tool Plan → ToolCall 最小规划器）。

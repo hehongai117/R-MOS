@@ -23,6 +23,7 @@ _UUID_LIKE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _ALLOWED_DIFFICULTY = {"beginner", "intermediate", "advanced"}
+_INSUFFICIENT_DATA_MARKERS = ("不存在", "无相关", "未找到", "unknown", "not found", "notfound")
 
 
 class ToolExecutionPolicyError(RuntimeError):
@@ -107,6 +108,45 @@ def validate_tool_request_security(
                     "actual": difficulty,
                 },
             )
+
+
+def build_insufficient_data_template(
+    *,
+    intent: str,
+    tool_name: str,
+    tool_args: dict[str, Any],
+) -> dict[str, Any] | None:
+    """G-002 最小缺乏数据模板：无结果时返回结构化提示。"""
+    normalized_tool_name = tool_name.strip().lower()
+    normalized_intent = intent.strip().lower()
+    if normalized_tool_name not in {"rag.query", "ai.rag.query"} and normalized_intent not in {
+        "explain",
+        "replay",
+        "highlight",
+    }:
+        return None
+
+    query_text = str(tool_args.get("input_text") or tool_args.get("query") or "").strip()
+    if not query_text:
+        return None
+
+    lowered_query = query_text.lower()
+    if not any(marker in query_text or marker in lowered_query for marker in _INSUFFICIENT_DATA_MARKERS):
+        return None
+
+    missing_items = tool_args.get("missing_items")
+    if not isinstance(missing_items, list) or not missing_items:
+        missing_items = ["可验证证据", "可回放引用"]
+
+    return {
+        "status": "insufficient_data",
+        "query": query_text,
+        "missing_items": missing_items,
+        "next_steps": [
+            "补充与问题相关的过程证据",
+            "确认引用是否可回放后再次发起命令",
+        ],
+    }
 
 
 def _is_disabled_critical_tool(tool_name: str, skill_id: str | None) -> bool:

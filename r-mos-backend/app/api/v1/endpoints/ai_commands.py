@@ -14,7 +14,11 @@ from app.models.approval import Approval
 from app.models.command_runtime import AIToolCall, Command
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor
-from app.services.tool_executor import execute_read_tool, validate_tool_request_security
+from app.services.tool_executor import (
+    build_insufficient_data_template,
+    execute_read_tool,
+    validate_tool_request_security,
+)
 
 
 router = APIRouter()
@@ -150,16 +154,29 @@ async def create_ai_command(
         }
 
     try:
-        result_payload = execute_read_tool(
+        result_payload = build_insufficient_data_template(
             intent=payload.intent,
             tool_name=payload.tool_name,
-            skill_id=payload.skill_id,
             tool_args=payload.tool_args,
         )
+        if result_payload is None:
+            result_payload = execute_read_tool(
+                intent=payload.intent,
+                tool_name=payload.tool_name,
+                skill_id=payload.skill_id,
+                tool_args=payload.tool_args,
+            )
+
         tool_call.status = "success"
         tool_call.result_payload = result_payload
         command.status = "succeeded"
         await db.commit()
+
+        success_reason = (
+            "insufficient_data"
+            if result_payload.get("status") == "insufficient_data"
+            else "read_tool_success"
+        )
 
         await log_allow_event(
             db,
@@ -168,7 +185,7 @@ async def create_ai_command(
             actor_user_id=str(actor.user_id),
             resource_type="AIToolCall",
             resource_id=tool_call.id,
-            reason="read_tool_success",
+            reason=success_reason,
             skill_id=payload.skill_id,
             tool_call_args=payload.tool_args,
             side_effects_applied=list(payload.side_effects),
