@@ -1181,3 +1181,51 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1154-1183
 - Next Step:
   - 按 DEV_PLAN 进入 Gate-3 下一未完成项（H-001）。
+
+- DateTime: 2026-02-08 21:47:08 +0800
+- Task: Gate-3 G-003 修复补证（状态/审计口径证据链）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/HLD_JARVIS_V0_3.md | sed -n '45,50p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/HLD_JARVIS_V0_3.md | sed -n '135,140p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '159,172p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '157,172p'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS
+  - `pytest tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：FAIL（`FileNotFoundError: /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`，ERROR_CODE=UNEXPECTED_ERROR）
+  - `./scripts/run_gate2_smoke.sh`：PASS（失败处置：回退执行稳定 smoke 回归，末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - waiting_approval 口径依据：`/Users/xuhehong/Desktop/r-mos/docs/design/HLD_JARVIS_V0_3.md:47-49,137-138`、`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:159-171`、`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:157-158,171`。
+  - tool_plan_generated 审计口径依据：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:170-171`（G-003 包含 Tool Plan 步骤）+ `/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:162`（AGENT-T011 要求“每步有audit记录”）+ `/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:34-37`（Gate-3 trace 串联门禁）。
+  - `run_phase3_regression.sh` 失败处置：脚本依赖 `docs/testing/TEST_REPORT.md`，当前仓库缺失该文件导致异常；本次未新增该文档（避免越界），已用 smoke 回归补充功能稳定性证据。
+  - 本次不改状态机与审计动作，仅补齐权威条款证据链，保持现有实现与测试断言一致。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1185-1210
+- Next Step:
+  - 继续 Gate-3 下一未完成项（H-001）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=69 skip=70 slow=71
+
+- DateTime: 2026-02-08 22:10:00 +0800
+- Task: Gate-3 回归脚本修复（run_phase3_regression 缺失 TEST_REPORT.md 时自动创建并继续回填）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_phase3_regression.sh, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && grep -RInE "Phase3 Step4|T18-AUTO-01|TEST_REPORT.md|run_phase3_regression" docs/testing/TEST_PLAN.md docs/ops/RUNBOOK.md r-mos-backend/scripts/run_phase3_regression.sh DEVELOPMENT_LOG.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `bash scripts/run_phase3_regression.sh`：PASS（自动写入 `docs/testing/TEST_REPORT.md` 的 `Phase3 Step4 单命令回归证据`）
+  - `pytest tests/unit -q`：PASS
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 依赖依据：`/Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md:6,205-209`、`/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_PLAN.md:1206-1213`、`/Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_phase3_regression.sh:10,287-346`。
+  - 本次采用“脚本自创建报告文件”的最小修复：`TEST_REPORT.md` 缺失时写入基础头，再追加 Step4 证据块；不改变回归业务逻辑。
+  - `docs/testing/TEST_PLAN.md` 的改动为脚本运行副产物（失败原因行重复），本次不纳入提交。
+- Next Step:
+  - 后续可单独修复 `run_phase3_regression.sh` 对 `TEST_PLAN.md` 失败原因重复追加的问题（不影响本次目标）。

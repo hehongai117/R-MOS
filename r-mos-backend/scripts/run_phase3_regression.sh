@@ -335,7 +335,11 @@ block = f"""{start}
 ```
 {end}"""
 
-content = report_path.read_text()
+report_path.parent.mkdir(parents=True, exist_ok=True)
+if report_path.exists():
+    content = report_path.read_text()
+else:
+    content = "# 测试报告\n\n## 自动生成说明\n\n- 本文件由回归脚本自动创建。\n"
 if start in content and end in content:
     prefix = content.split(start)[0].rstrip()
     suffix = content.split(end)[1].lstrip()
