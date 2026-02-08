@@ -34,6 +34,7 @@
 | E-002 | ✅完成 | 57699b5 | 883-904 | 审批结果驱动 Tool Executor 闭环（grant执行/ reject收口/幂等） |
 | F-001 | ✅完成 | 02a2ea8 | 861-880 | Approval Service 最小审批流（pending→granted/rejected） |
 | F-002 | ✅完成 | 本次提交 | 930-951 | Approvals Query API（GET /api/v1/ai/approvals）+ approval_query 审计闭环 |
+| F-003 | ✅完成 | 本次提交 | 954-978 | Approval Detail Query API（GET /api/v1/ai/approvals/{id}）+ approval_read 审计闭环 |
 | G2-004 | ✅完成 | ab18540 | 907-926 | 审计扩展字段与索引（skill/args/side_effects/approval + ix_audit_trace_created） |
 
 - DateTime: 2026-02-06 19:34:58 +0800
@@ -949,3 +950,29 @@
   - `APPR-T012`（`docs/specs/ACCEPTANCE_TEST_MATRIX.md:129`）对应 `/api/v1/ai/approvals/{id}` 历史查询，本次未实现，保留到 F-003。
 - Next Step:
   - 进入 Gate-2 F-003：审批历史详情与课程范围查询收敛（补齐 APPR-T012 与 APPR-T011 口径对齐策略）。
+
+- DateTime: 2026-02-08 10:03:46 +0800
+- Task: Gate-2 F-003（Approval Detail Query API：GET /api/v1/ai/approvals/{approval_id} + approval_read 审计闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/approvals.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_approval_read_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini current
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_approval_read_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit -q --disable-warnings
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `alembic -c alembic.ini current`：PASS，当前 revision=`c9d0e1f2a3b4 (head)`
+  - `pytest -q tests/unit/test_approval_read_api.py`：PASS（5 passed）
+  - `pytest tests/unit -q --disable-warnings`：PASS（全量通过，含 1 skipped）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 新增 `GET /api/v1/ai/approvals/{approval_id}`，权限键 `approvals:read`
+  - [x] 角色门禁：admin/auditor 允许；teacher（即使有 `approvals:read`）按对象级 READ 越权返回 404
+  - [x] allow 审计：`approval_read`（resource_type=`Approval`，resource_id=真实 approval_id，reason=`read_success`）
+  - [x] deny 审计：`permission_denied`（resource_type=`Approval`，resource_id=真实 approval_id）且 trace_id 贯通
+  - [x] 绑定 APPR-T012（详情查询）最小闭环测试完成
+- Result: PASS
+- Risks/Notes:
+  - 审批详情接口当前返回最小字段集，不含 `approvals_received` 聚合结构；如需严格对齐 APPR-T012 扩展断言，建议在后续 F-003+ 补齐。
+  - approval_id 不存在时返回 `ResourceNotFoundError(404)`，本次未额外写 deny 审计（遵循“not found 不是 deny”的既有语义）。
+- Next Step:
+  - 进入 Gate-2 G-001 或 F-后续项，补齐审批详情扩展字段与课程范围口径收敛。

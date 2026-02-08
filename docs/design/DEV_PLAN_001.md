@@ -198,7 +198,7 @@ curl --noproxy 127.0.0.1,localhost -X PATCH -H "Authorization: Bearer ${TOKEN_ST
 - E-004 ⏳
 - F-001 ✅
 - F-002 ✅（证据：`DEVELOPMENT_LOG.md` 930-951；commit：本次提交）
-- F-003 ⏳
+- F-003 ✅（证据：`DEVELOPMENT_LOG.md` 本次 Gate-2 F-003 条目与 Gate-2 对照表；commit：本次提交）
 - G-001 ⏳
 
 ### 4.1.2 Gate-2 进度（回归入口/门禁 A-001~A-007，✅=证据闭环已完成）

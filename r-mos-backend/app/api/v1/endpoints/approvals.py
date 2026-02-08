@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.exceptions import ResourceNotFoundError, RoleRequiredError
+from app.core.exceptions import ReadAccessDeniedError, ResourceNotFoundError, RoleRequiredError
 from app.models.approval import Approval
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.approval_service import ApprovalService
@@ -122,6 +122,52 @@ async def list_approvals(
         "offset": offset,
         "count": total_count,
     }
+
+
+@router.get("/ai/approvals/{id}")
+async def get_approval_detail(
+    id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(require_permission("approvals:read")),
+):
+    service = ApprovalService(db)
+    approval = await service.get_by_id(id)
+    if approval is None:
+        raise ResourceNotFoundError("Approval", id)
+
+    request.state.trace_id = approval.trace_id or getattr(request.state, "trace_id", None)
+    if not _ensure_admin_or_auditor(actor):
+        reason = "missing_role:admin_or_auditor"
+        await log_deny_event(
+            db,
+            request,
+            action="permission_denied",
+            resource_type="Approval",
+            resource_id=id,
+            reason=reason,
+            actor_user_id=str(actor.user_id),
+            approval_id=approval.id,
+        )
+        raise ReadAccessDeniedError(
+            action="permission_denied",
+            resource_type="Approval",
+            resource_id=id,
+            reason=reason,
+            message="资源不存在",
+        )
+
+    await log_allow_event(
+        db,
+        request,
+        action="approval_read",
+        actor_user_id=str(actor.user_id),
+        resource_type="Approval",
+        resource_id=id,
+        reason="read_success",
+        approval_id=approval.id,
+    )
+    return _serialize_approval(approval)
 
 
 @router.post("/ai/approvals/{id}/grant")
