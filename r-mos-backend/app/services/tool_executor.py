@@ -1,10 +1,28 @@
 """Gate-2 E-001：无副作用工具执行器（最小读链路）。"""
 from __future__ import annotations
 
+import re
 from typing import Any
+
+from app.core.exceptions import SecurityViolationError
 
 
 TOOL_EXECUTION_ERR_FEATURE_FLAG_DISABLED = "feature_flag_disabled"
+TOOL_SECURITY_ERR_BLACKLIST = "SECURITY_BLACKLIST_KEYWORD"
+TOOL_SECURITY_ERR_INJECTION = "SECURITY_INJECTION_PATTERN"
+TOOL_SECURITY_ERR_INVALID_REFERENCE = "SECURITY_INVALID_REFERENCE"
+TOOL_SECURITY_ERR_PARAM_RANGE = "SECURITY_PARAM_OUT_OF_RANGE"
+
+_BLACKLIST_KEYWORDS = ("DROP TABLE", "DELETE FROM")
+_INJECTION_PATTERNS = (
+    re.compile(r"(?i)(<\s*script|javascript:|onerror\s*=)"),
+    re.compile(r"(?i)(union\s+select|insert\s+into)"),
+)
+_UUID_LIKE_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+_ALLOWED_DIFFICULTY = {"beginner", "intermediate", "advanced"}
 
 
 class ToolExecutionPolicyError(RuntimeError):
@@ -13,6 +31,82 @@ class ToolExecutionPolicyError(RuntimeError):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+
+def _iter_string_values(value: Any):
+    if isinstance(value, str):
+        yield value
+        return
+    if isinstance(value, dict):
+        for nested in value.values():
+            yield from _iter_string_values(nested)
+        return
+    if isinstance(value, (list, tuple, set)):
+        for nested in value:
+            yield from _iter_string_values(nested)
+
+
+def validate_tool_request_security(
+    *,
+    tool_name: str,
+    tool_args: dict[str, Any],
+) -> None:
+    """E-004 最小安全门禁：注入/引用/参数范围校验。"""
+    for raw in _iter_string_values(tool_args):
+        normalized_upper = raw.upper()
+        for keyword in _BLACKLIST_KEYWORDS:
+            if keyword in normalized_upper:
+                raise SecurityViolationError(
+                    code=TOOL_SECURITY_ERR_BLACKLIST,
+                    message="检测到黑名单关键字，已拒绝执行",
+                    details={
+                        "tool_name": tool_name,
+                        "keyword": keyword,
+                    },
+                )
+        for pattern in _INJECTION_PATTERNS:
+            if pattern.search(raw):
+                raise SecurityViolationError(
+                    code=TOOL_SECURITY_ERR_INJECTION,
+                    message="检测到注入风险模式，已拒绝执行",
+                    details={
+                        "tool_name": tool_name,
+                        "pattern": pattern.pattern,
+                    },
+                )
+
+    evidence_refs = tool_args.get("evidence_refs")
+    if evidence_refs is not None:
+        if not isinstance(evidence_refs, list):
+            raise SecurityViolationError(
+                code=TOOL_SECURITY_ERR_INVALID_REFERENCE,
+                message="引用列表格式非法",
+                details={"tool_name": tool_name},
+            )
+        for ref_id in evidence_refs:
+            if not isinstance(ref_id, str) or not _UUID_LIKE_PATTERN.match(ref_id):
+                raise SecurityViolationError(
+                    code=TOOL_SECURITY_ERR_INVALID_REFERENCE,
+                    message="引用 ID 非法或不可验证",
+                    details={
+                        "tool_name": tool_name,
+                        "invalid_ref": ref_id,
+                    },
+                )
+
+    difficulty = tool_args.get("difficulty")
+    if difficulty is not None:
+        if not isinstance(difficulty, str) or difficulty not in _ALLOWED_DIFFICULTY:
+            raise SecurityViolationError(
+                code=TOOL_SECURITY_ERR_PARAM_RANGE,
+                message="参数超出允许范围",
+                details={
+                    "tool_name": tool_name,
+                    "param": "difficulty",
+                    "allowed": sorted(_ALLOWED_DIFFICULTY),
+                    "actual": difficulty,
+                },
+            )
 
 
 def _is_disabled_critical_tool(tool_name: str, skill_id: str | None) -> bool:

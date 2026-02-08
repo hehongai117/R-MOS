@@ -189,3 +189,22 @@ class RoleRequiredError(AccessDeniedError):
             reason=reason,
             message=message,
         )
+
+
+class SecurityViolationError(Exception):
+    """安全策略违规异常（400）。"""
+
+    status_code = 400
+
+    def __init__(
+        self,
+        *,
+        code: str,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        self.code = code
+        self.message = message
+        self.details = details or {}
+        self.timestamp = datetime.utcnow()
+        super().__init__(self.message)

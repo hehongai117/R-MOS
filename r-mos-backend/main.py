@@ -22,6 +22,7 @@ from app.core.exceptions import (
     AuthenticationRequiredError,
     BusinessRuleViolation,
     ResourceNotFoundError,
+    SecurityViolationError,
 )
 from app.adapters.factory import AdapterFactory
 from app.api.v1 import api_router, websocket_router
@@ -256,6 +257,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "timestamp": None,
             "request_id": trace_id
         }
+    )
+
+
+@app.exception_handler(SecurityViolationError)
+async def security_violation_error_handler(request: Request, exc: SecurityViolationError):
+    """安全策略违规异常处理（400 Bad Request）。"""
+    trace_id = getattr(request.state, "trace_id", str(id(request)))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status_code": exc.status_code,
+            "error_type": "SecurityViolationError",
+            "message": exc.message,
+            "details": {
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details,
+            },
+            "timestamp": exc.timestamp.isoformat(),
+            "request_id": trace_id,
+        },
     )
 
 

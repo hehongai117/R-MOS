@@ -32,7 +32,8 @@
 | D-003 | ✅完成 | 2a403ab | 810-832 | Skill 风险规则执行与发布门禁加固 |
 | E-001 | ✅完成 | 105e34b | 834-857 | Tool Executor 最小读链路（无副作用工具） |
 | E-002 | ✅完成 | 57699b5 | 883-904 | 审批结果驱动 Tool Executor 闭环（grant执行/ reject收口/幂等） |
-| E-003 | ✅完成 | 本次提交 | 1028-1051 | 审批通过后写工具执行策略加固（critical 禁用失败分支 + 审计闭环） |
+| E-003 | ✅完成 | 本次提交 | 1030-1062 | 审批通过后写工具执行策略加固（critical 禁用失败分支 + 审计闭环） |
+| E-004 | ✅完成 | 本次提交 | 1064-1092 | Tool Security Guard（注入/引用/参数）最小闭环（SEC-T001~SEC-T004） |
 | F-001 | ✅完成 | 02a2ea8 | 861-880 | Approval Service 最小审批流（pending→granted/rejected） |
 | F-002 | ✅完成 | 本次提交 | 930-951 | Approvals Query API（GET /api/v1/ai/approvals）+ approval_query 审计闭环 |
 | F-003 | ✅完成 | 本次提交 | 954-978 | Approval Detail Query API（GET /api/v1/ai/approvals/{id}）+ approval_read 审计闭环 |
@@ -1059,3 +1060,33 @@
   - 验收矩阵中未给出 E-003 独立编号，按最接近条目 AGENT-T010/AGENT-T012 + AUDIT-T008 进行闭环自证。
 - Next Step:
   - 继续 Gate-2 E-004（写工具外部执行能力接入与失败补偿策略），保持单任务最小闭环。
+
+- DateTime: 2026-02-08 19:28:15 +0800
+- Task: Gate-2 E-004（Tool Security Guard：注入/引用/参数门禁最小闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/exceptions.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/main.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_tool_security_guard_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && grep -n "E-001\\|E-002\\|E-003\\|E-004\\|Tool Executor（E-001~E-004）\\|Gate-2 后续计划任务" docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && grep -n "E-001\\|E-002\\|E-003\\|E-004\\|Security Guard\\|SEC-T001\\|SEC-T002\\|SEC-T003\\|SEC-T004" docs/design/LLD_TASK_BREAKDOWN_V0_3.md
+  - cd /Users/xuhehong/Desktop/r-mos && grep -n "SEC-T001\\|SEC-T002\\|SEC-T003\\|SEC-T004\\|AGENT-T003\\|AGENT-T010\\|AGENT-T012\\|AUDIT-T008" docs/specs/ACCEPTANCE_TEST_MATRIX.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_tool_security_guard_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && PYTHONWARNINGS=ignore pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_tool_security_guard_api.py`：PASS（5 passed）
+  - `pytest -q tests/unit -q`：首次在沙箱内因本机 Postgres 连接权限 FAIL（`PermissionError: [Errno 1] Operation not permitted`）；提权重跑并关闭告警后 PASS
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 计划项定位：E-004（`docs/design/DEV_PLAN_001.md:182,195-198,518-526`）
+  - [x] 范围与依赖：E-004 Security Guard（`docs/design/LLD_TASK_BREAKDOWN_V0_3.md:135-136`），依赖 E-001/E-002/E-003（`docs/design/LLD_TASK_BREAKDOWN_V0_3.md:125-133`）
+  - [x] Test ID 绑定：SEC-T001~SEC-T004（`docs/specs/ACCEPTANCE_TEST_MATRIX.md:233-236`）
+  - [x] 审计链约束：AUDIT-T008（`docs/specs/ACCEPTANCE_TEST_MATRIX.md:225`）持续通过
+  - [x] 红线回归：对象级 READ=404、WRITE=403、deny 真实 resource_id（在 `pytest -q tests/unit -q` 全量中持续通过）
+  - [x] side_effects 非空审批门禁：写工具请求保持 `pending_approval`，不绕过审批（`tests/unit/test_tool_security_guard_api.py::test_write_tool_with_side_effects_must_wait_approval_without_direct_success`）
+- Result: PASS
+- Risks/Notes:
+  - 本次 E-004 仅实现“最小安全门禁”（黑名单关键字、注入模式、引用 ID、参数范围）；未引入外部 IO 或后续执行器扩展逻辑。
+  - 安全拒绝统一使用稳定错误码：`SECURITY_BLACKLIST_KEYWORD`、`SECURITY_INJECTION_PATTERN`、`SECURITY_INVALID_REFERENCE`、`SECURITY_PARAM_OUT_OF_RANGE`。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1064-1092
+- Next Step:
+  - 进入 Gate-2 下一未完成项（按 DEV_PLAN 序列，优先 F 后续或 E 扩展子任务）。

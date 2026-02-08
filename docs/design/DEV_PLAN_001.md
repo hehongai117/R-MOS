@@ -195,7 +195,7 @@ curl --noproxy 127.0.0.1,localhost -X PATCH -H "Authorization: Bearer ${TOKEN_ST
 - E-001 ✅
 - E-002 ✅
 - E-003 ✅（证据：`DEVELOPMENT_LOG.md` 本次 Gate-2 E-003 条目；commit：本次提交）
-- E-004 ⏳
+- E-004 ✅（证据：`DEVELOPMENT_LOG.md` 本次 Gate-2 E-004 条目；commit：本次提交）
 - F-001 ✅
 - F-002 ✅（证据：`DEVELOPMENT_LOG.md` 930-951；commit：本次提交）
 - F-003 ✅（证据：`DEVELOPMENT_LOG.md` 本次 Gate-2 F-003 条目与 Gate-2 对照表；commit：本次提交）
@@ -523,4 +523,5 @@ Gate-2 后续计划任务（A-007 之后）：
 - E-001 ✅：Tool Executor 最小读链路（无副作用工具）（`105e34b`，证据见 `DEVELOPMENT_LOG.md:834-857`）
 - E-002 ✅：审批结果驱动 Tool Executor 闭环（grant 执行写工具 stub / reject 收口失败 / 幂等）（`57699b5`，证据见 `DEVELOPMENT_LOG.md:883-904`）
 - E-003 ✅：审批通过后写工具执行策略加固（critical 工具禁用失败分支 + 幂等 + 审计闭环）（`本次提交`，证据见 `DEVELOPMENT_LOG.md` 本次 Gate-2 E-003 条目）
+- E-004 ✅：Tool Security Guard（注入/引用/参数）门禁落地（`本次提交`，证据见 `DEVELOPMENT_LOG.md` 本次 Gate-2 E-004 条目）
 - F-001 ✅：Approval Service 最小审批流（pending→granted/rejected）（`02a2ea8`，证据见 `DEVELOPMENT_LOG.md:861-880`）

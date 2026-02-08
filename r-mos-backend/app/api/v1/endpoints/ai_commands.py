@@ -8,12 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import SecurityViolationError
 from app.core.database import get_db
 from app.models.approval import Approval
 from app.models.command_runtime import AIToolCall, Command
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor
-from app.services.tool_executor import execute_read_tool
+from app.services.tool_executor import execute_read_tool, validate_tool_request_security
 
 
 router = APIRouter()
@@ -37,6 +38,26 @@ async def create_ai_command(
 ):
     trace_id = getattr(request.state, "trace_id", None) or str(uuid.uuid4())[:8]
     request.state.trace_id = trace_id
+
+    try:
+        validate_tool_request_security(
+            tool_name=payload.tool_name,
+            tool_args=payload.tool_args,
+        )
+    except SecurityViolationError as exc:
+        await log_deny_event(
+            db,
+            request,
+            action="tool_call_failed",
+            resource_type="Skill",
+            resource_id=payload.skill_id or payload.tool_name,
+            reason=exc.code,
+            actor_user_id=str(actor.user_id),
+            skill_id=payload.skill_id,
+            tool_call_args=payload.tool_args,
+            side_effects_applied=list(payload.side_effects),
+        )
+        raise
 
     command = Command(
         trace_id=trace_id,
