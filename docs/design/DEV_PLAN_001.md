@@ -197,7 +197,7 @@ curl --noproxy 127.0.0.1,localhost -X PATCH -H "Authorization: Bearer ${TOKEN_ST
 - E-003 ⏳
 - E-004 ⏳
 - F-001 ✅
-- F-002 ⏳
+- F-002 ✅（证据：`DEVELOPMENT_LOG.md` 930-951；commit：本次提交）
 - F-003 ⏳
 - G-001 ⏳
 

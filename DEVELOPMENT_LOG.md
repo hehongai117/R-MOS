@@ -33,6 +33,7 @@
 | E-001 | ✅完成 | 105e34b | 834-857 | Tool Executor 最小读链路（无副作用工具） |
 | E-002 | ✅完成 | 57699b5 | 883-904 | 审批结果驱动 Tool Executor 闭环（grant执行/ reject收口/幂等） |
 | F-001 | ✅完成 | 02a2ea8 | 861-880 | Approval Service 最小审批流（pending→granted/rejected） |
+| F-002 | ✅完成 | 本次提交 | 930-951 | Approvals Query API（GET /api/v1/ai/approvals）+ approval_query 审计闭环 |
 | G2-004 | ✅完成 | ab18540 | 907-926 | 审计扩展字段与索引（skill/args/side_effects/approval + ix_audit_trace_created） |
 
 - DateTime: 2026-02-06 19:34:58 +0800
@@ -925,3 +926,26 @@
   - 本次仅做 G2-004 字段与索引增量，不改变现有审计决策口径与异常映射。
 - Next Step:
   - 按计划进入 Gate-2 E-003 或 F-002，继续完善审批后执行与审批查询可观测性。
+
+- DateTime: 2026-02-08 09:50:06 +0800
+- Task: Gate-2 F-002（Approvals Query API：GET /api/v1/ai/approvals + approval_query 审计闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/approvals.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260208_0010_c9d0e1f2a3b4_add_approvals_read_permission.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_approval_query_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' docs/design/DEV_PLAN_001.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,320p' docs/specs/ACCEPTANCE_TEST_MATRIX.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini heads && alembic -c alembic.ini upgrade head && alembic -c alembic.ini current
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_approval_query_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `alembic heads/upgrade/current`：PASS，当前 head=`c9d0e1f2a3b4`
+  - `pytest -q tests/unit/test_approval_query_api.py`：PASS（4 passed）
+  - `pytest tests/unit -q`：PASS（全量通过，含 1 skipped）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 验收矩阵存在口径差异：`docs/specs/ACCEPTANCE_TEST_MATRIX.md:128`（APPR-T011）描述为 Teacher 可查询待审批列表；本次按 Gate-2 F-002 最小闭环与当前计划口径实现为 admin/auditor 可查、teacher 拒绝（403）并写 deny 审计。
+  - `APPR-T012`（`docs/specs/ACCEPTANCE_TEST_MATRIX.md:129`）对应 `/api/v1/ai/approvals/{id}` 历史查询，本次未实现，保留到 F-003。
+- Next Step:
+  - 进入 Gate-2 F-003：审批历史详情与课程范围查询收敛（补齐 APPR-T012 与 APPR-T011 口径对齐策略）。
