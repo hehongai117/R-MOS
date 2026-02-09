@@ -183,12 +183,35 @@ def execute_read_tool(
                 "hits": [],
                 "items": [],
             }
+
+        ref_ids_raw = normalized_args.get("ref_ids")
+        ref_ids: list[str] = []
+        if isinstance(ref_ids_raw, list):
+            ref_ids = [str(item) for item in ref_ids_raw if isinstance(item, str)]
+
+        citations = [
+            {
+                "ref_id": ref_id,
+                "title": "RAG 引用片段",
+            }
+            for ref_id in ref_ids
+        ]
+        hits = [
+            {
+                "ref_id": ref_id,
+                "title": "RAG 命中片段",
+            }
+            for ref_id in ref_ids
+        ]
         return {
             "tool_name": tool_name,
             "intent": intent,
             "skill_id": skill_id,
             "summary": f"read_stub::{tool_name}::{intent}",
             "echo_args": normalized_args,
+            "citations": citations,
+            "hits": hits,
+            "items": list(hits),
         }
 
     summary = f"read_stub::{tool_name}::{intent}"

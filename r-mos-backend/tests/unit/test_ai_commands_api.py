@@ -14,6 +14,7 @@ from app.models.approval import Approval
 from app.models.audit_event import AuditEvent
 from app.models.base import Base
 from app.models.command_runtime import AIToolCall, Command
+from app.models.knowledge_chunk import AIKnowledgeChunk
 from main import app
 import app.models as app_models  # noqa: F401  # 确保模型全部注册
 
@@ -121,6 +122,28 @@ async def _latest_runtime_bundle(
         approval = approval_result.scalars().first()
 
         return command, tool_call, approval
+
+
+async def _create_knowledge_chunk(
+    session_factory: async_sessionmaker,
+    *,
+    chunk_id: str,
+    owner_user_id: str,
+    content: str = "证据片段",
+) -> AIKnowledgeChunk:
+    async with session_factory() as session:
+        chunk = AIKnowledgeChunk(
+            id=chunk_id,
+            source_type="evidence",
+            source_id="EVID-001",
+            content=content,
+            owner_user_id=owner_user_id,
+            course_id="COURSE-001",
+        )
+        session.add(chunk)
+        await session.commit()
+        await session.refresh(chunk)
+        return chunk
 
 
 def test_ai_command_read_tool_success_records_trace_audits() -> None:
@@ -348,6 +371,143 @@ def test_ai_command_write_tool_keeps_pending_without_success_audit() -> None:
         assert command.status == "pending_approval"
         assert tool_call is not None
         assert tool_call.status == "pending"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_rag_query_returns_verifiable_citations_rag_t007() -> None:
+    client, session_factory = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "citation_owner@example.com",
+                "password": "StrongPass123",
+                "full_name": "引用拥有者",
+            },
+        )
+        assert register_resp.status_code == 201
+        owner_user_id = str(register_resp.json()["user_id"])
+        owner_login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "citation_owner@example.com", "password": "StrongPass123"},
+        )
+        assert owner_login.status_code == 200
+        owner_token = owner_login.json()["access_token"]
+
+        chunk_id = "chunk-rag-t007-001"
+        asyncio.run(
+            _create_knowledge_chunk(
+                session_factory,
+                chunk_id=chunk_id,
+                owner_user_id=owner_user_id,
+                content="RAG-T007 最小引用证据",
+            )
+        )
+
+        cmd_resp = client.post(
+            "/api/v1/ai/commands",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "intent": "explain",
+                "skill_id": "rag.read.explain",
+                "tool_name": "rag.query",
+                "tool_args": {
+                    "input_text": "检索可验证引用",
+                    "ref_ids": [chunk_id],
+                },
+                "side_effects": [],
+            },
+        )
+        assert cmd_resp.status_code == 201
+        payload = cmd_resp.json()
+        assert payload["status"] == "succeeded"
+        citations = payload["result"]["citations"]
+        assert citations and citations[0]["ref_id"] == chunk_id
+
+        citation_resp = client.get(
+            f"/api/v1/ai/citations/{chunk_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert citation_resp.status_code == 200
+        citation_payload = citation_resp.json()
+        assert citation_payload["ref_id"] == chunk_id
+        assert citation_payload["content"] == "RAG-T007 最小引用证据"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_citation_scope_mismatch_returns_404_and_records_deny_audit() -> None:
+    client, session_factory = _build_client()
+    try:
+        owner_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "citation_owner_2@example.com",
+                "password": "StrongPass123",
+                "full_name": "引用拥有者2",
+            },
+        )
+        assert owner_register.status_code == 201
+        owner_user_id = str(owner_register.json()["user_id"])
+
+        student_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "citation_student@example.com",
+                "password": "StrongPass123",
+                "full_name": "学生",
+            },
+        )
+        assert student_register.status_code == 201
+        student_login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "citation_student@example.com", "password": "StrongPass123"},
+        )
+        assert student_login.status_code == 200
+        student_token = student_login.json()["access_token"]
+
+        chunk_id = "chunk-rag-t007-002"
+        asyncio.run(
+            _create_knowledge_chunk(
+                session_factory,
+                chunk_id=chunk_id,
+                owner_user_id=owner_user_id,
+                content="仅拥有者可读的证据",
+            )
+        )
+
+        deny_resp = client.get(
+            f"/api/v1/ai/citations/{chunk_id}",
+            headers={"Authorization": f"Bearer {student_token}"},
+        )
+        assert deny_resp.status_code == 404
+        body = deny_resp.json()
+        assert body["error_type"] == "ReadAccessDeniedError"
+        assert body["details"]["code"] == "READ_ACCESS_DENIED"
+        assert body["details"]["details"]["resource_id"] == chunk_id
+
+        async def assert_deny_audit() -> None:
+            async with session_factory() as session:
+                result = await session.execute(
+                    select(AuditEvent)
+                    .where(
+                        AuditEvent.action == "access_denied",
+                        AuditEvent.resource_type == "AIKnowledgeChunk",
+                        AuditEvent.resource_id == chunk_id,
+                        AuditEvent.decision == "deny",
+                    )
+                    .order_by(AuditEvent.id.desc())
+                )
+                event = result.scalars().first()
+                assert event is not None
+                assert event.reason == "citation_scope_mismatch"
+
+        asyncio.run(assert_deny_audit())
     finally:
         client.close()
         app.dependency_overrides.clear()

@@ -1259,3 +1259,61 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1233-1261
 - Next Step:
   - 进入 Gate-3 下一未完成项（H-001）。
+
+- DateTime: 2026-02-09 10:46:59 +0800
+- Task: Gate-3 H-001（向量索引构建最小闭环：可验证 citations + 引用读取 API）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260208_2315_f1a2b3c4d5e6_add_ai_knowledge_chunks_table.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/knowledge_chunk.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/tool_executor.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status --short && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/DEV_PLAN_001.md | sed -n '304,336p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '175,188p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '138,148p'
+  - cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/testing/ACCEPTANCE_CHARTER.md | sed -n '33,38p'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_ai_commands_api.py
+  - /bin/zsh -lc 'cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（7 passed，新增 RAG-T007 引用可验证与对象级 404 deny 审计用例）
+  - `alembic -c alembic.ini upgrade head`：PASS（升级 `d4e5f6a7b8c9 -> f1a2b3c4d5e6`）
+  - `pytest -q tests/unit -q`：首次在沙箱内 FAIL（`PermissionError: [Errno 1] Operation not permitted`，本机 Postgres 连接受限）；提权重跑 PASS
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:309,317`（H-001）
+  - [x] 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:175-183`（H.1 + H-001 DoD）
+  - [x] Test ID 绑定：`RAG-T007`（`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:143`）
+  - [x] Gate-3 门禁口径：RAG 引用可验证（`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`）
+  - [x] 红线自证：新增用例覆盖对象级 READ 越权 404 + deny 审计真实 `resource_id`
+- Result: PASS
+- Risks/Notes:
+  - H-001 本次采用“最小可验收”落地：新增 `ai_knowledge_chunks` 作为 citations 可验证落点；未扩展 H-002 查询编排与 H-003 过滤统计聚合。
+  - `POST /api/v1/ai/commands` 在 `rag.query` 路径会过滤不存在 `ref_id`，避免返回不可验证引用。
+  - 语义说明：引用读取接口对非 owner 且非 admin/auditor 统一返回 404，并记录 `access_denied` deny 审计（真实 `resource_id`）。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1263-1294
+- Next Step:
+  - Gate-3 下一未完成项：H-002（RAG 查询接口通过 Command 或独立端点）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=78 skip=79 slow=80
+
+- DateTime: 2026-02-10 10:37:50 +0800
+- Task: Gate-3 H-001 修复：ai_knowledge_chunks 主键补齐 + 回归证据收口（amend）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260208_2315_f1a2b3c4d5e6_add_ai_knowledge_chunks_table.py, /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini downgrade -1
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `alembic -c alembic.ini downgrade -1`：PASS（`f1a2b3c4d5e6 -> d4e5f6a7b8c9`）
+  - `alembic -c alembic.ini upgrade head`：PASS（`d4e5f6a7b8c9 -> f1a2b3c4d5e6`）
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（7 passed）
+  - `pytest tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK，attempt_id error=78 skip=79 slow=80）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅修复迁移主键定义：`ai_knowledge_chunks.id` 改为列级 `primary_key=True`，不引入新字段与新行为。
+  - `docs/testing/TEST_REPORT.md` 为回归脚本 `run_phase3_regression.sh` 生成/刷新后的证据文件，已纳入同一提交确保可复现。
+- Next Step:
+  - 按 DEV_PLAN 继续 Gate-3 下一未完成项。

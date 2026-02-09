@@ -7,12 +7,18 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import SecurityViolationError
+from app.core.exceptions import (
+    ReadAccessDeniedError,
+    ResourceNotFoundError,
+    SecurityViolationError,
+)
 from app.core.database import get_db
 from app.models.approval import Approval
 from app.models.command_runtime import AIToolCall, Command
+from app.models.knowledge_chunk import AIKnowledgeChunk
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.tool_executor import (
@@ -74,6 +80,145 @@ def _plan_tool_call(payload: CommandCreateRequest) -> PlannedToolCall:
         side_effects=list(payload.side_effects or ["assignments.write"]),
         via_planner=True,
     )
+
+
+def _is_rag_query(tool_name: str) -> bool:
+    return tool_name.strip().lower() in {"rag.query", "ai.rag.query"}
+
+
+async def _filter_rag_citations_by_existing_ref(
+    *,
+    db: AsyncSession,
+    request: Request,
+    actor: ActorContext,
+    tool_name: str,
+    result_payload: dict[str, Any],
+) -> dict[str, Any]:
+    """H-001 最小闭环：仅返回可验证引用（ref_id 在知识分片表存在）。"""
+    if not _is_rag_query(tool_name):
+        return result_payload
+
+    normalized_payload = dict(result_payload)
+    citations_raw = normalized_payload.get("citations")
+    if not isinstance(citations_raw, list):
+        citations_raw = []
+
+    if not citations_raw:
+        hits = normalized_payload.get("hits")
+        if isinstance(hits, list):
+            for hit in hits:
+                if isinstance(hit, dict) and isinstance(hit.get("ref_id"), str):
+                    citations_raw.append(
+                        {
+                            "ref_id": hit["ref_id"],
+                            "title": hit.get("title") or "RAG 命中引用",
+                        }
+                    )
+
+    ref_ids = []
+    for item in citations_raw:
+        if isinstance(item, dict) and isinstance(item.get("ref_id"), str):
+            ref_ids.append(item["ref_id"])
+    if not ref_ids:
+        return normalized_payload
+
+    existing_result = await db.execute(
+        select(AIKnowledgeChunk.id).where(AIKnowledgeChunk.id.in_(ref_ids))
+    )
+    existing_ref_ids = {row[0] for row in existing_result.all()}
+
+    filtered_citations = [
+        item
+        for item in citations_raw
+        if isinstance(item, dict) and item.get("ref_id") in existing_ref_ids
+    ]
+    filtered_out_count = len(citations_raw) - len(filtered_citations)
+    if filtered_out_count > 0:
+        await log_deny_event(
+            db,
+            request,
+            action="rag_filter_applied",
+            resource_type="AIKnowledgeChunk",
+            resource_id="*",
+            reason=f"invalid_citation_ref_filtered:{filtered_out_count}",
+            actor_user_id=str(actor.user_id),
+        )
+
+    normalized_payload["citations"] = filtered_citations
+
+    hits = normalized_payload.get("hits")
+    if isinstance(hits, list):
+        normalized_payload["hits"] = [
+            hit
+            for hit in hits
+            if not isinstance(hit, dict) or hit.get("ref_id") in existing_ref_ids
+        ]
+
+    items = normalized_payload.get("items")
+    if isinstance(items, list):
+        normalized_payload["items"] = [
+            item
+            for item in items
+            if not isinstance(item, dict) or item.get("ref_id") in existing_ref_ids
+        ]
+
+    return normalized_payload
+
+
+@router.get("/ai/citations/{ref_id}")
+async def get_ai_citation(
+    ref_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    result = await db.execute(
+        select(AIKnowledgeChunk).where(AIKnowledgeChunk.id == ref_id)
+    )
+    chunk = result.scalar_one_or_none()
+    if chunk is None:
+        raise ResourceNotFoundError("Citation", ref_id)
+
+    owner_user_id = (chunk.owner_user_id or "").strip()
+    privileged = bool({"admin", "auditor"}.intersection(actor.roles))
+    if owner_user_id and owner_user_id != str(actor.user_id) and not privileged:
+        await log_deny_event(
+            db,
+            request,
+            action="access_denied",
+            resource_type="AIKnowledgeChunk",
+            resource_id=ref_id,
+            reason="citation_scope_mismatch",
+            actor_user_id=str(actor.user_id),
+        )
+        raise ReadAccessDeniedError(
+            action="access_denied",
+            resource_type="AIKnowledgeChunk",
+            resource_id=ref_id,
+            reason="citation_scope_mismatch",
+            message="资源不存在",
+        )
+
+    await log_allow_event(
+        db,
+        request,
+        action="citation_read",
+        actor_user_id=str(actor.user_id),
+        resource_type="AIKnowledgeChunk",
+        resource_id=ref_id,
+        reason="read_success",
+    )
+    return {
+        "ref_id": chunk.id,
+        "source_type": chunk.source_type,
+        "source_id": chunk.source_id,
+        "content": chunk.content,
+        "owner_user_id": chunk.owner_user_id,
+        "course_id": chunk.course_id,
+        "attempt_id": chunk.attempt_id,
+        "metadata": chunk.metadata_json,
+        "created_at": chunk.created_at.isoformat() if chunk.created_at else None,
+    }
 
 
 @router.post("/ai/commands", status_code=201)
@@ -237,6 +382,13 @@ async def create_ai_command(
             tool_name=planned_tool.tool_name,
             skill_id=planned_tool.skill_id,
             tool_args=planned_tool.tool_args,
+        )
+        result_payload = await _filter_rag_citations_by_existing_ref(
+            db=db,
+            request=request,
+            actor=actor,
+            tool_name=planned_tool.tool_name,
+            result_payload=result_payload,
         )
         insufficient_template = build_insufficient_data_template(
             intent=payload.intent,

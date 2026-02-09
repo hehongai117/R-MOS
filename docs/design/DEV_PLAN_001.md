@@ -314,7 +314,7 @@ curl --noproxy 127.0.0.1,localhost -X POST \
 
 - G-002 ✅（证据：`DEVELOPMENT_LOG.md:1094-1123`；commit：本次提交）
 - G-003 ✅（证据：`DEVELOPMENT_LOG.md:1154-1183`；commit：本次提交）
-- H-001 ⏳
+- H-001 ✅（证据：`DEVELOPMENT_LOG.md:1263-1294`；commit：本次提交）
 - H-002 ⏳
 - H-003 ⏳
 - H-004 ⏳
@@ -331,6 +331,7 @@ curl --noproxy 127.0.0.1,localhost -X POST \
 |---|---|---|---|
 | `POST /api/v1/ai/commands`（`explain/replay/highlight/adjust_difficulty/critique`） | 按 intent 映射（如 `tasks:read`, `assignments:write`） | scope 中 `attempt/task/course` 必须做对象级校验 | `command_created`, `tool_call_*` |
 | `POST /api/v1/ai/rag/query`（或经 commands 间接调用） | 读权限集合 | 向量候选后过滤，越权仅过滤不泄露 ID | `rag_filter_applied` |
+| `GET /api/v1/ai/citations/{ref_id}` | 登录态 + 对象归属校验 | 非 owner 且非 admin/auditor 对外 404（不泄露引用存在性） | `citation_read` / `access_denied` |
 | `GET /api/v1/teaching/attempts/{id}/replay` | `assignment_attempts:read` | Student 仅本人，Teacher 仅课程范围 | `replay_requested` / `access_denied` |
 | `POST /api/v1/timelines/generate` | `timelines:write`（建议 teacher/admin） | scope 归属校验 | `timeline_generated` |
 | `GET /api/v1/timelines/{id}/alignment` | `timelines:read` | timeline 归属与课程范围 | `timeline_alignment_read` |
