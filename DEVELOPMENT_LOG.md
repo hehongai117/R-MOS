@@ -1478,3 +1478,40 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1456-1478
 - Next Step:
   - 继续按 DEV_PLAN 推进 Gate-3 下一未完成项（I-001）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=102 skip=103 slow=104
+
+- DateTime: 2026-02-10 13:12:00 +0800
+- Task: Gate-3 I-001（Timeline 基础数据层最小闭环：tables + migration + gate test）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/timeline.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260210_1215_0a1b2c3d4e5f_add_timeline_foundation_tables.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_timeline_schema_gate.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:310-323`（I-001 为 Gate-3 下一未完成项）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:195-202`（I-001 仅落地 timeline + segments + alignment_map）
+  - 验收矩阵映射：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:199-205`（TIMELINE-T001/T002）+ `/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:210`（TIMELINE-T008 依赖对齐定位）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 Timeline/Replay 最小门禁）
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_timeline_schema_gate.py（RED）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_timeline_schema_gate.py（GREEN）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_timeline_schema_gate.py`（RED）：FAIL（缺少 `multimodal_timelines/timeline_segments/alignment_map`）
+  - `pytest -q tests/unit/test_timeline_schema_gate.py`（GREEN）：PASS（1 passed）
+  - `alembic -c alembic.ini upgrade head`：PASS（升级 `f1a2b3c4d5e6 -> 0a1b2c3d4e5f`）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK，attempt_id error=102 skip=103 slow=104）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] I-001 三张基础表已落地：`multimodal_timelines`、`timeline_segments`、`alignment_map`
+  - [x] 关键索引已落地：`ix_timeline_scope`、`ix_segments_timeline_start`、`ix_alignment_anchor`
+  - [x] 模型注册完成，`Base.metadata.create_all` 可建表
+  - [x] TIMELINE-T001/T002 的数据基础契约已具备（表结构与对齐映射）
+  - [x] 缺乏数据说明：矩阵未给 I-001 独立 API 断言，本次以 `tests/unit/test_timeline_schema_gate.py` 自证最小闭环
+- Result: PASS
+- Risks/Notes:
+  - 本次仅实现 I-001 数据层，不实现 I-002 replay API 与 I-003 evidence_cards，避免越界。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md`，本次纳入提交作为回归证据副产物。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1483-1517
+- Next Step:
+  - 按计划推进 I-002（GET /api/v1/teaching/attempts/{id}/replay）。
