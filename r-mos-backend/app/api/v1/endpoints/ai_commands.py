@@ -100,7 +100,7 @@ async def _filter_rag_citations_by_existing_ref(
     tool_name: str,
     result_payload: dict[str, Any],
 ) -> dict[str, Any]:
-    """H-001 最小闭环：仅返回可验证引用（ref_id 在知识分片表存在）。"""
+    """H-003 最小闭环：仅返回可见且可验证引用，并记录 deny_count 审计。"""
     if not _is_rag_query(tool_name):
         return result_payload
 
@@ -129,14 +129,26 @@ async def _filter_rag_citations_by_existing_ref(
         return normalized_payload
 
     existing_result = await db.execute(
-        select(AIKnowledgeChunk.id).where(AIKnowledgeChunk.id.in_(ref_ids))
+        select(AIKnowledgeChunk).where(AIKnowledgeChunk.id.in_(ref_ids))
     )
-    existing_ref_ids = {row[0] for row in existing_result.all()}
+    chunks = list(existing_result.scalars().all())
+    existing_ref_ids = {chunk.id for chunk in chunks}
+
+    privileged = bool({"admin", "auditor"}.intersection(actor.roles))
+    visible_ref_ids: set[str] = set()
+    if privileged:
+        visible_ref_ids = set(existing_ref_ids)
+    else:
+        actor_user_id = str(actor.user_id)
+        for chunk in chunks:
+            owner_user_id = (chunk.owner_user_id or "").strip()
+            if not owner_user_id or owner_user_id == actor_user_id:
+                visible_ref_ids.add(chunk.id)
 
     filtered_citations = [
         item
         for item in citations_raw
-        if isinstance(item, dict) and item.get("ref_id") in existing_ref_ids
+        if isinstance(item, dict) and item.get("ref_id") in visible_ref_ids
     ]
     filtered_out_count = len(citations_raw) - len(filtered_citations)
     if filtered_out_count > 0:
@@ -146,8 +158,9 @@ async def _filter_rag_citations_by_existing_ref(
             action="rag_filter_applied",
             resource_type="AIKnowledgeChunk",
             resource_id="*",
-            reason=f"invalid_citation_ref_filtered:{filtered_out_count}",
+            reason="rag_visibility_filtered",
             actor_user_id=str(actor.user_id),
+            request_meta={"deny_count": filtered_out_count},
         )
 
     normalized_payload["citations"] = filtered_citations
@@ -157,7 +170,7 @@ async def _filter_rag_citations_by_existing_ref(
         normalized_payload["hits"] = [
             hit
             for hit in hits
-            if not isinstance(hit, dict) or hit.get("ref_id") in existing_ref_ids
+            if not isinstance(hit, dict) or hit.get("ref_id") in visible_ref_ids
         ]
 
     items = normalized_payload.get("items")
@@ -165,7 +178,7 @@ async def _filter_rag_citations_by_existing_ref(
         normalized_payload["items"] = [
             item
             for item in items
-            if not isinstance(item, dict) or item.get("ref_id") in existing_ref_ids
+            if not isinstance(item, dict) or item.get("ref_id") in visible_ref_ids
         ]
 
     return normalized_payload

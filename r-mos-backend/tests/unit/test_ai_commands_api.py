@@ -609,3 +609,86 @@ def test_rag_query_endpoint_returns_verifiable_citations_rag_t007() -> None:
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+def test_rag_query_filters_foreign_refs_and_records_deny_count_rag_t008() -> None:
+    client, session_factory = _build_client()
+    try:
+        owner_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_filter_owner@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG过滤拥有者",
+            },
+        )
+        assert owner_register.status_code == 201
+        owner_user_id = str(owner_register.json()["user_id"])
+
+        student_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_filter_student@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG过滤学生",
+            },
+        )
+        assert student_register.status_code == 201
+        student_login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "rag_filter_student@example.com", "password": "StrongPass123"},
+        )
+        assert student_login.status_code == 200
+        student_token = student_login.json()["access_token"]
+
+        foreign_ref_ids = [f"chunk-rag-t008-{idx:03d}" for idx in range(10)]
+        for chunk_id in foreign_ref_ids:
+            asyncio.run(
+                _create_knowledge_chunk(
+                    session_factory,
+                    chunk_id=chunk_id,
+                    owner_user_id=owner_user_id,
+                    content=f"他人证据-{chunk_id}",
+                )
+            )
+
+        response = client.post(
+            "/api/v1/ai/commands",
+            headers={"Authorization": f"Bearer {student_token}"},
+            json={
+                "intent": "explain",
+                "skill_id": "rag.read.explain",
+                "tool_name": "rag.query",
+                "tool_args": {
+                    "input_text": "查询他人证据",
+                    "ref_ids": foreign_ref_ids,
+                },
+                "side_effects": [],
+            },
+        )
+        assert response.status_code == 201
+        payload = response.json()
+        assert payload["status"] == "succeeded"
+        assert payload["result"]["status"] == "insufficient_data"
+        assert payload["result"].get("citations", []) == []
+
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=payload["trace_id"]))
+        rag_filter_event = next(
+            (
+                event
+                for event in audits
+                if event.action == "rag_filter_applied" and event.decision == "deny"
+            ),
+            None,
+        )
+        assert rag_filter_event is not None
+        assert rag_filter_event.resource_type == "AIKnowledgeChunk"
+        assert rag_filter_event.resource_id == "*"
+        assert rag_filter_event.reason == "rag_visibility_filtered"
+        request_meta = rag_filter_event.request_meta or {}
+        assert request_meta.get("deny_count") == 10
+        assert "resource_ids" not in request_meta
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None

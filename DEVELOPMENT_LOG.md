@@ -1350,3 +1350,36 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1322-1352
 - Next Step:
   - 进入 Gate-3 下一未完成项 H-003（RAG 过滤审计 deny_count）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=84 skip=85 slow=86
+
+- DateTime: 2026-02-10 10:58:39 +0800
+- Task: Gate-3 H-003（RAG 过滤审计 deny_count 最小闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:318-320`（H-003 为当前下一未完成项）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:184-188`（H-003 在 H-002 之后，DoD=RAG-T008）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:144`（RAG-T008：rag_filter_applied + deny_count，不泄露对象ID）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 RAG 后过滤与 trace 串联）
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && grep -RInE "H-002|H-003|RAG-T008|Gate-3" docs/design/DEV_PLAN_001.md docs/design/LLD_TASK_BREAKDOWN_V0_3.md docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（10 passed，新增 RAG-T008 过滤审计断言）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK，attempt_id error=84 skip=85 slow=86）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] H-003 审计收口：`rag_filter_applied` 事件记录 `deny_count`，且 `resource_id="*"`
+  - [x] 不泄露对象 ID：审计 request_meta 不输出被过滤 resource_id 列表
+  - [x] RAG-T008 覆盖：学生查询他人 10 条引用时返回空模板并写 deny_count=10
+  - [x] 仅实现 H-003；未改 H-004/I/J
+- Result: PASS
+- Risks/Notes:
+  - 过滤规则本次最小化为“非 admin/auditor 仅可见 owner_user_id 为空或本人”的引用可见性；教师课程范围过滤保持后续 H-004/I 阶段收敛。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md` 的 Step4 证据块，本次纳入提交确保证据可复现。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1354-1384
+- Next Step:
+  - 进入 H-004（RAG 空结果与 HTTP 404 双断言链路）。
