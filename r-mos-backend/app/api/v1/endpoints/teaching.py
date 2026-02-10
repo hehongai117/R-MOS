@@ -2,6 +2,7 @@
 Teaching domain API endpoints.
 """
 import logging
+from datetime import datetime
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.models.evidence import EvidenceBundle
-from app.models.timeline import AlignmentMap, MultimodalTimeline, TimelineSegment
+from app.models.timeline import AlignmentMap, EvidenceCard, MultimodalTimeline, TimelineSegment
 from app.models.teaching import Assignment, Enrollment, EvidenceLink, TeachingClass
 from app.schemas.teaching import (
     GuidancePolicyCreate,
@@ -29,6 +30,9 @@ from app.schemas.teaching import (
     AssignmentAttemptResponse,
     AttemptEvidenceResponse,
     AttemptReplayResponse,
+    EvidenceCardCreate,
+    EvidenceCardReference,
+    EvidenceCardResponse,
     DiagnosisReport,
     ReplayEvidenceRef,
     ReplayFailurePoint,
@@ -640,6 +644,147 @@ async def get_attempt_replay(
         failure_point=failure_point,
         supplement_plan=supplement_plan,
         evidence_refs=evidence_refs,
+    )
+
+
+@router.post(
+    "/evidence_cards",
+    response_model=EvidenceCardResponse,
+    status_code=201,
+    response_model_by_alias=True,
+)
+async def create_evidence_card(
+    request: EvidenceCardCreate,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+):
+    service = TeachingService(db)
+    try:
+        attempt = await service.get_attempt(request.attempt_id)
+    except ResourceNotFoundError as exc:
+        _raise_not_found(exc)
+
+    role = (x_rmos_role or "").strip().lower()
+    actor_user_id = _parse_user_id(x_user_id)
+    if role == "teacher":
+        if actor_user_id is None:
+            await raise_write_access_denied(
+                db,
+                http_request,
+                action="write_access_denied",
+                resource_type="AssignmentAttempt",
+                resource_id=attempt.id,
+                reason="invalid_actor_teacher_id",
+                message="权限不足",
+            )
+        teacher_result = await db.execute(
+            select(TeachingClass.teacher_id)
+            .join(Assignment, Assignment.class_id == TeachingClass.id)
+            .where(Assignment.id == attempt.assignment_id)
+        )
+        class_teacher_id = teacher_result.scalar_one_or_none()
+        if class_teacher_id is None or class_teacher_id != actor_user_id:
+            await raise_write_access_denied(
+                db,
+                http_request,
+                action="write_access_denied",
+                resource_type="AssignmentAttempt",
+                resource_id=attempt.id,
+                reason="teacher_attempt_scope_mismatch",
+                message="权限不足",
+            )
+    elif role != "admin":
+        await raise_write_access_denied(
+            db,
+            http_request,
+            action="write_access_denied",
+            resource_type="AssignmentAttempt",
+            resource_id=attempt.id,
+            reason="missing_role:teacher_or_admin",
+            message="权限不足",
+        )
+
+    timeline_result = await db.execute(
+        select(MultimodalTimeline)
+        .where(
+            MultimodalTimeline.scope_type == "attempt",
+            MultimodalTimeline.scope_id == str(attempt.id),
+        )
+        .order_by(MultimodalTimeline.id.desc())
+    )
+    timeline = timeline_result.scalars().first()
+    if timeline is None:
+        raise BusinessRuleViolation(
+            message="缺乏可回放时间轴，无法生成证据卡片",
+            code="TIMELINE_007_MISSING_TIMELINE",
+        )
+
+    segment_result = await db.execute(
+        select(TimelineSegment)
+        .where(
+            TimelineSegment.timeline_id == timeline.id,
+            TimelineSegment.segment_type.in_(["event", "log", "snapshot"]),
+            TimelineSegment.ref_id.isnot(None),
+        )
+        .order_by(TimelineSegment.start_ts_ms.asc(), TimelineSegment.id.asc())
+    )
+    segments = segment_result.scalars().all()
+    if not segments:
+        raise BusinessRuleViolation(
+            message="缺乏可回放引用，无法生成证据卡片",
+            code="TIMELINE_007_MISSING_REFERENCES",
+        )
+
+    references_json: list[dict[str, Any]] = []
+    for segment in segments:
+        payload = segment.payload if isinstance(segment.payload, dict) else {}
+        snippet_value = payload.get("snippet") or payload.get("summary") or payload.get("message")
+        references_json.append(
+            {
+                "type": segment.segment_type,
+                "ref_id": segment.ref_id,
+                "snippet": str(snippet_value) if snippet_value is not None else None,
+                "timestamp_ms": segment.start_ts_ms,
+                "timeline_id": timeline.id,
+                "segment_id": segment.id,
+            }
+        )
+
+    evidence_card = EvidenceCard(
+        attempt_id=attempt.id,
+        card_type=request.card_type,
+        title=f"{request.card_type} 证据卡片",
+        summary="基于时间轴日志/事件/快照聚合生成",
+        timestamp=datetime.utcnow(),
+        references=references_json,
+        media_preview={},
+    )
+    db.add(evidence_card)
+    await db.commit()
+    await db.refresh(evidence_card)
+
+    await log_allow_event(
+        db,
+        http_request,
+        action="evidence_card_created",
+        actor_user_id=str(actor_user_id) if actor_user_id is not None else None,
+        resource_type="EvidenceCard",
+        resource_id=evidence_card.id,
+        reason="timeline_refs_aggregated",
+    )
+
+    return EvidenceCardResponse(
+        evidence_card_id=evidence_card.id,
+        attempt_id=evidence_card.attempt_id,
+        card_type=evidence_card.card_type,
+        title=evidence_card.title,
+        summary=evidence_card.summary,
+        timestamp=evidence_card.timestamp,
+        references=[EvidenceCardReference(**item) for item in references_json],
+        media_preview=evidence_card.media_preview or {},
+        created_at=evidence_card.created_at,
     )
 
 

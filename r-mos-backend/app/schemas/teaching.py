@@ -197,6 +197,32 @@ class AttemptReplayResponse(TeachingBaseModel):
     evidence_refs: list[ReplayEvidenceRef] = Field(default_factory=list)
 
 
+class EvidenceCardCreate(TeachingBaseModel):
+    attempt_id: int
+    card_type: str = Field("failure_point", max_length=64)
+
+
+class EvidenceCardReference(TeachingBaseModel):
+    type: str
+    ref_id: str
+    snippet: Optional[str] = None
+    timestamp_ms: Optional[int] = None
+    timeline_id: Optional[int] = None
+    segment_id: Optional[int] = None
+
+
+class EvidenceCardResponse(TeachingBaseModel):
+    evidence_card_id: int
+    attempt_id: int
+    card_type: str
+    title: str
+    summary: str
+    timestamp: Optional[datetime] = None
+    references: list[EvidenceCardReference] = Field(default_factory=list)
+    media_preview: Dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[datetime] = None
+
+
 class DiagnosisFinding(RootModel[str]):
     """诊断发现项（保持输出为 string）。"""
 

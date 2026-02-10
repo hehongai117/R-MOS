@@ -320,7 +320,7 @@ curl --noproxy 127.0.0.1,localhost -X POST \
 - H-004 ✅（证据：`DEVELOPMENT_LOG.md:1387-1419`；commit：本次提交）
 - I-001 ✅（证据：`DEVELOPMENT_LOG.md:1483-1517`；commit：本次提交）
 - I-002 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1519-1554`；commit：本次提交（见 `git show --name-only HEAD`））
-- I-003 ⏳
+- I-003 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1557-1599` + `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1602-1640`；commit：本次提交（见 `git show --name-only HEAD`））
 - J-001 ⏳
 - J-002 ⏳
 - J-003 ⏳

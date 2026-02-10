@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String
+from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 
 from .base import Base
 
@@ -56,4 +56,25 @@ class AlignmentMap(Base):
     segment_id = Column(Integer, ForeignKey("timeline_segments.id", ondelete="CASCADE"), nullable=False, index=True)
     ref_id = Column(String(64), nullable=True, index=True)
     score = Column(Float, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+
+class EvidenceCard(Base):
+    """证据卡片（最小聚合产物）。"""
+
+    __tablename__ = "evidence_cards"
+    __table_args__ = (
+        Index("ix_evidence_cards_attempt", "attempt_id"),
+        Index("ix_evidence_cards_created", "created_at"),
+        Index("ix_evidence_cards_card_type", "card_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    attempt_id = Column(Integer, ForeignKey("assignment_attempts.id", ondelete="CASCADE"), nullable=False, index=True)
+    card_type = Column(String(64), nullable=False)
+    title = Column(String(255), nullable=False)
+    summary = Column(Text, nullable=False)
+    timestamp = Column(DateTime, nullable=True)
+    references = Column(JSON, nullable=False)
+    media_preview = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)

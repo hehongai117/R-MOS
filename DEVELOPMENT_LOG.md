@@ -1553,3 +1553,89 @@
 - Next Step:
   - 按计划推进 I-003（evidence cards 与引用可回放链路补齐）。
 - 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=105 skip=106 slow=107
+
+- DateTime: 2026-02-10 12:39:18 +0800
+- Task: Gate-3 I-003（evidence_cards 生成最小闭环）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260210_1245_3c4d5e6f7a8b_add_evidence_cards_table.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/timeline.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/teaching.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_evidence_cards_api.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:323,338-339,375,378`（I-003 + evidence_cards API + TIMELINE/E2E 验收域）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:206-207`（I-003 DoD = E2E-T008）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:209-210,282`（TIMELINE-T007/T008，E2E-T008）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 Timeline/Replay 门禁）
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_evidence_cards_api.py`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic -c alembic.ini upgrade head`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - `pytest -q tests/unit/test_evidence_cards_api.py`：PASS（3 passed）
+  - `alembic -c alembic.ini upgrade head`：PASS（升级 `0a1b2c3d4e5f -> 3c4d5e6f7a8b`）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK；attempt_id error=108 skip=109 slow=110）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] I-003 最小接口已实现：`POST /api/v1/evidence_cards`（日志/事件/快照聚合，返回 references）
+  - [x] 写权限门禁生效：teacher 课程内允许；student 与越权 teacher 对外 403
+  - [x] deny 审计闭环生效：`permission_denied` + `resource_type=AssignmentAttempt` + 真实 `resource_id`
+  - [x] allow 审计闭环生效：`evidence_card_created`（`resource_type=EvidenceCard`）
+  - [x] `TIMELINE-T007`（证据卡生成）与 `TIMELINE-T008`/`E2E-T008`（references 可回放定位）已通过 `tests/unit/test_evidence_cards_api.py` 自证最小闭环
+- Result: PASS
+- Risks/Notes:
+  - 仅实现 I-003，不越界到 J-001/J-002/J-003。
+  - 证据可回放在本次最小闭环中通过“references 对应 timeline_id/segment_id/ref_id 一致性”自证，未扩展到 J 模块的 trace 回放接口。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md`，本次纳入提交作为回归证据。
+- Evidence Line Range: DEVELOPMENT_LOG.md:1557-1599
+- Next Step:
+  - 按计划推进 J-001（trace_id 回放接口最小闭环）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=108 skip=109 slow=110
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=111 skip=112 slow=113
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=114 skip=115 slow=116
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=117 skip=118 slow=119
+
+- DateTime: 2026-02-10 12:57:48 +0800
+- Task: Gate-3 I-003 修复补证（teacher 范围放行、deny action 口径统一、索引契约一致）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/timeline.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_evidence_cards_api.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划口径：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:339`（`POST /api/v1/evidence_cards`，`evidence_bundles:write`，建议 teacher，attempt 范围校验）
+  - LLD 依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:206-207`（I-003 最小闭环）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:209-210,282`（TIMELINE-T007/T008，E2E-T008）
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && git show --name-only HEAD`
+  - `cd /Users/xuhehong/Desktop/r-mos && git grep -n "I-003" docs/design/DEV_PLAN_001.md || true`
+  - `cd /Users/xuhehong/Desktop/r-mos && ls -la DEV_PLAN_001.md TEST_REPORT.md || true`
+  - `cd /Users/xuhehong/Desktop/r-mos && ls -la docs/design/DEV_PLAN_001.md docs/testing/TEST_REPORT.md`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK；attempt_id error=117 skip=118 slow=119）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] teacher 在课程范围内可创建 evidence_card（201 + `evidence_card_created` allow）
+  - [x] student 与越权 teacher 仍为 403，且 deny 审计 action 统一为 `write_access_denied`，`resource_id` 为真实 `attempt_id`
+  - [x] 索引契约与迁移一致：`ix_evidence_cards_card_type` 仅保留命名索引实现，避免重复索引创建失败
+  - [x] 根目录不存在 `DEV_PLAN_001.md` / `TEST_REPORT.md` 错路径文件（仅使用 docs 路径）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅修复 I-003 口径与契约不一致，不涉及 J-001/J-002/J-003。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md`，已作为证据纳入本次变更。
+- Evidence Line Range: DEVELOPMENT_LOG.md:1602-1640
+- Next Step:
+  - 按计划推进 J-001。
