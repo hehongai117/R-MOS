@@ -16,11 +16,12 @@ from app.core.exceptions import (
     SecurityViolationError,
 )
 from app.core.database import get_db
+from app.models.audit_event import AuditEvent
 from app.models.approval import Approval
 from app.models.command_runtime import AIToolCall, Command
 from app.models.knowledge_chunk import AIKnowledgeChunk
 from app.services.access_control import log_allow_event, log_deny_event
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, get_current_actor, require_permission
 from app.services.tool_executor import (
     build_insufficient_data_template,
     execute_read_tool,
@@ -90,6 +91,10 @@ def _plan_tool_call(payload: CommandCreateRequest) -> PlannedToolCall:
 
 def _is_rag_query(tool_name: str) -> bool:
     return tool_name.strip().lower() in {"rag.query", "ai.rag.query"}
+
+
+def _is_trace_replay_reader(actor: ActorContext) -> bool:
+    return bool({"admin", "auditor"} & actor.roles)
 
 
 async def _filter_rag_citations_by_existing_ref(
@@ -563,3 +568,73 @@ async def create_ai_command(
             approval_id=command.approval_id,
         )
         raise HTTPException(status_code=500, detail="读工具执行失败")
+
+
+@router.get("/ai/replay/{trace_id}")
+async def get_trace_replay(
+    trace_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(require_permission("audit_events:read")),
+):
+    """J-001：按 trace_id 回放关键审计序列（最小闭环）。"""
+    request.state.trace_id = trace_id
+
+    if not _is_trace_replay_reader(actor):
+        reason = "trace_scope_denied:admin_or_auditor"
+        await log_deny_event(
+            db,
+            request,
+            action="access_denied",
+            resource_type="TraceReplay",
+            resource_id=trace_id,
+            reason=reason,
+            actor_user_id=str(actor.user_id),
+        )
+        raise ReadAccessDeniedError(
+            action="access_denied",
+            resource_type="TraceReplay",
+            resource_id=trace_id,
+            reason=reason,
+            message="资源不存在",
+        )
+
+    result = await db.execute(
+        select(AuditEvent)
+        .where(AuditEvent.trace_id == trace_id)
+        .order_by(AuditEvent.created_at.asc(), AuditEvent.id.asc())
+    )
+    events = list(result.scalars().all())
+    if not events:
+        raise ResourceNotFoundError("TraceReplay", trace_id)
+
+    await log_allow_event(
+        db,
+        request,
+        action="trace_replay_read",
+        actor_user_id=str(actor.user_id),
+        resource_type="TraceReplay",
+        resource_id=trace_id,
+        reason="trace_replay_success",
+    )
+
+    items = [
+        {
+            "id": event.id,
+            "trace_id": event.trace_id,
+            "action": event.action,
+            "decision": event.decision,
+            "actor_user_id": event.actor_user_id,
+            "resource_type": event.resource_type,
+            "resource_id": event.resource_id,
+            "reason": event.reason,
+            "approval_id": event.approval_id,
+            "created_at": event.created_at.isoformat() if event.created_at else None,
+        }
+        for event in events
+    ]
+    return {
+        "trace_id": trace_id,
+        "count": len(items),
+        "items": items,
+    }

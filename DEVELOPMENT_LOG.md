@@ -1639,3 +1639,38 @@
 - Evidence Line Range: DEVELOPMENT_LOG.md:1602-1640
 - Next Step:
   - 按计划推进 J-001。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=120 skip=121 slow=122
+
+- DateTime: 2026-02-10 18:04:39 +0800
+- Task: Gate-3 J-001（trace_id 回放接口最小闭环）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_replay_api.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:311,324,340`（J-001 + `GET /api/v1/ai/replay/{trace_id}` + `trace_replay_read`）
+  - LLD 依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:216-219`（J-001 DoD = `AUDIT-T008`）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:225,281`（`AUDIT-T008`、`E2E-T007`）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37,43-45`（Gate-3 串联门禁 + READ 越权 404 + deny 必审计）
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_replay_api.py`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - `pytest -q tests/unit/test_ai_replay_api.py`：PASS（3 passed）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK；attempt_id error=120 skip=121 slow=122）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] `GET /api/v1/ai/replay/{trace_id}` 已实现，admin/auditor 可读回放（`trace_replay_read` allow 审计）
+  - [x] teacher 越权读取对外 404（`ReadAccessDeniedError`），deny 审计记录真实 `resource_id=trace_id`
+  - [x] trace 序列最小闭环满足 `AUDIT-T008`/`E2E-T007` 核心断言：`tool_call_pending -> approval_granted -> tool_call_success` 且 `trace_id` 一致
+- Result: PASS
+- Risks/Notes:
+  - 本次只实现 J-001，未触及 J-002/J-003。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1645-1676
+- Next Step:
+  - 按计划推进 J-002（读工具成功率统计）。
