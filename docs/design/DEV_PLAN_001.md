@@ -319,7 +319,7 @@ curl --noproxy 127.0.0.1,localhost -X POST \
 - H-003 ✅（证据：`DEVELOPMENT_LOG.md:1354-1384` + `DEVELOPMENT_LOG.md:1388-1421`；commit：`8c72379` + 本次提交（修复补证））
 - H-004 ✅（证据：`DEVELOPMENT_LOG.md:1387-1419`；commit：本次提交）
 - I-001 ✅（证据：`DEVELOPMENT_LOG.md:1483-1517`；commit：本次提交）
-- I-002 ⏳
+- I-002 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1519-1554`；commit：本次提交（见 `git show --name-only HEAD`））
 - I-003 ⏳
 - J-001 ⏳
 - J-002 ⏳

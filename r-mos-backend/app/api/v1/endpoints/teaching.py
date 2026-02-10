@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.models.evidence import EvidenceBundle
-from app.models.teaching import Enrollment, EvidenceLink
+from app.models.timeline import AlignmentMap, MultimodalTimeline, TimelineSegment
+from app.models.teaching import Assignment, Enrollment, EvidenceLink, TeachingClass
 from app.schemas.teaching import (
     GuidancePolicyCreate,
     GuidancePolicyResponse,
@@ -27,10 +28,18 @@ from app.schemas.teaching import (
     AssignmentResponse,
     AssignmentAttemptResponse,
     AttemptEvidenceResponse,
+    AttemptReplayResponse,
     DiagnosisReport,
+    ReplayEvidenceRef,
+    ReplayFailurePoint,
+    ReplaySupplementItem,
 )
 from app.services.diagnosis_service import DiagnosisService, EvidenceFallbackError
-from app.services.access_control import raise_read_access_denied, raise_write_access_denied
+from app.services.access_control import (
+    log_allow_event,
+    raise_read_access_denied,
+    raise_write_access_denied,
+)
 from app.services.teaching_service import TeachingService
 from app.services.evidence_engine import EvidenceEngine
 
@@ -80,6 +89,15 @@ def _parse_user_id(raw_user_id: Optional[str]) -> Optional[int]:
     try:
         return int(value)
     except ValueError:
+        return None
+
+
+def _to_int_or_none(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
         return None
 
 
@@ -444,6 +462,185 @@ async def get_attempt(
             )
 
     return attempt
+
+
+@router.get(
+    "/teaching/attempts/{attempt_id}/replay",
+    response_model=AttemptReplayResponse,
+    response_model_by_alias=True,
+)
+async def get_attempt_replay(
+    attempt_id: int,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+):
+    service = TeachingService(db)
+    attempt = await service.get_attempt(attempt_id)
+
+    role = (x_rmos_role or "").strip().lower()
+    actor_user_id = _parse_user_id(x_user_id)
+    if role == "student":
+        if actor_user_id is None or actor_user_id != attempt.student_id:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="access_denied",
+                resource_type="AssignmentAttempt",
+                resource_id=attempt.id,
+                reason="student_attempt_scope_mismatch",
+                message="资源不存在",
+            )
+    elif role == "teacher":
+        if actor_user_id is None:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="access_denied",
+                resource_type="AssignmentAttempt",
+                resource_id=attempt.id,
+                reason="invalid_actor_teacher_id",
+                message="资源不存在",
+            )
+        teacher_result = await db.execute(
+            select(TeachingClass.teacher_id)
+            .join(Assignment, Assignment.class_id == TeachingClass.id)
+            .where(Assignment.id == attempt.assignment_id)
+        )
+        class_teacher_id = teacher_result.scalar_one_or_none()
+        if class_teacher_id is None or class_teacher_id != actor_user_id:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="access_denied",
+                resource_type="AssignmentAttempt",
+                resource_id=attempt.id,
+                reason="teacher_course_scope_mismatch",
+                message="资源不存在",
+            )
+
+    timeline_result = await db.execute(
+        select(MultimodalTimeline)
+        .where(
+            MultimodalTimeline.scope_type == "attempt",
+            MultimodalTimeline.scope_id == str(attempt.id),
+        )
+        .order_by(MultimodalTimeline.id.desc())
+    )
+    timeline = timeline_result.scalars().first()
+
+    if timeline is None:
+        await log_allow_event(
+            db,
+            http_request,
+            action="replay_requested",
+            actor_user_id=str(actor_user_id) if actor_user_id is not None else None,
+            resource_type="AssignmentAttempt",
+            resource_id=attempt.id,
+            reason="replay_insufficient_data",
+        )
+        return AttemptReplayResponse(
+            attempt_id=attempt.id,
+            status="insufficient_data",
+            failure_point=ReplayFailurePoint(failure_type="insufficient_data"),
+            supplement_plan=[
+                ReplaySupplementItem(
+                    data_type="timeline",
+                    reason="missing_timeline_segments",
+                )
+            ],
+            evidence_refs=[],
+        )
+
+    segment_result = await db.execute(
+        select(TimelineSegment)
+        .where(TimelineSegment.timeline_id == timeline.id)
+        .order_by(TimelineSegment.start_ts_ms.asc(), TimelineSegment.id.asc())
+    )
+    segments = segment_result.scalars().all()
+    if not segments:
+        await log_allow_event(
+            db,
+            http_request,
+            action="replay_requested",
+            actor_user_id=str(actor_user_id) if actor_user_id is not None else None,
+            resource_type="AssignmentAttempt",
+            resource_id=attempt.id,
+            reason="replay_insufficient_data",
+        )
+        return AttemptReplayResponse(
+            attempt_id=attempt.id,
+            status="insufficient_data",
+            failure_point=ReplayFailurePoint(failure_type="insufficient_data"),
+            supplement_plan=[
+                ReplaySupplementItem(
+                    data_type="timeline_segment",
+                    reason="missing_timeline_segments",
+                )
+            ],
+            evidence_refs=[],
+        )
+
+    alignment_result = await db.execute(
+        select(AlignmentMap).where(AlignmentMap.timeline_id == timeline.id)
+    )
+    alignments = alignment_result.scalars().all()
+    aligned_segment_ids = {row.segment_id for row in alignments}
+
+    evidence_refs: list[ReplayEvidenceRef] = []
+    for segment in segments:
+        if segment.id not in aligned_segment_ids:
+            continue
+        if not segment.ref_id:
+            continue
+        evidence_refs.append(
+            ReplayEvidenceRef(
+                ref_id=segment.ref_id,
+                timeline_id=timeline.id,
+                segment_id=segment.id,
+                start_ts_ms=segment.start_ts_ms,
+                end_ts_ms=segment.end_ts_ms,
+            )
+        )
+
+    first_payload = segments[0].payload if isinstance(segments[0].payload, dict) else {}
+    failure_point = ReplayFailurePoint(
+        step_id=_to_int_or_none(first_payload.get("step_id")),
+        event_id=_to_int_or_none(first_payload.get("event_id")),
+        failure_type=str(first_payload.get("failure_type") or "unknown"),
+        rule_hit=str(first_payload.get("rule_hit")) if first_payload.get("rule_hit") is not None else None,
+    )
+
+    status = "ok" if evidence_refs else "insufficient_data"
+    supplement_plan = (
+        []
+        if evidence_refs
+        else [
+            ReplaySupplementItem(
+                data_type="evidence_ref",
+                reason="missing_replayable_refs",
+            )
+        ]
+    )
+
+    await log_allow_event(
+        db,
+        http_request,
+        action="replay_requested",
+        actor_user_id=str(actor_user_id) if actor_user_id is not None else None,
+        resource_type="AssignmentAttempt",
+        resource_id=attempt.id,
+        reason="replay_success" if status == "ok" else "replay_insufficient_data",
+    )
+
+    return AttemptReplayResponse(
+        attempt_id=attempt.id,
+        status=status,
+        failure_point=failure_point,
+        supplement_plan=supplement_plan,
+        evidence_refs=evidence_refs,
+    )
 
 
 @router.patch(

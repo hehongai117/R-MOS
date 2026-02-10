@@ -1515,3 +1515,41 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1483-1517
 - Next Step:
   - 按计划推进 I-002（GET /api/v1/teaching/attempts/{id}/replay）。
+
+- DateTime: 2026-02-10 12:24:35 +0800
+- Task: Gate-3 I-002（attempt replay 查询接口最小闭环）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/teaching.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_attempt_replay_api.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:321-323,335`（I-002 + 路由/权限/审计口径）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:199-204`（I-002 DoD = MVP-005 + E2E-T008）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:203-204,210,282`（TIMELINE-T001/T002/T008，E2E-T008）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 Timeline/Replay 最小门禁）
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_attempt_replay_api.py`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - `pytest -q tests/unit/test_attempt_replay_api.py`：PASS（4 passed）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK；attempt_id error=105 skip=106 slow=107）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] I-002 路由 `GET /api/v1/teaching/attempts/{id}/replay` 已实现（`/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/teaching.py`）
+  - [x] Student 本人可回放，Teacher 仅课程范围可回放，越权对外 404 且写 deny 审计（真实 `resource_id`）
+  - [x] 回放成功返回 replayable `evidence_refs`，缺 timeline 返回 `insufficient_data`（MVP-005 最小闭环）
+  - [x] `TIMELINE-T001`/`TIMELINE-T002`/`TIMELINE-T008` 与 `E2E-T008` 已通过 I-002 自证用例覆盖关键断言（路径见 `tests/unit/test_attempt_replay_api.py`）
+- Result: PASS
+- Risks/Notes:
+  - 仅实现 I-002；未触及 I-003/J，保持计划边界。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md`，本次作为回归证据纳入提交。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1519-1554
+- Next Step:
+  - 按计划推进 I-003（evidence cards 与引用可回放链路补齐）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=105 skip=106 slow=107

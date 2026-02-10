@@ -168,6 +168,35 @@ class AttemptEvidenceResponse(TeachingBaseModel):
     summary: Optional[Dict[str, Any]] = None
 
 
+class ReplayFailurePoint(TeachingBaseModel):
+    step_id: Optional[int] = None
+    event_id: Optional[int] = None
+    failure_type: str = "unknown"
+    rule_hit: Optional[str] = None
+
+
+class ReplayEvidenceRef(TeachingBaseModel):
+    ref_id: str
+    timeline_id: int
+    segment_id: int
+    start_ts_ms: int
+    end_ts_ms: int
+
+
+class ReplaySupplementItem(TeachingBaseModel):
+    data_type: str
+    time_range: Optional[str] = None
+    reason: str
+
+
+class AttemptReplayResponse(TeachingBaseModel):
+    attempt_id: int
+    status: str
+    failure_point: ReplayFailurePoint
+    supplement_plan: list[ReplaySupplementItem] = Field(default_factory=list)
+    evidence_refs: list[ReplayEvidenceRef] = Field(default_factory=list)
+
+
 class DiagnosisFinding(RootModel[str]):
     """诊断发现项（保持输出为 string）。"""
 
