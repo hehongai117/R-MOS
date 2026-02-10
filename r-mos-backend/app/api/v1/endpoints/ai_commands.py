@@ -41,6 +41,12 @@ class CommandCreateRequest(BaseModel):
     approval_id: int | None = None
 
 
+class RagQueryRequest(BaseModel):
+    input_text: str | None = Field(default=None, max_length=2048)
+    skill_id: str | None = Field(default="rag.read.query", max_length=128)
+    tool_args: dict[str, Any] = Field(default_factory=dict)
+
+
 @dataclass
 class PlannedToolCall:
     tool_name: str
@@ -219,6 +225,100 @@ async def get_ai_citation(
         "metadata": chunk.metadata_json,
         "created_at": chunk.created_at.isoformat() if chunk.created_at else None,
     }
+
+
+@router.post("/ai/rag/query")
+async def query_ai_rag(
+    payload: RagQueryRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """H-002 最小闭环：RAG 查询接口（经独立端点）。"""
+    trace_id = getattr(request.state, "trace_id", None) or str(uuid.uuid4())[:8]
+    request.state.trace_id = trace_id
+
+    tool_args = dict(payload.tool_args)
+    if payload.input_text and "input_text" not in tool_args:
+        tool_args["input_text"] = payload.input_text
+
+    try:
+        validate_tool_request_security(
+            tool_name="rag.query",
+            tool_args=tool_args,
+        )
+    except SecurityViolationError as exc:
+        await log_deny_event(
+            db,
+            request,
+            action="tool_call_failed",
+            resource_type="Skill",
+            resource_id=payload.skill_id or "rag.query",
+            reason=exc.code,
+            actor_user_id=str(actor.user_id),
+            skill_id=payload.skill_id,
+            tool_call_args=tool_args,
+            side_effects_applied=[],
+        )
+        raise
+
+    try:
+        result_payload = execute_read_tool(
+            intent="explain",
+            tool_name="rag.query",
+            skill_id=payload.skill_id,
+            tool_args=tool_args,
+        )
+        result_payload = await _filter_rag_citations_by_existing_ref(
+            db=db,
+            request=request,
+            actor=actor,
+            tool_name="rag.query",
+            result_payload=result_payload,
+        )
+
+        insufficient_template = build_insufficient_data_template(
+            intent="explain",
+            tool_name="rag.query",
+            tool_args=tool_args,
+            execution_result=result_payload,
+        )
+        if insufficient_template is not None:
+            result_payload = insufficient_template
+
+        await log_allow_event(
+            db,
+            request,
+            action="rag_query",
+            actor_user_id=str(actor.user_id),
+            resource_type="RAGQuery",
+            resource_id="*",
+            reason="insufficient_data" if result_payload.get("status") == "insufficient_data" else "query_success",
+            skill_id=payload.skill_id,
+            tool_call_args=tool_args,
+            side_effects_applied=[],
+        )
+        return {
+            "trace_id": trace_id,
+            "status": result_payload.get("status", "ok"),
+            "result": result_payload,
+        }
+    except SecurityViolationError:
+        raise
+    except Exception as exc:  # pragma: no cover - 保护性分支
+        await log_deny_event(
+            db,
+            request,
+            action="tool_call_failed",
+            resource_type="RAGQuery",
+            resource_id="*",
+            reason=f"rag_query_error:{type(exc).__name__}",
+            actor_user_id=str(actor.user_id),
+            skill_id=payload.skill_id,
+            tool_call_args=tool_args,
+            side_effects_applied=[],
+        )
+        raise HTTPException(status_code=500, detail="RAG 查询失败")
 
 
 @router.post("/ai/commands", status_code=201)

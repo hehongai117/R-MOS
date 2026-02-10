@@ -512,3 +512,100 @@ def test_citation_scope_mismatch_returns_404_and_records_deny_audit() -> None:
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+def test_rag_query_endpoint_returns_insufficient_data_template_rag_t006() -> None:
+    client, session_factory = _build_client()
+    try:
+        token = _register_and_login(client, email="rag_query_t006@example.com")
+        response = client.post(
+            "/api/v1/ai/rag/query",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "input_text": "不存在的主题-H002",
+                "tool_args": {"force_empty": True},
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "insufficient_data"
+        result_payload = payload["result"]
+        assert result_payload["status"] == "insufficient_data"
+        assert result_payload["query"] == "不存在的主题-H002"
+        assert payload["trace_id"]
+
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=payload["trace_id"]))
+        assert any(
+            event.action == "rag_query"
+            and event.decision == "allow"
+            and event.reason == "insufficient_data"
+            for event in audits
+        )
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_rag_query_endpoint_returns_verifiable_citations_rag_t007() -> None:
+    client, session_factory = _build_client()
+    try:
+        register_resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_query_owner@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG查询拥有者",
+            },
+        )
+        assert register_resp.status_code == 201
+        owner_user_id = str(register_resp.json()["user_id"])
+        owner_login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "rag_query_owner@example.com", "password": "StrongPass123"},
+        )
+        assert owner_login.status_code == 200
+        owner_token = owner_login.json()["access_token"]
+
+        chunk_id = "chunk-rag-h002-001"
+        asyncio.run(
+            _create_knowledge_chunk(
+                session_factory,
+                chunk_id=chunk_id,
+                owner_user_id=owner_user_id,
+                content="H-002 引用可验证片段",
+            )
+        )
+
+        response = client.post(
+            "/api/v1/ai/rag/query",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "input_text": "检索H-002引用",
+                "tool_args": {"ref_ids": [chunk_id]},
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "ok"
+        citations = payload["result"]["citations"]
+        assert citations and citations[0]["ref_id"] == chunk_id
+
+        citation_resp = client.get(
+            f"/api/v1/ai/citations/{chunk_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert citation_resp.status_code == 200
+        assert citation_resp.json()["ref_id"] == chunk_id
+
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=payload["trace_id"]))
+        assert any(
+            event.action == "rag_query"
+            and event.decision == "allow"
+            and event.reason == "query_success"
+            for event in audits
+        )
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None

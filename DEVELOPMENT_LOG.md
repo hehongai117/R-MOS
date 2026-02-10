@@ -1317,3 +1317,36 @@
   - `docs/testing/TEST_REPORT.md` 为回归脚本 `run_phase3_regression.sh` 生成/刷新后的证据文件，已纳入同一提交确保可复现。
 - Next Step:
   - 按 DEV_PLAN 继续 Gate-3 下一未完成项。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=81 skip=82 slow=83
+
+- DateTime: 2026-02-10 10:48:59 +0800
+- Task: Gate-3 H-002（RAG 查询接口最小闭环：独立端点 + RAG-T006/RAG-T007）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:313-320`（H-002 为 H-001 后下一未完成项）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:184-186`（H-002 DoD=RAG-T006/RAG-T007）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 RAG 返回空/insufficient_data + trace 串联）
+  - 矩阵 Test ID：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:142-143`（RAG-T006、RAG-T007）
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && grep -RInE "H-001|H-002|RAG-T006|RAG-T007|Gate-3" docs/design/DEV_PLAN_001.md docs/design/LLD_TASK_BREAKDOWN_V0_3.md docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（9 passed，新增 `POST /api/v1/ai/rag/query` 的 RAG-T006/RAG-T007 断言）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK，attempt_id error=81 skip=82 slow=83）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] H-002 独立 RAG 查询接口已落地：`POST /api/v1/ai/rag/query`（仅 READ，未引入 H-003/I/J）
+  - [x] RAG-T006：空命中返回 `insufficient_data` 模板（`force_empty` 测试路径）
+  - [x] RAG-T007：返回 citations 且 ref_id 可通过 `GET /api/v1/ai/citations/{ref_id}` 读取验证
+  - [x] 审计闭环：`rag_query` allow 事件写入并与 trace_id 贯通
+- Result: PASS
+- Risks/Notes:
+  - 本次仅实现 H-002 最小查询闭环；`rag_filter_applied deny_count`（RAG-T008）保持 H-003 处理，不在本任务展开。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md` 的 Step4 证据块，本次纳入提交保持证据可复现。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1322-1352
+- Next Step:
+  - 进入 Gate-3 下一未完成项 H-003（RAG 过滤审计 deny_count）。
