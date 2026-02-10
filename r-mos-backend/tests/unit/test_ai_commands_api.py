@@ -15,6 +15,8 @@ from app.models.audit_event import AuditEvent
 from app.models.base import Base
 from app.models.command_runtime import AIToolCall, Command
 from app.models.knowledge_chunk import AIKnowledgeChunk
+from app.models.rbac import Permission, Role, RolePermission, UserRole
+from app.models.user import User
 from main import app
 import app.models as app_models  # noqa: F401  # 确保模型全部注册
 
@@ -144,6 +146,62 @@ async def _create_knowledge_chunk(
         await session.commit()
         await session.refresh(chunk)
         return chunk
+
+
+async def _grant_role_permissions(
+    session_factory: async_sessionmaker,
+    *,
+    email: str,
+    role_name: str,
+    permission_keys: list[str],
+) -> int:
+    async with session_factory() as session:
+        user_result = await session.execute(select(User).where(User.email == email))
+        user = user_result.scalar_one()
+
+        role_result = await session.execute(select(Role).where(Role.name == role_name))
+        role = role_result.scalar_one_or_none()
+        if role is None:
+            role = Role(name=role_name, description=f"{role_name} 角色")
+            session.add(role)
+            await session.flush()
+
+        for permission_key in permission_keys:
+            permission_result = await session.execute(
+                select(Permission).where(Permission.key == permission_key)
+            )
+            permission = permission_result.scalar_one_or_none()
+            if permission is None:
+                resource_type, action = permission_key.split(":", 1)
+                permission = Permission(
+                    key=permission_key,
+                    description=f"{permission_key} 权限",
+                    resource_type=resource_type,
+                    action=action,
+                )
+                session.add(permission)
+                await session.flush()
+
+            role_permission_result = await session.execute(
+                select(RolePermission).where(
+                    RolePermission.role_id == role.id,
+                    RolePermission.permission_id == permission.id,
+                )
+            )
+            if role_permission_result.scalar_one_or_none() is None:
+                session.add(RolePermission(role_id=role.id, permission_id=permission.id))
+
+        user_role_result = await session.execute(
+            select(UserRole).where(
+                UserRole.user_id == user.id,
+                UserRole.role_id == role.id,
+            )
+        )
+        if user_role_result.scalar_one_or_none() is None:
+            session.add(UserRole(user_id=user.id, role_id=role.id))
+
+        await session.commit()
+        return int(user.id)
 
 
 def test_ai_command_read_tool_success_records_trace_audits() -> None:
@@ -684,10 +742,87 @@ def test_rag_query_filters_foreign_refs_and_records_deny_count_rag_t008() -> Non
         assert rag_filter_event is not None
         assert rag_filter_event.resource_type == "AIKnowledgeChunk"
         assert rag_filter_event.resource_id == "*"
-        assert rag_filter_event.reason == "rag_visibility_filtered"
+        assert rag_filter_event.reason == "rag_visibility_filtered:deny_count=10"
         request_meta = rag_filter_event.request_meta or {}
-        assert request_meta.get("deny_count") == 10
+        assert "deny_count" not in request_meta
         assert "resource_ids" not in request_meta
+        assert all(ref_id not in rag_filter_event.reason for ref_id in foreign_ref_ids)
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_rag_query_privileged_actor_keeps_foreign_refs_without_deny_filter() -> None:
+    client, session_factory = _build_client()
+    try:
+        owner_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_filter_owner_2@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG过滤拥有者2",
+            },
+        )
+        assert owner_register.status_code == 201
+        owner_user_id = str(owner_register.json()["user_id"])
+
+        admin_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_filter_admin@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG过滤管理员",
+            },
+        )
+        assert admin_register.status_code == 201
+        admin_login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "rag_filter_admin@example.com", "password": "StrongPass123"},
+        )
+        assert admin_login.status_code == 200
+        admin_token = admin_login.json()["access_token"]
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="rag_filter_admin@example.com",
+                role_name="admin",
+                permission_keys=["audit_events:read"],
+            )
+        )
+
+        foreign_ref_ids = [f"chunk-rag-t008-admin-{idx:03d}" for idx in range(3)]
+        for chunk_id in foreign_ref_ids:
+            asyncio.run(
+                _create_knowledge_chunk(
+                    session_factory,
+                    chunk_id=chunk_id,
+                    owner_user_id=owner_user_id,
+                    content=f"管理员可见证据-{chunk_id}",
+                )
+            )
+
+        response = client.post(
+            "/api/v1/ai/commands",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "intent": "explain",
+                "skill_id": "rag.read.explain",
+                "tool_name": "rag.query",
+                "tool_args": {
+                    "input_text": "管理员查询证据",
+                    "ref_ids": foreign_ref_ids,
+                },
+                "side_effects": [],
+            },
+        )
+        assert response.status_code == 201
+        payload = response.json()
+        citations = payload["result"].get("citations", [])
+        assert {item["ref_id"] for item in citations} >= set(foreign_ref_ids)
+
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=payload["trace_id"]))
+        assert all(event.action != "rag_filter_applied" for event in audits)
     finally:
         client.close()
         app.dependency_overrides.clear()

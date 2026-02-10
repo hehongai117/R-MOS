@@ -142,7 +142,7 @@ async def _filter_rag_citations_by_existing_ref(
         actor_user_id = str(actor.user_id)
         for chunk in chunks:
             owner_user_id = (chunk.owner_user_id or "").strip()
-            if not owner_user_id or owner_user_id == actor_user_id:
+            if owner_user_id == actor_user_id:
                 visible_ref_ids.add(chunk.id)
 
     filtered_citations = [
@@ -158,9 +158,8 @@ async def _filter_rag_citations_by_existing_ref(
             action="rag_filter_applied",
             resource_type="AIKnowledgeChunk",
             resource_id="*",
-            reason="rag_visibility_filtered",
+            reason=f"rag_visibility_filtered:deny_count={filtered_out_count}",
             actor_user_id=str(actor.user_id),
-            request_meta={"deny_count": filtered_out_count},
         )
 
     normalized_payload["citations"] = filtered_citations

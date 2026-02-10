@@ -48,12 +48,7 @@ async def log_deny_event(
     tool_call_args: Optional[dict[str, Any]] = None,
     side_effects_applied: Optional[list[str]] = None,
     approval_id: Optional[int] = None,
-    request_meta: Optional[dict[str, Any]] = None,
 ) -> None:
-    merged_request_meta = _build_request_meta(request)
-    if request_meta:
-        merged_request_meta.update(request_meta)
-
     service = AuditEventService(db)
     await service.log_event(
         action=action,
@@ -62,7 +57,7 @@ async def log_deny_event(
         resource_type=resource_type,
         resource_id=str(resource_id) if resource_id is not None else None,
         reason=reason,
-        request_meta=merged_request_meta,
+        request_meta=_build_request_meta(request),
         trace_id=getattr(request.state, "trace_id", None),
         skill_id=skill_id,
         skill_version=skill_version,

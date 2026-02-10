@@ -1383,3 +1383,39 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1354-1384
 - Next Step:
   - 进入 H-004（RAG 空结果与 HTTP 404 双断言链路）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=90 skip=91 slow=92
+
+- DateTime: 2026-02-10 11:23:40 +0800
+- Task: Gate-3 H-003 修复补证（回滚 log_deny_event 横切签名改动 + RAG deny_count 语义收敛）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/access_control.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py, /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:318-320`（H-003）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:177-188`（H.1 可选 deny_count，H-003 对应 RAG-T008）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:144`（RAG-T008：记录 deny_count 且不泄露对象ID列表）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37`（Gate-3 RAG 后过滤 + trace 串联）
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py -k "rag_t008 or privileged_actor_keeps_foreign_refs"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_ai_commands_api.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - RED 阶段：`pytest -q tests/unit/test_ai_commands_api.py -k "rag_t008 or privileged_actor_keeps_foreign_refs"` 初次 FAIL（断言 reason 期望 `rag_visibility_filtered:deny_count=10`）
+  - GREEN 阶段：同命令 PASS（2 passed）
+  - `pytest -q tests/unit/test_ai_commands_api.py`：PASS（11 passed）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK，attempt_id error=90 skip=91 slow=92）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 已回滚 `log_deny_event` 的 `request_meta` 参数与合并逻辑（签名恢复）
+  - [x] RAG 过滤 deny_count 通过 `reason="rag_visibility_filtered:deny_count=N"` 承载，不改横切审计接口
+  - [x] 非 admin/auditor 可见性收敛为 `owner_user_id == actor.user_id`
+  - [x] 新增 privileged 用例，验证管理员不触发 `rag_filter_applied`
+  - [x] 不泄露对象ID：`resource_id="*"`，`reason/request_meta` 不包含具体资源 id 列表
+- Result: PASS
+- Risks/Notes:
+  - 本次仅做 H-003 修复补证，不扩展到 H-004/I/J。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_REPORT.md` 的 Step4 证据块，本次纳入提交以保证可复现。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1388-1421
+- Next Step:
+  - 进入 H-004（RAG 空结果与 HTTP 404 双断言链路）。
