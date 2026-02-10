@@ -1383,6 +1383,39 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1354-1384
 - Next Step:
   - 进入 H-004（RAG 空结果与 HTTP 404 双断言链路）。
+
+- DateTime: 2026-02-10 11:58:00 +0800
+- Task: Gate-3 H-004（RAG 空结果不等于 HTTP 404 双断言最小闭环）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_ai_commands_api.py, /Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:313-320`（H-004 为当前未完成项）
+  - 范围与依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:190-191`（H-004 DoD：Step1 空 + Step2 404）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:141`（RAG-T005）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:47-51`（RAG 空是检索层；HTTP GET 越权返回 404）
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status --short && git rev-parse --short HEAD
+  - cd /Users/xuhehong/Desktop/r-mos && rg -n "H-004|RAG-T005|RAG 过滤 vs HTTP 响应码" docs/design/DEV_PLAN_001.md docs/design/LLD_TASK_BREAKDOWN_V0_3.md docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_ai_commands_api.py -k "rag_empty_not_equal_http_404_rag_t005"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit/test_ai_commands_api.py -k "rag_empty_not_equal_http_404_rag_t005"`：PASS（1 passed）
+  - `pytest -q tests/unit -q`：首次沙箱执行 FAIL（Postgres 连接 `PermissionError: [Errno 1] Operation not permitted`）；在既有批准前缀环境重跑 PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（`BACKEND_PORT=8000`，attempt_id error=93 skip=94 slow=95）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] RAG-T005 Step1：RAG 查询被过滤后返回 `insufficient_data`
+  - [x] RAG-T005 Step2：同一业务对象 HTTP 读取越权返回 404
+  - [x] 同一 `trace_id` 下审计同时命中 `rag_filter_applied` 与对象级读取拒绝（`read_access_denied`，真实 `resource_id`）
+  - [x] 不泄露被过滤对象 ID 列表（`resource_id="*"`，仅 `deny_count` 统计）
+- Result: PASS
+- Risks/Notes:
+  - 路由口径差异：矩阵 `RAG-T005` 步骤示例写为 `GET /api/v1/teaching/attempts/{id}`，现网路由为 `GET /api/v1/attempts/{id}`；本次按当前实现与既有测试口径完成双断言，未扩展别名路由，避免越界。
+  - `run_phase3_regression.sh` 会刷新 `docs/testing/TEST_PLAN.md` 与 `docs/testing/TEST_REPORT.md`，本次已回退这两个副产物，仅保留 H-004 任务必要改动。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1387-1419
+- Next Step:
+  - 进入 Gate-3 下一未完成项（I-001）。
 - 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=90 skip=91 slow=92
 
 - DateTime: 2026-02-10 11:23:40 +0800
@@ -1419,3 +1452,29 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1388-1421
 - Next Step:
   - 进入 H-004（RAG 空结果与 HTTP 404 双断言链路）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=93 skip=94 slow=95
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=96 skip=97 slow=98
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=99 skip=100 slow=101
+
+- DateTime: 2026-02-10 11:58:56 +0800
+- Task: Gate-3 H-004 修复补证（纳入 run_phase3_regression 回归报告证据）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh
+- Tests:
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK，attempt_id error=99 skip=100 slow=101）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] `docs/testing/TEST_REPORT.md` 已写入最新 Step4 运行证据并可复现
+  - [x] H-004 提交包含回归报告证据文件
+  - [x] 未修改 DATABASE_URL/CORS/代理规则
+- Result: PASS
+- Risks/Notes:
+  - `run_phase3_regression.sh` 同时会刷新 `docs/testing/TEST_PLAN.md`，本次已回退该副产物，仅保留 `TEST_REPORT.md` 证据变更。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1456-1478
+- Next Step:
+  - 继续按 DEV_PLAN 推进 Gate-3 下一未完成项（I-001）。

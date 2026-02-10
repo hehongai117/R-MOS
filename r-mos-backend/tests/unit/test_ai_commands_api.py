@@ -132,6 +132,7 @@ async def _create_knowledge_chunk(
     chunk_id: str,
     owner_user_id: str,
     content: str = "证据片段",
+    attempt_id: str | None = None,
 ) -> AIKnowledgeChunk:
     async with session_factory() as session:
         chunk = AIKnowledgeChunk(
@@ -141,6 +142,7 @@ async def _create_knowledge_chunk(
             content=content,
             owner_user_id=owner_user_id,
             course_id="COURSE-001",
+            attempt_id=attempt_id,
         )
         session.add(chunk)
         await session.commit()
@@ -823,6 +825,134 @@ def test_rag_query_privileged_actor_keeps_foreign_refs_without_deny_filter() -> 
 
         audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=payload["trace_id"]))
         assert all(event.action != "rag_filter_applied" for event in audits)
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_rag_empty_not_equal_http_404_rag_t005() -> None:
+    client, session_factory = _build_client()
+    try:
+        owner_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_t005_owner@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG-T005 拥有者",
+            },
+        )
+        assert owner_register.status_code == 201
+        owner_user_id = str(owner_register.json()["user_id"])
+
+        student_register = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "rag_t005_student@example.com",
+                "password": "StrongPass123",
+                "full_name": "RAG-T005 学生",
+            },
+        )
+        assert student_register.status_code == 201
+        student_user_id = str(student_register.json()["user_id"])
+        student_login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "rag_t005_student@example.com", "password": "StrongPass123"},
+        )
+        assert student_login.status_code == 200
+        student_token = student_login.json()["access_token"]
+
+        class_resp = client.post("/api/v1/classes", json={"name": "RAG-T005 班级"})
+        assert class_resp.status_code == 201
+        class_id = class_resp.json()["id"]
+
+        assignment_resp = client.post(
+            "/api/v1/assignments",
+            json={"classId": class_id, "title": "RAG-T005 作业"},
+        )
+        assert assignment_resp.status_code == 201
+        assignment_id = assignment_resp.json()["id"]
+
+        attempt_resp = client.post(
+            f"/api/v1/assignments/{assignment_id}/attempts",
+            json={"studentId": int(owner_user_id)},
+        )
+        assert attempt_resp.status_code == 201
+        attempt_id = attempt_resp.json()["id"]
+
+        ref_id = "chunk-rag-t005-001"
+        asyncio.run(
+            _create_knowledge_chunk(
+                session_factory,
+                chunk_id=ref_id,
+                owner_user_id=owner_user_id,
+                content="RAG-T005 越权过滤证据",
+                attempt_id=str(attempt_id),
+            )
+        )
+
+        trace_id = "rag-t005-trace-001"
+        rag_resp = client.post(
+            "/api/v1/ai/commands",
+            headers={
+                "Authorization": f"Bearer {student_token}",
+                "X-Trace-ID": trace_id,
+            },
+            json={
+                "intent": "explain",
+                "skill_id": "rag.read.explain",
+                "tool_name": "rag.query",
+                "tool_args": {
+                    "input_text": "查询他人 attempt 证据",
+                    "ref_ids": [ref_id],
+                },
+                "side_effects": [],
+            },
+        )
+        assert rag_resp.status_code == 201
+        rag_payload = rag_resp.json()
+        assert rag_payload["status"] == "succeeded"
+        assert rag_payload["result"]["status"] == "insufficient_data"
+        assert rag_payload["result"].get("citations", []) == []
+
+        read_resp = client.get(
+            f"/api/v1/attempts/{attempt_id}",
+            headers={
+                "X-RMOS-Role": "student",
+                "X-User-ID": student_user_id,
+                "X-Trace-ID": trace_id,
+            },
+        )
+        assert read_resp.status_code == 404
+        read_payload = read_resp.json()
+        assert read_payload["error_type"] == "ReadAccessDeniedError"
+        assert read_payload["details"]["code"] == "READ_ACCESS_DENIED"
+        assert read_payload["details"]["details"]["resource_id"] == str(attempt_id)
+
+        audits = asyncio.run(_query_audits_by_trace(session_factory, trace_id=trace_id))
+        rag_filter_event = next(
+            (
+                event
+                for event in audits
+                if event.action == "rag_filter_applied" and event.decision == "deny"
+            ),
+            None,
+        )
+        assert rag_filter_event is not None
+        assert rag_filter_event.resource_id == "*"
+
+        attempt_deny_event = next(
+            (
+                event
+                for event in audits
+                if event.action == "read_access_denied"
+                and event.decision == "deny"
+                and event.resource_type == "AssignmentAttempt"
+                and event.resource_id == str(attempt_id)
+            ),
+            None,
+        )
+        assert attempt_deny_event is not None
     finally:
         client.close()
         app.dependency_overrides.clear()
