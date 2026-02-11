@@ -1713,3 +1713,48 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1680-1715
 - Next Step:
   - 按计划推进 J-003（红队用例跑批）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=126 skip=127 slow=128
+
+- DateTime: 2026-02-11 21:36:16 +0800
+- Task: Gate-3 J-003（红队用例跑批最小闭环）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_redteam_batch_j003_api.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && git show --name-only HEAD`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "J-003" -S docs/design/DEV_PLAN_001.md docs/design/LLD_TASK_BREAKDOWN_V0_3.md docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/testing/ACCEPTANCE_CHARTER.md`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/DEV_PLAN_001.md | sed -n '300,420p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/design/LLD_TASK_BREAKDOWN_V0_3.md | sed -n '210,260p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '220,245p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/testing/ACCEPTANCE_CHARTER.md | sed -n '25,90p'`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "j003" -q || true`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "j003" -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - RED：`pytest -q tests/unit -k "j003" -q || true`：FAIL（3 failed，`/api/v1/ai/replay/metrics/red-team-pass-rate` 未实现）
+  - GREEN：`pytest -q tests/unit -k "j003" -q`：PASS（3 passed）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK；attempt_id error=126 skip=127 slow=128）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- Result: PASS
+- Risks/Notes:
+  - Pre-check（范围/依赖/Test IDs）：
+    - 计划与进度：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:311,326`（J 模块 + J-003 待完成项）
+    - LLD 任务定义：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:223-224`（J-003 红队跑批；DoD=SEC-T001~SEC-T007）
+    - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:233-239`（SEC-T001~SEC-T007）
+    - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37,43-45`（Gate-3 串联 + READ 404 + WRITE 403 + deny 审计）
+  - 本次实现范围仅限 J-003：新增红队跑批统计入口与最小门禁测试，不涉及 J-001/J-002 逻辑变更。
+  - DoD Checklist：
+    - [x] J-003 跑批入口：`GET /api/v1/ai/replay/metrics/red-team-pass-rate`
+    - [x] 覆盖 SEC-T001~SEC-T007 最小统计闭环（返回 `cases` + `pass_count`）
+    - [x] 权限红线：teacher 无权限 403（`permission_denied`）；teacher 有权限但非 admin/auditor 404（`ReadAccessDeniedError`）
+    - [x] deny 审计记录真实 `resource_id=sec_t001_t007_batch`，allow 审计记录 `redteam_batch_read`
+- Evidence Line Range: DEVELOPMENT_LOG.md:1718-1760
+- Next Step:
+  - 按计划推进后续 Gate-3 收口与验收打包。
