@@ -321,9 +321,9 @@ curl --noproxy 127.0.0.1,localhost -X POST \
 - I-001 ✅（证据：`DEVELOPMENT_LOG.md:1483-1517`；commit：本次提交）
 - I-002 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1519-1554`；commit：本次提交（见 `git show --name-only HEAD`））
 - I-003 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1557-1599` + `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1602-1640`；commit：本次提交（见 `git show --name-only HEAD`））
-- J-001 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1645-1676`；commit：本次提交）
-- J-002 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1680-1715`；commit：本次提交）
-- J-003 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1718-1760`；commit：本次提交）
+- J-001 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1645-1676`；commit：`9aa3776`）
+- J-002 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1680-1715`；commit：`17fd6a4`）
+- J-003 ✅（证据：`/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md:1719-1760`；commit：`8c9f74c`）
 
 ### 5.2 API 清单（路由、权限键、对象级校验点、审计事件）
 

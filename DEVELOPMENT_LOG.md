@@ -1758,3 +1758,31 @@
 - Evidence Line Range: DEVELOPMENT_LOG.md:1718-1760
 - Next Step:
   - 按计划推进后续 Gate-3 收口与验收打包。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=129 skip=130 slow=131
+
+- DateTime: 2026-02-11 22:30:53 +0800
+- Task: Gate-3 收口验收包（计划对齐 + 回归证据固化）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/GATE3_CLOSURE_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "Gate-3|J-001|J-002|J-003" docs/design/DEV_PLAN_001.md DEVELOPMENT_LOG.md docs/testing/TEST_REPORT.md`
+  - `cd /Users/xuhehong/Desktop/r-mos && git log --oneline --decorate -n 80`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`（首次沙箱内执行遇到本机 DB 权限限制）
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`（提权后重跑）
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - `pytest -q tests/unit -q`：PASS（提权后退出码 0，进度 `[100%]`）
+  - `bash scripts/run_phase3_regression.sh`：PASS（`OPENAPI_STATUS=HTTP/1.1 200 OK`；attempt_id `error=129 skip=130 slow=131`）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾 `全部通过：PASS`）
+- Result: PASS
+- Risks/Notes:
+  - Gate-3 完成状态已核对：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:313-326`。
+  - J 项证据与提交映射：`J-001 -> DEVELOPMENT_LOG.md:1645-1676 / 9aa3776`，`J-002 -> DEVELOPMENT_LOG.md:1680-1715 / 17fd6a4`，`J-003 -> DEVELOPMENT_LOG.md:1719-1760 / 8c9f74c`。
+  - 首次沙箱执行单测报 `PermissionError: [Errno 1] Operation not permitted`（`::1:5432`），已通过提权重跑排除为环境权限问题。
+  - Evidence Line Range: `DEVELOPMENT_LOG.md:1645-1760`；`/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md:7-36`；`/Users/xuhehong/Desktop/r-mos/docs/testing/GATE3_CLOSURE_REPORT.md:1-56`
+- Next Step:
+  - 输出收口回执与 commit hash，停止在 push 前（不执行 `git push`）。
