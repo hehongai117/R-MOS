@@ -1674,3 +1674,42 @@
   - Evidence Line Range: DEVELOPMENT_LOG.md:1645-1676
 - Next Step:
   - 按计划推进 J-002（读工具成功率统计）。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=123 skip=124 slow=125
+
+- DateTime: 2026-02-11 21:00:49 +0800
+- Task: Gate-3 J-002（Read Tool 成功率统计最小闭环）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_read_tool_success_rate_api.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 计划项定位：`/Users/xuhehong/Desktop/r-mos/docs/design/DEV_PLAN_001.md:311,325`（J 模块与 J-002 待完成项）
+  - LLD 依赖：`/Users/xuhehong/Desktop/r-mos/docs/design/LLD_TASK_BREAKDOWN_V0_3.md:220-221`（J-002 DoD = `AGENT-T005`）
+  - 验收矩阵：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:156`（`AGENT-T005` Read Tool 成功率 `>=99%`）
+  - 门禁条款：`/Users/xuhehong/Desktop/r-mos/docs/testing/ACCEPTANCE_CHARTER.md:33-37,43-45`（Gate-3 trace 串联 + READ 越权 404 + deny 必审计）
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "j002" -q || true`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "j002" -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && ./scripts/run_gate2_smoke.sh`
+- Tests:
+  - RED：`pytest -q tests/unit -k "j002" -q || true`：FAIL（3 failed，路由未实现，404/error_type 不匹配）
+  - GREEN：`pytest -q tests/unit -k "j002" -q`：PASS（3 passed）
+  - `pytest -q tests/unit -q`：PASS
+  - `bash scripts/run_phase3_regression.sh`：PASS（OPENAPI_STATUS=HTTP/1.1 200 OK；attempt_id error=123 skip=124 slow=125）
+  - `./scripts/run_gate2_smoke.sh`：PASS（末尾“全部通过：PASS”）
+- DoD Checklist:
+  - [x] 新增 J-002 统计接口：`GET /api/v1/ai/replay/metrics/read-tool-success-rate`
+  - [x] `AGENT-T005` 最小闭环：返回 `success_rate` 与 `meets_target(>=99%)`
+  - [x] 403 分支：缺少 `audit_events:read` 返回 403（`AUTHZ_001`）并写 deny 审计
+  - [x] 404 分支：teacher（有权限但非 admin/auditor）返回 404（`READ_ACCESS_DENIED`）并写 deny 审计，`resource_id=read_tool_success_rate`
+  - [x] allow 分支：admin 查询成功写 `read_tool_success_rate_read` allow 审计，`trace_id` 与请求一致
+- Result: PASS
+- Risks/Notes:
+  - 本次仅实现 J-002，未触及 J-003。
+  - Evidence Line Range: DEVELOPMENT_LOG.md:1680-1715
+- Next Step:
+  - 按计划推进 J-003（红队用例跑批）。

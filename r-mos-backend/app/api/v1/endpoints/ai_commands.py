@@ -97,6 +97,10 @@ def _is_trace_replay_reader(actor: ActorContext) -> bool:
     return bool({"admin", "auditor"} & actor.roles)
 
 
+READ_TOOL_SUCCESS_RATE_METRIC_ID = "read_tool_success_rate"
+READ_TOOL_SUCCESS_RATE_TARGET = 99.0
+
+
 async def _filter_rag_citations_by_existing_ref(
     *,
     db: AsyncSession,
@@ -637,4 +641,68 @@ async def get_trace_replay(
         "trace_id": trace_id,
         "count": len(items),
         "items": items,
+    }
+
+
+@router.get("/ai/replay/metrics/read-tool-success-rate")
+async def get_read_tool_success_rate(
+    request: Request,
+    limit: int = 200,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(require_permission("audit_events:read")),
+):
+    """J-002：Read Tool 成功率统计最小闭环。"""
+    metric_id = READ_TOOL_SUCCESS_RATE_METRIC_ID
+    if not _is_trace_replay_reader(actor):
+        reason = "trace_scope_denied:admin_or_auditor"
+        await log_deny_event(
+            db,
+            request,
+            action="access_denied",
+            resource_type="ReadToolMetric",
+            resource_id=metric_id,
+            reason=reason,
+            actor_user_id=str(actor.user_id),
+        )
+        raise ReadAccessDeniedError(
+            action="access_denied",
+            resource_type="ReadToolMetric",
+            resource_id=metric_id,
+            reason=reason,
+            message="资源不存在",
+        )
+
+    bounded_limit = max(1, min(limit, 1000))
+    result = await db.execute(
+        select(AIToolCall).order_by(AIToolCall.id.desc()).limit(bounded_limit)
+    )
+    tool_calls = list(result.scalars().all())
+    read_tool_calls = [call for call in tool_calls if not (call.side_effects or [])]
+    total = len(read_tool_calls)
+    success = sum(1 for call in read_tool_calls if call.status == "success")
+    failed = sum(1 for call in read_tool_calls if call.status in {"failed", "rejected"})
+    non_terminal = max(total - success - failed, 0)
+    success_rate = round((success / total) * 100, 2) if total else 0.0
+    meets_target = total > 0 and success_rate >= READ_TOOL_SUCCESS_RATE_TARGET
+
+    await log_allow_event(
+        db,
+        request,
+        action="read_tool_success_rate_read",
+        actor_user_id=str(actor.user_id),
+        resource_type="ReadToolMetric",
+        resource_id=metric_id,
+        reason="read_tool_success_rate_computed",
+    )
+
+    return {
+        "metric_id": metric_id,
+        "trace_id": getattr(request.state, "trace_id", None),
+        "total": total,
+        "success": success,
+        "failed": failed,
+        "non_terminal": non_terminal,
+        "success_rate": success_rate,
+        "target_rate": READ_TOOL_SUCCESS_RATE_TARGET,
+        "meets_target": meets_target,
     }
