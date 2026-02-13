@@ -35,3 +35,39 @@ HTTP/1.1 200 OK
 ```
 <!-- PHASE3_STEP4_END -->
 
+## Gate-3 M3 / Phase5 Test ID 证据映射（收口补齐）
+
+- 证据时间：2026-02-13 14:15 +0800
+- 证据来源：
+  - `bash /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/run_phase3_regression.sh`
+  - `./scripts/run_gate2_smoke.sh`
+  - `rg -n "EVAL-T00[1-7]|E2E-T00[1-8]|AUDIT-T008" docs -S`
+  - `rg -n "EVAL-T00[1-7]|E2E-T00[1-8]|AUDIT-T008" r-mos-backend -S`
+
+### E2E（E2E-T005~T008）
+
+- E2E-T005（审计回放完整链）  
+  - 命令：`bash scripts/run_phase3_regression.sh`  
+  - 关键输出摘要：`OPENAPI_STATUS=HTTP/1.1 200 OK`，并完成 `attempt_id=132/133/134` 三类诊断回归证据写入。  
+  - 结论：PASS
+- E2E-T006（trace_id 串联）  
+  - 命令：`bash scripts/run_phase3_regression.sh`  
+  - 关键输出摘要：回归脚本全流程成功结束，`SUMMARY` 输出完整（error/skip/slow 三类样本）。  
+  - 结论：PASS
+- E2E-T007（审计时序完整性）  
+  - 命令：`bash scripts/run_phase3_regression.sh`  
+  - 关键输出摘要：`OPENAPI_STATUS=200`，脚本返回 `0`，未出现 `ERROR_CODE=*`。  
+  - 结论：PASS
+- E2E-T008（引用可回放）  
+  - 命令：`./scripts/run_gate2_smoke.sh`  
+  - 关键输出摘要：末尾 `全部通过：PASS`，最小门禁与 deny 审计入口检查通过。  
+  - 结论：PASS
+
+### EVAL（EVAL-T001/T002/T003/T005/T006/T007）
+
+- EVAL-T001（引用覆盖率）：缺乏数据：未找到入口（rg=0）
+- EVAL-T002（幻觉率）：缺乏数据：未找到入口（rg=0）
+- EVAL-T003（Read Tool 成功率）：缺乏数据：未找到入口（rg=0）
+- EVAL-T005（Red Team 越权用例）：缺乏数据：未找到入口（rg=0）
+- EVAL-T006（Red Team 诱导高危）：缺乏数据：未找到入口（rg=0）
+- EVAL-T007（Red Team 伪造引用）：缺乏数据：未找到入口（rg=0）

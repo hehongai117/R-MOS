@@ -1787,3 +1787,26 @@
 - Next Step:
   - 输出收口回执与 commit hash，停止在 push 前（不执行 `git push`）。
 - 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=132 skip=133 slow=134
+
+- DateTime: 2026-02-13 14:28:20 +0800
+- Task: Gate-3 M3 收口补齐（Phase5 Test ID 显式证据映射）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "EVAL-T00[1-7]|E2E-T00[1-8]|AUDIT-T008" docs -S || true`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "EVAL-T00[1-7]|E2E-T00[1-8]|AUDIT-T008" r-mos-backend -S || true`
+  - `cd /Users/xuhehong/Desktop/r-mos && python3 - << 'PY' ... PY`（仅读取 `TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md` 局部段落）
+- Tests:
+  - E2E-T005：PASS（证据命令：`bash scripts/run_phase3_regression.sh`；关键输出：`OPENAPI_STATUS=HTTP/1.1 200 OK`）
+  - E2E-T006：PASS（证据命令：`bash scripts/run_phase3_regression.sh`；关键输出：`SUMMARY: ATTEMPT_ERROR=132 / ATTEMPT_SKIP=133 / ATTEMPT_SLOW=134`）
+  - E2E-T007：PASS（证据命令：`bash scripts/run_phase3_regression.sh`；关键输出：无 `ERROR_CODE=*` 且退出码 `0`）
+  - E2E-T008：PASS（证据命令：`./scripts/run_gate2_smoke.sh`；关键输出：`全部通过：PASS`）
+  - EVAL-T001/T002/T003/T005/T006/T007：缺乏数据（`rg -n ... r-mos-backend -S` 无输出，未定位到可执行入口/脚本路径）
+- Result: PASS（文档映射补齐完成）
+- Risks/Notes:
+  - 本次为证据映射补齐，不新增业务功能、不改代码。
+  - `docs` 目录检索可命中 Test ID 文本定义；`r-mos-backend` 检索无命中，故 EVAL 指标入口按“缺乏数据”记录。
+  - Evidence Line Range: `docs/testing/TEST_REPORT.md:39-74`（Phase5 显式映射）；`DEVELOPMENT_LOG.md:1791-1813`
+- Next Step:
+  - 仅提交 `TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md`，输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD`，停止在 push 前。
