@@ -125,8 +125,8 @@
 | APPR-T008 | 审批流程 | 审批超时 | approval pending, expires_at过期 | 系统定时任务检查 | approval.status=expired, 不执行Skill | expired | APPROVAL | P0 |
 | APPR-T009 | 审批流程 | Critical单人确认不足 | Teacher登录, approval(critical) | Teacher confirm | approval.status=pending（仍需第二人） | pending | APPROVAL | P0 |
 | APPR-T010 | 审批流程 | 课程范围检查 | Teacher登录, approval(medium, 他人课程) | POST /api/v1/ai/approvals/{id}/confirm | http_code=403, audit_events(deny, reason=out_of_course_scope) | 403 + 审计 | APPROVAL,AUTHZ | P0 |
-| APPR-T011 | 审批查询 | 查询待审批列表 | Teacher登录, 有多个pending approvals | GET /api/v1/ai/approvals?status=pending | http_code=200, 返回课程范围内的pending approvals | 200, 列表返回 | APPROVAL | P1 |
-| APPR-T012 | 审批历史 | 查询审批历史 | approval已完成 | GET /api/v1/ai/approvals/{id} | http_code=200, 包含approvals_received列表（时间戳、审批人） | 200, 历史完整 | APPROVAL,AUDIT | P1 |
+| APPR-T011 | 审批查询 | 查询待审批列表 | Teacher登录, 有多个pending approvals | GET /api/v1/ai/approvals?status=pending | N/A（口径冲突：当前实现按 admin/auditor 查询，teacher 返回 403）；替代验证：admin/auditor=200，teacher=403 且有 deny 审计 | N/A（按 Charter 例外） | APPROVAL | P1 |
+| APPR-T012 | 审批历史 | 查询审批历史 | approval已完成 | GET /api/v1/ai/approvals/{id} | N/A（`approvals_received` 聚合未实现且不作为当前交付门槛）；替代验证：详情最小字段集返回 + `approval_read` 审计可追溯 | N/A（按 Charter 例外） | APPROVAL,AUDIT | P1 |
 
 ---
 

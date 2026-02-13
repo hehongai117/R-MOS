@@ -1901,3 +1901,29 @@
   - `DEVELOPMENT_LOG.md`：1875-1903
 - Next Step:
   - 执行白名单 `git add` 与提交，输出 `git show --name-only HEAD` 和 `git diff --name-only HEAD~1 HEAD` 供审查。
+
+- DateTime: 2026-02-13 16:10:05 +0800
+- Task: 验收口径收敛（APPR-T011/APPR-T012 标注 N/A + 替代验证）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '110,150p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/testing/TEST_REPORT.md | sed -n '1,160p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba DEVELOPMENT_LOG.md | sed -n '940,1010p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+- Tests:
+  - 文档收敛任务（仅文档改动），未新增代码/接口行为；按文档变更最小测试集执行一致性自检。
+  - 一致性自检：APPR-T011/T012 在矩阵中均改为 `N/A + Reason + Alternative Verification`，并在 `TEST_REPORT` 补充同口径说明。
+- Result: PASS
+- Risks/Notes:
+  - 本次不改后端实现，仅收敛验收口径；保持既有 teacher/admin/auditor 审批查询语义不变。
+  - `APPR-T012` 的 `approvals_received` 聚合字段仍未实现，按 Charter 例外标注 N/A 并给出替代验证路径。
+- Evidence Line Range:
+  - `docs/specs/ACCEPTANCE_TEST_MATRIX.md`：128-129
+  - `docs/testing/TEST_REPORT.md`：136-153
+  - `DEVELOPMENT_LOG.md`：1905-1929
+- Next Step:
+  - 提交三份文档并输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 供审查。

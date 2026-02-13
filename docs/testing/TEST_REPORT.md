@@ -132,3 +132,22 @@ HTTP/1.1 200 OK
 - 失败处置：
   - RED 阶段首次失败点为 `E2E-T004`（`insufficient_data` 模板无 `citations` 键，触发 KeyError）。
   - 已修复断言为“缺失或空均视为拒绝”（`(result.get("citations") or []) == []`），GREEN 与全量回归均通过。
+
+## APPR 口径收敛（APPR-T011/T012）
+
+- 口径来源：`docs/specs/ACCEPTANCE_TEST_MATRIX.md:128-129`（已按 Charter 例外标注 N/A）
+- 核证依据：`DEVELOPMENT_LOG.md:952-953,978`（已记录口径冲突与当前实现边界）
+
+### APPR-T011（待审批列表）
+
+- N/A 原因：矩阵原口径要求 teacher 查询 pending 返回 200（课程范围），与现有实现“仅 admin/auditor 可查询、teacher 返回 403”冲突。
+- Alternative Verification（替代验证）：
+  - `admin/auditor` 调用 `GET /api/v1/ai/approvals?status=pending` 返回 `200`；
+  - `teacher` 调用同接口返回 `403`（既定语义），并记录 deny 审计事件。
+
+### APPR-T012（审批历史详情）
+
+- N/A 原因：矩阵断言中的 `approvals_received` 聚合字段当前未实现，且不作为本次 Gate-3 交付门槛。
+- Alternative Verification（替代验证）：
+  - `GET /api/v1/ai/approvals/{id}` 返回审批详情最小字段集（`id/trace_id/status/created_by_user_id/decided_by_user_id/decided_at/...`）；
+  - `approval_read` allow 审计可追溯（含真实 `approval_id` 与 `trace_id`）。
