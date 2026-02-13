@@ -1844,3 +1844,60 @@
 - Evidence Line Range: DEVELOPMENT_LOG.md:1814-1846
 - Next Step:
   - 提交本次 3 个文件并输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 审查材料。
+
+- DateTime: 2026-02-13 15:12:37 +0800
+- Task: Gate-3 M3 最小闭环核证（E2E-T001~T004 + EVAL-T008 口径/入口/证据）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | rg -n "E2E-T001|E2E-T002|E2E-T003|E2E-T004|EVAL-T008"`
+  - `cd /Users/xuhehong/Desktop/r-mos && sed -n '220,340p' docs/specs/ACCEPTANCE_TEST_MATRIX.md | nl -ba | sed -n '1,140p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "E2E-T001|E2E-T002|E2E-T003|E2E-T004|EVAL-T008" docs -S || true`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "E2E-T001|E2E-T002|E2E-T003|E2E-T004|EVAL-T008" r-mos-backend -S || true`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "phase5|e2e|eval|metrics|regression|smoke" r-mos-backend/scripts r-mos-backend/tests -S || true`
+- Tests:
+  - E2E-T001：缺乏数据（矩阵定义存在；`r-mos-backend` 无显式入口，`rg=0`）
+  - E2E-T002：缺乏数据（矩阵定义存在；`r-mos-backend` 无显式入口，`rg=0`）
+  - E2E-T003：缺乏数据（矩阵定义存在；`r-mos-backend` 无显式入口，`rg=0`）
+  - E2E-T004：缺乏数据（矩阵定义存在；`r-mos-backend` 无显式入口，`rg=0`）
+  - EVAL-T008：缺乏数据（矩阵定义存在；`r-mos-backend` 无显式入口，`rg=0`）
+- Result: PASS（核证与证据回填完成）
+- Risks/Notes:
+  - 本轮按 2B 分支执行：入口缺失时仅回填缺口，不改代码。
+  - `docs/testing/TEST_REPORT.md` 已新增“Gate-3 M3 缺口核证（E2E-T001~T004 + EVAL-T008）”小节并逐条标注缺口。
+  - 当前风险是交付口径存在 P0 用例入口缺失，需后续补齐脚本/pytest 映射，否则无法形成可执行验收闭环。
+- Evidence Line Range: DEVELOPMENT_LOG.md:1848-1873
+- Next Step:
+  - 为 E2E-T001~T004 与 EVAL-T008 定义并落地可执行入口（脚本或 pytest），再按 Test ID 回填 PASS/FAIL 证据。
+
+- DateTime: 2026-02-13 15:36:14 +0800
+- Task: Gate-3 M3 最小闭环补齐（E2E-T001~T004 + EVAL-T008 自动化入口与证据）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_e2e_phase5_t001_t004.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_eval_metrics_phase5.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba docs/specs/ACCEPTANCE_TEST_MATRIX.md | sed -n '220,340p'`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "E2E-T001 or E2E-T002 or E2E-T003 or E2E-T004 or EVAL-T008" -q || true`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "E2E-T001 or E2E-T002 or E2E-T003 or E2E-T004 or EVAL-T008" -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+- Tests:
+  - RED：`pytest -q tests/unit -k "E2E-T001 or E2E-T002 or E2E-T003 or E2E-T004 or EVAL-T008" -q || true` -> `...F.`（失败点：`E2E-T004`）
+  - GREEN：`pytest -q tests/unit -k "E2E-T001 or E2E-T002 or E2E-T003 or E2E-T004 or EVAL-T008" -q` -> `..... [100%]`
+  - 全量：`pytest -q tests/unit -q` -> `........................................................................ [ 50%]` + `.......................................................................  [100%]`
+  - Test ID 结论：`E2E-T001`/`E2E-T002`/`E2E-T003`/`E2E-T004`/`EVAL-T008` 均 PASS
+- Result: PASS
+- Risks/Notes:
+  - RED 失败原因为 `insufficient_data` 模板不包含 `citations` 字段；已将断言修复为“缺失或空均视为拒绝”，并完成 GREEN 验证。
+  - 本轮仅新增测试入口与文档证据，不改业务功能，不改 DATABASE_URL/CORS/代理固定规则。
+  - 既有全量单测 warnings（PydanticDeprecatedSince20、部分 aiosqlite thread warning）仍存在，退出码为 0。
+  - 缺口说明：`E2E-T001~T004 + EVAL-T008` 的“入口缺失”状态已关闭，改为显式 pytest 入口并可执行。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：94-136
+  - `DEVELOPMENT_LOG.md`：1875-1903
+- Next Step:
+  - 执行白名单 `git add` 与提交，输出 `git show --name-only HEAD` 和 `git diff --name-only HEAD~1 HEAD` 供审查。

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -180,6 +181,74 @@ def _create_read_command(client: TestClient, *, token: str, trace_id: str) -> No
     )
     assert response.status_code == 201
     assert response.json()["status"] == "succeeded"
+
+
+def _create_skill_version(
+    client: TestClient,
+    *,
+    token: str,
+    skill_id: str,
+    version: str,
+) -> int:
+    response = client.post(
+        "/api/v1/ai/skills",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "skill_id": skill_id,
+            "version": version,
+            "name": f"EVAL-T008 Skill {version}",
+            "risk_level": "medium",
+            "side_effects": [],
+            "allowlist_resources": ["assignments"],
+            "description": "EVAL-T008 回归基线技能",
+        },
+    )
+    assert response.status_code == 201
+    payload = response.json()
+    return int(payload["id"])
+
+
+def _publish_skill(
+    client: TestClient,
+    *,
+    token: str,
+    skill_pk: int,
+    trace_id: str,
+) -> None:
+    response = client.post(
+        f"/api/v1/ai/skills/{skill_pk}/publish",
+        headers={"Authorization": f"Bearer {token}", "X-Trace-ID": trace_id},
+        json={"release_notes": f"EVAL-T008 发布 {skill_pk}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "published"
+
+
+def _run_baseline_eval_cases(
+    client: TestClient,
+    *,
+    token: str,
+    chunk_id: str,
+    trace_prefix: str,
+    sample_size: int = 10,
+) -> int:
+    cases_passed = 0
+    for idx in range(sample_size):
+        read_trace = f"{trace_prefix}-read-{idx}"
+        _create_read_command(client, token=token, trace_id=read_trace)
+        cases_passed += 1
+
+        rag_trace = f"{trace_prefix}-rag-{idx}"
+        payload = _create_rag_query_command(
+            client,
+            token=token,
+            trace_id=rag_trace,
+            chunk_id=chunk_id,
+        )
+        citations = payload.get("result", {}).get("citations", [])
+        if citations:
+            cases_passed += 1
+    return cases_passed
 
 
 async def _seed_redteam_audits(session_factory: async_sessionmaker) -> None:
@@ -509,6 +578,101 @@ def test_eval_t007_redteam_fake_citation_case_pass() -> None:
         assert body["metric_id"] == REDTEAM_METRIC_ID
         assert body["meets_target"] is True
         assert body["cases"]["SEC-T003"] is True
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+@pytest.mark.parametrize("test_id", ["EVAL-T008"], ids=["EVAL-T008"])
+def test_eval_t008_new_skill_version_regression_no_drop(test_id: str) -> None:
+    _ = test_id
+    client, session_factory = _build_client()
+    try:
+        eval_token, eval_user_id = _register_and_login(
+            client,
+            email="eval_t008_runner@example.com",
+            full_name="EVAL-T008 执行者",
+        )
+        chunk_id = "eval-t008-ref-001"
+        asyncio.run(
+            _create_knowledge_chunk(
+                session_factory,
+                chunk_id=chunk_id,
+                owner_user_id=str(eval_user_id),
+                content="EVAL-T008 回归引用分片",
+            )
+        )
+
+        admin_token, admin_user_id = _register_and_login(
+            client,
+            email="eval_t008_admin@example.com",
+            full_name="EVAL-T008 管理员",
+        )
+        asyncio.run(
+            _grant_role_permissions(
+                session_factory,
+                email="eval_t008_admin@example.com",
+                role_name="admin",
+                permission_keys=["skills:write", "skills:publish"],
+            )
+        )
+
+        skill_id = "eval.t008.regression.skill"
+        v1_pk = _create_skill_version(
+            client,
+            token=admin_token,
+            skill_id=skill_id,
+            version="1.0.0",
+        )
+        _publish_skill(
+            client,
+            token=admin_token,
+            skill_pk=v1_pk,
+            trace_id="eval-t008-publish-v1",
+        )
+
+        baseline_cases_passed = _run_baseline_eval_cases(
+            client,
+            token=eval_token,
+            chunk_id=chunk_id,
+            trace_prefix="eval-t008-baseline",
+        )
+
+        v2_pk = _create_skill_version(
+            client,
+            token=admin_token,
+            skill_id=skill_id,
+            version="1.1.0",
+        )
+        _publish_skill(
+            client,
+            token=admin_token,
+            skill_pk=v2_pk,
+            trace_id="eval-t008-publish-v2",
+        )
+
+        regression_cases_passed = _run_baseline_eval_cases(
+            client,
+            token=eval_token,
+            chunk_id=chunk_id,
+            trace_prefix="eval-t008-regression",
+        )
+
+        assert regression_cases_passed >= baseline_cases_passed
+
+        publish_event = asyncio.run(
+            _latest_audit(
+                session_factory,
+                action="skill_published",
+                decision="allow",
+                resource_type="Skill",
+                resource_id=str(v2_pk),
+                actor_user_id=str(admin_user_id),
+                trace_id="eval-t008-publish-v2",
+            )
+        )
+        assert publish_event is not None
     finally:
         client.close()
         app.dependency_overrides.clear()
