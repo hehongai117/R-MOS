@@ -1810,3 +1810,37 @@
   - Evidence Line Range: `docs/testing/TEST_REPORT.md:39-74`（Phase5 显式映射）；`DEVELOPMENT_LOG.md:1791-1813`
 - Next Step:
   - 仅提交 `TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md`，输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD`，停止在 push 前。
+
+- DateTime: 2026-02-13 14:42:56 +0800
+- Task: Gate-3 Phase5 EVAL 可执行入口补齐（绑定 EVAL-T001/T002/T003/T005/T006/T007）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_eval_metrics_phase5.py`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Pre-check (Plan/Dependency/TestIDs with file+line):
+  - 验收矩阵口径：`/Users/xuhehong/Desktop/r-mos/docs/specs/ACCEPTANCE_TEST_MATRIX.md:248-254,351-354`（EVAL-T001/T002/T003/T005/T006/T007 阈值）
+  - 已有指标入口：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py:660,724`（read-tool-success-rate / red-team-pass-rate）
+  - 复用红队 seed：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_redteam_batch_j003_api.py:118`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "EVAL-T001|EVAL-T002|EVAL-T003|EVAL-T005|EVAL-T006|EVAL-T007" docs/specs/ACCEPTANCE_TEST_MATRIX.md -n`
+  - `cd /Users/xuhehong/Desktop/r-mos && /Users/xuhehong/Desktop/r-mos/r-mos-backend/.venv/bin/python - << 'PY' ... PY`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && rg -n "read-tool-success-rate|red-team-pass-rate|metrics" app -S`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && rg -n "seed_.*audit|_seed_.*" tests -S`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "eval_metrics_phase5 or EVAL" -q || true`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -k "eval_metrics_phase5 or EVAL" -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit/test_eval_metrics_phase5.py -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+- Tests:
+  - RED：`pytest -q tests/unit -k "eval_metrics_phase5 or EVAL" -q || true`：基线阶段无目标用例结果（文件创建前）。
+  - GREEN：`pytest -q tests/unit -k "eval_metrics_phase5 or EVAL" -q`：PASS（`...... [100%]`）
+  - `pytest -q tests/unit/test_eval_metrics_phase5.py -q`：PASS（6 passed，对应 EVAL-T001/T002/T003/T005/T006/T007）
+  - `pytest -q tests/unit -q`：PASS（全量 unit 通过）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅补齐测试入口与文档证据，不改业务接口与权限/CORS/DATABASE_URL 固定约束。
+  - 全量单测存在既有 warnings（PydanticDeprecatedSince20、`PytestUnhandledThreadExceptionWarning`），但退出码为 0。
+  - `docs/testing/TEST_REPORT.md` 已将 EVAL-T001/T002/T003/T005/T006/T007 从“缺乏数据”更新为“可执行 + PASS”。
+- Evidence Line Range: DEVELOPMENT_LOG.md:1814-1846
+- Next Step:
+  - 提交本次 3 个文件并输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 审查材料。
