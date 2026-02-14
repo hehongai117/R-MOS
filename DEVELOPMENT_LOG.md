@@ -1927,3 +1927,39 @@
   - `DEVELOPMENT_LOG.md`：1905-1929
 - Next Step:
   - 提交三份文档并输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 供审查。
+
+- DateTime: 2026-02-14 19:11:54 +0800
+- Task: 验收补证（APPR-T011/T012 替代验证运行证据，curl 可复现）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 18080`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i -H 'Content-Type: application/json' -X POST http://127.0.0.1:18080/api/v1/auth/register -d '{...}'`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i -H 'Content-Type: application/json' -X POST http://127.0.0.1:18080/api/v1/auth/login -d '{...}'`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && python - << 'PY' ... PY`（赋权：admin/auditor/teacher）
+  - `curl --noproxy 127.0.0.1,localhost -sS -i -H "Authorization: Bearer <TEACHER_TOKEN>" -H 'Content-Type: application/json' -X POST http://127.0.0.1:18080/api/v1/ai/commands -d '{\"intent\":\"create_sop_draft\",...}'`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals?status=pending" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals?status=pending" -H "Authorization: Bearer <AUDITOR_TOKEN>"`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals?status=pending" -H "Authorization: Bearer <TEACHER_TOKEN>"`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals/1" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/audit/events?trace_id=a16e099b&limit=20" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/audit/events?trace_id=8b6e4f72&limit=20" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+- Tests:
+  - APPR-T011（替代验证）：
+    - admin 查询 pending：PASS（`HTTP 200`，`x-trace-id=52b872d0`，`count=1`）
+    - auditor 查询 pending：PASS（`HTTP 200`，`x-trace-id=c5fbd513`，`count=1`）
+    - teacher 查询 pending：PASS（`HTTP 403`，`x-trace-id=a16e099b`，`AUTHZ_002`，`missing_role:admin_or_auditor`）
+  - APPR-T012（替代验证）：
+    - 审批详情最小字段集：PASS（`HTTP 200`，`id=1`，`trace_id=8b6e4f72`，字段集齐全）
+    - 审计可追溯：PASS（`trace_id=a16e099b` 命中 `permission_denied`；`trace_id=8b6e4f72` 命中 `approval_read`）
+- Result: PASS
+- Risks/Notes:
+  - 本轮仅补证与文档回填，不改业务代码、不改 CORS/代理固定规则、`DATABASE_URL` 固定不变。
+  - 运行中存在间歇性 `curl: (7) Failed to connect` 现象，采用单命令重试后完成取证；最终证据均以成功响应为准并已落盘。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：155-187
+  - `DEVELOPMENT_LOG.md`：1931-1965
+- Next Step:
+  - 提交 `docs/testing/TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md`，输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 供审查。

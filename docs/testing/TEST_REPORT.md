@@ -151,3 +151,37 @@ HTTP/1.1 200 OK
 - Alternative Verification（替代验证）：
   - `GET /api/v1/ai/approvals/{id}` 返回审批详情最小字段集（`id/trace_id/status/created_by_user_id/decided_by_user_id/decided_at/...`）；
   - `approval_read` allow 审计可追溯（含真实 `approval_id` 与 `trace_id`）。
+
+### APPR-T011/T012 运行证据（curl 可复现）
+
+- 执行时间：2026-02-14 19:09~19:11 +0800
+- 服务与环境：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend`
+  - `source .venv/bin/activate`
+  - `export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`
+  - `uvicorn main:app --host 127.0.0.1 --port 18080`
+- Token 获取：通过 `POST /api/v1/auth/login` 获取 `admin/auditor/teacher` Bearer token（本报告隐去 token 明文）。
+
+- APPR-T011（替代验证：列表查询口径）
+  - 命令（admin 200）：
+    - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals?status=pending" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - 关键输出摘要：`HTTP/1.1 200 OK`，`x-trace-id: 52b872d0`，返回 `count=1` 且 `items[0].status="pending"`。
+  - 命令（auditor 200）：
+    - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals?status=pending" -H "Authorization: Bearer <AUDITOR_TOKEN>"`
+  - 关键输出摘要：`HTTP/1.1 200 OK`，`x-trace-id: c5fbd513`，返回 `count=1`。
+  - 命令（teacher 403）：
+    - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals?status=pending" -H "Authorization: Bearer <TEACHER_TOKEN>"`
+  - 关键输出摘要：`HTTP/1.1 403 Forbidden`，`x-trace-id: a16e099b`，`error_type=RoleRequiredError`，`details.code=AUTHZ_002`，`reason=missing_role:admin_or_auditor`。
+  - 结论：PASS（满足替代验证语义：admin/auditor=200，teacher=403）
+
+- APPR-T012（替代验证：详情最小字段集 + 可追溯审计）
+  - 命令（详情最小字段集）：
+    - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/ai/approvals/1" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - 关键输出摘要：`HTTP/1.1 200 OK`，`x-trace-id: 9f96db4a`，返回字段包含 `id/trace_id/command_id/tool_call_id/status/reason/created_by_user_id/decided_by_user_id/decided_at/created_at/updated_at`，其中 `trace_id=8b6e4f72`。
+  - 命令（deny 审计追溯）：
+    - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/audit/events?trace_id=a16e099b&limit=20" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - 关键输出摘要：`HTTP/1.1 200 OK`，命中 `permission_denied` 事件（`resource_id="/api/v1/ai/approvals"`，`reason=missing_role:admin_or_auditor`，`actor_user_id=8`）。
+  - 命令（allow 审计追溯）：
+    - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/audit/events?trace_id=8b6e4f72&limit=20" -H "Authorization: Bearer <ADMIN_TOKEN>"`
+  - 关键输出摘要：`HTTP/1.1 200 OK`，命中 `approval_read` allow 事件（`resource_type=Approval`，`resource_id=1`，`trace_id=8b6e4f72`）并可关联 `approval_created`。
+  - 结论：PASS（最小字段集可读 + deny/allow 审计链可追溯）
