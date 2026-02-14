@@ -5,6 +5,8 @@
 - Gate-3 状态：**完成（冻结）**
 - 冻结日期：2026-02-14
 - 证据基线 HEAD（生成时）：`142bd5b3d19cb25478736468464e816bb245704c`
+- Final Verification Batch commit：`e95d4a7f85a5a86ff3be43ff8b649651af04c27a`
+- Final Verification 证据行号：`docs/testing/TEST_REPORT.md:222-258`，`DEVELOPMENT_LOG.md:1992-2023`
 - 覆盖范围：J-001/J-002/J-003、M3 Phase5（E2E+EVAL）、APPR 口径收敛、前端最小回归
 - 说明：本清单仅做“可复现/可签收”证据索引，不新增任何业务需求或验收口径。
 
@@ -57,6 +59,7 @@
 | Phase3 regression | `bash scripts/run_phase3_regression.sh` | PASS | `DEVELOPMENT_LOG.md:1779` | `38fd9df` |
 | 前端 build | `npm run build` | PASS（含 chunk 告警） | `docs/testing/TEST_REPORT.md:199-207`, `DEVELOPMENT_LOG.md:1978,1982` | `142bd5b` |
 | 前端 test | `npm test` | PASS | `docs/testing/TEST_REPORT.md:211-220`, `DEVELOPMENT_LOG.md:1979` | `142bd5b` |
+| Final Verification Batch | `pytest -q tests/unit -q` + `./scripts/run_gate2_smoke.sh` + `bash scripts/run_phase3_regression.sh` + `npm run build` + `npm test` | PASS | `docs/testing/TEST_REPORT.md:222-258`, `DEVELOPMENT_LOG.md:1992-2023` | `e95d4a7` |
 
 ## 5) 冻结结论
 
