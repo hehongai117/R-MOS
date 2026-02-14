@@ -1963,3 +1963,27 @@
   - `DEVELOPMENT_LOG.md`：1931-1965
 - Next Step:
   - 提交 `docs/testing/TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md`，输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 供审查。
+
+- DateTime: 2026-02-14 19:37:30 +0800
+- Task: 验收补证（前端最小回归 build/test）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+- Tests:
+  - `npm run build`：PASS（`vite build` 成功，`built in 6.46s`，`real 8.84`）
+  - `npm test`：PASS（存在 `test` 脚本；`P3/P4/Decision Engine/SOP Fatal` 全部通过，失败数均为 0，`real 0.18`）
+- Result: PASS
+- Risks/Notes:
+  - build 输出存在 chunk 体积告警（`Some chunks are larger than 500 kB`），本次仅记录证据，不调整前端打包策略。
+  - 本轮未出现失败；因此 Failure Handling 为“无失败处置动作”。
+  - 本轮仅文档回填，不改后端、前端业务代码，不改固定配置（`DATABASE_URL`/CORS/代理）。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：189-220
+  - `DEVELOPMENT_LOG.md`：1967-1989
+- Next Step:
+  - 提交本轮文档变更并输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 审查材料。

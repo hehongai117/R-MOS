@@ -185,3 +185,36 @@ HTTP/1.1 200 OK
     - `curl --noproxy 127.0.0.1,localhost -sS -i "http://127.0.0.1:18080/api/v1/audit/events?trace_id=8b6e4f72&limit=20" -H "Authorization: Bearer <ADMIN_TOKEN>"`
   - 关键输出摘要：`HTTP/1.1 200 OK`，命中 `approval_read` allow 事件（`resource_type=Approval`，`resource_id=1`，`trace_id=8b6e4f72`）并可关联 `approval_created`。
   - 结论：PASS（最小字段集可读 + deny/allow 审计链可追溯）
+
+## 前端最小回归证据（build/test）
+
+- 执行时间：2026-02-14 19:14 +0800
+- 执行目录：`/Users/xuhehong/Desktop/r-mos/r-mos-frontend`
+- 运行命令：
+  - `/usr/bin/time -p npm run build`
+  - `/usr/bin/time -p npm test`
+
+### build
+
+- 命令：`npm run build`
+- 关键输出摘要：
+  - `vite v5.4.21 building for production...`
+  - `✓ 3734 modules transformed.`
+  - `dist/assets/index-DFQqhqL7.js 2,367.14 kB | gzip: 701.72 kB`
+  - `✓ built in 6.46s`
+  - `real 8.84`
+- 结论：PASS
+- 备注：存在 chunk 体积告警（`Some chunks are larger than 500 kB`），不影响本次 build 成功退出（exit code=0）。
+
+### test
+
+- 命令：`npm test`
+- 关键输出摘要：
+  - 已检测到 `test` 脚本入口：`node scripts/run-adjudication-tests.mjs`
+  - `P3 Core Logic Tests`：`小结: 3 | 通过 3 | 失败 0`
+  - `P4 Mode Tests`：`小结: 4 | 通过 4 | 失败 0`
+  - `P4 Exam Tests`：`小结: 4 | 通过 4 | 失败 0`
+  - `Decision Engine Slice Tests`：`小结: 5 | 通过 5 | 失败 0`
+  - `SOP Executor Fatal Test`：`小结: 1 | 通过 1 | 失败 0`
+  - `real 0.18`
+- 结论：PASS
