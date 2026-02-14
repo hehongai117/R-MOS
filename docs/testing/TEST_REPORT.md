@@ -7,10 +7,10 @@
 <!-- PHASE3_STEP4_START -->
 ### Phase3 Step4 单命令回归证据
 
-- 运行时间：2026-02-13T06:14:57.974908+00:00
-- 运行标识：a6a4396645f34d7e96fcfdfc305f1ea6
+- 运行时间：2026-02-14T12:25:35.959433+00:00
+- 运行标识：0f080eaa1ca94c0194bbf21cd2e33120
 - 后端端口：`8000`
-- attempt_id：error=132 skip=133 slow=134
+- attempt_id：error=135 skip=136 slow=137
 
 #### 最新一次运行
 
@@ -19,19 +19,19 @@
 HTTP/1.1 200 OK
 ```
 
-**diagnosis（attempt_id=132）**
+**diagnosis（attempt_id=135）**
 ```
-{"attemptId": 132, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
-```
-
-**diagnosis（attempt_id=133）**
-```
-{"attemptId": 133, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+{"attemptId": 135, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
 ```
 
-**diagnosis（attempt_id=134）**
+**diagnosis（attempt_id=136）**
 ```
-{"attemptId": 134, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
+{"attemptId": 136, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=137）**
+```
+{"attemptId": 137, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
 ```
 <!-- PHASE3_STEP4_END -->
 
@@ -218,3 +218,41 @@ HTTP/1.1 200 OK
   - `SOP Executor Fatal Test`：`小结: 1 | 通过 1 | 失败 0`
   - `real 0.18`
 - 结论：PASS
+
+## Final Verification Batch（冻结基线完整测试）
+
+- 执行时间：2026-02-14 19:51~20:00 +0800
+- 冻结基线：`537977e`（`验收：冻结 Gate-3 最终交付清单与证据索引`）
+- 范围控制：`docs/testing/TEST_PLAN.md` 在回归中被脚本误触发修改，已执行 `git checkout -- docs/testing/TEST_PLAN.md` 回滚；本批次仅保留 `TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md` 变更。
+
+### 命令与结果摘要
+
+- 后端 unit 全量
+  - 命令：`pytest -q tests/unit -q`
+  - 关键输出摘要：提权重跑后 `PYTEST_EXIT=0`，进度到 `[100%]`，`real 19.59`。
+  - 结论：PASS
+
+- Gate2 smoke
+  - 命令：`./scripts/run_gate2_smoke.sh`
+  - 关键输出摘要：末尾 `全部通过：PASS`，`GATE2_EXIT=0`，`real 2.62`。
+  - 结论：PASS
+
+- Phase3 regression
+  - 命令：`bash scripts/run_phase3_regression.sh`
+  - 关键输出摘要：`PHASE3_EXIT=0`，`OPENAPI_STATUS=HTTP/1.1 200 OK`，`attempt_id=135/136/137`（error/skip/slow），`real 1.87`。
+  - 结论：PASS
+
+- 前端 build
+  - 命令：`npm run build`
+  - 关键输出摘要：`✓ built in 6.67s`，`FRONT_BUILD_EXIT=0`，`real 9.11`；存在 chunk 体积告警（>500kB）。
+  - 结论：PASS
+
+- 前端 test
+  - 命令：`npm test`
+  - 关键输出摘要：`P3/P4/Decision Engine/SOP Fatal` 分组失败数均为 0，`FRONT_TEST_EXIT=0`，`real 0.16`。
+  - 结论：PASS
+
+### 失败处置（Charter）
+
+- 后端 unit 首次在沙箱内失败：`PermissionError: [Errno 1] Operation not permitted`（`localhost:5432`），按既定流程提权重跑并通过。
+- Phase3 regression 首次在沙箱内失败：端口绑定 `EPERM`（`ERROR_CODE=BACKEND_START_FAILED`），按既定流程提权重跑并通过。

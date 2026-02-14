@@ -1987,3 +1987,37 @@
   - `DEVELOPMENT_LOG.md`：1967-1989
 - Next Step:
   - 提交本轮文档变更并输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 审查材料。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=135 skip=136 slow=137
+
+- DateTime: 2026-02-14 21:45:04 +0800
+- Task: Final Verification Batch（冻结基线完整测试）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && git checkout -- docs/testing/TEST_PLAN.md`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && /usr/bin/time -p ./scripts/run_gate2_smoke.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && /usr/bin/time -p bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+- Tests:
+  - 后端 unit：PASS（提权重跑后 `PYTEST_EXIT=0`，`real 19.59`）
+  - gate2 smoke：PASS（`全部通过：PASS`，`GATE2_EXIT=0`，`real 2.62`）
+  - phase3 regression：PASS（提权重跑后 `PHASE3_EXIT=0`，`OPENAPI_STATUS=HTTP/1.1 200 OK`，`attempt_id=135/136/137`，`real 1.87`）
+  - 前端 build：PASS（`FRONT_BUILD_EXIT=0`，`built in 6.67s`，`real 9.11`）
+  - 前端 test：PASS（`FRONT_TEST_EXIT=0`，分组失败数均为 0，`real 0.16`）
+- Result: PASS
+- Risks/Notes:
+  - `docs/testing/TEST_PLAN.md` 在 phase3 脚本执行后被动变更，已按裁决执行 `git checkout -- docs/testing/TEST_PLAN.md` 回滚，不纳入提交。
+  - 后端 unit 与 phase3 回归首轮失败均由沙箱环境限制引起（DB 连接权限/端口绑定 EPERM），提权重跑后通过。
+  - 本轮仅补充 Final Verification Batch 证据，不改业务代码与固定配置。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：222-258
+  - `DEVELOPMENT_LOG.md`：1992-2023
+- Next Step:
+  - 提交 `docs/testing/TEST_REPORT.md` 与 `DEVELOPMENT_LOG.md`，输出 `git show --name-only HEAD` 与 `git diff --name-only HEAD~1 HEAD` 供审查。
