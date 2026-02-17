@@ -2046,3 +2046,223 @@
   - `DEVELOPMENT_LOG.md`:2025-2048
 - Next Step:
   - 提交上述两份文档，并在后续执行中按该规划逐项补“执行批次记录 + 可用性判定 + 缺陷闭环”。
+
+- DateTime: 2026-02-14 22:49:24 +0800
+- Task: Step-1 基线锁定（HEAD / 工作区状态 / 执行范围确认）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git rev-parse --abbrev-ref HEAD`
+  - `cd /Users/xuhehong/Desktop/r-mos && git rev-parse HEAD`
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+- Tests:
+  - N/A（基线锁定步骤，仅采集环境与版本事实）
+- Result: PASS
+- Failure Handling:
+  - 无失败；未发现已跟踪文件改动。
+- Evidence Line Range:
+  - `DEVELOPMENT_LOG.md`：本条 Step-1 记录段落
+- Risks/Notes:
+  - 当前基线：`branch=main`，`HEAD=5c0f07ba5337025f3af5a00ac90e499e4ea611c6`。
+  - 工作区仅有 2 个未跟踪离线包：`gate3_delivery_docs_and_evidence.zip`、`gate3_delivery_repo_HEAD.tar.gz`。
+  - 本轮计划改动范围先锁定为：`docs/testing/TEST_REPORT.md`、`DEVELOPMENT_LOG.md`（必要时再进入清理与交付产物文件）。
+- Next Step:
+  - 执行 Step-2（Batch-1）：后端 unit、gate2 smoke、phase3 regression、前端 build/test，并记录退出码/关键输出/耗时。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=138 skip=139 slow=140
+
+- DateTime: 2026-02-15 09:17:20 +0800
+- Task: Step-2 全集回归 Batch-1（后端 unit + gate2 smoke + phase3 regression + 前端 build/test）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p ./scripts/run_gate2_smoke.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm test`
+- Tests:
+  - 后端 unit：首轮 `EXIT=1`（`PermissionError: [Errno 1] Operation not permitted`）；提权重跑 `EXIT=0`，`[100%]`，`real 20.15`
+  - gate2 smoke：`EXIT=0`，`全部通过：PASS`，`real 2.80`
+  - phase3 regression：首轮 `EXIT=10`（`ERROR_CODE=BACKEND_START_FAILED`，端口绑定 `EPERM`）；提权重跑 `EXIT=0`，`OPENAPI_STATUS=200`，`attempt_id=138/139/140`，`real 1.93`
+  - 前端 build：`EXIT=0`，`✓ built in 7.42s`，`real 10.02`
+  - 前端 test：`EXIT=0`，`P3/P4/Decision Engine/SOP Fatal` 分组失败数均为 `0`，`real 0.24`
+- Result: PASS
+- Failure Handling:
+  - 失败仅来自沙箱执行限制（DB 连接与端口绑定）；按流程提权重跑后全部通过。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：Step-2｜Batch-1 全集回归（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-2 记录段落
+- Risks/Notes:
+  - 仍存在历史 warning（Pydantic/utcnow/aiosqlite thread warning），不影响退出码。
+  - 未修改 `DATABASE_URL`、CORS、代理固定规则。
+- Next Step:
+  - 执行 Step-3 功能可用性核证，输出“可用/不可用”判定表。
+
+- DateTime: 2026-02-15 09:18:05 +0800
+- Task: Step-3 功能可用性核证（happy path + 负路径 + 审计追溯）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit/test_auth_api.py -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit/test_authz_guard_api.py tests/unit/test_teaching_api.py tests/unit/test_deny_audit_entrypoint_gate.py -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit/test_skill_governance_api.py tests/unit/test_skill_registry_migration_gate.py -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit/test_approval_api.py tests/unit/test_approval_query_api.py tests/unit/test_approval_read_api.py tests/unit/test_tool_execution_after_approval_api.py -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit/test_ai_commands_api.py tests/unit/test_tool_security_guard_api.py tests/unit/test_redteam_batch_j003_api.py -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit/test_audit_events_api.py tests/unit/test_e2e_phase5_t001_t004.py tests/unit/test_eval_metrics_phase5.py -q`
+- Tests:
+  - AUTH 组：`EXIT=0`，`......... [100%]`，`real 1.76`
+  - AUTHZ/OBJ/AUDIT 组：`EXIT=0`，`.......................... [100%]`，`real 5.07`
+  - SKILL 组：`EXIT=0`，`......... [100%]`，`real 1.98`
+  - APPROVAL 组：`EXIT=0`，`................. [100%]`，`real 3.45`
+  - RAG/SEC 组：`EXIT=0`，`.................... [100%]`，`real 3.14`
+  - E2E/EVAL/AUDIT 组：`EXIT=0`，`................ [100%]`，`real 4.78`
+- Result: PASS
+- Failure Handling:
+  - 无失败；各功能组均一次通过。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：Step-3｜功能可用性核证（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-3 记录段落
+- Risks/Notes:
+  - 本轮为“功能可用性核证”执行，不涉及业务代码改动。
+  - 部分 warning 持续存在（主要为 `datetime.utcnow()` 与 `PydanticDeprecatedSince20`）。
+- Next Step:
+  - 执行 Step-4 缺陷收敛：按 P0/P1/P2 分级并先处理 P0。
+
+- DateTime: 2026-02-15 09:20:10 +0800
+- Task: Step-4 缺陷收敛（P0/P1/P2 分级与处置）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "EXIT_CODE=1|EXIT_CODE=10|PermissionError|BACKEND_START_FAILED" /tmp/rmos_batch1_backend_unit.log /tmp/rmos_batch1_phase3_regression.log -S`
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "Step-2｜Batch-1|Step-3｜功能可用性" docs/testing/TEST_REPORT.md`
+- Tests:
+  - 缺陷池分级：`P0=0`、`P1=0`、`P2=2`
+  - P2-1：后端 unit 首轮失败（沙箱 DB 连接受限）已通过提权重跑关闭
+  - P2-2：phase3 首轮失败（沙箱端口绑定 EPERM）已通过提权重跑关闭
+- Result: PASS
+- Failure Handling:
+  - 无新增失败；仅对已识别环境噪声缺陷完成闭环记录。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：Step-4｜缺陷收敛（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-4 记录段落
+- Risks/Notes:
+  - 本步无业务代码缺陷，无需代码修复提交。
+  - 后续 Step-5 以 Batch-2 复跑验证“无回归”。
+- Next Step:
+  - 执行 Step-5：重复 Step-2 全量命令并与 Batch-1 对比。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=141 skip=142 slow=143
+
+- DateTime: 2026-02-15 09:25:05 +0800
+- Task: Step-5 全集回归 Batch-2（重复 Step-2 并与 Batch-1 对比）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p pytest -q tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p ./scripts/run_gate2_smoke.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && /usr/bin/time -p bash scripts/run_phase3_regression.sh`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && /usr/bin/time -p npm test`
+- Tests:
+  - 后端 unit：`EXIT=0`，`[100%]`，`real 19.46`
+  - gate2 smoke：`EXIT=0`，`全部通过：PASS`，`real 2.74`
+  - phase3 regression：`EXIT=0`，`OPENAPI_STATUS=200`，`attempt_id=141/142/143`，`real 3.44`
+  - 前端 build：`EXIT=0`，`✓ built in 11.33s`，`real 15.75`
+  - 前端 test：`EXIT=0`，分组失败数均为 0，`real 0.36`
+  - Batch 对比结论：无功能回归（仅耗时波动）
+- Result: PASS
+- Failure Handling:
+  - 无失败；本批次命令全部一次通过。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：Step-5｜Batch-2 全集回归与 Batch-1 对比（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-5 记录段落
+- Risks/Notes:
+  - 性能侧轻微波动：`phase3` 与 `frontend build` 耗时较 Batch-1 上升。
+  - 退出码与业务断言保持稳定，无回归阻断项。
+- Next Step:
+  - 执行 Step-6 瘦身治理（清理临时产物、校验 .gitignore）。
+
+- DateTime: 2026-02-15 09:27:20 +0800
+- Task: Step-6 瘦身治理（清理废弃产物 + 规范 .gitignore）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/.gitignore`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git checkout -- docs/testing/TEST_PLAN.md`
+  - `cd /Users/xuhehong/Desktop/r-mos && rm -f gate3_delivery_repo_HEAD.tar.gz gate3_delivery_docs_and_evidence.zip`
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+- Tests:
+  - 清理后范围检查：PASS（仅 `.gitignore`、`docs/testing/TEST_REPORT.md`、`DEVELOPMENT_LOG.md` 为改动文件）
+  - 误删检查：PASS（仅删除旧离线包，不影响源码/测试脚本）
+- Result: PASS
+- Failure Handling:
+  - 无失败。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：Step-6｜瘦身治理（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-6 记录段落
+- Risks/Notes:
+  - 旧离线包已删除，Step-7 将重新生成新包并输出 SHA-256。
+  - `.gitignore` 已补交付包忽略规则，降低误纳入风险。
+- Next Step:
+  - 执行 Step-7 冻结交付（更新索引、生成离线包、生成 SHA-256）。
+
+- DateTime: 2026-02-17 09:36:20 +0800
+- Task: Step-7 冻结交付（更新冻结索引 + 生成离线包 + 生成 SHA-256）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/FINAL_DELIVERY_INDEX_GATE3.md`
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+  - `/Users/xuhehong/Desktop/r-mos/gate3_delivery_repo_HEAD.tar.gz`
+  - `/Users/xuhehong/Desktop/r-mos/gate3_delivery_docs_and_evidence.zip`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git ls-files -z | tar --null -T - -czf gate3_delivery_repo_HEAD.tar.gz`
+  - `cd /Users/xuhehong/Desktop/r-mos && zip -q -r gate3_delivery_docs_and_evidence.zip AGENTS.md DEVELOPMENT_LOG.md .gitignore docs/testing/ACCEPTANCE_CHARTER.md docs/testing/TEST_REPORT.md docs/testing/TEST_PLAN.md docs/testing/FINAL_DELIVERY_INDEX_GATE3.md docs/specs/ACCEPTANCE_TEST_MATRIX.md docs/design/PROJECT_MASTER_PLAN_001.md docs/design/DEV_PLAN_001.md`
+  - `cd /Users/xuhehong/Desktop/r-mos && gzip -t gate3_delivery_repo_HEAD.tar.gz`
+  - `cd /Users/xuhehong/Desktop/r-mos && unzip -tq gate3_delivery_docs_and_evidence.zip`
+  - `cd /Users/xuhehong/Desktop/r-mos && shasum -a 256 gate3_delivery_repo_HEAD.tar.gz gate3_delivery_docs_and_evidence.zip`
+- Tests:
+  - 仓库包生成：PASS（`EXIT=0`，`DURATION_SEC=40`，`458MB`）
+  - 文档证据包生成：PASS（`EXIT=0`，`88KB`）
+  - 完整性校验：PASS（`gzip -t`、`unzip -tq` 均通过）
+  - SHA-256：
+    - `026fd19347bf6358110a0ea4fe07f1699c3b0b677eeb3b72fa8be8c3a31f9e02  gate3_delivery_repo_HEAD.tar.gz`
+    - `2e0ffdb2c421c1f3cd08a343eda8b23f74128f1f70932769016d955ad241a6fc  gate3_delivery_docs_and_evidence.zip`
+- Result: PASS
+- Failure Handling:
+  - 首次打包过程被中断导致仓库包损坏（`gzip: unexpected end of file`）；已删除损坏包并按 `git ls-files` 口径重建，复检通过。
+- Evidence Line Range:
+  - `docs/testing/FINAL_DELIVERY_INDEX_GATE3.md`：Step-7 冻结刷新（本次新增段）
+  - `docs/testing/TEST_REPORT.md`：Step-7｜冻结交付与校验（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-7 记录段落
+- Risks/Notes:
+  - 仓库快照包采用 tracked-file 口径，避免把本地缓存/环境目录打入交付件。
+- Next Step:
+  - 执行 Step-8：输出 Go/No-Go、残余风险、回滚方案签收稿。
+
+- DateTime: 2026-02-17 09:38:10 +0800
+- Task: Step-8 签收准备（Go/No-Go + 残余风险 + 回滚方案）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --porcelain`
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only`
+- Tests:
+  - 签收裁决自检：PASS（Batch-1/Batch-2/Step-3/Step-4/Step-7 证据链齐全）
+  - 回滚方案可执行性检查：PASS（命令口径与 RUNBOOK/既有脚本一致）
+- Result: PASS
+- Failure Handling:
+  - 无失败。
+- Evidence Line Range:
+  - `docs/testing/TEST_REPORT.md`：Step-8｜签收准备（签收汇报稿）（本次新增段）
+  - `DEVELOPMENT_LOG.md`：本条 Step-8 记录段落
+- Risks/Notes:
+  - 残余风险均为 P2（历史 warning 与耗时波动），不阻断签收。
+- Next Step:
+  - 输出最终变更清单、执行命令、测试结论；如需落库提交，执行白名单 `git add` + commit。

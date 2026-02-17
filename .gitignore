@@ -71,3 +71,7 @@ logs/
 上传/
 PROJECT_DIRECTORY_FULL.txt
 *（R-MOS）.md
+
+# delivery bundles (re-generated in freeze step)
+/gate3_delivery_*.zip
+/gate3_delivery_*.tar.gz

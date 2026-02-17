@@ -7,10 +7,10 @@
 <!-- PHASE3_STEP4_START -->
 ### Phase3 Step4 单命令回归证据
 
-- 运行时间：2026-02-14T12:25:35.959433+00:00
-- 运行标识：0f080eaa1ca94c0194bbf21cd2e33120
+- 运行时间：2026-02-17T01:21:41.659852+00:00
+- 运行标识：81b9ef55c9ff44c5b7fd04c7f3eefbd2
 - 后端端口：`8000`
-- attempt_id：error=135 skip=136 slow=137
+- attempt_id：error=141 skip=142 slow=143
 
 #### 最新一次运行
 
@@ -19,19 +19,19 @@
 HTTP/1.1 200 OK
 ```
 
-**diagnosis（attempt_id=135）**
+**diagnosis（attempt_id=141）**
 ```
-{"attemptId": 135, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
-```
-
-**diagnosis（attempt_id=136）**
-```
-{"attemptId": 136, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+{"attemptId": 141, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
 ```
 
-**diagnosis（attempt_id=137）**
+**diagnosis（attempt_id=142）**
 ```
-{"attemptId": 137, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
+{"attemptId": 142, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=143）**
+```
+{"attemptId": 143, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
 ```
 <!-- PHASE3_STEP4_END -->
 
@@ -256,3 +256,174 @@ HTTP/1.1 200 OK
 
 - 后端 unit 首次在沙箱内失败：`PermissionError: [Errno 1] Operation not permitted`（`localhost:5432`），按既定流程提权重跑并通过。
 - Phase3 regression 首次在沙箱内失败：端口绑定 `EPERM`（`ERROR_CODE=BACKEND_START_FAILED`），按既定流程提权重跑并通过。
+
+## Step-2｜Batch-1 全集回归（2026-02-15）
+
+- 执行时间：2026-02-14 22:52 ~ 2026-02-15 09:07 +0800
+- 执行目标：按统一口径执行后端 unit、Gate2 smoke、Phase3 regression、前端 build/test。
+- 固定约束：`.venv`、`DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`、未修改 CORS/代理规则。
+
+### 命令结果（退出码 + 关键输出 + 耗时）
+
+- 后端 unit（首轮沙箱）
+  - 命令：`pytest -q tests/unit -q`
+  - 退出码：`1`
+  - 关键输出：`PermissionError: [Errno 1] Operation not permitted`（连接 `localhost:5432`）
+  - 耗时：`DURATION_SEC=21`（`real 20.71`）
+- 后端 unit（提权重跑）
+  - 命令：`pytest -q tests/unit -q`
+  - 退出码：`0`
+  - 关键输出：`.......................................................................  [100%]`
+  - 耗时：`DURATION_SEC=21`（`real 20.15`）
+
+- Gate2 smoke
+  - 命令：`./scripts/run_gate2_smoke.sh`
+  - 退出码：`0`
+  - 关键输出：`全部通过：PASS`
+  - 耗时：`DURATION_SEC=3`（`real 2.80`）
+
+- Phase3 regression（首轮沙箱）
+  - 命令：`bash scripts/run_phase3_regression.sh`
+  - 退出码：`10`
+  - 关键输出：`ERROR_CODE=BACKEND_START_FAILED`，端口绑定 `EPERM`
+  - 耗时：`DURATION_SEC=3`（`real 3.19`）
+- Phase3 regression（提权重跑）
+  - 命令：`bash scripts/run_phase3_regression.sh`
+  - 退出码：`0`
+  - 关键输出：`OPENAPI_STATUS=HTTP/1.1 200 OK`，`attempt_id=138/139/140`
+  - 耗时：`DURATION_SEC=2`（`real 1.93`）
+
+- 前端 build
+  - 命令：`npm run build`
+  - 退出码：`0`
+  - 关键输出：`✓ built in 7.42s`（含 chunk>500kB 告警）
+  - 耗时：`DURATION_SEC=10`（`real 10.02`）
+
+- 前端 test
+  - 命令：`npm test`
+  - 退出码：`0`
+  - 关键输出：`P3/P4/Decision Engine/SOP Fatal` 分组失败数均为 `0`
+  - 耗时：`DURATION_SEC=0`（`real 0.24`）
+
+### Batch-1 结论
+
+- 最终结论：PASS（全部命令在有效执行环境下通过）
+- 失败处置：仅存在沙箱限制导致的首轮失败，提权重跑后全部恢复为 PASS。
+
+## Step-3｜功能可用性核证（2026-02-15）
+
+- 执行时间：2026-02-15 09:02 ~ 09:15 +0800
+- 判定口径：`主路径 PASS + 安全语义 PASS + 审计追溯 PASS + Test ID 证据完整`。
+
+| 功能域 | 覆盖 Test IDs（主） | 执行入口 | 主路径 | 负路径 | 审计追溯 | 结论 |
+|---|---|---|---|---|---|---|
+| AUTH 认证会话 | AUTH-T001~T009 | `pytest -q tests/unit/test_auth_api.py -q` | PASS (`......... [100%]`) | PASS（重复邮箱/弱密码/错密/撤销 token） | PASS（鉴权失败路径可追溯，trace 与错误码稳定） | 可用 |
+| AUTHZ + OBJ + AUDIT 基线 | AUTHZ-T001~T007, OBJ-T001~T009, AUDIT-T001/T006 | `pytest -q tests/unit/test_authz_guard_api.py tests/unit/test_teaching_api.py tests/unit/test_deny_audit_entrypoint_gate.py -q` | PASS (`.......................... [100%]`) | PASS（READ 越权 404、WRITE 越权 403） | PASS（deny 事件含真实 `resource_id`） | 可用 |
+| SKILL 治理 | SKILL-T001~T010 | `pytest -q tests/unit/test_skill_governance_api.py tests/unit/test_skill_registry_migration_gate.py -q` | PASS (`......... [100%]`) | PASS（RISK-001/002/critical 门禁拒绝） | PASS（发布/拒绝审计链完整） | 可用 |
+| APPROVAL 审批链 | APPR-T001~T010（含 T011/T012 替代验证入口） | `pytest -q tests/unit/test_approval_api.py tests/unit/test_approval_query_api.py tests/unit/test_approval_read_api.py tests/unit/test_tool_execution_after_approval_api.py -q` | PASS (`................. [100%]`) | PASS（teacher 越权 403/404，未登录 401） | PASS（`approval_query/approval_read/approval_granted|rejected` 可追溯） | 可用 |
+| RAG + SEC + AGENT 防护 | RAG-T001~T008, SEC-T001~T008, AGENT 关键门禁 | `pytest -q tests/unit/test_ai_commands_api.py tests/unit/test_tool_security_guard_api.py tests/unit/test_redteam_batch_j003_api.py -q` | PASS (`.................... [100%]`) | PASS（越权过滤/注入/伪造引用拒绝） | PASS（`rag_filter_applied` 与 deny 审计链可追溯） | 可用 |
+| E2E Trace + Eval 指标 | E2E-T001~T004, EVAL-T001/T002/T003/T005/T006/T007/T008, AUDIT-T008 | `pytest -q tests/unit/test_audit_events_api.py tests/unit/test_e2e_phase5_t001_t004.py tests/unit/test_eval_metrics_phase5.py -q` | PASS (`................ [100%]`) | PASS（跨通道越权拒绝语义正确） | PASS（`trace_id` 串联 Command→Approval→Audit） | 可用 |
+
+### Step-3 结论
+
+- 功能可用性判定：当前核证范围内全部“可用”。
+- 未发现“主路径通过但安全/审计失败”的冲突项。
+
+## Step-4｜缺陷收敛（2026-02-15）
+
+- 缺陷分级策略：P0（阻断交付）> P1（高风险）> P2（可延期/环境噪声）。
+- 分级结果：`P0=0`，`P1=0`，`P2=2`（均为执行环境限制，非业务缺陷）。
+
+| Defect ID | 级别 | 触发点 | 根因 | 修复动作 | 回归命令 | 状态 |
+|---|---|---|---|---|---|---|
+| B1-ENV-001 | P2 | Batch-1 后端 unit 首轮失败 | 沙箱限制 `localhost:5432` 连接，触发 `PermissionError` | 按流程提权重跑；不改业务代码 | `pytest -q tests/unit -q` | Closed |
+| B1-ENV-002 | P2 | Batch-1 phase3 首轮失败 | 沙箱端口绑定 `EPERM`，`ERROR_CODE=BACKEND_START_FAILED` | 按流程提权重跑；不改业务代码 | `bash scripts/run_phase3_regression.sh` | Closed |
+
+### Step-4 结论
+
+- P0 缺陷：无。
+- P1 缺陷：无。
+- 代码修复提交：无（本步无业务代码缺陷，不产生“缺陷修复 commit”）。
+
+## Step-5｜Batch-2 全集回归与 Batch-1 对比（2026-02-15）
+
+- 执行时间：2026-02-15 09:21 ~ 09:24 +0800
+- 执行目标：重复 Step-2 全量命令并做回归差异比对。
+
+### Batch-1 vs Batch-2 对比
+
+| 项目 | Batch-1 | Batch-2 | 对比结论 |
+|---|---|---|---|
+| 后端 unit | EXIT=0，`[100%]`，`real 20.15` | EXIT=0，`[100%]`，`real 19.46` | 无回归（更快） |
+| Gate2 smoke | EXIT=0，`全部通过：PASS`，`real 2.80` | EXIT=0，`全部通过：PASS`，`real 2.74` | 无回归 |
+| Phase3 regression | EXIT=0，`OPENAPI_STATUS=200`，`attempt_id=138/139/140`，`real 1.93` | EXIT=0，`OPENAPI_STATUS=200`，`attempt_id=141/142/143`，`real 3.44` | 无功能回归（耗时波动） |
+| 前端 build | EXIT=0，`✓ built in 7.42s`，`real 10.02` | EXIT=0，`✓ built in 11.33s`，`real 15.75` | 无回归（耗时上升） |
+| 前端 test | EXIT=0，分组失败数均为 0，`real 0.24` | EXIT=0，分组失败数均为 0，`real 0.36` | 无回归 |
+
+### Step-5 结论
+
+- 回归判定：无功能回归。
+- 风险提示：本次观察到前端 build 与 phase3 执行耗时上升，但退出码与功能断言均稳定 PASS。
+
+## Step-6｜瘦身治理（2026-02-15）
+
+### 清理清单
+
+- 已删除旧离线包（将于 Step-7 重新生成）：
+  - `gate3_delivery_docs_and_evidence.zip`
+  - `gate3_delivery_repo_HEAD.tar.gz`
+- 已恢复回归脚本引入的噪声改动：
+  - `docs/testing/TEST_PLAN.md`（撤销重复 `T18 失败原因` 行）
+- 已规范 `.gitignore`：
+  - 新增 `/gate3_delivery_*.zip`
+  - 新增 `/gate3_delivery_*.tar.gz`
+
+### 影响说明
+
+- 对业务代码：无影响。
+- 对测试行为：无影响（仅清理历史产物与忽略规则）。
+- 对交付流程：有正向影响（避免旧包混入，Step-7 产物唯一且可核验）。
+
+## Step-7｜冻结交付与校验（2026-02-17）
+
+- 冻结索引更新：`docs/testing/FINAL_DELIVERY_INDEX_GATE3.md` 已追加 Step-7 冻结刷新段。
+- 离线包：
+  - `gate3_delivery_repo_HEAD.tar.gz`（git tracked 快照）
+  - `gate3_delivery_docs_and_evidence.zip`（文档证据白名单）
+- SHA-256：
+  - `026fd19347bf6358110a0ea4fe07f1699c3b0b677eeb3b72fa8be8c3a31f9e02  gate3_delivery_repo_HEAD.tar.gz`
+  - `2e0ffdb2c421c1f3cd08a343eda8b23f74128f1f70932769016d955ad241a6fc  gate3_delivery_docs_and_evidence.zip`
+- 完整性检查：
+  - `gzip -t gate3_delivery_repo_HEAD.tar.gz`：PASS
+  - `unzip -tq gate3_delivery_docs_and_evidence.zip`：PASS
+
+## Step-8｜签收准备（签收汇报稿）
+
+### Go / No-Go 结论
+
+- 结论：**GO（建议签收）**
+- 判定依据：
+  - Batch-1 与 Batch-2 全集回归均通过。
+  - Step-3 功能可用性表全部“可用”。
+  - Step-4 缺陷池 `P0=0`、`P1=0`（仅环境限制类 P2 已闭环）。
+  - Step-7 离线包与 SHA-256 校验通过。
+
+### 残余风险
+
+- 风险1：测试输出存在历史 warning（`datetime.utcnow()`、Pydantic v2 迁移提示、偶发 aiosqlite thread warning）。
+  - 等级：P2
+  - 建议：后续专项技术债处理，不阻断本次签收。
+- 风险2：`phase3` 与前端 `build` 耗时较 Batch-1 有波动。
+  - 等级：P2
+  - 建议：纳入后续性能观测，不阻断本次签收。
+
+### 回滚方案（可执行）
+
+1. 代码回滚到冻结基线提交：`git checkout <frozen_commit>`（或按发布系统回滚到上个稳定版本）。
+2. 数据层回滚：按既有 Alembic 回退策略执行 `alembic -c alembic.ini downgrade -1`（仅在变更涉及迁移时触发）。
+3. 运行回归确认：
+   - `pytest -q tests/unit -q`
+   - `./scripts/run_gate2_smoke.sh`
+   - `bash scripts/run_phase3_regression.sh`
+   - `npm run build && npm test`
+4. 交付包回滚：使用上一版 `gate3_delivery_repo_HEAD.tar.gz` 与 `gate3_delivery_docs_and_evidence.zip`（按 SHA-256 验签后恢复）。

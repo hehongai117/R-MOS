@@ -65,3 +65,19 @@
 
 - 当前 Gate-3 证据链已满足“可复现、可审计、可签收”。
 - 后续如需变更，仅允许在新任务中增量追加证据，不回写已冻结口径。
+
+## 6) Step-7 冻结刷新（2026-02-17）
+
+- 冻结时间：2026-02-17 09:35:32 +0800
+- 冻结基线 HEAD：`5c0f07ba5337025f3af5a00ac90e499e4ea611c6`
+- 生成口径：
+  - 仓库快照包仅包含 git tracked 文件（`git ls-files -z | tar --null -T - -czf ...`）
+  - 文档证据包按白名单文件生成（`zip -r ...`）
+
+| 产物 | 大小 | SHA-256 | 完整性校验 |
+|---|---:|---|---|
+| `gate3_delivery_repo_HEAD.tar.gz` | 458 MB | `026fd19347bf6358110a0ea4fe07f1699c3b0b677eeb3b72fa8be8c3a31f9e02` | `gzip -t` 通过 |
+| `gate3_delivery_docs_and_evidence.zip` | 88 KB | `2e0ffdb2c421c1f3cd08a343eda8b23f74128f1f70932769016d955ad241a6fc` | `unzip -tq` 通过 |
+
+- 校验命令：
+  - `shasum -a 256 gate3_delivery_repo_HEAD.tar.gz gate3_delivery_docs_and_evidence.zip`
