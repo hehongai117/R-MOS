@@ -14,7 +14,7 @@
  * - A.3：禁止绕过裁决层推进 SOP
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, Space, Typography, Button, Steps, Tag, Progress, Alert, Select, Tooltip, Empty, Divider, Modal } from 'antd';
 import {
     PlayCircleOutlined,
@@ -31,6 +31,7 @@ import {
 } from '@ant-design/icons';
 import { getToolById } from '@/data/toolData';
 import {
+    ActionType,
     SOPStepAdjudication,
     SOPScriptAdjudication,
     AdjudicationResult,
@@ -39,6 +40,11 @@ import {
     SOPExecutor,
     SOPExecutionState,
     SOPExecutionContext,
+    commitPartDetachment,
+    commitPartRemoval,
+    commitScrewExtraction,
+    getScrewInstance,
+    ScrewState,
     useAdjudicationStore,
 } from '@/adjudication';
 
@@ -57,9 +63,23 @@ export interface SOPPlayerAdjudicatedProps {
     onComplete?: () => void;
     onSummarize?: (report: AdjudicationReport) => void;
     onExecutorReady?: (executor: SOPExecutor | null) => void;
+    onSOPChange?: (sop: SOPScriptAdjudication | null) => void;
+    onExecutionContextChange?: (context: SOPExecutionContext | null, step: SOPStepAdjudication | null) => void;
 
     // 当前状态
     currentToolId?: string | null;
+    selectedSOPId?: string | null;
+    actionEvent?: SOPActionEvent | null;
+}
+
+export type SOPActionEventType = 'tool_selected' | 'part_selected' | 'screw_selected';
+
+export interface SOPActionEvent {
+    seq: number;
+    type: SOPActionEventType;
+    toolId?: string | null;
+    partName?: string | null;
+    screwId?: string | null;
 }
 
 // 步骤图标
@@ -104,7 +124,11 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     onComplete,
     onSummarize,
     onExecutorReady,
+    onSOPChange,
+    onExecutionContextChange,
     currentToolId: propCurrentToolId,
+    selectedSOPId,
+    actionEvent,
 }) => {
     const [selectedSOP, setSelectedSOP] = useState<SOPScriptAdjudication | null>(null);
     const [executor, setExecutor] = useState<SOPExecutor | null>(null);
@@ -135,20 +159,41 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     const isFailed = context?.executionState === SOPExecutionState.FAILED;
     const isBlocked = context?.executionState === SOPExecutionState.BLOCKED || isFailed;
 
+    const executingHint = useMemo(() => {
+        if (!currentStep || context?.executionState !== SOPExecutionState.EXECUTING) return null;
+        switch (currentStep.action) {
+            case ActionType.SELECT_TOOL:
+                return '请在左侧工具区选择本步骤要求的工具，系统将自动验证并推进。';
+            case ActionType.ROTATE_SCREW:
+            case ActionType.EXTRACT_SCREW:
+                return '请在螺丝面板点击对应螺丝规格（或匹配螺丝），系统将自动记录并验证。';
+            case ActionType.DETACH_PART:
+            case ActionType.REMOVE_PART:
+            case ActionType.FOCUS_CAMERA:
+            case ActionType.UNPLUG_CONNECTOR:
+                return '请在 3D 视图点击目标零件，系统将自动验证并推进。';
+            default:
+                return '请先完成当前操作，再点击“手动验证”作为兜底。';
+        }
+    }, [currentStep, context?.executionState]);
+
+    const emitStepOutputs = useCallback((step: SOPStepAdjudication | null, index: number) => {
+        onStepChange?.(step, index);
+        onPartSelect?.(step?.targetParts[0] ?? null);
+        onToolRequired?.(step?.requiredTool ?? null);
+    }, [onStepChange, onPartSelect, onToolRequired]);
+
     // 创建执行器
     const createExecutor = useCallback((sop: SOPScriptAdjudication) => {
         const newExecutor = createSOPExecutor({
             onStateChange: (ctx) => {
-                setContext({ ...ctx });
+                const snapshot = { ...ctx };
+                setContext(snapshot);
+                const step = sop.steps[snapshot.currentStepIndex] ?? null;
+                onExecutionContextChange?.(snapshot, step);
             },
             onStepChange: (step, index) => {
-                onStepChange?.(step, index);
-                if (step?.targetParts[0]) {
-                    onPartSelect?.(step.targetParts[0]);
-                }
-                if (step?.requiredTool) {
-                    onToolRequired?.(step.requiredTool);
-                }
+                emitStepOutputs(step, index);
             },
             onBlocked: (report) => {
                 setLastReport(report);
@@ -168,13 +213,38 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         newExecutor.loadSOP(sop);
         setExecutor(newExecutor);
         onExecutorReady?.(newExecutor);
+        onSOPChange?.(sop);
 
         // 初始化 context
         const initialContext = newExecutor.getContext();
         if (initialContext) {
-            setContext({ ...initialContext });
+            const snapshot = { ...initialContext };
+            const initialStep = sop.steps[snapshot.currentStepIndex] ?? null;
+            setContext(snapshot);
+            emitStepOutputs(initialStep, snapshot.currentStepIndex);
+            onExecutionContextChange?.(snapshot, initialStep);
         }
-    }, [onStepChange, onPartSelect, onToolRequired, onBlocked, onComplete, onSummarize, onExecutorReady, operationMode]);
+    }, [
+        emitStepOutputs,
+        onBlocked,
+        onComplete,
+        onSummarize,
+        onExecutorReady,
+        onSOPChange,
+        onExecutionContextChange,
+        operationMode,
+    ]);
+
+    const clearSelection = useCallback(() => {
+        setSelectedSOP(null);
+        setExecutor(null);
+        setContext(null);
+        setLastReport(null);
+        onExecutorReady?.(null);
+        onSOPChange?.(null);
+        emitStepOutputs(null, 0);
+        onExecutionContextChange?.(null, null);
+    }, [emitStepOutputs, onExecutorReady, onSOPChange, onExecutionContextChange]);
 
     // 选择 SOP
     const handleSelectSOP = useCallback((sopId: string) => {
@@ -186,6 +256,107 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         }
     }, [availableSOPs, createExecutor]);
 
+    useEffect(() => {
+        if (selectedSOPId === undefined) return;
+        if (selectedSOPId === null) {
+            if (selectedSOP) {
+                clearSelection();
+            }
+            return;
+        }
+        if (selectedSOP?.sopId !== selectedSOPId) {
+            handleSelectSOP(selectedSOPId);
+        }
+    }, [selectedSOPId, selectedSOP, handleSelectSOP, clearSelection]);
+
+    const normalizeSpec = useCallback((value: string): string => {
+        return value.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '');
+    }, []);
+
+    const resolveScrewTargetId = useCallback((step: SOPStepAdjudication, rawScrewId: string): string | null => {
+        if (step.targetParts.includes(rawScrewId)) {
+            return rawScrewId;
+        }
+        const normalizedInput = normalizeSpec(rawScrewId);
+        const store = useAdjudicationStore.getState();
+        for (const targetId of step.targetParts) {
+            const screw = getScrewInstance(targetId);
+            if (!screw?.screwSpec) continue;
+            const spec = normalizeSpec(screw.screwSpec.type);
+            if (!spec.includes(normalizedInput) && !normalizedInput.includes(spec)) continue;
+            const screwState = store.screwStates[targetId];
+            if (screwState?.state !== ScrewState.EXTRACTED && screwState?.state !== ScrewState.REMOVED) {
+                return targetId;
+            }
+        }
+        for (const targetId of step.targetParts) {
+            const screw = getScrewInstance(targetId);
+            if (!screw?.screwSpec) continue;
+            const spec = normalizeSpec(screw.screwSpec.type);
+            if (spec.includes(normalizedInput) || normalizedInput.includes(spec)) {
+                return targetId;
+            }
+        }
+        return null;
+    }, [normalizeSpec]);
+
+    const handleActionEvent = useCallback((event: SOPActionEvent): boolean => {
+        if (!currentStep) return false;
+        switch (currentStep.action) {
+            case ActionType.SELECT_TOOL:
+                return event.type === 'tool_selected'
+                    && !!event.toolId
+                    && event.toolId === currentStep.requiredTool;
+            case ActionType.FOCUS_CAMERA:
+            case ActionType.UNPLUG_CONNECTOR:
+                if (event.type !== 'part_selected' || !event.partName) return false;
+                if (currentStep.targetParts.length === 0) return true;
+                return currentStep.targetParts.includes(event.partName);
+            case ActionType.ROTATE_SCREW:
+            case ActionType.EXTRACT_SCREW: {
+                if (event.type !== 'screw_selected' || !event.screwId) return false;
+                const targetScrewId = resolveScrewTargetId(currentStep, event.screwId);
+                if (!targetScrewId) return false;
+                commitScrewExtraction(targetScrewId);
+                return true;
+            }
+            case ActionType.DETACH_PART:
+                if (event.type !== 'part_selected' || !event.partName) return false;
+                if (!currentStep.targetParts.includes(event.partName)) return false;
+                commitPartDetachment(event.partName);
+                return true;
+            case ActionType.REMOVE_PART:
+                if (event.type !== 'part_selected' || !event.partName) return false;
+                if (!currentStep.targetParts.includes(event.partName)) return false;
+                commitPartRemoval(event.partName);
+                return true;
+            default:
+                return false;
+        }
+    }, [currentStep, resolveScrewTargetId]);
+
+    useEffect(() => {
+        if (!actionEvent || !executor || !context) return;
+
+        if (context.executionState === SOPExecutionState.IDLE && currentStep?.action === ActionType.SELECT_TOOL) {
+            const eventMatched = handleActionEvent(actionEvent);
+            if (!eventMatched) return;
+            const executeReport = executor.executeStep();
+            setLastReport(executeReport);
+            if (executeReport.result === AdjudicationResult.ALLOWED) {
+                const validateReport = executor.validateAndAdvance();
+                setLastReport(validateReport);
+            }
+            return;
+        }
+
+        if (context.executionState !== SOPExecutionState.EXECUTING) return;
+        const eventMatched = handleActionEvent(actionEvent);
+        if (!eventMatched) return;
+        const validateReport = executor.validateAndAdvance();
+        setLastReport(validateReport);
+    }, [actionEvent, executor, context, currentStep, handleActionEvent]);
+
     // 执行下一步
     const handleNext = useCallback(() => {
         if (!executor || isCompleted) return;
@@ -194,15 +365,6 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         if (context?.executionState === SOPExecutionState.IDLE) {
             const report = executor.executeStep();
             setLastReport(report);
-
-            if (report.result === AdjudicationResult.ALLOWED) {
-                // 步骤执行成功，等待用户完成动作后验证
-                // 这里我们模拟直接验证（实际应用中应该等待动画/用户操作完成）
-                setTimeout(() => {
-                    const validateReport = executor.validateAndAdvance();
-                    setLastReport(validateReport);
-                }, 100);
-            }
         }
         // 如果当前是 EXECUTING 状态，尝试验证并推进
         else if (context?.executionState === SOPExecutionState.EXECUTING) {
@@ -397,6 +559,15 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                                 </Text>
                                             </div>
                                         )}
+                                        {executingHint && (
+                                            <Alert
+                                                type="warning"
+                                                showIcon
+                                                message="等待实际操作完成"
+                                                description={executingHint}
+                                                style={{ marginTop: 6 }}
+                                            />
+                                        )}
                                     </Space>
                                 }
                                 style={{ marginTop: 8 }}
@@ -438,8 +609,13 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                 danger={isBlocked}
                                 size="small"
                             >
-                                {isBlocked ? '重试' :
-                                    context.currentStepIndex === (selectedSOP?.steps.length || 0) - 1 ? '完成' : '下一步'}
+                                {isBlocked
+                                    ? '重试'
+                                    : context.executionState === SOPExecutionState.EXECUTING
+                                        ? '手动验证'
+                                        : context.currentStepIndex === (selectedSOP?.steps.length || 0) - 1
+                                            ? '完成'
+                                            : '下一步'}
                             </Button>
                         </Space>
 

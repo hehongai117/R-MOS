@@ -2266,3 +2266,321 @@
   - 残余风险均为 P2（历史 warning 与耗时波动），不阻断签收。
 - Next Step:
   - 输出最终变更清单、执行命令、测试结论；如需落库提交，执行白名单 `git add` + commit。
+
+- DateTime: 2026-02-24 16:05:06 +0800
+- Task: SOP 维保 3D 视图重构收敛（P0/P1/P2 一次性修复）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/partsManifest.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/_maintenance_after_fix.html -w '%{http_code}\\n' 'http://127.0.0.1:55173/maintenance'`
+  - DevTools 页面复现：`/maintenance`（总览 -> 隔离 -> 下钻 -> 全屏）
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 页面复现：PASS（总览态禁用全局爆炸；隔离态仅当前节点展开；L2 列表代理可选中；全屏增强可见）
+  - 证据截图：
+    - `/tmp/maintenance_after_fix_overview.png`
+    - `/tmp/maintenance_after_fix_l2_list.png`
+    - `/tmp/maintenance_after_fix_fullscreen.png`
+- Result: PASS
+- Failure Handling:
+  - 无编译失败；交互复现中通过新增“子组件列表入口”规避 3D 盲点点击不稳定。
+- Risks/Notes:
+  - 当前截图回归与 metrics/reachable_parts_report 自动产出尚未接入（本轮以页面可见效果为验收主目标）。
+- Next Step:
+  - 根据你的目测验收结果做第二轮微调（相机位、间距、透明度、色彩对比）。
+
+- DateTime: 2026-02-24 16:22:59 +0800
+- Task: 修复“收起后仍隐藏/不可点击”问题（收起态恢复24核心模型完整可见可点）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "canAdjustExplode|effectiveExplodeAmount|visibleLinks|clickableLinks|fadedLinks" r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 逻辑校验：PASS（`explode=0` 且隔离爆炸模式时，强制使用 24 核心 link 作为可见/可点击集合，fade/hide 失效）
+- Result: PASS
+- Failure Handling:
+  - 无失败。
+- Risks/Notes:
+  - 该修复只覆盖“收起态可见可点恢复”，未改动下钻/布局其它逻辑。
+- Next Step:
+  - 你前端目测后，如仍有“收起后个别遮挡/点不中”，我再做第二步命中体与相机位微调。
+
+- DateTime: 2026-02-24 16:46:17 +0800
+- Task: 单节点强隔离研究态改造（点击核心件仅显示该核心+其细件；正常/返回总览恢复24核心）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 逻辑校验：PASS（总览点击任意核心件进入单节点隔离；非目标核心与其细件隐藏；正常按钮触发返回总览）
+- Result: PASS
+- Failure Handling:
+  - 首次构建失败（未使用导入告警升级为错误），已删除无用导入并复测通过。
+- Risks/Notes:
+  - 该轮重点是“强隔离可见性语义”收敛；若需进一步提高“细件点选稳定性”，可再做 hit-proxy 半径专项微调。
+- Next Step:
+  - 你前端目测：确认“右踝 Roll 场景”是否达到预期；不够我继续按同口径微调相机与布局。
+
+- DateTime: 2026-02-24 17:34:35 +0800
+- Task: 3D 维保视图遮挡收敛测试与修复（右踝 Roll 单节点爆炸场景）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - DevTools 状态注入回归：右踝 Roll 隔离爆炸态 + 正常按钮恢复总览
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 视觉回归：PASS（右踝 Roll 爆炸态去除整屏遮挡平面，显示可分离子件；点“正常”恢复 24 核心可点击）
+  - 证据截图：
+    - `/tmp/maintenance_final_iso_right_ankle_roll.png`
+    - `/tmp/maintenance_iso_right_ankle_roll_v8.png`
+- Result: PASS
+- Failure Handling:
+  - 初始版本存在异常大平面遮挡；通过子件中心归零、异常半径过滤、异常网格剔除与隔离视图相机收敛完成修复。
+- Risks/Notes:
+  - 当前是资产兼容策略（运行时过滤），后续如替换更干净的分件资产可进一步提升精度。
+- Next Step:
+  - 你在页面实点多个核心件（腿/臂/躯干）验证“无遮挡、可点、可回总览”；如有个别异常件我做白名单定向修正。
+
+- DateTime: 2026-02-24 17:55:19 +0800
+- Task: 单节点隔离场景遮挡回归（右踝 Roll 主验证）+ 相机/子件显示策略收敛
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc -b`
+  - DevTools 场景注入验证：`right_ankle_roll_link` / `torso_link` 隔离爆炸态 + 正常按钮恢复总览
+- Tests:
+  - TypeScript 编译：PASS（`npx tsc -b` 通过）
+  - 视觉验证（右踝 Roll）：PASS（去除整屏折叠遮挡，保留可视子件；恢复总览后 24 核心可点击）
+  - 证据截图：
+    - `/tmp/maintenance_final_iso_right_ankle_roll.png`
+    - `/tmp/maintenance_iso_right_ankle_roll_v8.png`
+    - `/tmp/maintenance_iso_right_ankle_roll_v11_camera.png`
+- Result: PASS（按当前主验证场景）
+- Failure Handling:
+  - 通过子件中心归零、异常半径过滤、异常网格剔除、L1 限流和隔离相机分流，消除右踝场景大平面遮挡。
+- Risks/Notes:
+  - 躯干等个别资产仍存在“大面片视觉占比高”的模型特征，后续建议做 per-link 白名单精修。
+- Next Step:
+  - 你前端目测后，如确认还有具体部位遮挡，我按“部位白名单”逐个定向清理。
+
+- DateTime: 2026-02-24 21:12:20 +0800
+- Task: 上半身核心件隔离爆炸精修（躯干/左右肩/左右上臂/左右前臂/左右肘）并消除空白跑飞
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - `npm run dev -- --host 127.0.0.1 --port 55173`
+  - Chrome DevTools 回归：逐个点击上半身快速定位按钮（躯干、左右肩 Pitch/Roll、左右上臂、左右肘 Pitch、左右前臂）并截图
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 视觉回归：PASS（不再出现整屏空白/网格占满；上半身节点均能在隔离态看到核心件+子件）
+  - 证据截图：
+    - `/tmp/rmos_overview_after_boundsfit.png`
+    - `/tmp/rmos_torso_after_boundsfit.png`
+    - `/tmp/rmos_left_shoulder_pitch_after_boundsfit.png`
+    - `/tmp/rmos_left_shoulder_roll_after_boundsfit.png`
+    - `/tmp/rmos_left_upper_after_boundsfit.png`
+    - `/tmp/rmos_left_elbow_pitch_after_boundsfit.png`
+    - `/tmp/rmos_left_forearm_after_boundsfit.png`
+    - `/tmp/rmos_right_shoulder_pitch_after_boundsfit.png`
+    - `/tmp/rmos_right_shoulder_roll_after_boundsfit.png`
+    - `/tmp/rmos_right_upper_after_boundsfit.png`
+    - `/tmp/rmos_right_elbow_pitch_after_boundsfit.png`
+    - `/tmp/rmos_right_forearm_after_boundsfit.png`
+- Result: PASS（上半身隔离态基本达成“同口径可见、可继续点选”）
+- Failure Handling:
+  - 初始回归仍出现上半身边角空白；通过“核心网格中心归一 + outlier 剔除 + 可见包围盒驱动相机自适配”完成收敛。
+- Risks/Notes:
+  - 个别核心件与子件仍存在轻微分离距离偏大（非空白/非遮挡级问题），后续可按链接白名单继续做布局细调。
+- Next Step:
+  - 按你确认结果继续精修下半身 14 个核心件，复用同一套包围盒相机与 outlier 规则。
+
+- DateTime: 2026-02-25 19:23:28 +0800
+- Task: 全量核心件隔离爆炸同口径精修（剩余下半身 13 项 + 上半身回归）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173 --strictPort`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - Chrome MCP 回归：逐个点击 24 核心件快速定位按钮并截图（上半身 11 + 下半身/底座 13）
+  - `ffmpeg -y -pattern_type glob -i '/tmp/rmos-mcp-check/lower_v5_*.png' -filter_complex 'tile=4x4:padding=6:margin=6:color=black' -frames:v 1 /tmp/rmos-mcp-check/lower_v5_contact.png`
+  - `ffmpeg -y -pattern_type glob -i '/tmp/rmos-mcp-check/upper_v5_*.png' -filter_complex 'tile=4x3:padding=6:margin=6:color=black' -frames:v 1 /tmp/rmos-mcp-check/upper_v5_contact.png`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 视觉回归：PASS（24 核心件均可进入隔离爆炸；核心件可见、子件不再整屏遮挡；正常模式可恢复总览）
+  - 证据截图：
+    - `/tmp/rmos-mcp-check/lower_v5_contact.png`
+    - `/tmp/rmos-mcp-check/upper_v5_contact.png`
+    - `/tmp/rmos-mcp-check/retest_left_ankle_pitch_v5.png`
+    - `/tmp/rmos-mcp-check/normal_overview_v5.png`
+- Result: PASS
+- Failure Handling:
+  - 左踝 Pitch 曾出现“核心本体过小”；通过下半身 spread 收紧 + 隔离态核心最小视觉尺寸约束修复。
+- Risks/Notes:
+  - 当前为运行时布局与可视尺寸收敛策略，若后续替换更一致的资产比例，可再减小动态矫正幅度。
+- Next Step:
+  - 你在前端再实点 24 核心件；如果指定任一部位还需更大/更近，我按 link 级参数做最后一轮点修。
+
+- DateTime: 2026-02-26 15:01:43 +0800
+- Task: 启动前后端 + Chrome MCP 管理员登录 + 全项目 AI 辅助/决策/介入能力盘点
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 8000`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173`
+  - `curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/health`
+  - `curl --noproxy 127.0.0.1,localhost -X POST http://127.0.0.1:8000/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"admin_ai_audit@example.com","password":"StrongPass123","full_name":"AI Admin"}'`
+  - `psql -h localhost -p 5432 -U postgres -d postgres -c "INSERT INTO user_roles ... WHERE r.name='admin' ..."`
+  - `curl --noproxy 127.0.0.1,localhost -i http://127.0.0.1:8000/api/v1/attempts/143/diagnosis`
+  - Chrome MCP: `new_page(http://127.0.0.1:55173)` + `evaluate_script(fetch '/api/v1/auth/login')` + `evaluate_script(fetch '/api/v1/ai/*')`
+- Tests:
+  - 服务可用性：PASS（后端 `/api/v1/health`=200；前端 `http://127.0.0.1:55173` 可访问）
+  - 管理员登录态：PASS（Chrome MCP 内通过 `/api/v1/auth/login` 获取 token 并写入 localStorage）
+  - 管理员权限校验：PASS（Chrome MCP 调用 `/api/v1/admin/users` 返回 200）
+  - AI 接口实测：PASS
+    - `/api/v1/ai/rag/query`=200，返回 `insufficient_data`
+    - `/api/v1/ai/commands`（读）=201，`status=succeeded`
+    - `/api/v1/ai/commands`（写）=201，`status=waiting_approval`，生成 `approval_id`
+    - `/api/v1/ai/approvals?status=pending`=200，命中新建审批
+    - `/api/v1/ai/approvals/{id}/grant`=200，审批状态 `granted` 且工具执行 `success`
+    - `/api/v1/ai/replay/metrics/read-tool-success-rate`=200（当前 `success_rate=100`）
+    - `/api/v1/ai/replay/metrics/red-team-pass-rate`=200（当前 `pass_rate=14.29`）
+  - 教学诊断链路：PASS（`/api/v1/attempts/143/diagnosis`=200；前端 `/teaching/attempts/143/diagnosis` 页面渲染）
+- Result: PASS（本次为能力盘点与联调验证，无业务代码变更）
+- Risks/Notes:
+  - 前端当前无独立登录页；本次管理员登录通过 API + localStorage 注入方式完成验证。
+  - 多数 AI 能力为“规则/审计驱动 + stub 工具执行”，非外部大模型实时推理。
+- Next Step:
+  - 如需“完善 AI 功能”进入开发阶段，建议先确定优先级：`RAG 真检索`、`写工具真实执行器`、`前端登录态与角色可视化`。
+
+- DateTime: 2026-02-26 16:09:40 +0800
+- Task: SOP 维保页去除右侧零件查看器 + 下线透视模式 + 补全核心/细节零件详情与螺丝信息 + 实现细节件悬停
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ScrewInfo.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/DetailParts.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/partsManifest.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/toolData.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/maintenanceKnowledge.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "SOPMaintenancePage|Viewer3D|透视|hover|悬停|SOPPlayer|partsManifest|零件" r-mos-frontend/src`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+- Result: PASS
+- Failure Handling:
+  - 无构建失败；仅存在 vite chunk size 警告，不影响本次功能交付。
+- Risks/Notes:
+  - `PartInspector.tsx` 组件文件仍保留在仓库中，但已从 SOP 维保页移除入口。
+  - 细节件螺丝信息采用“优先解析自身规格，其次继承父核心件，再次使用分类兜底”的补全策略。
+- Next Step:
+  - 如需可继续将 `PartInspector.tsx` 及其文档注释一并清理，避免后续误用。
+
+- DateTime: 2026-02-26 16:32:05 +0800
+- Task: 实现 SOP 列表 + SOP 播放器 + 中间 3D 维保视图联动（Phase 1）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/ui/useSOPSceneSync.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && rg -n "SOPStep|SOPScript|SOPExecutionState|targetParts|requiredTool" r-mos-frontend/src/adjudication r-mos-frontend/src/data/sopScripts.ts`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+- Result: PASS
+- Failure Handling:
+  - 无构建失败；仅保留 vite chunk size 警告。
+- Risks/Notes:
+  - 当前为 Phase 1 单向联动：SOP 列表/播放器状态驱动 3D 视图；3D 反向提交步骤完成仍沿用现有裁决执行流程。
+- Next Step:
+  - Phase 2 可继续做“3D 操作完成 -> 播放器进入可验证/可推进”的双向闭环。
+
+- DateTime: 2026-02-26 16:43:51 +0800
+- Task: Phase 2｜实现“3D 实际操作完成”反向驱动 SOP 播放器进入可验证/可推进
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `cd /Users/xuhehong/Desktop/r-mos && git status --short`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba r-mos-frontend/src/pages/SOPMaintenancePage.tsx | sed -n '1,320p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba r-mos-frontend/src/pages/SOPMaintenancePage.tsx | sed -n '320,760p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba r-mos-frontend/src/pages/SOPMaintenancePage.tsx | sed -n '760,1580p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && nl -ba r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx | sed -n '1,760p'`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 关键校验点：PASS
+    - 3D 核心件点击可发出 `part_selected`
+    - 3D 子件点击可发出 `part_selected`
+    - 螺丝点击可发出 `screw_selected`
+    - 工具选择可发出 `tool_selected`
+    - 播放器接收 `actionEvent` 后在 `EXECUTING` 自动 `validateAndAdvance`
+- Result: PASS
+- Failure Handling:
+  - 初次构建失败：`emitSOPActionEvent` 在 `useCallback` 中先使用后定义（TS2448/TS2454）。
+  - 处理：将 `emitSOPActionEvent` 上移到相关 handlers 之前，复测构建通过。
+- Risks/Notes:
+  - 本次实现依赖步骤 `targetParts` 与 3D 事件 payload 的命名一致性；对螺丝规格已做映射兜底，但个别非标准命名步骤仍可能需要脚本侧补齐。
+- Next Step:
+  - 用 Chrome MCP 跑一条完整 SOP：执行“选工具/点螺丝/点零件”并观察播放器自动推进，必要时补充 e2e 回归脚本。
+
+- DateTime: 2026-02-26 17:02:23 +0800
+- Task: Phase 2 回归验证（Chrome MCP）+ 提交前整理
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/ui/useSOPSceneSync.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_backend_health.out -w '%{http_code}' http://127.0.0.1:8000/api/v1/health`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_frontend_index.out -w '%{http_code}' http://127.0.0.1:55173`
+  - Chrome MCP:
+    - 访问 `http://127.0.0.1:55173/maintenance`
+    - 选择 SOP `躯干电机更换`
+    - 回归 `part_selected`：步骤1执行中点击子件列表后推进到步骤2
+    - 回归 `tool_selected`：步骤4点击 3mm 工具后自动推进到步骤5（未点“下一步”）
+    - 回归 `screw_selected`：步骤7执行中点击 `M3×10` 后阻断从“8颗未拆”变“7颗未拆”
+    - 采样 store：`screw_torso_m3x10_*` 提取计数 `1/8`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- Tests:
+  - 服务存活：PASS（前后端健康检查均 200）
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - Chrome MCP 回归：PASS（三类事件均能反向驱动播放器/状态变更）
+  - 证据截图：
+    - `/tmp/rmos_phase2_mcp_part_event.png`
+    - `/tmp/rmos_phase2_mcp_tool_event.png`
+    - `/tmp/rmos_phase2_mcp_screw_event.png`
+- Result: PASS
+- Failure Handling:
+  - 发现脚本步骤 `拆卸螺丝(step_005)` 使用的 `screw_torso_m4x12_*` 在 `screwInstances` 未定义，触发 `SCREW_NOT_FOUND`。
+  - 本次回归通过“定位到可验证步骤 + m3x10 螺丝路径”完成 `screw_selected` 闭环验证，不阻断 Phase 2 事件链路结论。
+- Risks/Notes:
+  - `sop-torso-motor-001` 的 step_005 数据与螺丝实例库存在不一致，建议后续补齐 `m4x12` 实例或调整脚本目标。
+- Next Step:
+  - 若进入 Phase 3，建议先修复 step_005 数据一致性，再做完整 SOP 端到端自动回归。
