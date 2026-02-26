@@ -17,6 +17,7 @@ import {
     ErrorCategory,
     SystemState,
 } from '@/adjudication';
+import { DOCUMENT_SOP_SCRIPTS } from './documentSOPScripts';
 
 // ============================================================
 // Legacy（旧版）数据结构：仅供兼容旧组件
@@ -720,6 +721,7 @@ export const SOP_LEFT_ARM_INSPECTION: SOPScriptAdjudication = {
 
 // 所有可用的裁决级 SOP 脚本
 export const ALL_SOP_SCRIPTS: SOPScriptAdjudication[] = [
+    ...DOCUMENT_SOP_SCRIPTS,
     SOP_TORSO_MOTOR_REPLACEMENT,
     SOP_LEFT_ARM_INSPECTION,
 ];

@@ -148,8 +148,7 @@ export enum ActionType {
   UNPLUG_CONNECTOR = 'unplug_connector', // 拔出连接器
   
   // 视图操作
-  FOCUS_CAMERA = 'focus_camera',         // 聚焦视角
-  ENABLE_XRAY = 'enable_xray'            // 启用透视
+  FOCUS_CAMERA = 'focus_camera'          // 聚焦视角
 }
 
 /** 螺丝状态枚举 */

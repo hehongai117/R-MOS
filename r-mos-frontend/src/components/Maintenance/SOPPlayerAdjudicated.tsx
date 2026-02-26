@@ -161,6 +161,9 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
 
     const executingHint = useMemo(() => {
         if (!currentStep || context?.executionState !== SOPExecutionState.EXECUTING) return null;
+        if (currentStep.targetParts.length === 0) {
+            return '请完成当前步骤的检查与记录，点击“手动验证”继续。';
+        }
         switch (currentStep.action) {
             case ActionType.SELECT_TOOL:
                 return '请在左侧工具区选择本步骤要求的工具，系统将自动验证并推进。';
@@ -363,8 +366,20 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
 
         // 如果当前是 IDLE 状态，尝试执行步骤
         if (context?.executionState === SOPExecutionState.IDLE) {
-            const report = executor.executeStep();
-            setLastReport(report);
+            const executeReport = executor.executeStep();
+            setLastReport(executeReport);
+
+            // 文档桥接步骤：无目标、无前置验证时直接推进，避免重复点击。
+            if (
+                executeReport.result === AdjudicationResult.ALLOWED &&
+                currentStep &&
+                currentStep.targetParts.length === 0 &&
+                currentStep.validations.length === 0 &&
+                !currentStep.requiredTool
+            ) {
+                const validateReport = executor.validateAndAdvance();
+                setLastReport(validateReport);
+            }
         }
         // 如果当前是 EXECUTING 状态，尝试验证并推进
         else if (context?.executionState === SOPExecutionState.EXECUTING) {
@@ -376,7 +391,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             const report = executor.executeStep();
             setLastReport(report);
         }
-    }, [executor, context, isCompleted]);
+    }, [executor, context, isCompleted, currentStep]);
 
     const handleRetry = useCallback(() => {
         if (!executor) return;

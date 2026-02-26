@@ -70,7 +70,7 @@ import { formatCountdown, isCountdownUrgent } from '@/adjudication/ui/examHeader
 
 const { Title, Text } = Typography;
 const EXAM_DURATION_MS = 60 * 60 * 1000;
-const EXPLODE_DEFAULT_ON_ENTER = 0.42;
+const EXPLODE_DEFAULT_ON_ENTER = 0.4;
 const COLLAPSED_EPSILON = 0.0001;
 const ISOLATION_FOCUS_PRESET: CameraPreset = {
     position: [0.9, 0, 0.4],
@@ -331,20 +331,22 @@ function SOPMaintenancePage() {
         () => (hoveredDetailSelection ? getDetailPartDetailRecord(hoveredDetailSelection) : null),
         [hoveredDetailSelection],
     );
-    const upperBodyQuickLinks = useMemo(
-        () => UPPER_BODY_CORE_LINKS.map((linkName) => ({
-            linkName,
-            displayName: PART_METADATA[linkName]?.displayName ?? getLinkDisplayName(linkName),
-        })),
-        [],
-    );
-    const remainingQuickLinks = useMemo(
-        () => REMAINING_CORE_LINKS.map((linkName) => ({
-            linkName,
-            displayName: PART_METADATA[linkName]?.displayName ?? getLinkDisplayName(linkName),
-        })),
-        [],
-    );
+    const corePartQuickSelectOptions = useMemo(() => ([
+        {
+            label: '上半身核心件',
+            options: UPPER_BODY_CORE_LINKS.map((linkName) => ({
+                value: linkName,
+                label: PART_METADATA[linkName]?.displayName ?? getLinkDisplayName(linkName),
+            })),
+        },
+        {
+            label: '下半身与底座核心件',
+            options: REMAINING_CORE_LINKS.map((linkName) => ({
+                value: linkName,
+                label: PART_METADATA[linkName]?.displayName ?? getLinkDisplayName(linkName),
+            })),
+        },
+    ]), []);
     const viewerModelScale = viewState === 'ISOLATED'
         ? (selectedOverviewNode ? (ISOLATION_MODEL_SCALE_OVERRIDES[selectedOverviewNode] ?? 1.15) : 1.15)
         : 2;
@@ -500,11 +502,15 @@ function SOPMaintenancePage() {
             { nodeId: linkName, displayName },
         ]);
         // 加大爆炸量以充分展示子零件
-        setExplodeAmount(Math.max(explodeAmount, 0.42));
+        setExplodeAmount(Math.max(explodeAmount, 0.4));
         // 相机缩进
         setCameraPreset(ISOLATION_FOCUS_PRESET);
         setSelectedPart(null);
     }, [explodeAmount]);
+
+    const handleCorePartQuickSelect = useCallback((linkName: string) => {
+        enterIsolation(linkName);
+    }, [enterIsolation]);
 
     const handlePartSelect = useCallback((part: PartInfo | null) => {
         if (part) {
@@ -863,9 +869,7 @@ function SOPMaintenancePage() {
                                 </div>
                                 <Space wrap>
                                     <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0)}>收起</Button>
-                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.2)}>20%</Button>
-                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.3)}>30%</Button>
-                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.6)}>60%</Button>
+                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.4)}>40%</Button>
                                     <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(1)}>完全展开</Button>
                                 </Space>
                                 <Space wrap>
@@ -939,46 +943,6 @@ function SOPMaintenancePage() {
                                 </Space>
                             </Card>
                         )}
-
-                        <Card size="small" title="🎯 核心件快速定位（上半身）">
-                            <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    用于快速切换上半身部位做隔离爆炸验证。
-                                </Text>
-                                <Space wrap>
-                                    {upperBodyQuickLinks.map((item) => (
-                                        <Button
-                                            key={`quick-link-${item.linkName}`}
-                                            size="small"
-                                            type={selectedOverviewNode === item.linkName && viewState === 'ISOLATED' ? 'primary' : 'default'}
-                                            onClick={() => enterIsolation(item.linkName)}
-                                        >
-                                            {item.displayName}
-                                        </Button>
-                                    ))}
-                                </Space>
-                            </Space>
-                        </Card>
-
-                        <Card size="small" title="🧭 核心件快速定位（剩余13）">
-                            <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    下半身与底座精修专用：按目录逐个切换隔离态验证。
-                                </Text>
-                                <Space wrap>
-                                    {remainingQuickLinks.map((item) => (
-                                        <Button
-                                            key={`remaining-link-${item.linkName}`}
-                                            size="small"
-                                            type={selectedOverviewNode === item.linkName && viewState === 'ISOLATED' ? 'primary' : 'default'}
-                                            onClick={() => enterIsolation(item.linkName)}
-                                        >
-                                            {item.displayName}
-                                        </Button>
-                                    ))}
-                                </Space>
-                            </Space>
-                        </Card>
 
                         <Card size="small" title="📚 SOP 列表（联动）">
                             <Space direction="vertical" style={{ width: '100%' }} size="small">
@@ -1238,7 +1202,29 @@ function SOPMaintenancePage() {
 
                 {/* 右侧：信息面板 */}
                 <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
-                    <Tabs
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Card size="small" title="🎯 核心件快速定位">
+                            <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    已合并上半身/下半身核心件，选择后直接进入隔离爆炸视图。
+                                </Text>
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    placeholder="下拉选择核心件"
+                                    value={viewState === 'ISOLATED' ? selectedOverviewNode ?? undefined : undefined}
+                                    options={corePartQuickSelectOptions}
+                                    onChange={(value) => {
+                                        if (value) {
+                                            handleCorePartQuickSelect(value);
+                                        }
+                                    }}
+                                    onClear={resetToOverview}
+                                    filterOption={(input, option) => String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                                />
+                            </Space>
+                        </Card>
+                        <Tabs
                         activeKey={rightPanelTab}
                         onChange={setRightPanelTab}
                         size="small"
@@ -1395,7 +1381,8 @@ function SOPMaintenancePage() {
                                 ),
                             },
                         ]}
-                    />
+                        />
+                    </Space>
                 </Col>
             </Row>
 

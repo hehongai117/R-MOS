@@ -2584,3 +2584,30 @@
   - `sop-torso-motor-001` 的 step_005 数据与螺丝实例库存在不一致，建议后续补齐 `m4x12` 实例或调整脚本目标。
 - Next Step:
   - 若进入 Phase 3，建议先修复 step_005 数据一致性，再做完整 SOP 端到端自动回归。
+
+- DateTime: 2026-02-26 17:40:32 +0800
+- Task: SOP 维保页接入 20 条 RMOS SOP 联动 + 播放器文档桥接 + 核心件定位下拉合并 + 爆炸三档 + 透视占位清理
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/documentSOPScripts.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/sopScripts.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/types/adjudication.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos && unzip -l sop.zip`
+  - `cd /Users/xuhehong/Desktop/r-mos && unzip -p sop.zip sop/RMOS-SOP-001.md | sed -n '1,220p'`
+  - `cd /Users/xuhehong/Desktop/r-mos && unzip -p sop.zip sop/RMOS-SOP-010.md | sed -n '1,220p'`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build` 通过）
+  - 裁决测试集：PASS（`node scripts/run-adjudication-tests.mjs` 全通过）
+- Result: PASS
+- Failure Handling:
+  - 无失败；构建阶段仅存在 chunk size 警告，不影响本次交付。
+- Risks/Notes:
+  - 20 条 RMOS SOP 通过“文档桥接脚本”进入裁决播放器，当前以流程步骤推进为主，不包含命令自动执行。
+  - 文档桥接步骤默认无目标零件，播放器已做“无目标步骤单击自动推进”优化，避免双击推进。
+- Next Step:
+  - 可继续把高频 SOP（如 001/008/018）升级为强约束的 `targetParts + validations` 真裁决脚本。
