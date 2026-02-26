@@ -222,6 +222,13 @@ export const PART_SCREWS: PartScrews[] = [
         ]
     },
     {
+        partName: 'left_arm_roll_link',
+        screws: [
+            { screwId: 'M4x8', quantity: 4, position: '肩部 Roll 法兰' },
+            { screwId: 'M3x8', quantity: 2, position: '轴承压板' },
+        ]
+    },
+    {
         partName: 'left_arm_yaw_link',
         screws: [
             { screwId: 'M3x10', quantity: 4, position: '手臂连杆' },
@@ -234,10 +241,24 @@ export const PART_SCREWS: PartScrews[] = [
         ]
     },
     {
+        partName: 'left_elbow_yaw_link',
+        screws: [
+            { screwId: 'M3x10', quantity: 4, position: '前臂壳体连接' },
+            { screwId: 'M3x8', quantity: 2, position: '末端支架定位' },
+        ]
+    },
+    {
         partName: 'right_arm_pitch_link',
         screws: [
             { screwId: 'M4x8', quantity: 4, position: '肩部电机固定' },
             { screwId: 'M3x6', quantity: 2, position: '限位销' },
+        ]
+    },
+    {
+        partName: 'right_arm_roll_link',
+        screws: [
+            { screwId: 'M4x8', quantity: 4, position: '肩部 Roll 法兰' },
+            { screwId: 'M3x8', quantity: 2, position: '轴承压板' },
         ]
     },
     {
@@ -253,10 +274,24 @@ export const PART_SCREWS: PartScrews[] = [
         ]
     },
     {
+        partName: 'right_elbow_yaw_link',
+        screws: [
+            { screwId: 'M3x10', quantity: 4, position: '前臂壳体连接' },
+            { screwId: 'M3x8', quantity: 2, position: '末端支架定位' },
+        ]
+    },
+    {
         partName: 'left_thigh_yaw_link',
         screws: [
             { screwId: 'M5x10', quantity: 6, position: '大腿电机固定' },
             { screwId: 'M4x10', quantity: 4, position: '髋夹板' },
+        ]
+    },
+    {
+        partName: 'left_thigh_roll_link',
+        screws: [
+            { screwId: 'M4x12', quantity: 4, position: '滚转轴承座' },
+            { screwId: 'M4x8', quantity: 2, position: '编码器支架' },
         ]
     },
     {
@@ -290,6 +325,13 @@ export const PART_SCREWS: PartScrews[] = [
         screws: [
             { screwId: 'M5x10', quantity: 6, position: '大腿电机固定' },
             { screwId: 'M4x10', quantity: 4, position: '髋夹板' },
+        ]
+    },
+    {
+        partName: 'right_thigh_roll_link',
+        screws: [
+            { screwId: 'M4x12', quantity: 4, position: '滚转轴承座' },
+            { screwId: 'M4x8', quantity: 2, position: '编码器支架' },
         ]
     },
     {

@@ -10,22 +10,28 @@
 import React from 'react';
 import { Card, Space, Tag, Typography, Tooltip, Empty } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { getPartScrews, getScrewById, getToolById } from '@/data/toolData';
+import {
+    getCoreScrewRecords,
+    getDetailScrewRecords,
+    type DetailPartSelection,
+} from '@/data/maintenanceKnowledge';
 
 const { Text } = Typography;
 
 export interface ScrewInfoProps {
     partName: string | null;
+    detailSelection?: DetailPartSelection | null;
     onScrewSelect?: (screwId: string) => void;
     selectedScrewId?: string | null;
 }
 
 export const ScrewInfo: React.FC<ScrewInfoProps> = ({
     partName,
+    detailSelection = null,
     onScrewSelect,
     selectedScrewId,
 }) => {
-    if (!partName) {
+    if (!partName && !detailSelection) {
         return (
             <Card size="small" title={<><InfoCircleOutlined /> 螺丝信息</>}>
                 <Empty
@@ -36,31 +42,17 @@ export const ScrewInfo: React.FC<ScrewInfoProps> = ({
         );
     }
 
-    const partScrews = getPartScrews(partName);
+    const screwData = detailSelection
+        ? getDetailScrewRecords(detailSelection)
+        : (partName ? getCoreScrewRecords(partName) : []);
 
-    if (!partScrews || partScrews.screws.length === 0) {
+    if (screwData.length === 0) {
         return (
             <Card size="small" title={<><InfoCircleOutlined /> 螺丝信息</>}>
                 <Text type="secondary">此零件无螺丝数据</Text>
             </Card>
         );
     }
-
-    // 处理螺丝数据
-    const screwData = partScrews.screws.map((item, index) => {
-        const screw = getScrewById(item.screwId);
-        const tool = screw ? getToolById(screw.toolId) : undefined;
-        return {
-            key: index,
-            screwId: item.screwId,
-            spec: screw?.spec || item.screwId,
-            quantity: item.quantity,
-            position: item.position,
-            tool: tool?.name || '-',
-            toolId: tool?.id || '',
-            torque: screw?.torque || '-',
-        };
-    });
 
     return (
         <Card
@@ -74,9 +66,9 @@ export const ScrewInfo: React.FC<ScrewInfoProps> = ({
             }
         >
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-                {screwData.map((item) => (
+                {screwData.map((item, index) => (
                     <div
-                        key={item.key}
+                        key={`${item.screwId}-${index}`}
                         style={{
                             padding: '8px 12px',
                             borderRadius: 6,
@@ -105,7 +97,7 @@ export const ScrewInfo: React.FC<ScrewInfoProps> = ({
                                 📍 {item.position}
                             </Text>
                         </div>
-                        {item.torque !== '-' && (
+                        {item.torque !== null && (
                             <div style={{ marginTop: 2 }}>
                                 <Text type="secondary" style={{ fontSize: 11 }}>
                                     扭矩: {item.torque} Nm

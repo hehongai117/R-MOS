@@ -341,6 +341,105 @@ export function runTC005(): {
 }
 
 // ============================================================
+// TC-006: 聚焦视图不应被拆卸约束阻断
+// ============================================================
+
+export function runTC006(): {
+    name: string;
+    passed: boolean;
+    details: string;
+} {
+    resetTestState();
+
+    const testName = 'TC-006: FOCUS_CAMERA 不应被拆卸约束阻断';
+
+    const report = adjudicateAction(
+        ActionType.FOCUS_CAMERA,
+        'torso_link',
+    );
+
+    const passed = report.result === AdjudicationResult.ALLOWED;
+
+    return {
+        name: testName,
+        passed,
+        details: `
+      结果: ${report.result}
+      原因: ${report.reason}
+      原因码: ${report.reasonCode}
+      预期: ALLOWED（仅视图聚焦，不应触发拆卸约束）
+      验证: ${passed ? '✅ 正确放行' : '❌ 被错误阻断'}
+    `.trim(),
+    };
+}
+
+// ============================================================
+// TC-007: 左臂核心件应在裁决注册表中可识别
+// ============================================================
+
+export function runTC007(): {
+    name: string;
+    passed: boolean;
+    details: string;
+} {
+    resetTestState();
+
+    const testName = 'TC-007: 左臂核心件必须可识别';
+
+    const report = adjudicateAction(
+        ActionType.FOCUS_CAMERA,
+        'left_arm_pitch_link',
+    );
+
+    const passed = report.result === AdjudicationResult.ALLOWED;
+    const notFound = report.reasonCode === 'PART_NOT_FOUND';
+
+    return {
+        name: testName,
+        passed,
+        details: `
+      结果: ${report.result}
+      原因: ${report.reason}
+      原因码: ${report.reasonCode}
+      预期: ALLOWED（左臂零件存在）
+      PART_NOT_FOUND: ${notFound ? '❌ 出现' : '✅ 未出现'}
+      验证: ${passed ? '✅ 可识别' : '❌ 未注册'}
+    `.trim(),
+    };
+}
+
+// ============================================================
+// TC-008: 躯干 M4×12 螺丝应可被裁决识别
+// ============================================================
+
+export function runTC008(): {
+    name: string;
+    passed: boolean;
+    details: string;
+} {
+    resetTestState();
+
+    const testName = 'TC-008: 躯干 M4×12 螺丝必须可识别';
+
+    const report = canRemoveScrew('screw_torso_m4x12_001', 'hex_3');
+    const passed = report.result === AdjudicationResult.ALLOWED;
+    const notFound = report.reasonCode === 'SCREW_NOT_FOUND';
+
+    return {
+        name: testName,
+        passed,
+        details: `
+      结果: ${report.result}
+      原因: ${report.reason}
+      原因码: ${report.reasonCode}
+      预期: ALLOWED（螺丝存在且工具匹配）
+      SCREW_NOT_FOUND: ${notFound ? '❌ 出现' : '✅ 未出现'}
+      验证: ${passed ? '✅ 可识别' : '❌ 未注册或校验失败'}
+    `.trim(),
+    };
+}
+
+// ============================================================
 // 运行所有测试
 // ============================================================
 
@@ -362,6 +461,9 @@ export function runAllTests(): {
         runTC003(),
         runTC004(),
         runTC005(),
+        runTC006(),
+        runTC007(),
+        runTC008(),
     ];
 
     const passed = results.filter(r => r.passed).length;

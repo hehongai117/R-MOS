@@ -18,7 +18,6 @@ import {
     ConstraintType,
     FastenedByParams,
     CoveredByParams,
-    BlockedByParams,
     ScrewState,
 } from '../types/adjudication';
 import {
@@ -103,82 +102,30 @@ function collectStructuralClosure(seedIds: string[]): Set<string> {
         }
     };
 
-    const addAncestors = (rootId: string): void => {
-        let current: string | null = rootId;
-        while (current) {
-            const part = getPartById(current);
-            const parentId = part?.parentId ?? null;
-            if (parentId && !affected.has(parentId)) {
-                affected.add(parentId);
-            }
-            current = parentId;
-        }
-    };
-
     seedIds.forEach(seedId => {
         if (!seedId) return;
         addDescendants(seedId);
-        addAncestors(seedId);
     });
 
     return affected;
 }
 
 /**
- * 获取约束链影响范围（按约束关系扩展）
- */
-function collectConstraintClosure(seed: Set<string>): Set<string> {
-    const affected = new Set(seed);
-    const constraints = getAllConstraints();
-    let changed = true;
-
-    while (changed) {
-        changed = false;
-        for (const constraint of constraints) {
-            const relatedParts = new Set<string>([
-                constraint.constrainedPart,
-                constraint.constrainingPart,
-            ]);
-
-            if (constraint.type === ConstraintType.FASTENED_BY) {
-                const params = constraint.params as FastenedByParams;
-                params.screwIds.forEach(id => relatedParts.add(id));
-            }
-
-            if (constraint.type === ConstraintType.COVERED_BY) {
-                const params = constraint.params as CoveredByParams;
-                relatedParts.add(params.coverPartId);
-            }
-
-            if (constraint.type === ConstraintType.BLOCKED_BY) {
-                const params = constraint.params as BlockedByParams;
-                relatedParts.add(params.blockingPartId);
-            }
-
-            const intersects = Array.from(relatedParts).some(id => affected.has(id));
-            if (intersects) {
-                relatedParts.forEach(id => {
-                    if (!affected.has(id)) {
-                        affected.add(id);
-                        changed = true;
-                    }
-                });
-            }
-        }
-    }
-
-    return affected;
-}
-
-/**
- * 获取某个动作影响的零件集合（父子链 + 约束链）
+ * 获取某个动作影响的零件集合
  */
 function getAffectedParts(action: ActionType, targetId: string): Set<string> {
     if (action === ActionType.SELECT_TOOL) {
         return new Set();
     }
-    const structural = collectStructuralClosure([targetId]);
-    return collectConstraintClosure(structural);
+    if (action === ActionType.EXTRACT_SCREW || action === ActionType.ROTATE_SCREW) {
+        const structural = collectStructuralClosure([targetId]);
+        const parentId = getPartById(targetId)?.parentId ?? null;
+        if (parentId) {
+            structural.add(parentId);
+        }
+        return structural;
+    }
+    return collectStructuralClosure([targetId]);
 }
 
 /**
@@ -346,6 +293,31 @@ export function canOperatePart(partId: string, action: ActionType): Adjudication
 }
 
 /**
+ * 判断是否可以执行视图聚焦
+ *
+ * 视图聚焦仅需校验目标是否存在，不参与拆卸约束判定。
+ */
+export function canFocusPart(partId: string): AdjudicationReport {
+    const part = getPartById(partId);
+
+    if (!part) {
+        return createReport(
+            AdjudicationResult.BLOCKED,
+            partId,
+            `零件 ${partId} 不存在`,
+            'PART_NOT_FOUND'
+        );
+    }
+
+    return createReport(
+        AdjudicationResult.ALLOWED,
+        partId,
+        '允许聚焦',
+        'OK'
+    );
+}
+
+/**
  * 判断是否可以拆卸螺丝
  * 
  * @param screwId - 螺丝ID
@@ -489,6 +461,9 @@ export function adjudicateAction(
     toolId?: string | null
 ): AdjudicationReport {
     switch (action) {
+        case ActionType.FOCUS_CAMERA:
+            return canFocusPart(targetId);
+
         case ActionType.ROTATE_SCREW:
         case ActionType.EXTRACT_SCREW:
             return canRemoveScrew(targetId, toolId ?? null);
@@ -611,7 +586,12 @@ export function validateActionCompletion(
     _toolId?: string | null
 ): AdjudicationReport {
     const semanticOk = isActionSemanticallyComplete(action, targetId);
-    const blockingConstraints = getBlockingConstraints(targetId, action);
+    const shouldCheckConstraints =
+        action === ActionType.ROTATE_SCREW
+        || action === ActionType.EXTRACT_SCREW
+        || action === ActionType.DETACH_PART
+        || action === ActionType.REMOVE_PART;
+    const blockingConstraints = shouldCheckConstraints ? getBlockingConstraints(targetId, action) : [];
     const constraintOk = blockingConstraints.length === 0;
     const geometryOk = isActionGeometryComplete(action, targetId);
 

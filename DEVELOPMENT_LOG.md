@@ -2611,3 +2611,231 @@
   - 文档桥接步骤默认无目标零件，播放器已做“无目标步骤单击自动推进”优化，避免双击推进。
 - Next Step:
   - 可继续把高频 SOP（如 001/008/018）升级为强约束的 `targetParts + validations` 真裁决脚本。
+
+- DateTime: 2026-02-26 17:51:11 +0800
+- Task: Chrome MCP 全链路回归（SOP 列表/播放器/3D 视图联动 + 控制项回归）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_backend_health.out -w '%{http_code}' http://127.0.0.1:8000/api/v1/health`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_frontend_index.out -w '%{http_code}' http://127.0.0.1:55173`
+  - 后端启动：`/bin/zsh -lc "cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 8000"`
+  - 前端启动：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173`
+  - Chrome MCP：访问 `http://127.0.0.1:55173/maintenance`，执行 SOP 选择/步骤推进/核心件下拉/爆炸控制按钮回归
+- Tests:
+  - 服务健康：PASS（后端 200，前端 200）
+  - SOP 列表数量：PASS（联动列表按钮数 22 = 20 文档 SOP + 2 既有 SOP）
+  - 文档 SOP 推进：PASS（`RMOS-SOP-001` 从 `1/6` 单击推进到 `2/6`）
+  - 核心件快速定位：PASS（右侧合并下拉可切换到“躯干”并同步视图）
+  - 爆炸图档位：PASS（`收起`=`0%`，`40%`，`完全展开`=`100%`）
+  - 既有裁决链路：FAIL（`左臂关节检查` 第一步阻断：`零件 left_arm_pitch_link 不存在`，错误码 `PART_NOT_FOUND`）
+- Result: PARTIAL PASS
+- Failure Handling:
+  - 记录阻断原因并保留证据截图；建议后续修复裁决 part registry 与 SOP targetParts 的命名映射。
+- Risks/Notes:
+  - 当前前端页面未强制登录门禁（本次回归无管理员登录拦截）。
+  - 证据截图：
+    - `/tmp/rmos_mcp_regression_phase2_controls.png`
+    - `/tmp/rmos_mcp_regression_document_step_2of6.png`
+    - `/tmp/rmos_mcp_regression_left_arm_part_not_found.png`
+- Next Step:
+  - 修复 `left_arm_pitch_link` 的裁决注册映射后，重跑“左臂关节检查”链路验证 `part_selected` 自动推进。
+
+- DateTime: 2026-02-26 18:03:57 +0800
+- Task: Chrome MCP 全量 SOP 回归（22 条逐条推进到终态并汇总规模化问题）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_health_backend.json -w '%{http_code}' http://127.0.0.1:8000/api/v1/health`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_health_frontend.html -w '%{http_code}' http://127.0.0.1:55173/maintenance`
+  - Chrome MCP：访问 `http://127.0.0.1:55173/maintenance`，自动遍历 SOP 列表全部 22 项并逐项重置/推进到终态
+- Tests:
+  - 服务健康检查：PASS（后端 200，前端 200）
+  - SOP 全量走查：PARTIAL PASS
+    - 总数 22
+    - 完成 20
+    - 阻塞 2
+    - 超时 0
+    - 选择失败 0
+  - 阻塞明细：
+    - `躯干电机更换`：阻塞于 `3/15`，错误码 `ERR_CONSTRAINT`（依赖约束：胸腔夹板与 8 颗螺丝未先拆除）
+    - `左臂关节检查`：阻塞于 `1/6`，错误码 `ERR_CONSTRAINT` + `PART_NOT_FOUND`（`left_arm_pitch_link` 不存在）
+- Result: PARTIAL PASS
+- Failure Handling:
+  - 已记录两类阻塞并截图留证，建议优先修复 part registry / targetParts 映射与跨 SOP 依赖约束链。
+- Risks/Notes:
+  - `PART_NOT_FOUND` 不是孤例风险，当前与 `ERR_CONSTRAINT` 叠加出现，可能存在规模化的零件注册一致性问题。
+  - 证据截图：
+    - `/tmp/rmos_sop_full_sweep_left_arm_blocked.png`
+    - `/tmp/rmos_sop_full_sweep_torso_blocked.png`
+- Next Step:
+  - 按错误码维度批量扫全量 SOP 脚本/零件注册表，先消除 `PART_NOT_FOUND` 与 `ERR_CONSTRAINT` 的共性根因，再重跑全链路。
+
+- DateTime: 2026-02-26 18:08:48 +0800
+- Task: SOP 阻塞问题二次核验（隔离复现 + targetParts/registry 规模化扫描）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - Chrome MCP：页面强刷后单独复现 `左臂关节检查`
+  - Chrome MCP：页面强刷后单独复现 `躯干电机更换`
+  - `node - <<'NODE' ...`（对比 `sopScripts.ts` 的 `targetParts` 与 `partRegistry.ts + screwInstances.ts` 注册 ID）
+- Tests:
+  - 隔离复现：PASS
+    - `左臂关节检查`：`1/6` 阻塞，错误码 `PART_NOT_FOUND`（`left_arm_pitch_link`）
+    - `躯干电机更换`：`3/15` 阻塞，错误码 `ERR_CONSTRAINT`
+  - 静态规模化扫描：PASS（扫描完成）
+    - `targetParts` 唯一 ID 总数：20
+    - 已注册：9
+    - 未注册：11
+    - 未注册清单：`left_arm_pitch_link`、`left_arm_roll_link`、`left_arm_yaw_link`、`left_elbow_pitch_link`、`left_elbow_yaw_link`、`screw_torso_m4x12_001~006`
+- Result: PARTIAL PASS
+- Failure Handling:
+  - 通过隔离复现排除了“跨 SOP 弹窗污染”对错误归因的影响，确认真实阻塞根因为 `PART_NOT_FOUND` 与 `ERR_CONSTRAINT` 两类。
+- Risks/Notes:
+  - `PART_NOT_FOUND` 存在规模化风险：左臂 5 个链路 ID 全部未注册；躯干 M4×12 螺丝 6 个 ID 未注册。
+  - 证据截图：
+    - `/tmp/rmos_sop_full_sweep_torso_blocked.png`
+    - `/tmp/rmos_sop_full_sweep_left_arm_isolated_part_not_found.png`
+- Next Step:
+  - 批量补齐 `partRegistry` 与 `screwInstances`（至少上述 11 个缺失 ID），再跑 22 条 SOP 全链路复验。
+
+- DateTime: 2026-02-26 18:12:15 +0800
+- Task: 全量回归结果最终复核（批跑口径 + 单条隔离口径）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_backend_health_verify.json -w '%{http_code}' http://127.0.0.1:8000/api/v1/health`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_frontend_health_verify.html -w '%{http_code}' http://127.0.0.1:55173/maintenance`
+  - Chrome MCP：读取 `window.__rmosSopSweepFinal`（22 条批跑汇总）
+  - Chrome MCP：强刷后单独执行 `左臂关节检查` 复现 `PART_NOT_FOUND`
+  - `node - <<'NODE' ...`（再次对照 `targetParts` 与 registry）
+- Tests:
+  - 服务健康：PASS（后端 200，前端 200）
+  - 22 条批跑：PARTIAL PASS（20 完成，2 阻塞）
+  - 单条隔离复现：PASS
+    - `左臂关节检查`：`canClickNext=true`，点击后报 `零件 left_arm_pitch_link 不存在`，错误码 `PART_NOT_FOUND`
+  - 静态扫描：PASS（`targetParts`=20，缺失注册=11）
+- Result: PARTIAL PASS
+- Failure Handling:
+  - 批跑中 `左臂关节检查`显示 `ERR_CONSTRAINT`，隔离复现显示 `PART_NOT_FOUND`，判定存在“跨 SOP 状态/弹窗污染”导致的归因偏移，后续修复需按隔离口径优先。
+- Risks/Notes:
+  - 本轮确认问题至少分三类：`ERR_CONSTRAINT`（步骤阻断）、`PART_NOT_FOUND`（零件未注册）、批跑状态污染（同 SOP 不同运行上下文报错不同）。
+- Next Step:
+  - 先补齐 11 个缺失 ID，再修正 `FOCUS_CAMERA` 的约束触发范围/切 SOP 状态重置策略，最后重跑 22 条回归。
+
+- DateTime: 2026-02-26 18:35:49 +0800
+- Task: 修复 SOP 规模化阻塞根因（PART_NOT_FOUND + FOCUS_CAMERA 误触发约束 + M4×12 螺丝缺失）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/decisionEngine.test.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/data/partRegistry.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/data/screwInstances.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/core/decisionEngine.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development`
+  - `npm test`（先 RED，后 GREEN）
+  - `node - <<'NODE' ...`（`targetParts` 与 `partRegistry+screwInstances` 对照）
+  - `npm run build`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_backend_health_fixverify.json -w '%{http_code}' http://127.0.0.1:8000/api/v1/health`
+  - `curl --noproxy 127.0.0.1,localhost -s -o /tmp/rmos_frontend_health_fixverify.html -w '%{http_code}' http://127.0.0.1:55173/maintenance`
+  - Chrome MCP：
+    - 单独回归 `左臂关节检查`（从 1/6 推进到 2/6，无 `PART_NOT_FOUND`）
+    - 单独回归 `躯干电机更换`（到 3/15 时无 `ERR_CONSTRAINT` 弹窗）
+- Tests:
+  - RED（预期失败）: PASS
+    - 新增 TC-006/007/008 初次执行失败，分别命中：`ERR_CONSTRAINT`、`PART_NOT_FOUND`、`SCREW_NOT_FOUND`
+  - GREEN（修复后）: PASS
+    - `npm test`：全量裁决测试通过（Decision Engine 8/8）
+    - `npm run build`：通过（`tsc -b && vite build`）
+    - 静态扫描：`targetParts` 缺失注册从 11 降为 0
+  - Chrome 回归：PASS
+    - `左臂关节检查` 不再报 `left_arm_pitch_link` 不存在
+    - `躯干电机更换` 第 3 步“定位躯干”不再被约束误阻断
+- Result: PASS
+- Failure Handling:
+  - 无新增失败；仅保留构建体积告警（chunk size warning），不影响本次修复结论。
+- Risks/Notes:
+  - `FOCUS_CAMERA` 已改为“只校验目标存在”路径，避免被拆卸约束误阻断；拆卸类动作仍沿用原约束裁决。
+- Next Step:
+  - 建议重跑 22 条 SOP 全链路批回归，确认跨 SOP 状态污染是否仍存在（当前已修复主要根因）。
+
+- DateTime: 2026-02-26 20:15:34 +0800
+- Task: SOP 列表联动文案重命名（20 条文档 SOP 改为纯中文短标题）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/documentSOPScripts.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `rg -n "RMOS-SOP-001|documentSOPScripts|ALL_SOP_SCRIPTS" r-mos-frontend/src`
+  - `npm run build`
+  - Chrome MCP：访问 `http://127.0.0.1:55173/maintenance` 并读取 `SOP 列表（联动）` 按钮文本
+- Tests:
+  - 前端构建：PASS（`tsc -b && vite build`）
+  - 页面文案验证：PASS（SOP 列表共 22 项，20 条文档 SOP 全为纯中文短标题，无英文与编号前缀）
+- Result: PASS
+- Failure Handling:
+  - 无
+- Risks/Notes:
+  - 当前仅调整显示标题，不影响 `sopId` 与步骤内容逻辑。
+- Next Step:
+  - 如需我继续处理边界体验，可再把列表按钮样式改为单行省略（ellipsis）防止未来标题增长再次撑出容器。
+
+- DateTime: 2026-02-26 21:05:00 +0800
+- Task: 停用原20条并生成30条硬件维保SOP草案（低5/中10/高15）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/plans/2026-02-26-hardware-sop-30-draft.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming`
+  - `rg -n "enum ActionType|interface SOPStepAdjudication|interface SOPScriptAdjudication" r-mos-frontend/src/adjudication -g "*.ts"`
+  - `rg -n "SOP_TORSO_MOTOR_REPLACEMENT|SOP_LEFT_ARM_INSPECTION|ALL_SOP_SCRIPTS" r-mos-frontend/src/data/sopScripts.ts`
+  - `node - <<'NODE' ...`（提取 `partRegistry/screwInstances` 可用 `partIds/screwIds`）
+  - `mkdir -p docs/plans`
+  - `cat > docs/plans/2026-02-26-hardware-sop-30-draft.md <<'EOF' ... EOF`
+  - `wc -l docs/plans/2026-02-26-hardware-sop-30-draft.md`
+  - `rg -n "sop-hw-" docs/plans/2026-02-26-hardware-sop-30-draft.md | wc -l`
+- Tests:
+  - 草案条目数检查：PASS（30 条）
+  - 难度分布检查：PASS（低 5 / 中 10 / 高 15）
+  - 步数边界检查：PASS（低<=10、中<=20、高>20）
+  - 模板动作对齐检查：PASS（动作均来自 `ActionType`，交互事件可映射）
+- Result: PASS
+- Failure Handling:
+  - 无执行失败；本轮为方案与内容生成，不涉及前后端运行态改动。
+- Risks/Notes:
+  - 本草案当前按“已注册裁决对象”生成（含左臂、双腿、躯干）；若后续补齐右臂注册，可再扩展右臂重拆类高难 SOP。
+- Next Step:
+  - 待用户确认草案后，将 30 条实例化为 `sopScripts.ts` 可执行数据并替换页面联动来源。
+
+- DateTime: 2026-02-26 23:15:00 +0800
+- Task: 落地30条硬件维保SOP联动并修复裁决链路阻断；新增全量SOP回归
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/hardwareSOPScripts.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/sopScripts.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/core/decisionEngine.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/decisionEngine.test.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/run-adjudication-tests.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/hardwareSopsFlow.test.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/data/partRegistry.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/data/screwInstances.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos && curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/maintenance`
+  - `cd /Users/xuhehong/Desktop/r-mos && curl --noproxy 127.0.0.1,localhost -sS http://127.0.0.1:18080/health | head -c 400`
+  - `cd /Users/xuhehong/Desktop/r-mos && curl --noproxy 127.0.0.1,localhost -sS http://127.0.0.1:8000/health | head -c 400`
+  - Chrome MCP: `http://127.0.0.1:55173/maintenance` 页面联动与播放器推进回归
+- Tests:
+  - `npm run build`: PASS
+  - `npm test`: PASS（包含新增 Hardware SOP Full Flow Tests，30/30 通过）
+  - Chrome MCP 页面回归: PASS（SOP列表30条中文显示正常；列表点击可联动播放器和3D视图）
+- Result: PASS
+- Failure Handling:
+  - 初版全量回归出现 23 个阻断（覆盖件/约束扩散/重复拆卸冲突），已通过目标映射、约束影响范围收敛、审计步骤动作改造修复，并复测 30/30 通过。
+- Risks/Notes:
+  - Chrome MCP 无法稳定模拟 Canvas 内真实3D点击，复杂拆装步骤主要依赖自动化裁决回归覆盖。
+- Next Step:
+  - 可继续补一条前端E2E（浏览器自动交互）脚本，把“关键SOP前5步”固化为持续回归。

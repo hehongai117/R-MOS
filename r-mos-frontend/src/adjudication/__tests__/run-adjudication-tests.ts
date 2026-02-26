@@ -9,6 +9,7 @@ import { runFatalFailureTest } from './sopExecutor.test';
 import { runAllCoreLogicTests } from './core_logic.test';
 import { runAllP4Tests } from './p4_mode.test';
 import { runAllExamModeTests } from './examMode.test';
+import { runAllHardwareSOPFlowTests } from './hardwareSopsFlow.test';
 
 function printSection(title: string): void {
     console.log('\n' + '='.repeat(72));
@@ -51,7 +52,12 @@ function main(): void {
     printResults([sop]);
     console.log(`\n小结: 1 | 通过 ${sop.passed ? 1 : 0} | 失败 ${sop.passed ? 0 : 1}`);
 
-    const failed = core.failed + p4.failed + exam.failed + decision.failed + (sop.passed ? 0 : 1);
+    printSection('Hardware SOP Full Flow Tests');
+    const hardware = runAllHardwareSOPFlowTests();
+    printResults(hardware.results);
+    console.log(`\n小结: ${hardware.total} | 通过 ${hardware.passed} | 失败 ${hardware.failed}`);
+
+    const failed = core.failed + p4.failed + exam.failed + decision.failed + (sop.passed ? 0 : 1) + hardware.failed;
     if (failed > 0) {
         process.exitCode = 1;
     }

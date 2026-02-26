@@ -114,6 +114,14 @@ const ExecutionStateText: Record<SOPExecutionState, string> = {
     [SOPExecutionState.BLOCKED]: '已阻断',
 };
 
+const PART_TARGET_ALIASES: Record<string, string[]> = {
+    frame_torso_chest: ['torso_link'],
+    torso_motor: ['torso_link'],
+    torso_pcb_main: ['torso_link'],
+    left_foot_rubber: ['left_ankle_roll_link'],
+    right_foot_rubber: ['right_ankle_roll_link'],
+};
+
 export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     availableSOPs,
     onStepChange,
@@ -303,6 +311,19 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         return null;
     }, [normalizeSpec]);
 
+    const resolvePartTargetId = useCallback((step: SOPStepAdjudication, rawPartId: string): string | null => {
+        if (step.targetParts.includes(rawPartId)) {
+            return rawPartId;
+        }
+        for (const targetId of step.targetParts) {
+            const aliases = PART_TARGET_ALIASES[targetId] ?? [];
+            if (aliases.includes(rawPartId)) {
+                return targetId;
+            }
+        }
+        return null;
+    }, []);
+
     const handleActionEvent = useCallback((event: SOPActionEvent): boolean => {
         if (!currentStep) return false;
         switch (currentStep.action) {
@@ -314,7 +335,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             case ActionType.UNPLUG_CONNECTOR:
                 if (event.type !== 'part_selected' || !event.partName) return false;
                 if (currentStep.targetParts.length === 0) return true;
-                return currentStep.targetParts.includes(event.partName);
+                return resolvePartTargetId(currentStep, event.partName) !== null;
             case ActionType.ROTATE_SCREW:
             case ActionType.EXTRACT_SCREW: {
                 if (event.type !== 'screw_selected' || !event.screwId) return false;
@@ -323,20 +344,24 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                 commitScrewExtraction(targetScrewId);
                 return true;
             }
-            case ActionType.DETACH_PART:
+            case ActionType.DETACH_PART: {
                 if (event.type !== 'part_selected' || !event.partName) return false;
-                if (!currentStep.targetParts.includes(event.partName)) return false;
-                commitPartDetachment(event.partName);
+                const targetPartId = resolvePartTargetId(currentStep, event.partName);
+                if (!targetPartId) return false;
+                commitPartDetachment(targetPartId);
                 return true;
-            case ActionType.REMOVE_PART:
+            }
+            case ActionType.REMOVE_PART: {
                 if (event.type !== 'part_selected' || !event.partName) return false;
-                if (!currentStep.targetParts.includes(event.partName)) return false;
-                commitPartRemoval(event.partName);
+                const targetPartId = resolvePartTargetId(currentStep, event.partName);
+                if (!targetPartId) return false;
+                commitPartRemoval(targetPartId);
                 return true;
+            }
             default:
                 return false;
         }
-    }, [currentStep, resolveScrewTargetId]);
+    }, [currentStep, resolvePartTargetId, resolveScrewTargetId]);
 
     useEffect(() => {
         if (!actionEvent || !executor || !context) return;
