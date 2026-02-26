@@ -928,11 +928,13 @@ function SOPMaintenancePage() {
                                                 type={isCurrent ? 'primary' : 'default'}
                                                 block
                                                 onClick={() => {
+                                                    const part = PART_METADATA[linkName];
+                                                    if (part) {
+                                                        handlePartSelect(part);
+                                                        return;
+                                                    }
                                                     if (linkHasDetailParts(linkName)) {
                                                         enterL2(linkName);
-                                                    } else {
-                                                        const part = PART_METADATA[linkName];
-                                                        if (part) setSelectedPart(part);
                                                     }
                                                 }}
                                             >

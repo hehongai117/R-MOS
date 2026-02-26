@@ -2839,3 +2839,24 @@
   - Chrome MCP 无法稳定模拟 Canvas 内真实3D点击，复杂拆装步骤主要依赖自动化裁决回归覆盖。
 - Next Step:
   - 可继续补一条前端E2E（浏览器自动交互）脚本，把“关键SOP前5步”固化为持续回归。
+
+- DateTime: 2026-02-26 23:28:00 +0800
+- Task: 修复“当前部位子组件”代理入口未触发播放器 part_selected 事件
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - Chrome MCP: 复测 `maintenance` 页面中“当前部位子组件”点击联动
+- Tests:
+  - `npm run build`: PASS
+  - `npm test`: PASS（含 Hardware SOP Full Flow Tests 30/30）
+  - Chrome MCP: PASS（代理入口可走统一点击链路）
+- Result: PASS
+- Failure Handling:
+  - 无
+- Risks/Notes:
+  - Canvas 内真实网格点击在 MCP 可访问性树下仍不可完全自动化，代理入口已作为稳定替代交互路径。
+- Next Step:
+  - 可选：后续为代理入口补充“已触发 SOP 事件”显式提示，减少误解。
