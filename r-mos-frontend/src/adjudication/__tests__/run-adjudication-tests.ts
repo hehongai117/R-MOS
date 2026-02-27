@@ -11,6 +11,7 @@ import { runAllP4Tests } from './p4_mode.test';
 import { runAllExamModeTests } from './examMode.test';
 import { runAllHardwareSOPFlowTests } from './hardwareSopsFlow.test';
 import { runAllPartCoverageTests } from './partsCoverage.test';
+import { runAllInteractionGateTests } from './interactionGate.test';
 
 function printSection(title: string): void {
     console.log('\n' + '='.repeat(72));
@@ -58,6 +59,11 @@ function main(): void {
     printResults(hardware.results);
     console.log(`\n小结: ${hardware.total} | 通过 ${hardware.passed} | 失败 ${hardware.failed}`);
 
+    printSection('SOP Interaction Gate Tests');
+    const interactionGate = runAllInteractionGateTests();
+    printResults(interactionGate.results);
+    console.log(`\n小结: ${interactionGate.total} | 通过 ${interactionGate.passed} | 失败 ${interactionGate.failed}`);
+
     printSection('Part Model Coverage Tests');
     const partCoverage = runAllPartCoverageTests();
     printResults(partCoverage.results);
@@ -69,6 +75,7 @@ function main(): void {
         + decision.failed
         + (sop.passed ? 0 : 1)
         + hardware.failed
+        + interactionGate.failed
         + partCoverage.failed;
     if (failed > 0) {
         process.exitCode = 1;

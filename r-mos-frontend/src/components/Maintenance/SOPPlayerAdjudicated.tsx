@@ -47,6 +47,7 @@ import {
     ScrewState,
     useAdjudicationStore,
 } from '@/adjudication';
+import { shouldAutoValidateAfterInteraction } from '@/adjudication/ui/interactionGate';
 
 const { Text } = Typography;
 
@@ -177,7 +178,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                 return '请在左侧工具区选择本步骤要求的工具，系统将自动验证并推进。';
             case ActionType.ROTATE_SCREW:
             case ActionType.EXTRACT_SCREW:
-                return '请在螺丝面板点击对应螺丝规格（或匹配螺丝），系统将自动记录并验证。';
+                return '请在螺丝面板连续点击目标螺丝，全部完成后系统自动验证并推进。';
             case ActionType.DETACH_PART:
             case ActionType.REMOVE_PART:
             case ActionType.FOCUS_CAMERA:
@@ -381,6 +382,9 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         if (context.executionState !== SOPExecutionState.EXECUTING) return;
         const eventMatched = handleActionEvent(actionEvent);
         if (!eventMatched) return;
+        if (currentStep && !shouldAutoValidateAfterInteraction(currentStep, useAdjudicationStore.getState())) {
+            return;
+        }
         const validateReport = executor.validateAndAdvance();
         setLastReport(validateReport);
     }, [actionEvent, executor, context, currentStep, handleActionEvent]);

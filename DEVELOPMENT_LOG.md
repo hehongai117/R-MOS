@@ -2889,3 +2889,27 @@
   - MCP 对 Canvas 内真实网格点击自动化能力有限；本次用数据回归 + 页面状态联动双证据验证。
 - Next Step:
   - 若你确认，我下一步可继续把“每条高难 SOP 的关键拆卸步”改成强制细节件点击（不再允许手动验证兜底）。
+
+- DateTime: 2026-02-27 10:43:56 +0800
+- Task: 修复裁决播放器多目标步骤（螺丝组/拆件组）被过早验证导致阻断的问题，并补齐交互门控回归
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/ui/interactionGate.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/interactionGate.test.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/run-adjudication-tests.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - Chrome MCP: `http://127.0.0.1:55173/maintenance`（SOP 列表联动 + 躯干开盖检查多螺丝步骤实链路验证）
+  - Chrome MCP Evaluate: `import('/src/adjudication/core/stateManager.ts')` 读取 `screwStates` 验证螺丝组状态推进
+- Tests:
+  - `npm test`: PASS（新增 `SOP Interaction Gate Tests` 4/4 通过，其余裁决套件保持全绿）
+  - Chrome MCP: PASS（`躯干开盖检查` 在步骤 `4/16` 时，M3×10 螺丝从 `2/8` 连续推进到 `8/8` 后自动进入 `5/16`；未出现中途失败/阻断）
+- Result: PASS
+- Failure Handling:
+  - 无新增失败；对“中途触发 validate 导致 FAILED/BLOCKED”的根因已通过交互门控修复。
+- Risks/Notes:
+  - 右侧“阻断原因”文本依赖上一次报告，不会在每次局部交互后实时刷新，属于展示层口径问题，不影响步骤推进正确性。
+  - Chrome MCP 对 Canvas 网格点击能力有限，本轮通过代理入口 + store 状态双证据验证交互链路。
+- Next Step:
+  - 可继续补一条 UI 文案修复：在执行中显示“已完成 X/Y 目标”，替代旧阻断文案，避免误判卡住。
