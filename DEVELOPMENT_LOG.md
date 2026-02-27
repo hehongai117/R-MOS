@@ -2860,3 +2860,32 @@
   - Canvas 内真实网格点击在 MCP 可访问性树下仍不可完全自动化，代理入口已作为稳定替代交互路径。
 - Next Step:
   - 可选：后续为代理入口补充“已触发 SOP 事件”显式提示，减少误解。
+
+- DateTime: 2026-02-27 08:15:10 +0800
+- Task: 补齐 24 核心件细节模型（含螺丝/盖板/电子件）并打通与硬件 SOP 的交互联动
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/partsManifest.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/partsCoverage.test.ts`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/adjudication/__tests__/run-adjudication-tests.ts`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming`
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging`
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173`（端口占用后自动切到 `55174`）
+  - Chrome MCP: `http://127.0.0.1:55174/maintenance` 页面回归（SOP 选择、躯干细节数量与步骤联动状态确认）
+- Tests:
+  - `npm test`: PASS（含新增 Part Model Coverage Tests，4/4 通过）
+  - `npm run build`: PASS（`tsc -b && vite build`）
+  - Chrome MCP 页面回归: PASS（躯干核心件详情显示细节件数量 21；SOP 步骤进入执行态，无 `PART_NOT_FOUND`）
+- Result: PASS
+- Risks/Notes:
+  - 当前模型覆盖以 `ATOM01` 机械目录现有 GLB/STEP 命名为准，左右镜像件部分复用同类零件资产（逻辑正确，几何精细对位后续可继续微调）。
+  - MCP 对 Canvas 内真实网格点击自动化能力有限；本次用数据回归 + 页面状态联动双证据验证。
+- Next Step:
+  - 若你确认，我下一步可继续把“每条高难 SOP 的关键拆卸步”改成强制细节件点击（不再允许手动验证兜底）。

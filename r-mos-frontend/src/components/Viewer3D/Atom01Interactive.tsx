@@ -260,7 +260,10 @@ const SubPartsGroup: React.FC<{
     fullscreenMode = false,
     showAllInL1 = false,
 }) => {
-    const parts = useMemo(() => getExplodePartsForLink(linkName), [linkName]);
+    const parts = useMemo(
+        () => getExplodePartsForLink(linkName, { includeSecondary: isL2Mode || showAllInL1 }),
+        [linkName, isL2Mode, showAllInL1],
+    );
     const gltfUrls = useMemo(() => parts.map(p => `${PARTS_GLB_BASE}/${p.path}`), [parts]);
 
     // 并发加载该 link 下的所有子零件

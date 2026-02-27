@@ -11,7 +11,17 @@
  *  - misc:    /models/parts/misc/{文件名}.glb
  *  - etc.
  */
+import { PART_SCREWS } from '../../data/toolData';
 import overviewNodes from './overview_nodes.json';
+
+export type DetailPartCategory =
+    | 'frame'
+    | 'screw'
+    | 'nut'
+    | 'bearing'
+    | 'calibration'
+    | 'electronics'
+    | 'misc';
 
 export interface DetailPart {
     /** 子零件显示名 */
@@ -19,7 +29,9 @@ export interface DetailPart {
     /** GLB 路径（相对于 /models/parts/） */
     path: string;
     /** 零件分类 */
-    category: 'frame' | 'screw' | 'nut' | 'bearing' | 'calibration' | 'electronics' | 'misc';
+    category: DetailPartCategory;
+    /** 可选：用于 SOP 动作裁决的目标 ID */
+    actionTarget?: string;
 }
 
 interface OverviewNodesConfig {
@@ -73,197 +85,289 @@ export function isOverviewNode(nodeId: string): boolean {
     return OVERVIEW_NODE_IDS.includes(nodeId);
 }
 
-/**
- * 每个 link 对应的细节子零件列表。
- * frames/ 目录下的 GLB 文件按 `{link_name}.glb`, `{link_name}_1.glb` 等命名，
- * 为 link 的结构子件拆分（前侧板、后侧板等）。
- */
-export const DETAIL_PARTS_MAP: Record<string, DetailPart[]> = {
-    // ======== 底座 ========
-    'base_link': [
-        { displayName: '底座结构件', path: 'frames/base_link.glb', category: 'frame' },
-        { displayName: '底座结构件 A', path: 'frames/base_link_1.glb', category: 'frame' },
-        { displayName: '底座结构件 B', path: 'frames/base_link_2.glb', category: 'frame' },
-        { displayName: '底座结构件 C', path: 'frames/base_link_3.glb', category: 'frame' },
+const CORE_LINKS = [
+    'base_link',
+    'torso_link',
+    'left_arm_pitch_link',
+    'left_arm_roll_link',
+    'left_arm_yaw_link',
+    'left_elbow_pitch_link',
+    'left_elbow_yaw_link',
+    'right_arm_pitch_link',
+    'right_arm_roll_link',
+    'right_arm_yaw_link',
+    'right_elbow_pitch_link',
+    'right_elbow_yaw_link',
+    'left_thigh_yaw_link',
+    'left_thigh_roll_link',
+    'left_thigh_pitch_link',
+    'left_knee_link',
+    'left_ankle_pitch_link',
+    'left_ankle_roll_link',
+    'right_thigh_yaw_link',
+    'right_thigh_roll_link',
+    'right_thigh_pitch_link',
+    'right_knee_link',
+    'right_ankle_pitch_link',
+    'right_ankle_roll_link',
+] as const;
+
+type CoreLinkName = typeof CORE_LINKS[number];
+
+const CORE_LINK_DISPLAY_NAMES: Record<CoreLinkName, string> = {
+    base_link: '底座',
+    torso_link: '躯干',
+    left_arm_pitch_link: '左肩俯仰关节',
+    left_arm_roll_link: '左肩横滚关节',
+    left_arm_yaw_link: '左上臂',
+    left_elbow_pitch_link: '左肘俯仰关节',
+    left_elbow_yaw_link: '左前臂',
+    right_arm_pitch_link: '右肩俯仰关节',
+    right_arm_roll_link: '右肩横滚关节',
+    right_arm_yaw_link: '右上臂',
+    right_elbow_pitch_link: '右肘俯仰关节',
+    right_elbow_yaw_link: '右前臂',
+    left_thigh_yaw_link: '左髋偏航关节',
+    left_thigh_roll_link: '左髋横滚关节',
+    left_thigh_pitch_link: '左髋俯仰关节',
+    left_knee_link: '左膝关节',
+    left_ankle_pitch_link: '左踝俯仰关节',
+    left_ankle_roll_link: '左踝横滚关节',
+    right_thigh_yaw_link: '右髋偏航关节',
+    right_thigh_roll_link: '右髋横滚关节',
+    right_thigh_pitch_link: '右髋俯仰关节',
+    right_knee_link: '右膝关节',
+    right_ankle_pitch_link: '右踝俯仰关节',
+    right_ankle_roll_link: '右踝横滚关节',
+};
+
+const FRAME_SUFFIXES = ['', '_1', '_2', '_3'] as const;
+const FRAME_SLOT_NAMES = ['主体框架', '前盖板', '后盖板', '侧向支撑'] as const;
+
+const SCREW_MODEL_PATH_BY_ID: Record<string, string> = {
+    M3x6: 'screws/内六角圆柱头螺钉M3x6.glb',
+    M3x8: 'screws/内六角圆柱头螺钉M3x8.glb',
+    M3x10: 'screws/内六角圆柱头螺钉M3x10.glb',
+    M3x12: 'screws/内六角圆柱头螺钉M3x12.glb',
+    M3x16: 'screws/内六角圆柱头螺钉M3x16.glb',
+    M4x8: 'screws/内六角圆柱头螺钉M4x8.glb',
+    M4x10: 'screws/内六角圆柱头螺钉M4x10.glb',
+    M4x12: 'screws/内六角圆柱头螺钉M4x12.glb',
+    M4x16: 'screws/内六角圆柱头螺钉M4x16.glb',
+    M5x10: 'screws/内六角圆柱头螺钉M5x10.glb',
+    M6x15: 'screws/内六角圆柱头螺钉M6x20.glb',
+    M6x20: 'screws/内六角圆柱头螺钉M6x20.glb',
+};
+
+const EXTRA_LINK_PARTS: Partial<Record<CoreLinkName, DetailPart[]>> = {
+    base_link: [
+        { displayName: '髋关节固定座', path: 'frames/髋关节固定.glb', category: 'frame' },
+        { displayName: '髋夹板', path: 'frames/髋夹板.glb', category: 'frame' },
+        { displayName: '腰部支撑件', path: 'frames/腰部支撑.glb', category: 'frame' },
+        { displayName: '电池底盖', path: 'frames/电池底盖.glb', category: 'frame' },
         { displayName: '腰部标定件', path: 'calibration/腰部标定件数量1.glb', category: 'calibration' },
     ],
-
-    // ======== 躯干 ========
-    'torso_link': [
-        { displayName: '躯干结构件', path: 'frames/torso_link.glb', category: 'frame' },
-        { displayName: '躯干结构件 A', path: 'frames/torso_link_1.glb', category: 'frame' },
-        { displayName: '躯干结构件 B', path: 'frames/torso_link_2.glb', category: 'frame' },
-        { displayName: '躯干结构件 C', path: 'frames/torso_link_3.glb', category: 'frame' },
+    torso_link: [
+        { displayName: '胸腔前后夹板', path: 'frames/胸腔前后夹板.glb', category: 'frame', actionTarget: 'frame_torso_chest' },
+        { displayName: '胸腔后夹板', path: 'frames/胸腔夹板后.glb', category: 'frame' },
+        { displayName: '胸腔前盖', path: 'frames/胸腔胸部.glb', category: 'frame' },
+        { displayName: '胸腔下盖', path: 'frames/胸腔腹部.glb', category: 'frame' },
+        { displayName: '胸腔后背下盖', path: 'frames/胸腔后背下部.glb', category: 'frame' },
+        { displayName: '腰部下盖', path: 'frames/腰部下册.glb', category: 'frame' },
         { displayName: '侧板横板', path: 'misc/侧板横板.glb', category: 'misc' },
-        { displayName: '侧板横板 A', path: 'misc/侧板横板_1.glb', category: 'misc' },
-        { displayName: 'PCB载板', path: 'misc/PCB载板.glb', category: 'electronics' },
-        { displayName: 'PCB载板 A', path: 'misc/PCB载板_1.glb', category: 'electronics' },
-        { displayName: 'IMU载板', path: 'misc/IMU载板.glb', category: 'electronics' },
-        { displayName: 'IMU载板 A', path: 'misc/IMU载板_1.glb', category: 'electronics' },
-        { displayName: 'OPI 5Plus PCB', path: 'misc/OPI_5PLUS_PCBA.glb', category: 'electronics' },
-        { displayName: '3D PCB7', path: 'misc/3D_PCB7_2025_07_10.glb', category: 'electronics' },
-        { displayName: '把手', path: 'misc/把手.glb', category: 'misc' },
-        { displayName: '电池盒', path: 'misc/电池盒粗略尺寸.glb', category: 'misc' },
+        { displayName: '躯干电机', path: 'misc/LB22SA2M1_M10.glb', category: 'electronics', actionTarget: 'torso_motor' },
+        { displayName: '主控板', path: 'misc/OPI_5PLUS_PCBA.glb', category: 'electronics', actionTarget: 'torso_pcb_main' },
+        { displayName: 'PCB 载板', path: 'misc/PCB载板.glb', category: 'electronics' },
+        { displayName: 'IMU 载板', path: 'misc/IMU载板.glb', category: 'electronics' },
+        { displayName: '扩展板', path: 'misc/3D_PCB7_2025_07_10.glb', category: 'electronics' },
+        { displayName: '提手', path: 'misc/把手.glb', category: 'misc' },
+        { displayName: '电池仓', path: 'misc/电池盒粗略尺寸.glb', category: 'misc' },
     ],
-
-    // ======== 左臂 ========
-    'left_arm_pitch_link': [
-        { displayName: '左肩结构件', path: 'frames/left_arm_pitch_link.glb', category: 'frame' },
-        { displayName: '左肩结构件 A', path: 'frames/left_arm_pitch_link_1.glb', category: 'frame' },
-        { displayName: '左肩结构件 B', path: 'frames/left_arm_pitch_link_2.glb', category: 'frame' },
-        { displayName: '左肩结构件 C', path: 'frames/left_arm_pitch_link_3.glb', category: 'frame' },
+    left_arm_pitch_link: [
+        { displayName: '肩部壳体', path: 'frames/肩膀.glb', category: 'frame' },
+        { displayName: '肩部固定件', path: 'frames/肩部固定件数量2.glb', category: 'frame' },
+        { displayName: '限位销', path: 'misc/限位销.glb', category: 'misc' },
     ],
-    'left_arm_roll_link': [
-        { displayName: '左肩 Roll 结构件', path: 'frames/left_arm_roll_link.glb', category: 'frame' },
-        { displayName: '左肩 Roll A', path: 'frames/left_arm_roll_link_1.glb', category: 'frame' },
-        { displayName: '左肩 Roll B', path: 'frames/left_arm_roll_link_2.glb', category: 'frame' },
-        { displayName: '左肩 Roll C', path: 'frames/left_arm_roll_link_3.glb', category: 'frame' },
+    left_arm_roll_link: [
+        { displayName: '肩部壳体（副）', path: 'frames/肩膀_1.glb', category: 'frame' },
+        { displayName: '肩部固定件（副）', path: 'frames/肩部固定件数量2_1.glb', category: 'frame' },
+        { displayName: '输出法兰连杆', path: 'frames/输出法兰连杆.glb', category: 'frame' },
+        { displayName: '限位销（副）', path: 'misc/限位销_1.glb', category: 'misc' },
     ],
-    'left_arm_yaw_link': [
-        { displayName: '左上臂结构件', path: 'frames/left_arm_yaw_link.glb', category: 'frame' },
-        { displayName: '左上臂 A', path: 'frames/left_arm_yaw_link_1.glb', category: 'frame' },
-        { displayName: '左上臂 B', path: 'frames/left_arm_yaw_link_2.glb', category: 'frame' },
-        { displayName: '左上臂 C', path: 'frames/left_arm_yaw_link_3.glb', category: 'frame' },
-        { displayName: '大臂上部前侧', path: 'misc/大臂上部前侧.glb', category: 'misc' },
-        { displayName: '大臂上部后侧', path: 'misc/大臂上部后侧.glb', category: 'misc' },
-        { displayName: '大臂下部外侧', path: 'misc/大臂下部外侧.glb', category: 'misc' },
-        { displayName: '大臂下部里侧', path: 'misc/大臂下部里侧.glb', category: 'misc' },
-        { displayName: '大臂根部前侧', path: 'misc/大臂根部前侧.glb', category: 'misc' },
-        { displayName: '大臂根部后侧', path: 'misc/大臂根部后侧.glb', category: 'misc' },
+    left_arm_yaw_link: [
+        { displayName: '大臂上部前壳', path: 'misc/大臂上部前侧.glb', category: 'misc' },
+        { displayName: '大臂上部后壳', path: 'misc/大臂上部后侧.glb', category: 'misc' },
+        { displayName: '大臂下部外壳', path: 'misc/大臂下部外侧.glb', category: 'misc' },
+        { displayName: '大臂下部内壳', path: 'misc/大臂下部里侧.glb', category: 'misc' },
+        { displayName: '大臂根部前壳', path: 'misc/大臂根部前侧.glb', category: 'misc' },
+        { displayName: '大臂根部后壳', path: 'misc/大臂根部后侧.glb', category: 'misc' },
     ],
-    'left_elbow_pitch_link': [
-        { displayName: '左肘结构件', path: 'frames/left_elbow_pitch_link.glb', category: 'frame' },
-        { displayName: '左肘 A', path: 'frames/left_elbow_pitch_link_1.glb', category: 'frame' },
-        { displayName: '左肘 B', path: 'frames/left_elbow_pitch_link_2.glb', category: 'frame' },
-        { displayName: '左肘 C', path: 'frames/left_elbow_pitch_link_3.glb', category: 'frame' },
+    left_elbow_pitch_link: [
+        { displayName: '通用连接件', path: 'frames/通用连接件.glb', category: 'frame' },
+        { displayName: '扩孔法兰', path: 'frames/通用连接件扩孔法兰.glb', category: 'frame' },
         { displayName: '肘部标定件', path: 'calibration/肘部标定件数量2.glb', category: 'calibration' },
     ],
-    'left_elbow_yaw_link': [
-        { displayName: '左前臂结构件', path: 'frames/left_elbow_yaw_link.glb', category: 'frame' },
-        { displayName: '左前臂 A', path: 'frames/left_elbow_yaw_link_1.glb', category: 'frame' },
-        { displayName: '左前臂 B', path: 'frames/left_elbow_yaw_link_2.glb', category: 'frame' },
-        { displayName: '左前臂 C', path: 'frames/left_elbow_yaw_link_3.glb', category: 'frame' },
-        { displayName: '小臂外侧', path: 'misc/小臂外侧.glb', category: 'misc' },
-        { displayName: '小臂里侧', path: 'misc/小臂里侧.glb', category: 'misc' },
-        { displayName: '手部球型', path: 'misc/手部球型.glb', category: 'misc' },
+    left_elbow_yaw_link: [
+        { displayName: '小臂外壳', path: 'misc/小臂外侧.glb', category: 'misc' },
+        { displayName: '小臂内壳', path: 'misc/小臂里侧.glb', category: 'misc' },
+        { displayName: '手部球形件', path: 'misc/手部球型.glb', category: 'misc' },
+        { displayName: '输出法兰连杆（副）', path: 'frames/输出法兰连杆_1.glb', category: 'frame' },
     ],
-
-    // ======== 右臂 ========
-    'right_arm_pitch_link': [
-        { displayName: '右肩结构件', path: 'frames/right_arm_pitch_link.glb', category: 'frame' },
-        { displayName: '右肩 A', path: 'frames/right_arm_pitch_link_1.glb', category: 'frame' },
-        { displayName: '右肩 B', path: 'frames/right_arm_pitch_link_2.glb', category: 'frame' },
-        { displayName: '右肩 C', path: 'frames/right_arm_pitch_link_3.glb', category: 'frame' },
+    right_arm_pitch_link: [
+        { displayName: '肩部壳体', path: 'frames/肩膀_2.glb', category: 'frame' },
+        { displayName: '肩部固定件', path: 'frames/肩部固定件数量2_2.glb', category: 'frame' },
+        { displayName: '限位销', path: 'misc/限位销_2.glb', category: 'misc' },
     ],
-    'right_arm_roll_link': [
-        { displayName: '右肩 Roll 结构件', path: 'frames/right_arm_roll_link.glb', category: 'frame' },
-        { displayName: '右肩 Roll A', path: 'frames/right_arm_roll_link_1.glb', category: 'frame' },
-        { displayName: '右肩 Roll B', path: 'frames/right_arm_roll_link_2.glb', category: 'frame' },
-        { displayName: '右肩 Roll C', path: 'frames/right_arm_roll_link_3.glb', category: 'frame' },
+    right_arm_roll_link: [
+        { displayName: '肩部壳体（副）', path: 'frames/肩膀_3.glb', category: 'frame' },
+        { displayName: '肩部固定件（副）', path: 'frames/肩部固定件数量2_3.glb', category: 'frame' },
+        { displayName: '输出法兰连杆', path: 'frames/输出法兰连杆_2.glb', category: 'frame' },
+        { displayName: '限位销（副）', path: 'misc/限位销_3.glb', category: 'misc' },
     ],
-    'right_arm_yaw_link': [
-        { displayName: '右上臂结构件', path: 'frames/right_arm_yaw_link.glb', category: 'frame' },
-        { displayName: '右上臂 A', path: 'frames/right_arm_yaw_link_1.glb', category: 'frame' },
-        { displayName: '右上臂 B', path: 'frames/right_arm_yaw_link_2.glb', category: 'frame' },
-        { displayName: '右上臂 C', path: 'frames/right_arm_yaw_link_3.glb', category: 'frame' },
+    right_arm_yaw_link: [
+        { displayName: '大臂上部前壳', path: 'misc/大臂上部前侧_1.glb', category: 'misc' },
+        { displayName: '大臂上部后壳', path: 'misc/大臂上部后侧_1.glb', category: 'misc' },
+        { displayName: '大臂下部外壳', path: 'misc/大臂下部外侧_1.glb', category: 'misc' },
+        { displayName: '大臂下部内壳', path: 'misc/大臂下部里侧_1.glb', category: 'misc' },
+        { displayName: '大臂根部前壳', path: 'misc/大臂根部前侧_1.glb', category: 'misc' },
+        { displayName: '大臂根部后壳', path: 'misc/大臂根部后侧_1.glb', category: 'misc' },
     ],
-    'right_elbow_pitch_link': [
-        { displayName: '右肘结构件', path: 'frames/right_elbow_pitch_link.glb', category: 'frame' },
-        { displayName: '右肘 A', path: 'frames/right_elbow_pitch_link_1.glb', category: 'frame' },
-        { displayName: '右肘 B', path: 'frames/right_elbow_pitch_link_2.glb', category: 'frame' },
-        { displayName: '右肘 C', path: 'frames/right_elbow_pitch_link_3.glb', category: 'frame' },
+    right_elbow_pitch_link: [
+        { displayName: '通用连接件', path: 'frames/通用连接件_1.glb', category: 'frame' },
+        { displayName: '扩孔法兰', path: 'frames/通用连接件扩孔法兰_1.glb', category: 'frame' },
+        { displayName: '肘部标定件', path: 'calibration/肘部标定件数量2_1.glb', category: 'calibration' },
     ],
-    'right_elbow_yaw_link': [
-        { displayName: '右前臂结构件', path: 'frames/right_elbow_yaw_link.glb', category: 'frame' },
-        { displayName: '右前臂 A', path: 'frames/right_elbow_yaw_link_1.glb', category: 'frame' },
-        { displayName: '右前臂 B', path: 'frames/right_elbow_yaw_link_2.glb', category: 'frame' },
-        { displayName: '右前臂 C', path: 'frames/right_elbow_yaw_link_3.glb', category: 'frame' },
+    right_elbow_yaw_link: [
+        { displayName: '小臂外壳', path: 'misc/小臂外侧_1.glb', category: 'misc' },
+        { displayName: '小臂内壳', path: 'misc/小臂里侧_1.glb', category: 'misc' },
+        { displayName: '手部球形件', path: 'misc/手部球型_1.glb', category: 'misc' },
+        { displayName: '输出法兰连杆（副）', path: 'frames/输出法兰连杆_3.glb', category: 'frame' },
     ],
-
-    // ======== 左腿 ========
-    'left_thigh_yaw_link': [
-        { displayName: '左大腿 Yaw 结构件', path: 'frames/left_thigh_yaw_link.glb', category: 'frame' },
-        { displayName: '左大腿 Yaw A', path: 'frames/left_thigh_yaw_link_1.glb', category: 'frame' },
-        { displayName: '左大腿 Yaw B', path: 'frames/left_thigh_yaw_link_2.glb', category: 'frame' },
-        { displayName: '左大腿 Yaw C', path: 'frames/left_thigh_yaw_link_3.glb', category: 'frame' },
+    left_thigh_yaw_link: [
+        { displayName: '髋夹板', path: 'frames/髋夹板_1.glb', category: 'frame' },
+        { displayName: '髋关节固定座', path: 'frames/髋关节固定_1.glb', category: 'frame' },
+        { displayName: '大腿根部开孔结构', path: 'frames/大腿根部结构开孔.glb', category: 'frame' },
     ],
-    'left_thigh_roll_link': [
-        { displayName: '左大腿 Roll 结构件', path: 'frames/left_thigh_roll_link.glb', category: 'frame' },
-        { displayName: '左大腿 Roll A', path: 'frames/left_thigh_roll_link_1.glb', category: 'frame' },
-        { displayName: '左大腿 Roll B', path: 'frames/left_thigh_roll_link_2.glb', category: 'frame' },
-        { displayName: '左大腿 Roll C', path: 'frames/left_thigh_roll_link_3.glb', category: 'frame' },
+    left_thigh_roll_link: [
+        { displayName: '大腿内侧板', path: 'frames/大腿内侧.glb', category: 'frame' },
+        { displayName: '长连杆', path: 'frames/长连杆.glb', category: 'frame' },
+        { displayName: '短连杆', path: 'frames/短连杆.glb', category: 'frame' },
     ],
-    'left_thigh_pitch_link': [
-        { displayName: '左大腿 Pitch 结构件', path: 'frames/left_thigh_pitch_link.glb', category: 'frame' },
-        { displayName: '左大腿 Pitch A', path: 'frames/left_thigh_pitch_link_1.glb', category: 'frame' },
-        { displayName: '左大腿 Pitch B', path: 'frames/left_thigh_pitch_link_2.glb', category: 'frame' },
-        { displayName: '左大腿 Pitch C', path: 'frames/left_thigh_pitch_link_3.glb', category: 'frame' },
+    left_thigh_pitch_link: [
+        { displayName: '大腿内侧板（副）', path: 'frames/大腿内侧_1.glb', category: 'frame' },
+        { displayName: '大腿定位块', path: 'frames/大腿定位块数量2.glb', category: 'calibration' },
         { displayName: '大腿后侧标定件', path: 'calibration/大腿后侧标定数量1.glb', category: 'calibration' },
+        { displayName: '长连杆（副）', path: 'frames/长连杆_1.glb', category: 'frame' },
     ],
-    'left_knee_link': [
-        { displayName: '左膝结构件', path: 'frames/left_knee_link.glb', category: 'frame' },
-        { displayName: '左膝 A', path: 'frames/left_knee_link_1.glb', category: 'frame' },
-        { displayName: '左膝 B', path: 'frames/left_knee_link_2.glb', category: 'frame' },
-        { displayName: '左膝 C', path: 'frames/left_knee_link_3.glb', category: 'frame' },
+    left_knee_link: [
+        { displayName: '小腿结构件', path: 'frames/小腿.glb', category: 'frame' },
         { displayName: '小腿轴承锁', path: 'bearings/小腿轴承锁.glb', category: 'bearing' },
         { displayName: '膝盖标定件', path: 'calibration/膝盖标定数量2.glb', category: 'calibration' },
+        { displayName: '短连杆（副）', path: 'frames/短连杆_1.glb', category: 'frame' },
     ],
-    'left_ankle_pitch_link': [
-        { displayName: '左踝 Pitch 结构件', path: 'frames/left_ankle_pitch_link.glb', category: 'frame' },
-        { displayName: '左踝 Pitch A', path: 'frames/left_ankle_pitch_link_1.glb', category: 'frame' },
-        { displayName: '左踝 Pitch B', path: 'frames/left_ankle_pitch_link_2.glb', category: 'frame' },
-        { displayName: '左踝 Pitch C', path: 'frames/left_ankle_pitch_link_3.glb', category: 'frame' },
+    left_ankle_pitch_link: [
+        { displayName: '脚踝横滚连接件', path: 'frames/脚踝横滚连接件.glb', category: 'frame' },
+        { displayName: '扩孔法兰', path: 'frames/通用连接件扩孔法兰_2.glb', category: 'frame' },
         { displayName: '脚踝标定件', path: 'calibration/脚踝标定数量2.glb', category: 'calibration' },
     ],
-    'left_ankle_roll_link': [
-        { displayName: '左踝 Roll 结构件', path: 'frames/left_ankle_roll_link.glb', category: 'frame' },
-        { displayName: '左踝 Roll A', path: 'frames/left_ankle_roll_link_1.glb', category: 'frame' },
-        { displayName: '左踝 Roll B', path: 'frames/left_ankle_roll_link_2.glb', category: 'frame' },
-        { displayName: '左踝 Roll C', path: 'frames/left_ankle_roll_link_3.glb', category: 'frame' },
-        { displayName: '20cm脚', path: 'frames/20cm脚.glb', category: 'frame' },
+    left_ankle_roll_link: [
+        { displayName: '脚底板', path: 'frames/脚底板.glb', category: 'frame' },
+        { displayName: '脚底连杆', path: 'frames/脚底连杆.glb', category: 'frame' },
+        { displayName: '脚掌结构件', path: 'frames/20cm脚.glb', category: 'frame' },
+        { displayName: '脚底软胶', path: 'frames/软胶_脚底_左.glb', category: 'frame', actionTarget: 'left_foot_rubber' },
         { displayName: '脚部标定件', path: 'calibration/脚部标定件数量1.glb', category: 'calibration' },
     ],
-
-    // ======== 右腿 ========
-    'right_thigh_yaw_link': [
-        { displayName: '右大腿 Yaw 结构件', path: 'frames/right_thigh_yaw_link.glb', category: 'frame' },
-        { displayName: '右大腿 Yaw A', path: 'frames/right_thigh_yaw_link_1.glb', category: 'frame' },
-        { displayName: '右大腿 Yaw B', path: 'frames/right_thigh_yaw_link_2.glb', category: 'frame' },
-        { displayName: '右大腿 Yaw C', path: 'frames/right_thigh_yaw_link_3.glb', category: 'frame' },
+    right_thigh_yaw_link: [
+        { displayName: '髋夹板', path: 'frames/髋夹板_2.glb', category: 'frame' },
+        { displayName: '髋关节固定座', path: 'frames/髋关节固定_2.glb', category: 'frame' },
+        { displayName: '大腿根部开孔结构', path: 'frames/大腿根部结构开孔_1.glb', category: 'frame' },
     ],
-    'right_thigh_roll_link': [
-        { displayName: '右大腿 Roll 结构件', path: 'frames/right_thigh_roll_link.glb', category: 'frame' },
-        { displayName: '右大腿 Roll A', path: 'frames/right_thigh_roll_link_1.glb', category: 'frame' },
-        { displayName: '右大腿 Roll B', path: 'frames/right_thigh_roll_link_2.glb', category: 'frame' },
-        { displayName: '右大腿 Roll C', path: 'frames/right_thigh_roll_link_3.glb', category: 'frame' },
+    right_thigh_roll_link: [
+        { displayName: '大腿内侧板', path: 'frames/大腿内侧_2.glb', category: 'frame' },
+        { displayName: '长连杆', path: 'frames/长连杆_2.glb', category: 'frame' },
+        { displayName: '短连杆', path: 'frames/短连杆_2.glb', category: 'frame' },
     ],
-    'right_thigh_pitch_link': [
-        { displayName: '右大腿 Pitch 结构件', path: 'frames/right_thigh_pitch_link.glb', category: 'frame' },
-        { displayName: '右大腿 Pitch A', path: 'frames/right_thigh_pitch_link_1.glb', category: 'frame' },
-        { displayName: '右大腿 Pitch B', path: 'frames/right_thigh_pitch_link_2.glb', category: 'frame' },
-        { displayName: '右大腿 Pitch C', path: 'frames/right_thigh_pitch_link_3.glb', category: 'frame' },
+    right_thigh_pitch_link: [
+        { displayName: '大腿内侧板（副）', path: 'frames/大腿内侧_3.glb', category: 'frame' },
+        { displayName: '大腿定位块', path: 'frames/大腿定位块数量2_1.glb', category: 'calibration' },
+        { displayName: '大腿后侧标定件', path: 'calibration/大腿后侧标定数量1_1.glb', category: 'calibration' },
+        { displayName: '长连杆（副）', path: 'frames/长连杆_3.glb', category: 'frame' },
     ],
-    'right_knee_link': [
-        { displayName: '右膝结构件', path: 'frames/right_knee_link.glb', category: 'frame' },
-        { displayName: '右膝 A', path: 'frames/right_knee_link_1.glb', category: 'frame' },
-        { displayName: '右膝 B', path: 'frames/right_knee_link_2.glb', category: 'frame' },
-        { displayName: '右膝 C', path: 'frames/right_knee_link_3.glb', category: 'frame' },
+    right_knee_link: [
+        { displayName: '小腿结构件', path: 'frames/小腿_1.glb', category: 'frame' },
         { displayName: '小腿轴承锁', path: 'bearings/小腿轴承锁_2.glb', category: 'bearing' },
+        { displayName: '膝盖标定件', path: 'calibration/膝盖标定数量2_1.glb', category: 'calibration' },
+        { displayName: '短连杆（副）', path: 'frames/短连杆_3.glb', category: 'frame' },
     ],
-    'right_ankle_pitch_link': [
-        { displayName: '右踝 Pitch 结构件', path: 'frames/right_ankle_pitch_link.glb', category: 'frame' },
-        { displayName: '右踝 Pitch A', path: 'frames/right_ankle_pitch_link_1.glb', category: 'frame' },
-        { displayName: '右踝 Pitch B', path: 'frames/right_ankle_pitch_link_2.glb', category: 'frame' },
-        { displayName: '右踝 Pitch C', path: 'frames/right_ankle_pitch_link_3.glb', category: 'frame' },
+    right_ankle_pitch_link: [
+        { displayName: '脚踝横滚连接件', path: 'frames/脚踝横滚连接件_1.glb', category: 'frame' },
+        { displayName: '扩孔法兰', path: 'frames/通用连接件扩孔法兰_3.glb', category: 'frame' },
+        { displayName: '脚踝标定件', path: 'calibration/脚踝标定数量2_1.glb', category: 'calibration' },
     ],
-    'right_ankle_roll_link': [
-        { displayName: '右踝 Roll 结构件', path: 'frames/right_ankle_roll_link.glb', category: 'frame' },
-        { displayName: '右踝 Roll A', path: 'frames/right_ankle_roll_link_1.glb', category: 'frame' },
-        { displayName: '右踝 Roll B', path: 'frames/right_ankle_roll_link_2.glb', category: 'frame' },
-        { displayName: '右踝 Roll C', path: 'frames/right_ankle_roll_link_3.glb', category: 'frame' },
-        { displayName: '20cm脚', path: 'frames/20cm脚_3.glb', category: 'frame' },
+    right_ankle_roll_link: [
+        { displayName: '脚底板', path: 'frames/脚底板_1.glb', category: 'frame' },
+        { displayName: '脚底连杆', path: 'frames/脚底连杆_1.glb', category: 'frame' },
+        { displayName: '脚掌结构件', path: 'frames/20cm脚_3.glb', category: 'frame' },
+        { displayName: '脚底软胶', path: 'frames/橡胶脚底.glb', category: 'frame', actionTarget: 'right_foot_rubber' },
+        { displayName: '脚部标定件', path: 'calibration/脚部标定件数量1_1.glb', category: 'calibration' },
     ],
 };
+
+function buildFrameParts(link: CoreLinkName): DetailPart[] {
+    const baseName = CORE_LINK_DISPLAY_NAMES[link];
+    return FRAME_SUFFIXES.map((suffix, idx) => ({
+        displayName: `${baseName}${FRAME_SLOT_NAMES[idx]}`,
+        path: `frames/${link}${suffix}.glb`,
+        category: 'frame' as const,
+    }));
+}
+
+function buildScrewParts(link: CoreLinkName): DetailPart[] {
+    const screwConfig = PART_SCREWS.find((item) => item.partName === link);
+    if (!screwConfig) return [];
+
+    return screwConfig.screws.reduce<DetailPart[]>((acc, item, idx) => {
+            const path = SCREW_MODEL_PATH_BY_ID[item.screwId];
+            if (!path) return acc;
+            acc.push({
+                displayName: `${item.position}（${item.screwId}）`,
+                path,
+                category: 'screw' as const,
+                actionTarget: `${item.screwId}_${idx + 1}`,
+            });
+            return acc;
+        }, []);
+}
+
+function dedupeParts(parts: DetailPart[]): DetailPart[] {
+    const seen = new Set<string>();
+    return parts.filter((part) => {
+        const key = `${part.path}::${part.category}::${part.actionTarget ?? ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function buildLinkDetailParts(link: CoreLinkName): DetailPart[] {
+    return dedupeParts([
+        ...buildFrameParts(link),
+        ...(EXTRA_LINK_PARTS[link] ?? []),
+        ...buildScrewParts(link),
+    ]);
+}
+
+/**
+ * 每个核心 link 对应的细节子零件列表。
+ * 数据来源：
+ *  - atom01 link 主模型（frames/{link}.glb 系列）
+ *  - ATOM01 机械目录中的盖板/连杆/标定件/电子件
+ *  - 工具库定义的螺丝规格映射
+ */
+export const DETAIL_PARTS_MAP: Record<string, DetailPart[]> = CORE_LINKS.reduce((acc, link) => {
+    acc[link] = buildLinkDetailParts(link);
+    return acc;
+}, {} as Record<string, DetailPart[]>);
 
 /** 通用紧固件（不与特定 link 绑定，可全局展示） */
 export const COMMON_FASTENERS: DetailPart[] = [
@@ -286,7 +390,7 @@ export const COMMON_FASTENERS: DetailPart[] = [
 ];
 
 /** 零件分类颜色 */
-export const CATEGORY_COLORS: Record<DetailPart['category'], string> = {
+export const CATEGORY_COLORS: Record<DetailPartCategory, string> = {
     frame: '#4fc3f7',
     screw: '#aaaaaa',
     nut: '#ffab40',
@@ -297,7 +401,7 @@ export const CATEGORY_COLORS: Record<DetailPart['category'], string> = {
 };
 
 /** 零件分类中文名 */
-export const CATEGORY_NAMES: Record<DetailPart['category'], string> = {
+export const CATEGORY_NAMES: Record<DetailPartCategory, string> = {
     frame: '结构件',
     screw: '螺丝',
     nut: '螺母',
@@ -340,26 +444,41 @@ export function getNonCorePartsForLink(linkName: string): DetailPart[] {
 // 爆炸图子零件
 // ============================================================
 
+interface ExplodeOptions {
+    includeSecondary?: boolean;
+}
+
 /** 过滤出某 link 下用于爆炸图展示的子零件
- *  - 结构件只取 _1 LOD 版本（避免多个 LOD 重叠）
- *  - base_link 的 frame 不展示（作为参考原点）
+ *  - 默认仅展示 frames（更轻量）
+ *  - L2 模式可开启 includeSecondary 展示盖板/螺丝/电子件
+ *  - base_link 主壳体不参与散开（作为参考原点）
  */
-export function getExplodePartsForLink(linkName: string): DetailPart[] {
+export function getExplodePartsForLink(linkName: string, options: ExplodeOptions = {}): DetailPart[] {
+    const includeSecondary = options.includeSecondary ?? false;
     const parts = DETAIL_PARTS_MAP[linkName];
     if (!parts) return [];
-    // 同口径精修：爆炸态优先展示结构件（frames），避免异构资产导致遮挡与空画面。
-    const frameParts = parts.filter((p) => p.path.startsWith('frames/'));
-    const candidateParts = frameParts.length > 0 ? frameParts : parts;
-    return candidateParts.filter((p) => {
-        // base_link 主壳体作为原点参照，不参与子件散开。
-        if (linkName === 'base_link' && p.path === 'frames/base_link.glb') return false;
-        return true;
-    });
+
+    const filtered = parts.filter((part) => !(linkName === 'base_link' && part.path === 'frames/base_link.glb'));
+    if (includeSecondary) {
+        return filtered;
+    }
+
+    const frameOnly = filtered.filter((part) => part.path.startsWith('frames/'));
+    return frameOnly.length > 0 ? frameOnly : filtered;
 }
 
 const PARTS_BASE = '/models/parts';
 
 /** 预先计算所有爆炸图子零件的 URL（用于预加载） */
-export const ALL_EXPLODE_PART_URLS: string[] = Object.keys(DETAIL_PARTS_MAP)
-    .flatMap((link) => getExplodePartsForLink(link))
-    .map((p) => `${PARTS_BASE}/${p.path}`);
+export const ALL_EXPLODE_PART_URLS: string[] = Array.from(new Set(
+    Object.keys(DETAIL_PARTS_MAP)
+        .flatMap((link) => getExplodePartsForLink(link))
+        .map((part) => `${PARTS_BASE}/${part.path}`),
+));
+
+/** 获取细节件对应的动作目标（若有） */
+export function getDetailPartActionTarget(linkName: string, partIndex: number): string | null {
+    const detailPart = DETAIL_PARTS_MAP[linkName]?.[partIndex];
+    if (!detailPart) return null;
+    return detailPart.actionTarget ?? null;
+}

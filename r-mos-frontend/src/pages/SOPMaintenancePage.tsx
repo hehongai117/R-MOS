@@ -199,6 +199,13 @@ const REMAINING_CORE_LINKS = [
     'right_ankle_roll_link',
 ] as const;
 
+function resolveScrewSpecIdFromDetailPart(part: DetailPart): string | null {
+    const source = `${part.displayName} ${part.path}`;
+    const matched = source.match(/M\s*(\d+)\s*[x×]\s*(\d+)/i);
+    if (!matched) return null;
+    return `M${matched[1]}x${matched[2]}`;
+}
+
 // 加载指示器
 const LoadingFallback = () => (
     <mesh>
@@ -541,10 +548,20 @@ function SOPMaintenancePage() {
 
     // Gate-2: L2 子零件点击（叶子 toggle）
     const handleSubPartSelect = useCallback((linkName: string, partIndex: number, part: DetailPart) => {
-        emitSOPActionEvent({
-            type: 'part_selected',
-            partName: linkName,
-        });
+        const screwSpecId = part.category === 'screw' ? resolveScrewSpecIdFromDetailPart(part) : null;
+        if (screwSpecId) {
+            setSelectedScrewId(screwSpecId);
+            emitSOPActionEvent({
+                type: 'screw_selected',
+                screwId: screwSpecId,
+            });
+        } else {
+            setSelectedScrewId(null);
+            emitSOPActionEvent({
+                type: 'part_selected',
+                partName: part.actionTarget ?? linkName,
+            });
+        }
         const nextSelected = l2SelectedPartIdx === partIndex ? null : partIndex;
         setL2TargetLink(linkName);
         setL2SelectedPartIdx(nextSelected);
@@ -561,8 +578,8 @@ function SOPMaintenancePage() {
                 { nodeId: `${linkName}::${partIndex}`, displayName: part.displayName },
             ];
         });
-        // 切换右侧面板显示零件信息
-        setRightPanelTab('part');
+        // 螺丝点击直接切到螺丝面板，其他保持零件面板
+        setRightPanelTab(screwSpecId ? 'tool' : 'part');
         setHoveredDetailSelection(null);
     }, [l2SelectedPartIdx, emitSOPActionEvent]);
 

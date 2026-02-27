@@ -10,6 +10,7 @@ import { runAllCoreLogicTests } from './core_logic.test';
 import { runAllP4Tests } from './p4_mode.test';
 import { runAllExamModeTests } from './examMode.test';
 import { runAllHardwareSOPFlowTests } from './hardwareSopsFlow.test';
+import { runAllPartCoverageTests } from './partsCoverage.test';
 
 function printSection(title: string): void {
     console.log('\n' + '='.repeat(72));
@@ -57,7 +58,18 @@ function main(): void {
     printResults(hardware.results);
     console.log(`\n小结: ${hardware.total} | 通过 ${hardware.passed} | 失败 ${hardware.failed}`);
 
-    const failed = core.failed + p4.failed + exam.failed + decision.failed + (sop.passed ? 0 : 1) + hardware.failed;
+    printSection('Part Model Coverage Tests');
+    const partCoverage = runAllPartCoverageTests();
+    printResults(partCoverage.results);
+    console.log(`\n小结: ${partCoverage.total} | 通过 ${partCoverage.passed} | 失败 ${partCoverage.failed}`);
+
+    const failed = core.failed
+        + p4.failed
+        + exam.failed
+        + decision.failed
+        + (sop.passed ? 0 : 1)
+        + hardware.failed
+        + partCoverage.failed;
     if (failed > 0) {
         process.exitCode = 1;
     }
