@@ -2900,10 +2900,12 @@
   - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
 - Commands Run:
   - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
   - Chrome MCP: `http://127.0.0.1:55173/maintenance`（SOP 列表联动 + 躯干开盖检查多螺丝步骤实链路验证）
   - Chrome MCP Evaluate: `import('/src/adjudication/core/stateManager.ts')` 读取 `screwStates` 验证螺丝组状态推进
 - Tests:
   - `npm test`: PASS（新增 `SOP Interaction Gate Tests` 4/4 通过，其余裁决套件保持全绿）
+  - `npm run build`: PASS（`tsc -b && vite build`）
   - Chrome MCP: PASS（`躯干开盖检查` 在步骤 `4/16` 时，M3×10 螺丝从 `2/8` 连续推进到 `8/8` 后自动进入 `5/16`；未出现中途失败/阻断）
 - Result: PASS
 - Failure Handling:
