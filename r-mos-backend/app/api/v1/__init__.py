@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     evidence,
     assessments,
     teaching,
+    agent,       # P0: Agent services
 )
 
 # 创建v1版本路由
@@ -43,6 +44,7 @@ api_router.include_router(observations.router, tags=["observations"])
 api_router.include_router(evidence.router, tags=["evidence"])
 api_router.include_router(assessments.router, tags=["assessments"])
 api_router.include_router(teaching.router, tags=["teaching"])
+api_router.include_router(agent.router, tags=["agent"])  # P0: Agent services
 
 # WebSocket不需要/api/v1前缀，单独注册
 websocket_router = websocket.router

@@ -21,6 +21,9 @@ import TeachingAssignmentsPage from './teaching/pages/TeachingAssignmentsPage'
 import TeachingAttemptPage from './teaching/pages/TeachingAttemptPage'
 import TeachingEvidencePage from './teaching/pages/TeachingEvidencePage'
 import TeachingDiagnosisPage from './teaching/pages/TeachingDiagnosisPage'
+import AIChatPage from './pages/AIChatPage'
+import DiagnosisPage from './pages/DiagnosisPage'
+import KnowledgePage from './pages/KnowledgePage'
 import { darkTheme } from './styles/theme'
 import './styles/index.css'
 
@@ -60,6 +63,11 @@ function App() {
                             {/* 管理页面 */}
                             <Route path="admin/faults" element={<FaultManagePage />} />
                             <Route path="admin/seed-data" element={<SeedDataPage />} />
+
+                            {/* AI 功能页面 */}
+                            <Route path="ai-chat" element={<AIChatPage />} />
+                            <Route path="diagnosis/:taskId" element={<DiagnosisPage />} />
+                            <Route path="knowledge" element={<KnowledgePage />} />
                         </Route>
                     </Routes>
                 </BrowserRouter>

@@ -170,8 +170,8 @@ export const TaskControl: React.FC<TaskControlProps> = ({
         )}
 
         {/* Skip Step */}
-        {isExecuting && canSkip<Tooltip title="跳过 && (
-          当前步骤">
+        {isExecuting && canSkip && (
+          <Tooltip title="跳过当前步骤">
             <Button
               icon={<CheckCircleOutlined />}
               onClick={onSkip}
