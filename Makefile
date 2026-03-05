@@ -1,4 +1,6 @@
-.PHONY: migrate seed-demo reset-db dev dev-backend dev-frontend
+SHELL := /bin/bash
+
+.PHONY: migrate seed-demo reset-db dev dev-backend dev-frontend test-backend test-frontend test-e2e lint-backend lint-frontend clean
 
 DB_HOST ?= localhost
 DB_PORT ?= 5432
@@ -26,3 +28,22 @@ dev-frontend:
 
 dev:
 	@$(MAKE) -j2 dev-backend dev-frontend
+
+test-backend:
+	cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/ -v
+
+test-frontend:
+	cd r-mos-frontend && npm test
+
+test-e2e:
+	cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/e2e/ -v
+
+lint-backend:
+	cd r-mos-backend && source .venv/bin/activate && flake8 app/ && mypy app/
+
+lint-frontend:
+	cd r-mos-frontend && npx eslint src/ --ext .ts,.tsx
+
+clean:
+	find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -prune -exec rm -rf {} +

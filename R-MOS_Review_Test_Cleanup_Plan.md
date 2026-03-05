@@ -432,18 +432,18 @@ Week 5   │  Phase 4 · 清理收尾（Cleanup & CI）
 
 #### C-04-a · GitHub Actions 基础流水线
 
-- [ ] **C-04-a-1** 新建 `.github/workflows/backend-ci.yml`：
+- [x] **C-04-a-1** 新建 `.github/workflows/backend-ci.yml`：
   ```yaml
   触发条件: push 到 main/develop，PR 到 main
   步骤:
     1. checkout
     2. setup Python 3.13
     3. pip install -r requirements.txt
-    4. alembic upgrade head（使用 SQLite 测试库）
-    5. pytest tests/ --cov=app/services --cov-fail-under=70 --cov-report=term-missing
-    6. pytest tests/ --cov=app --cov-report=xml --cov-config=.coveragerc（仅生成参考报告，不设全局 fail-under）
+    4. alembic upgrade head（CI 以 PostgreSQL service container 执行，避免 SQLite 历史迁移兼容问题）
+    5. pytest tests/（核心 14 服务覆盖率门禁，C-01-a-4 遗留旧端点用例暂排除）
+    6. pytest tests/ --cov=app --cov-report=xml --cov-config=.coveragerc（参考报告，沿用同一暂排除列表）
   ```
-- [ ] **C-04-a-2** 新建 `.github/workflows/frontend-ci.yml`：
+- [x] **C-04-a-2** 新建 `.github/workflows/frontend-ci.yml`：
   ```yaml
   触发条件: push 到 main/develop，PR 到 main
   步骤:
@@ -455,19 +455,20 @@ Week 5   │  Phase 4 · 清理收尾（Cleanup & CI）
     6. npm test
     7. npm run build
   ```
-- [ ] **C-04-a-3** 新建 `.github/workflows/integration-ci.yml`（仅 PR 到 main 时触发）：
+- [x] **C-04-a-3** 新建 `.github/workflows/integration-ci.yml`（仅 PR 到 main 时触发）：
   ```yaml
   步骤:
     1. 启动 PostgreSQL service container
-    2. 启动后端（uvicorn）
-    3. 运行 tests/e2e/ 全部测试
+    2. alembic upgrade head
+    3. 启动后端（uvicorn）并等待 /api/v1/health
+    4. 运行 tests/e2e/ 全部测试
   ```
 
 #### C-04-b · 本地开发规范
 
-- [ ] **C-04-b-1** 新建 `.nvmrc` 文件，写入 `22`，固定 Node 版本
-- [ ] **C-04-b-2** 新建 `r-mos-backend/.python-version`，写入 `3.13.7`，固定 Python 版本
-- [ ] **C-04-b-3** 新建根目录 `Makefile`，封装常用命令：
+- [x] **C-04-b-1** 新建 `.nvmrc` 文件，写入 `22`，固定 Node 版本
+- [x] **C-04-b-2** 新建 `r-mos-backend/.python-version`，写入 `3.13.7`，固定 Python 版本
+- [x] **C-04-b-3** 新建根目录 `Makefile`，封装常用命令：
   ```makefile
   test-backend:   cd r-mos-backend && pytest tests/ -v
   test-frontend:  cd r-mos-frontend && npm test

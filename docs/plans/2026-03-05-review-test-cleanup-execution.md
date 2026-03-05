@@ -146,3 +146,27 @@
 - Diff Summary（文件清单 + 关键片段）
 - Source Plan 勾选状态更新
 - DEVELOPMENT_LOG 追加
+
+### Batch 15（已完成）
+
+- Phase 4：C-04 建立 CI/CD 流水线
+- 完成项：
+  - C-04-a-1：新增 `.github/workflows/backend-ci.yml`
+    - `push main/develop` + `PR main`
+    - PostgreSQL service 执行 `alembic upgrade head`
+    - 核心 14 服务覆盖率门禁 + `app` 覆盖率 xml（临时排除 C-01-a-4 相关旧端点测试文件）
+  - C-04-a-2：新增 `.github/workflows/frontend-ci.yml`
+    - Node 22 + `npm ci` + `tsc` + `eslint` + `vitest` + `build`
+  - C-04-a-3：新增 `.github/workflows/integration-ci.yml`
+    - PostgreSQL service + `alembic upgrade head` + `uvicorn` + 健康检查 + `pytest tests/e2e/`
+  - C-04-b-1/2/3：新增 `.nvmrc`、`r-mos-backend/.python-version`、根 `Makefile`
+- 阻塞修复（与 C-04 直接相关）：
+  - 修复 Alembic 迁移链 `down_revision` 错误
+  - 删除被最小增量迁移替代的旧破坏性迁移文件
+  - 为 SQLite 增补迁移兼容处理（`batch_alter_table`）
+- 验证结果：
+  - `alembic upgrade head`（PostgreSQL 临时库）-> PASS
+  - 后端核心门禁（含临时排除）-> `334 passed, 1 skipped, 0 failed`，覆盖率 `75.77%`
+  - `pytest ... --cov=app --cov-report=xml --cov-config=.coveragerc`（含临时排除）-> PASS（`coverage.xml`）
+  - 前端 `npx tsc --noEmit` / `npm run lint` / `npm test` / `npm run build` -> PASS
+  - `pytest tests/e2e/ -v --tb=long` -> `16 passed, 0 failed`

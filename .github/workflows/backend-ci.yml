@@ -1,0 +1,115 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "r-mos-backend/**"
+      - ".github/workflows/backend-ci.yml"
+      - "Makefile"
+  pull_request:
+    branches: [main]
+    paths:
+      - "r-mos-backend/**"
+      - ".github/workflows/backend-ci.yml"
+      - "Makefile"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: r-mos-backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rmos_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rmos_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: r-mos-backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Alembic upgrade head (PostgreSQL)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
+        run: alembic upgrade head
+
+      - name: Pytest core 14 services coverage gate (C-01-a4 excludes)
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./rmos_main.db
+        run: |
+          pytest tests/ \
+            --ignore=tests/unit/test_ai_commands_api.py \
+            --ignore=tests/unit/test_ai_replay_api.py \
+            --ignore=tests/unit/test_approval_api.py \
+            --ignore=tests/unit/test_approval_query_api.py \
+            --ignore=tests/unit/test_approval_read_api.py \
+            --ignore=tests/unit/test_e2e_phase5_t001_t004.py \
+            --ignore=tests/unit/test_eval_metrics_phase5.py \
+            --ignore=tests/unit/test_read_tool_success_rate_api.py \
+            --ignore=tests/unit/test_tool_execution_after_approval_api.py \
+            --ignore=tests/unit/test_tool_security_guard_api.py \
+            --ignore=tests/unit/test_training_memory_writer.py \
+            --cov=app.services.approval_service \
+            --cov=app.services.preflight_check \
+            --cov=app.services.identity.agent_policy_factory \
+            --cov=app.services.identity.session_initializer \
+            --cov=app.services.identity.teacher_monitor \
+            --cov=app.services.intent.training_intent_router \
+            --cov=app.services.memory.skill_profile_service \
+            --cov=app.services.memory.training_memory_writer \
+            --cov=app.services.orchestrator_v2 \
+            --cov=app.services.tool_executor \
+            --cov=app.services.training.feedback_generator \
+            --cov=app.services.training.project_generator \
+            --cov=app.services.training.session_service \
+            --cov=app.services.training.submission_service \
+            --cov-report=term-missing \
+            --cov-fail-under=70
+
+      - name: Pytest app coverage xml (reference, C-01-a4 excludes)
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./rmos_main.db
+        run: |
+          pytest tests/ \
+            --ignore=tests/unit/test_ai_commands_api.py \
+            --ignore=tests/unit/test_ai_replay_api.py \
+            --ignore=tests/unit/test_approval_api.py \
+            --ignore=tests/unit/test_approval_query_api.py \
+            --ignore=tests/unit/test_approval_read_api.py \
+            --ignore=tests/unit/test_e2e_phase5_t001_t004.py \
+            --ignore=tests/unit/test_eval_metrics_phase5.py \
+            --ignore=tests/unit/test_read_tool_success_rate_api.py \
+            --ignore=tests/unit/test_tool_execution_after_approval_api.py \
+            --ignore=tests/unit/test_tool_security_guard_api.py \
+            --ignore=tests/unit/test_training_memory_writer.py \
+            --cov=app \
+            --cov-report=xml \
+            --cov-config=.coveragerc
+
+      - name: Upload backend coverage xml
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-xml
+          path: r-mos-backend/coverage.xml

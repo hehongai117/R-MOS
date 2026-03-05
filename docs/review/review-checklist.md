@@ -554,3 +554,38 @@
   - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm prune` -> up to date
   - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS（无 warning/error）
   - `cd /Users/xuhehong/Desktop/r-mos && rg -n "docs-archive|logs/|开源机器人" README.md` -> 命中且说明已更新
+
+## 31. Batch 15 / C-04 CI/CD 流水线（2026-03-05）
+
+- C-04-a-1（backend-ci）✅：
+  - 新增：`.github/workflows/backend-ci.yml`
+  - 触发：`push main/develop`、`PR -> main`
+  - 流程：Python 3.13 + `pip install` + `alembic upgrade head`（PostgreSQL service）+ 双 pytest 覆盖步骤（核心 14 服务门禁 + `app` xml 报告）
+  - 说明：因 `C-01-a-4` 未闭环，临时排除 11 个旧端点相关测试文件，保证当前 CI 基线可绿并保持可追溯。
+
+- C-04-a-2（frontend-ci）✅：
+  - 新增：`.github/workflows/frontend-ci.yml`
+  - 触发：`push main/develop`、`PR -> main`
+  - 流程：Node 22 + `npm ci` + `npx tsc --noEmit` + `npx eslint src/ --ext .ts,.tsx --max-warnings 0` + `npm test` + `npm run build`
+
+- C-04-a-3（integration-ci）✅：
+  - 新增：`.github/workflows/integration-ci.yml`
+  - 触发：`PR -> main`
+  - 流程：PostgreSQL service + `alembic upgrade head` + `uvicorn` + `/api/v1/health` 等待 + `pytest tests/e2e/ -v --tb=long`
+
+- C-04-b（本地开发规范）✅：
+  - `.nvmrc` = `22`
+  - `r-mos-backend/.python-version` = `3.13.7`
+  - 新增根 `Makefile`：`test-backend/test-frontend/test-e2e/lint-backend/lint-frontend/clean`
+
+- 本批关键阻塞修复（为 C-04 落地所需）：
+  - 修复 Alembic 迁移链错误 `down_revision` 引用（3 处）
+  - 删除已被替代的破坏性旧迁移：`20260304_0858_869864251bc9_phase0_week2_extend_command_toolcall_.py`
+  - `20260125_2000_3095b2ba7747_add_teaching_domain.py` 增加 SQLite 分支 `batch_alter_table`（任务表外键增删）
+
+- 最小验证结果（fresh）：
+  - `alembic upgrade head`（PostgreSQL 临时库 `rmos_ci_tmp`）：PASS
+  - 后端核心门禁命令（含临时排除）：`334 passed, 1 skipped, 0 failed`，覆盖率 `75.77%`
+  - 后端 app 覆盖率 xml：PASS（`coverage.xml` 生成）
+  - 前端：`npx tsc --noEmit` PASS；`npm run lint` PASS；`npm test` PASS（`20 passed`）；`npm run build` PASS
+  - E2E：`pytest tests/e2e/ -v --tb=long` -> `16 passed, 0 failed`

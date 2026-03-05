@@ -160,24 +160,45 @@ def upgrade() -> None:
     op.create_index(op.f('ix_evidence_links_student_id'), 'evidence_links', ['student_id'], unique=False)
     op.create_index(op.f('ix_evidence_links_task_id'), 'evidence_links', ['task_id'], unique=False)
 
-    op.add_column('tasks', sa.Column('assignment_id', sa.Integer(), nullable=True))
-    op.add_column('tasks', sa.Column('guidance_policy_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(
-        'fk_tasks_assignment_id',
-        'tasks',
-        'assignments',
-        ['assignment_id'],
-        ['id'],
-        ondelete='SET NULL',
-    )
-    op.create_foreign_key(
-        'fk_tasks_guidance_policy_id',
-        'tasks',
-        'guidance_policies',
-        ['guidance_policy_id'],
-        ['id'],
-        ondelete='SET NULL',
-    )
+    bind = op.get_bind()
+    if bind.dialect.name == 'sqlite':
+        # SQLite does not support ALTER TABLE ADD CONSTRAINT directly.
+        with op.batch_alter_table('tasks', recreate='always') as batch_op:
+            batch_op.add_column(sa.Column('assignment_id', sa.Integer(), nullable=True))
+            batch_op.add_column(sa.Column('guidance_policy_id', sa.Integer(), nullable=True))
+            batch_op.create_foreign_key(
+                'fk_tasks_assignment_id',
+                'assignments',
+                ['assignment_id'],
+                ['id'],
+                ondelete='SET NULL',
+            )
+            batch_op.create_foreign_key(
+                'fk_tasks_guidance_policy_id',
+                'guidance_policies',
+                ['guidance_policy_id'],
+                ['id'],
+                ondelete='SET NULL',
+            )
+    else:
+        op.add_column('tasks', sa.Column('assignment_id', sa.Integer(), nullable=True))
+        op.add_column('tasks', sa.Column('guidance_policy_id', sa.Integer(), nullable=True))
+        op.create_foreign_key(
+            'fk_tasks_assignment_id',
+            'tasks',
+            'assignments',
+            ['assignment_id'],
+            ['id'],
+            ondelete='SET NULL',
+        )
+        op.create_foreign_key(
+            'fk_tasks_guidance_policy_id',
+            'tasks',
+            'guidance_policies',
+            ['guidance_policy_id'],
+            ['id'],
+            ondelete='SET NULL',
+        )
     op.create_index(op.f('ix_tasks_assignment_id'), 'tasks', ['assignment_id'], unique=False)
     op.create_index(op.f('ix_tasks_guidance_policy_id'), 'tasks', ['guidance_policy_id'], unique=False)
 
@@ -185,10 +206,18 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index(op.f('ix_tasks_guidance_policy_id'), table_name='tasks')
     op.drop_index(op.f('ix_tasks_assignment_id'), table_name='tasks')
-    op.drop_constraint('fk_tasks_guidance_policy_id', 'tasks', type_='foreignkey')
-    op.drop_constraint('fk_tasks_assignment_id', 'tasks', type_='foreignkey')
-    op.drop_column('tasks', 'guidance_policy_id')
-    op.drop_column('tasks', 'assignment_id')
+    bind = op.get_bind()
+    if bind.dialect.name == 'sqlite':
+        with op.batch_alter_table('tasks', recreate='always') as batch_op:
+            batch_op.drop_constraint('fk_tasks_guidance_policy_id', type_='foreignkey')
+            batch_op.drop_constraint('fk_tasks_assignment_id', type_='foreignkey')
+            batch_op.drop_column('guidance_policy_id')
+            batch_op.drop_column('assignment_id')
+    else:
+        op.drop_constraint('fk_tasks_guidance_policy_id', 'tasks', type_='foreignkey')
+        op.drop_constraint('fk_tasks_assignment_id', 'tasks', type_='foreignkey')
+        op.drop_column('tasks', 'guidance_policy_id')
+        op.drop_column('tasks', 'assignment_id')
 
     op.drop_index(op.f('ix_evidence_links_task_id'), table_name='evidence_links')
     op.drop_index(op.f('ix_evidence_links_student_id'), table_name='evidence_links')
