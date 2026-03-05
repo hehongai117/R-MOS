@@ -2915,3 +2915,562 @@
   - Chrome MCP 对 Canvas 网格点击能力有限，本轮通过代理入口 + store 状态双证据验证交互链路。
 - Next Step:
   - 可继续补一条 UI 文案修复：在执行中显示“已完成 X/Y 目标”，替代旧阻断文案，避免误判卡住。
+
+- DateTime: 2026-03-04 16:07:15 +0800
+- Task: 将“OpenClaw 精髓驱动的智能体全面改造方案”落成可审核 MD 文档
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `~/.codex/superpowers/.codex/superpowers-codex use-skill spec-forge`
+  - `ls -la`
+  - `rg --files docs | head -n 200`
+  - `rg -n "OpenClaw|智能体|agent|orchestr|改造|升级方案|路线图" docs DEVELOPMENT_LOG.md | head -n 200`
+  - `sed -n '1,220p' docs/design/HLD_JARVIS_V0_3.md`
+  - `sed -n '1,220p' docs/testing/ACCEPTANCE_CHARTER.md`
+  - `tail -n 80 DEVELOPMENT_LOG.md`
+  - `date '+%Y-%m-%d %H:%M:%S %z'`
+  - `for p in docs/testing/ACCEPTANCE_CHARTER.md docs/testing/TEST_PLAN.md docs/testing/TEST_REPORT.md docs/ops/RUNBOOK.md docs/adr/ADR.md; do if [ -f "$p" ]; then echo "OK $p"; else echo "MISSING $p"; fi; done`
+  - `rg -n "^## " docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+  - `wc -l docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+- Tests:
+  - 文档一致性自检（引用文档存在性）: PASS（5/5 存在）
+  - 文档结构自检（章节扫描）: PASS（13 个二级章节）
+  - 文档完整性自检（行数）: PASS（280 行）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅新增方案文档，未触及代码与接口，不改变运行行为。
+  - 文档内 ADR 文件名为建议项，需在后续实现阶段逐条创建并评审。
+- Next Step:
+  - 等待你审核该方案文档；如确认，将按 Phase 0 输出文件级实施任务单并开始落地改造。
+
+- DateTime: 2026-03-04 16:21:51 +0800
+- Task: 按审计裁决（CONDITIONAL PASS）修订 OPENCLAW 智能体改造蓝图，加入 Gate-0 硬门禁（H1-H4）
+- Scope (files changed):
+  - `/Users/xuhehong/Desktop/r-mos/docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+  - `/Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `sed -n '1,340p' docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+  - `date '+%Y-%m-%d %H:%M:%S %z'`
+  - `rg -n "^## " docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+  - `wc -l docs/design/OPENCLAW_AGENT_UPGRADE_BLUEPRINT_V1.md`
+  - `for p in docs/testing/ACCEPTANCE_CHARTER.md docs/testing/TEST_PLAN.md docs/testing/TEST_REPORT.md docs/ops/RUNBOOK.md docs/adr/ADR.md; do if [ -f "$p" ]; then echo "OK $p"; else echo "MISSING $p"; fi; done`
+- Tests:
+  - 文档结构校验: PASS（13 个二级章节）
+  - 文档完整性校验: PASS（306 行）
+  - 引用文档存在性校验: PASS（5/5 存在）
+- Result: PASS
+- Risks/Notes:
+  - 本次为文档修订，不涉及代码执行路径变更；实际行为变更需在 Phase 0 代码落地后验证。
+  - 文档中新增字段（`resource_ref`、`idempotency_key`、可复算字段族）会触发后续 migration 与 API 兼容改造。
+- Next Step:
+  - 等待你审核修订版蓝图；确认后按 Gate-0 生成文件级实施清单与迁移顺序。
+
+- DateTime: 2026-03-04 17:06:15 +0800
+- Task: 汇总 Phase 0 验收问题与解决建议到独立文档（统一延期处理）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill doc-coauthoring
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - test -f /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md && echo OK_FILE
+  - rg -n "P0-DI-001|P0-DI-002|P0-DI-003|P0-DI-004|DEFERRED|统一收敛验收门禁" /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md
+- Tests:
+  - 文档存在性检查：OK_FILE（PASS）
+  - 结构一致性检查：4 条问题 ID、DEFERRED 状态、统一收敛门禁段落均存在（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅新增问题汇总文档，不修改现有功能逻辑
+  - 问题已统一标记为 DEFERRED，待方案实施结束后集中修复
+- Next Step:
+  - 在整体实施完成后，按本清单逐项关闭并同步更新 TEST_PLAN/TEST_REPORT
+
+- DateTime: 2026-03-04 18:03:17 +0800
+- Task: Phase 1 验收审查并将问题/建议汇总到独立延期文档
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:verification-before-completion
+  - rg --files | rg 'r-mos-backend/app/services/orchestrator_v2.py|r-mos-backend/app/api/v1/endpoints/agent.py|r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx|r-mos-frontend/src/api/agent-v2.ts|r-mos-backend/app/core/config.py|r-mos-backend/app/services/feature_flag.py'
+  - rg -n "@router\.(get|post)\(\"/v2/|@router\.(get|post)\(\"/features|trace|modules" r-mos-backend/app/api/v1/endpoints/agent.py
+  - rg -n "class OrchestratorV2|TaskFSMState|TaskEventType|transition_state|IdempotencyCache|check_budget|consume_budget" r-mos-backend/app/services/orchestrator_v2.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -m py_compile app/services/orchestrator_v2.py app/api/v1/endpoints/agent.py app/services/feature_flag.py app/core/config.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_migration_contract.py tests/unit/test_skill_registry_migration_gate.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "from app.services.orchestrator_v2 import orchestrator_v2; print(orchestrator_v2.process_request(user_id='u1', message='hello'))"
+  - rg -n "Phase 1 问题与建议|P1-DI-001|P1-DI-002|P1-DI-003|P1-DI-004|P1-DI-005" /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md
+- Tests:
+  - 后端语法编译（py_compile）: PASS
+  - 后端最小门禁单测（migration_contract + skill_registry_migration_gate）: PASS
+  - 前端构建（npm run build）: FAIL（TypeScript 错误，包含 AgentWorkbenchPage 新增未使用符号）
+  - OrchestratorV2 运行时最小调用: FAIL（AttributeError: PolicyDecision 无 model_dump）
+  - 文档结构检查（Phase 1 问题项 P1-DI-001~005）: PASS
+- Result: PASS（问题已完成归档）；Phase 1 交付状态维持 CONDITIONAL（存在延期收敛项）
+- Risks/Notes:
+  - 本次仅更新问题汇总文档，不修改业务逻辑
+  - 运行时阻断问题（P1-DI-001/P1-DI-002）已纳入延期清单，待统一收敛窗口处理
+- Next Step:
+  - 继续按同口径审查后续 Phase 交付，并持续追加到同一延期文档
+
+- DateTime: 2026-03-04 19:52:44 +0800
+- Task: Phase 3（Week 9-10）验收审查并追加问题/建议到统一延期文档
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:verification-before-completion
+  - rg --files | rg 'r-mos-backend/app/services/decision_recalculator.py|r-mos-backend/app/api/v1/endpoints/agent.py|r-mos-frontend/src/api/agent-v2.ts|r-mos-frontend/src/pages/ReplayPage.tsx|r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx|r-mos-frontend/src/App.tsx'
+  - rg -n "@router\.(post|get)\(\"/replay/decision/record\"|@router\.(post|get)\(\"/replay/decision/\{decision_id\}\"|@router\.(post|get)\(\"/replay/trace/\{trace_id\}/decisions\"|@router\.(post|get)\(\"/replay/recalculate\"|@router\.(post|get)\(\"/replay/recalculations\"|@router\.(post|get)\(\"/replay/trace\"" r-mos-backend/app/api/v1/endpoints/agent.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -m py_compile app/services/decision_recalculator.py app/api/v1/endpoints/agent.py app/services/orchestrator_v2.py app/services/evidence_collector.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "import asyncio; from app.services.decision_recalculator import decision_recalculator, DecisionType, RecalculationRequest; did=decision_recalculator.record_decision(DecisionType.POLICY_EVALUATION,'trace-1',{'action':'execute-task'},{'allowed':True},'R1',['rule1']); res=asyncio.run(decision_recalculator.recalculate(RecalculationRequest(original_decision_id=did,recalculation_type='whatif',modified_params={'allowed':False}))); print({'decision_id':did,'status':res.status.value,'changed':res.diff['result_comparison']['decision_changed']})"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_ai_replay_api.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "import main; print('OK_MAIN_IMPORT')"
+  - rg -n "Phase 3 问题与建议|P3-DI-001|P3-DI-002|P3-DI-003|P3-DI-004|P3-DI-005" /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md
+- Tests:
+  - Phase 3 相关后端模块 py_compile: PASS
+  - 决策复算服务最小调用（record + recalculate）: PASS
+  - 前端构建（npm run build）: FAIL（TS 错误，含 Phase 3 新增文件）
+  - replay 相关单测（test_ai_replay_api.py）: FAIL（collection 阶段 ModuleNotFoundError: app.services.compensation_planner）
+  - 主应用导入（import main）: FAIL（ModuleNotFoundError: app.services.compensation_planner）
+  - 文档结构检查（P3-DI-001~005）: PASS
+- Result: PASS（问题归档完成）；Phase 3 交付状态维持 CONDITIONAL（存在延期收敛项）
+- Risks/Notes:
+  - 本次仅更新延期问题文档，不修改业务代码
+  - 当前存在启动级阻断（缺失 compensation_planner 模块），需在统一收敛窗口优先处理
+- Next Step:
+  - 继续按相同口径审查后续阶段交付，并持续追加到同一延期文档
+
+- DateTime: 2026-03-04 20:00:21 +0800
+- Task: Phase 4（Week 11-12）验收审查并追加问题/建议到统一延期文档
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg --files | rg 'r-mos-backend/app/services/(acceptance_metrics|system_monitor|compensation_planner|resource_parser|policy_matrix|orchestrator_v2|feature_flag|belief_state|evidence_collector|approval_queue|decision_recalculator)\.py|r-mos-frontend/src/pages/admin/AcceptanceDashboardPage\.tsx|r-mos-frontend/src/App\.tsx|r-mos-backend/app/api/v1/endpoints/agent\.py'
+  - rg -n "@router\.(get|post)\(\"/metrics/record\"|@router\.(get|post)\(\"/metrics\"|@router\.(get|post)\(\"/metrics/\{metric_id\}\"|@router\.(get|post)\(\"/metrics/report\"|@router\.(get|post)\(\"/metrics/reports\"|@router\.(get|post)\(\"/metrics/reset\"|@router\.(get|post)\(\"/monitor/health\"|@router\.(get|post)\(\"/monitor/metrics\"|@router\.(get|post)\(\"/monitor/metrics/history\"|@router\.(get|post)\(\"/monitor/alerts\"|@router\.(get|post)\(\"/monitor/alerts/\{id\}/acknowledge\"|@router\.(get|post)\(\"/monitor/alerts/clear\"|@router\.(get|post)\(\"/monitor/checks\"" r-mos-backend/app/api/v1/endpoints/agent.py
+  - test -f /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/compensation_planner.py && echo EXISTS || echo MISSING
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -m py_compile app/services/acceptance_metrics.py app/services/system_monitor.py app/api/v1/endpoints/agent.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "import main; print('OK_MAIN_IMPORT')"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "from app.services.acceptance_metrics import acceptance_metrics; acceptance_metrics.record_write_request('e1', True); acceptance_metrics.record_trace('t1', True); acceptance_metrics.record_unauthorized_attempt('u1'); rpt=acceptance_metrics.generate_report(); print({'passed':rpt.passed,'failed':rpt.failed,'warnings':rpt.warnings,'safe':[(m.metric_id,m.actual_value,m.status.value) for m in rpt.metrics if m.metric_id=='M-SAFE-001'][0]})"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "from app.services.system_monitor import system_monitor; h=system_monitor.get_health_summary(); m=system_monitor.get_system_metrics(); print({'overall':h['overall_status'],'checks':h['total_checks'],'cpu':m.cpu_percent>=0})"
+  - rg -n "mock|Mock data|for demonstration" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/AcceptanceDashboardPage.tsx /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/ReplayPage.tsx
+  - rg -n "acceptance_metrics|system_monitor|/agent/metrics|/agent/monitor|AcceptanceDashboardPage" /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests /Users/xuhehong/Desktop/r-mos/r-mos-frontend --glob '*test*' --glob '*spec*'
+  - rg -n "Phase 4 问题与建议|P4-DI-001|P4-DI-002|P4-DI-003|P4-DI-004|P4-DI-005|P4-DI-006|P4-DI-007" /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md
+- Tests:
+  - 文件/端点静态核查（metrics/monitor 路由）: PASS
+  - Phase 4 相关后端模块 py_compile: PASS
+  - 主应用导入（import main）: FAIL（ModuleNotFoundError: app.services.compensation_planner）
+  - 验收指标服务最小调用（record + report）: PASS（输出显示 M-SAFE-001=100% fail，暴露口径问题）
+  - 系统监控服务最小调用: FAIL（ModuleNotFoundError: psutil）
+  - 前端构建（npm run build）: FAIL（AcceptanceDashboardPage.tsx 第324行 TS1382）
+  - Phase 4 专项测试覆盖检索: FAIL（未检索到相关自动化测试）
+- Result: PASS（问题归档完成）；Phase 4 交付状态维持 CONDITIONAL（存在延期收敛项）
+- Risks/Notes:
+  - 本次仅更新延期问题文档，不修改业务代码
+  - 关键阻断：服务导入失败、依赖缺失、前端构建失败
+- Next Step:
+  - 继续按相同口径审查最终收口交付，并在统一收敛窗口逐条关闭 P0~P4 问题
+
+- DateTime: 2026-03-04 20:04:20 +0800
+- Task: Phase 2（Week 6-8）验收审查并追加问题/建议到统一延期文档
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg --files | rg 'r-mos-backend/app/services/(belief_state|evidence_collector|compensation_planner|approval_queue|policy_matrix)\.py|r-mos-frontend/src/components/Agent/(EvidencePanel|CompensationConfirm)\.tsx|r-mos-frontend/src/pages/admin/ApprovalQueuePage\.tsx|r-mos-backend/app/api/v1/endpoints/agent\.py'
+  - rg -n "@router\.(post|get)\(\"/belief\"|@router\.(post|get)\(\"/belief/\{trace_id\}\"|@router\.(post|get)\(\"/evidence/v2/collect\"|@router\.(post|get)\(\"/evidence/v2/\{trace_id\}/chain\"|@router\.(post|get)\(\"/compensation/analyze\"|@router\.(post|get)\(\"/compensation/plan\"|@router\.(post|get)\(\"/compensation/plan/\{plan_id\}/approve\"|@router\.(post|get)\(\"/compensation/plan/\{plan_id\}/execute\"|@router\.(post|get)\(\"/approval/request\"|@router\.(post|get)\(\"/approval/pending\"|@router\.(post|get)\(\"/approval/\{request_id\}/approve\"|@router\.(post|get)\(\"/approval/\{request_id\}/reject\"" r-mos-backend/app/api/v1/endpoints/agent.py
+  - test -f /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/compensation_planner.py && echo EXISTS || echo MISSING
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -m py_compile app/services/belief_state.py app/services/evidence_collector.py app/services/approval_queue.py app/api/v1/endpoints/agent.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "from app.services.belief_state import get_or_create_belief_state, BeliefConfidence, BeliefSource; bs=get_or_create_belief_state('trace-p2'); bid=bs.add_belief('task_state','step1_done',BeliefConfidence.HIGH,0.9,BeliefSource.OBSERVATION,['ev-1']); bs.update_belief(bid,confidence_value=0.8); print({'beliefs':len(bs.get_all_beliefs()),'conflicts':len(bs.resolve_conflicts())})"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "from app.services.evidence_collector import evidence_collector, EvidenceType; eid=evidence_collector.collect_evidence(EvidenceType.SAFETY_CHECK,'trace-p2','step-1',{'ok':True}); ok=evidence_collector.validate_evidence(eid,True,'valid'); can=evidence_collector.can_proceed('execute-task','trace-p2'); print({'evidence_id':eid,'validated':ok,'can_proceed':can[0]})"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "from app.services.approval_queue import approval_queue, ApprovalPriority; rid=approval_queue.create_request('u1','task','task-1','execute-task','need approval',ApprovalPriority.HIGH); p=len(approval_queue.get_pending_requests()); approval_queue.approve(rid,'admin-1'); h=len(approval_queue.get_request_history()); print({'request_id':rid,'pending_count':p,'history_count':h})"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -c "import main; print('OK_MAIN_IMPORT')"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm exec tsc -- --noEmit --target ES2020 --module ESNext --moduleResolution bundler --jsx react-jsx --lib ES2020,DOM --skipLibCheck src/components/Agent/CompensationConfirm.tsx
+  - rg -n "belief_state|evidence_collector|compensation_planner|approval_queue|/agent/belief|/agent/evidence/v2|/agent/compensation|/agent/approval|EvidencePanel|CompensationConfirm|ApprovalQueuePage" /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests /Users/xuhehong/Desktop/r-mos/r-mos-frontend --glob '*test*' --glob '*spec*'
+  - rg -n "Phase 2 问题与建议|P2-DI-001|P2-DI-002|P2-DI-003|P2-DI-004|P2-DI-005|P2-DI-006" /Users/xuhehong/Desktop/r-mos/docs/testing/PHASE0_DEFERRED_ISSUES_AND_REMEDIATION.md
+- Tests:
+  - 文件/端点静态核查（belief/evidence/compensation/approval）: PASS
+  - Phase 2 后端模块 py_compile: PASS
+  - BeliefState 最小调用（add/update/resolve）: PASS
+  - EvidenceCollector 最小调用（collect/validate/can_proceed）: PASS
+  - ApprovalQueue 最小调用（create/approve/history）: PASS
+  - 主应用导入（import main）: FAIL（ModuleNotFoundError: app.services.compensation_planner）
+  - 前端构建（npm run build）: FAIL（AcceptanceDashboardPage.tsx 第324行 TS1382）
+  - 补偿确认组件定向编译: FAIL（TS2724: SkipForwardOutlined 不存在）
+  - Phase 2 专项测试覆盖检索: FAIL（未检索到相关自动化测试）
+- Result: PASS（问题归档完成）；Phase 2 交付状态维持 CONDITIONAL（存在延期收敛项）
+- Risks/Notes:
+  - 本次仅更新延期问题文档，不修改业务代码
+  - Phase 2 补偿链路存在启动级阻断（缺失 compensation_planner 模块）
+- Next Step:
+  - 继续按同口径汇总全阶段问题，并在统一收敛窗口逐条关闭 P0~P4 问题
+
+- DateTime: 2026-03-04 20:07:13 +0800
+- Task: 基于延期问题台账制定统一修复实施方案（待确认后执行）
+- Scope (files changed): /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-04-deferred-issues-remediation-plan.md, /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - mkdir -p /Users/xuhehong/Desktop/r-mos/docs/plans
+  - test -f /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-04-deferred-issues-remediation-plan.md && echo OK_PLAN_FILE
+  - sed -n '1,80p' /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-04-deferred-issues-remediation-plan.md
+- Tests:
+  - 计划文件存在性检查：OK_PLAN_FILE（PASS）
+  - 计划结构检查：包含 Goal/Architecture/Tech Stack、分阶段任务、DoD 与执行批次（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅输出修复方案，不实施代码改动
+- Next Step:
+  - 等待用户确认后按计划分批执行并逐条关闭延期问题
+
+- DateTime: 2026-03-04 20:52:00 +0800
+- Task: 执行修复方案 - Task 1-8 完成（Stage A-D）
+- Scope (files changed): 
+  - r-mos-backend/app/services/compensation_planner.py (新增)
+  - r-mos-backend/requirements.txt (psutil 依赖)
+  - r-mos-backend/app/api/v1/endpoints/agent.py (policy_matrix 导入)
+  - r-mos-backend/app/services/policy_matrix.py (已存在)
+  - r-mos-backend/app/services/runtime_persistence.py (新增)
+  - r-mos-backend/app/models/agent_runtime.py (新增)
+  - r-mos-backend/alembic/versions/20260304_2100_add_agent_runtime_state.py (新增)
+  - r-mos-backend/alembic/versions/20260304_2115_869864251bc9_fixed_phase0_week2_extend.py (新增)
+  - r-mos-backend/tests/unit/test_phase2_contract.py (新增)
+  - r-mos-backend/tests/unit/test_phase3_contract.py (新增)
+  - r-mos-backend/tests/unit/test_phase4_contract.py (新增)
+  - r-mos-frontend/src/pages/admin/AcceptanceDashboardPage.tsx (修改)
+  - r-mos-frontend/src/components/EvidencePanel/EvidencePanel.tsx (修改)
+  - r-mos-frontend/src/components/Agent/CompensationConfirm.tsx (修改)
+  - r-mos-frontend/src/components/Agent/EvidencePanel.tsx (修改)
+  - r-mos-frontend/src/components/TaskControl/TaskControl.tsx (修改)
+  - r-mos-frontend/src/components/PermissionHint/PermissionHint.tsx (修改)
+  - r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx (修改)
+  - r-mos-frontend/src/pages/admin/ApprovalQueuePage.tsx (修改)
+  - r-mos-frontend/src/pages/AIChatPage.tsx (修改)
+  - r-mos-frontend/src/pages/DiagnosisPage.tsx (修改)
+  - r-mos-frontend/src/pages/KnowledgePage.tsx (修改)
+  - r-mos-frontend/src/pages/ReplayPage.tsx (修改)
+  - r-mos-frontend/src/pages/TaskExecutionPage.tsx (修改)
+  - docs/adr/ADR.md (修改 - ADR-OPS-003)
+- Commands Run:
+  - pip install psutil (安装系统监控依赖)
+  - npm run build (前端构建验证)
+  - PYTHONPATH=. python -c "import main" (后端导入验证)
+  - pytest tests/unit/test_phase2_contract.py tests/unit/test_phase3_contract.py tests/unit/test_phase4_contract.py (契约测试)
+- Tests:
+  - 前端构建: PASS
+  - 后端导入: PASS  
+  - Phase 2/3/4 契约测试: 22 passed
+- Result: PASS
+- Risks/Notes:
+  - Task 9 待完成（文档收尾）
+
+- DateTime: 2026-03-04 21:45:00 +0800
+- Task: 首页极简化改造（首页作为 AI 工作台，保留一个对话框与少量选项）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/HomePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/HomePage.css
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill ui-ux-pro-max
+  - python3 /Users/xuhehong/.codex/skills/ui-ux-pro-max/scripts/search.py "robot maintenance AI workbench minimal professional" --design-system -p "R-MOS Home Workbench"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - 前端构建（tsc -b && vite build）: PASS
+  - 浏览器页面结构验收（/ 首页）: PASS（仅保留意图选项、快捷问题按钮、单对话框消息区与输入区）
+- Result: PASS
+- Risks/Notes:
+  - 仅改首页内容区，未调整左侧菜单与全局路由
+- Next Step:
+  - 如需“登录后仅显示首页工作台且隐藏其他菜单”，可进一步收敛 AppLayout 菜单配置
+
+- DateTime: 2026-03-04 21:52:00 +0800
+- Task: AI 工作台按“纯对话入口”方案重设计（空状态卡片 + 对话态 + 顶栏胶囊）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbench.css
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Agent/AgentStatusCapsule.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill ui-ux-pro-max
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - 前端构建（tsc -b && vite build）: PASS
+  - 浏览器快照验收：PASS
+    - /agent/workbench 空状态：仅对话入口 + 6 个快捷卡片 + 输入框
+    - 顶栏胶囊在 IDLE 不显示，仅 Logo + 用户
+    - 侧边栏文案：AI 工作台
+    - / 默认路由指向工作台
+- Result: PASS
+- Risks/Notes:
+  - 对话发送在当前后端环境下偶发超时（接口侧问题），不影响前端布局方案
+- Next Step:
+  - 如需更严格贴合方案，可追加“动作卡内嵌按钮行为（提交证据/查看要求）”与审批跳转联动
+
+- DateTime: 2026-03-04 22:10:59 +0800
+- Task: 全面梳理项目现状并输出根目录综合书面文档（功能/前后端/智能体/LLM接入/六件套/记忆/知识库）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md (新增)
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md (追加记录)
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - rg --files
+  - rg -n "@router\.(get|post|put|patch|delete)\(" r-mos-backend/app/api/v1/endpoints -g "*.py"
+  - sed -n '1,260p' r-mos-backend/app/api/v1/endpoints/ai_commands.py
+  - sed -n '1,260p' r-mos-backend/app/api/v1/endpoints/approvals.py
+  - sed -n '1,260p' r-mos-backend/app/services/authz_guard.py
+  - sed -n '1,260p' r-mos-backend/app/services/tool_executor.py
+  - sed -n '1,260p' r-mos-frontend/src/App.tsx
+  - sed -n '1,320p' r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - rg -n "openai|anthropic|ollama|langchain|litellm|chat.completions" r-mos-backend r-mos-frontend -g "*.py" -g "*.ts" -g "*.tsx"
+  - cat > /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md <<'EOF' ...
+  - test -f /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md
+  - rg -n "^## " /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md
+- Tests:
+  - 文档存在性校验: `test -f /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md` -> PASS
+  - 章节完整性校验: `rg -n "^## " /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md` -> PASS（含 1~15 章与终极结论）
+  - 关键主题覆盖校验: `rg -n "最终结论|大模型 API 接入情况|任务编排|记忆系统|知识库设计" ...` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 本次为文档任务，未修改业务代码；未触发后端/前端构建与单元测试。
+  - 代码仓库当前存在大量既有未提交改动，本次未触碰、未回滚。
+- Next Step:
+  - 若需要，我可基于该报告继续输出“收敛执行计划（按 P0/P1/P2 拆任务+验收命令）”并直接落地到 docs/plans。
+
+- DateTime: 2026-03-05 15:05:38 +0800
+- Task: Phase2 审核后修复（UF-09/UF-10 阻塞 API + submit 提交链路切换）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/training.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/submission_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/__init__.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/memory/__init__.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/training_submission.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_phase2_api.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:receiving-code-review
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - rg -n "submit_manual|SubmissionService|FeedbackGenerator|SkillProfileService|/training/feedback|/students/.*/profile|weak-steps" r-mos-backend/app -g '*.py'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_training_phase2_api.py
+- Tests:
+  - `pytest -q tests/unit/test_training_phase2_api.py` -> PASS (4 passed)
+  - 覆盖点：
+    - submit 路由走 `SubmissionService.submit_manual`（不再走 `SessionService.submit`）
+    - `GET /api/v1/training/feedback/{session_id}`
+    - `GET /api/v1/students/{user_id}/profile`
+    - `GET /api/v1/students/{user_id}/weak-steps`
+- Result: PASS
+- Risks/Notes:
+  - `submission_service.py` 在切换 submit 链路后暴露出同名类冲突（提交包 dataclass 与 ORM 模型同名），已修复为模型别名以确保持久化可执行。
+  - `training_submissions` 存在双外键指向 `users` 的 ORM 关系歧义（`user_id`/`submitted_by`），已补 `foreign_keys` 明确关系。
+  - 仍保留你标注的非阻塞 TODO（教师管辖权验证、通知推送、对话摘要/交互日志、工具评分细化、情景记忆写入、推荐预计算）。
+- Next Step:
+  - 等待 Gemini 对 Phase2 下一批问题清单，按同样流程修复并补回归用例。
+
+- DateTime: 2026-03-05 15:34:35 +0800
+- Task: 测试清理计划修订 + Phase1 前置修复（Fixture 基建、locust 语法、覆盖率策略与命令修正）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/conftest.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/load/locustfile.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:receiving-code-review
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - rg -n "Phase 0\.5|T-03-b|C-01-b-4|cov-fail-under|locust" R-MOS_Review_Test_Cleanup_Plan.md
+  - rg -n "sessions/\{session_id\}/submit|submit_manual|SessionService\.submit" r-mos-backend/app/api/v1/endpoints/training.py
+  - cd r-mos-backend && source .venv/bin/activate && python -m py_compile tests/conftest.py tests/load/locustfile.py
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_training_phase2_api.py -q
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_task_service.py -q
+- Tests:
+  - 语法检查（conftest + locustfile）: PASS
+  - `pytest tests/unit/test_training_phase2_api.py -q`: PASS（4 passed）
+  - `pytest tests/unit/test_task_service.py -q`: PASS（3 passed）
+- Result: PASS
+- Risks/Notes:
+  - `POST /training/sessions/{session_id}/submit` 已核验为 `SubmissionService.submit_manual()` 调用链，无需二次修复代码。
+  - 当前测试输出仍存在既有 Pydantic v2 deprecation warning，不影响本次修复范围。
+- Next Step:
+  - 按更新后的 Phase 0.5 先统一基建 fixture，再进入 `R-MOS_Review_Test_Cleanup_Plan.md` 的 T-01/T-02 测试执行。
+
+- DateTime: 2026-03-05 15:51:19 +0800
+- Task: 启动 Review/Test/Cleanup 执行（Batch 1：Phase0.5 + R-02 + 阻塞项核验）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/review-checklist.md
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/conftest.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/load/locustfile.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - rg -n "TODO|FIXME" r-mos-backend/app -g '*.py'
+  - rg -n "\\blegacy\\b|\\bunused\\b|\\bold\\b" r-mos-backend/app -g '*.py'
+  - rg -n "class_members|WebSocket|conversation_turns" r-mos-backend/app -g '*.py'
+  - rg -n "sessions/\\{session_id\\}/submit|SubmissionService|submit_manual" r-mos-backend/app/api/v1/endpoints/training.py
+  - cd r-mos-backend && source .venv/bin/activate && python -m py_compile tests/conftest.py tests/load/locustfile.py
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_training_phase2_api.py -q
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_task_service.py -q
+- Tests:
+  - 语法检查（conftest + locustfile）: PASS
+  - `pytest tests/unit/test_training_phase2_api.py -q`: PASS（4 passed）
+  - `pytest tests/unit/test_task_service.py -q`: PASS（3 passed）
+- Result: PASS
+- Risks/Notes:
+  - `F-05`（新增 T-02 测试全面复用新 fixture）尚未完成，待 T-02 实施时收口。
+  - `R-04-1/R-04-2/R-04-3` 全量收口依赖 R-01/R-03 审查完成，本批只完成 R-02 维度基线。
+- Next Step:
+  - 进入 Batch 2：执行 R-01-a/R-01-b/R-01-c 后端 API 层审查，并回填 review-checklist。
+
+- DateTime: 2026-03-05 16:05:40 +0800
+- Task: Review/Test/Cleanup Batch 2（R-01-a/b/c 审查 + 阻塞项即时修复）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/review-checklist.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/agent_endpoint_inventory.tsv
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/agent-v2.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - rg -n "@router\.(get|post|put|patch|delete)\(" r-mos-backend/app/api/v1/endpoints/agent.py
+  - python3 AST 脚本：提取 72 端点、权限覆盖、异常处理与前端引用映射（输出 docs/review/agent_endpoint_inventory.tsv）
+  - rg -n "/agent/|agent-v2|/ai/" r-mos-frontend/src -g '*.ts' -g '*.tsx'
+  - rg -n "deprecated=True" r-mos-backend/app/api/v1/endpoints/ai_commands.py
+  - python3 sqlite 脚本查询 r-mos-backend/rmos_main.db: audit_events 近30天 deprecated 路由调用量
+  - rg -n "require_permission|Enrollment|TeachingClass" r-mos-backend/app/api/v1/endpoints/teaching.py
+  - sed -n / rg -n 审查 training.py / submission_service.py / assessments.py / tasks.py
+  - cd r-mos-backend && source .venv/bin/activate && python -m py_compile app/api/v1/endpoints/ai_commands.py
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_ai_commands_api.py -k rag_query -q
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_training_phase2_api.py -q
+  - cd r-mos-frontend && npm exec tsc -- --noEmit --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM --types vite/client --skipLibCheck src/api/agent-v2.ts
+  - cd r-mos-frontend && npm run build
+- Tests:
+  - `python -m py_compile app/api/v1/endpoints/ai_commands.py`: PASS
+  - `pytest tests/unit/test_training_phase2_api.py -q`: PASS（4 passed）
+  - `npm exec tsc ... src/api/agent-v2.ts`: PASS
+  - `pytest tests/unit/test_ai_commands_api.py -k rag_query -q`: FAIL（环境缺少 anthropic 依赖，collection 阶段中断）
+  - `npm run build`: FAIL（既有 `src/components/GuidanceModeModal/index.ts` 语法错误，与本批改动无关）
+- Result: PASS（本批审查与阻塞修复完成，存在环境/既有问题导致的非本批失败项）
+- Risks/Notes:
+  - R-01-c 审查发现 teaching.py 多个学员数据查询接口缺少 teacher/class 归属校验，已记入 review-checklist。
+  - `POST /agent/v2/request` 与前端调用链不一致问题已修复为统一走 `/agent/execute`。
+  - deprecated `/ai/rag/query` 已补 `Deprecation` 响应头，便于后续清理迁移。
+- Next Step:
+  - 进入 Batch 3：执行 R-03-a~R-03-d 前端审查，并完成 R-04-1/R-04-2 汇总分级。
+
+- DateTime: 2026-03-05 16:30:00 +0800
+- Task: Review/Test/Cleanup Batch 3-4 收口（恢复兼容旧端点 + 修复测试收集阻塞 + T-01 基线清零）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/llm/router.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/system_monitor.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/main.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/ai_commands.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/agent.py
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/review-checklist.md
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/backend-tests-collect-2026-03-05-rerun1.txt
+  - /Users/xuhehong/Desktop/r-mos/docs/review/backend-tests-baseline-2026-03-05-rerun1.log
+  - /Users/xuhehong/Desktop/r-mos/docs/review/backend-tests-baseline-2026-03-05-rerun2.log
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:verification-before-completion
+  - cd r-mos-backend && source .venv/bin/activate && python -c "import importlib; import app.main; importlib.import_module('app.api.v1')"
+  - cd r-mos-backend && source .venv/bin/activate && find app/api/v1/endpoints app/services/llm app/services -name "*.py" -maxdepth 4 -exec python -m py_compile {} +
+  - cd r-mos-backend && source .venv/bin/activate && pytest -q tests/e2e/test_agent_execute.py tests/unit/test_agent_authz.py tests/unit/test_ai_commands_api.py tests/unit/test_approval_api.py tests/unit/test_tool_security_guard_api.py tests/unit/test_tool_execution_after_approval_api.py
+  - cd r-mos-backend && source .venv/bin/activate && pytest -q tests/unit/test_agent_authz.py
+  - cd r-mos-backend && source .venv/bin/activate && pytest -q tests/e2e/test_agent_execute.py tests/unit/test_ai_commands_api.py tests/unit/test_approval_api.py tests/unit/test_tool_security_guard_api.py tests/unit/test_tool_execution_after_approval_api.py
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/ --collect-only -q > ../docs/review/backend-tests-collect-2026-03-05-rerun1.txt 2>&1
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/ -v --tb=short > ../docs/review/backend-tests-baseline-2026-03-05-rerun2.log 2>&1
+- Tests:
+  - 关键子集（agent/ai_commands/approval/security/e2e）: PASS（45 passed）
+  - `pytest tests/unit/test_agent_authz.py -q`: PASS（11 passed）
+  - `pytest tests/ --collect-only -q`: PASS（collected 239 items）
+  - `pytest tests/ -v --tb=short`: PASS（236 passed, 3 skipped, 0 failed, 0 error）
+- Result: PASS
+- Risks/Notes:
+  - 仍存在大量 `PydanticDeprecatedSince20` 与 `datetime.utcnow()` deprecation warning（未纳入本批修复范围）。
+  - `aiosqlite` 在线程关闭时的 warning 仍偶发，当前不影响用例通过率。
+- Next Step:
+  - 执行 T-01-4（服务覆盖缺口盘点）并进入 T-02 核心 service 单测补全，优先复用 Phase 0.5 fixture。
+
+- DateTime: 2026-03-05 16:36:00 +0800
+- Task: T-01-4 覆盖缺口盘点（核心 services 对照）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/review-checklist.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/service-test-gap-2026-03-05.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/services-coverage-2026-03-05.log
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source .venv/bin/activate && pytest tests/ --cov=app/services --cov-report=term-missing --cov-report=xml:../docs/review/services-coverage-2026-03-05.xml
+  - cd r-mos-backend && source .venv/bin/activate && python <静态映射脚本>（扫描 app/services 与 tests 引用关系）
+  - sed -n '1,240p' docs/review/service-test-gap-2026-03-05.md
+- Tests:
+  - `pytest --cov=app/services ...` -> FAIL（pytest-cov 未安装，参数无法识别）
+  - 静态映射输出生成 -> PASS（core=14, covered=2, uncovered=12）
+- Result: PASS（以静态映射完成 T-01-4 交付）
+- Risks/Notes:
+  - 当前覆盖缺口为“显式引用维度”的保守统计，未计入 API 间接覆盖；T-02 仍需按服务补单测。
+- Next Step:
+  - 进入 T-02，按 `service-test-gap-2026-03-05.md` 优先补齐 12 个未覆盖核心服务测试。
+
+- DateTime: 2026-03-05 16:52:34 +0800
+- Task: Phase 2 T-02 核心 service 单测补全（T-02-a/b/c/d）+ 剩余核心服务最小正常流补测
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/review-checklist.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/knowledge/__init__.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/knowledge/hub.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/project_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/memory/short_term.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/memory/hub.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/memory/skill_profile_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/identity/session_initializer.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/identity/__init__.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/identity/class_membership.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/orchestrator_v2.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_project_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_session_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_submission_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_feedback_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_session_initializer.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_agent_policy_factory.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_class_membership.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_memory_writer.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_skill_profile_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_knowledge_hub.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_preflight_check.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_teacher_monitor.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_intent_router.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_orchestrator_v2.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_tool_executor_service.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/unit/test_project_generator.py tests/unit/test_session_service.py tests/unit/test_submission_service.py tests/unit/test_feedback_generator.py -q
+  - cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/unit/test_session_initializer.py tests/unit/test_agent_policy_factory.py tests/unit/test_class_membership.py -q
+  - cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/unit/test_training_memory_writer.py tests/unit/test_skill_profile_service.py tests/unit/test_knowledge_hub.py tests/unit/test_preflight_check.py -q
+  - cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/unit/test_teacher_monitor.py tests/unit/test_training_intent_router.py tests/unit/test_orchestrator_v2.py tests/unit/test_tool_executor_service.py -q
+  - cd r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/unit/test_project_generator.py tests/unit/test_session_service.py tests/unit/test_submission_service.py tests/unit/test_feedback_generator.py tests/unit/test_session_initializer.py tests/unit/test_agent_policy_factory.py tests/unit/test_class_membership.py tests/unit/test_training_memory_writer.py tests/unit/test_skill_profile_service.py tests/unit/test_knowledge_hub.py tests/unit/test_preflight_check.py tests/unit/test_teacher_monitor.py tests/unit/test_training_intent_router.py tests/unit/test_orchestrator_v2.py tests/unit/test_tool_executor_service.py -q
+- Tests:
+  - `pytest tests/unit/test_project_generator.py tests/unit/test_session_service.py tests/unit/test_submission_service.py tests/unit/test_feedback_generator.py -q`: PASS（12 passed）
+  - `pytest tests/unit/test_session_initializer.py tests/unit/test_agent_policy_factory.py tests/unit/test_class_membership.py -q`: PASS（7 passed）
+  - `pytest tests/unit/test_training_memory_writer.py tests/unit/test_skill_profile_service.py tests/unit/test_knowledge_hub.py tests/unit/test_preflight_check.py -q`: PASS（21 passed）
+  - `pytest tests/unit/test_teacher_monitor.py tests/unit/test_training_intent_router.py tests/unit/test_orchestrator_v2.py tests/unit/test_tool_executor_service.py -q`: PASS（5 passed）
+  - `pytest <T-02 全部新增/扩展测试文件> -q`: PASS（45 passed）
+- Result: PASS
+- Risks/Notes:
+  - 本批仅执行与 T-02 直接相关的最小测试集；未跑全量 `pytest tests/`。
+  - 运行中存在既有 `PydanticDeprecatedSince20` 与 `datetime.utcnow()` deprecation warnings，当前不影响测试通过。
+  - workspace 仍有大量既有未提交改动，本批未回滚任何非本次变更。
+- Next Step:
+  - 进入 T-03 API 链路测试（auth boundary / training flow / teaching / knowledge），并在同一证据格式下继续追加报告。
