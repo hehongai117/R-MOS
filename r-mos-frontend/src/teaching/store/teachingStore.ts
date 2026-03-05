@@ -35,7 +35,7 @@ export const useTeachingStore = create<TeachingStoreState>((set) => ({
     try {
       const data = await listAssignments()
       set({ assignments: data })
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = formatTeachingError(error, '加载作业失败')
       set({ error: message })
       throw error
@@ -60,7 +60,7 @@ export const useTeachingStore = create<TeachingStoreState>((set) => ({
       const attempt = await createAttempt(assignment.id, studentId, task.id)
       set({ currentAttempt: attempt })
       return attempt
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = formatTeachingError(error, '创建尝试失败')
       set({ error: message })
       throw error
@@ -74,7 +74,7 @@ export const useTeachingStore = create<TeachingStoreState>((set) => ({
       const data = await getAttemptEvidence(attemptId)
       set({ evidence: data })
       return data
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = formatTeachingError(error, '获取证据失败')
       set({ error: message })
       throw error

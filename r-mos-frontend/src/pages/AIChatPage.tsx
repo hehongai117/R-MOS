@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, Input, Button, List, Avatar, Spin, message } from 'antd';
 import { SendOutlined, RobotOutlined, UserOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { sendAgentRequest, AgentResponse } from '@/api/agent';
+import { sendAgentRequest } from '@/api/agent';
 
 interface ChatMessage {
   id: string;
@@ -17,6 +17,19 @@ interface ChatMessage {
     explanation?: string;
   };
 }
+
+const normalizeSuggestedAction = (
+  action: Record<string, unknown> | undefined
+): ChatMessage['action'] | undefined => {
+  if (!action) return undefined;
+  const type = typeof action.type === 'string' ? action.type : '';
+  if (!type) return undefined;
+  return {
+    type,
+    target: typeof action.target === 'string' ? action.target : undefined,
+    explanation: typeof action.explanation === 'string' ? action.explanation : undefined,
+  };
+};
 
 const AIChatPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -65,11 +78,11 @@ const AIChatPage: React.FC = () => {
         role: 'assistant',
         content: response.message,
         timestamp: Date.now(),
-        action: response.action_suggested as any,
+        action: normalizeSuggestedAction(response.action_suggested),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error('智能助手暂时无法响应，请稍后再试');
       console.error(error);
     } finally {

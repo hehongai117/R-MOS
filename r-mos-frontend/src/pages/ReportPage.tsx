@@ -66,9 +66,11 @@ function ReportPage() {
                 setLoading(true)
                 const response = await apiClient.get(`/api/v1/tasks/${taskId}/report`)
                 setReport(response.data)
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Failed to fetch report:', err)
-                setError(err.response?.data?.detail || '获取报告失败')
+                const detail = (err as { response?: { data?: { detail?: string } } } | null)
+                    ?.response?.data?.detail
+                setError(detail || '获取报告失败')
             } finally {
                 setLoading(false)
             }

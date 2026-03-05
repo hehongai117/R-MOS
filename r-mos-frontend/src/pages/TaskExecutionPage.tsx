@@ -5,13 +5,28 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Steps, Card, message, Modal, Result, Spin, Row, Col, Divider } from 'antd';
-import { PlayCircleOutlined, PauseOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { Button, Steps, Card, message, Modal, Result, Spin, Row, Col } from 'antd';
+import { PlayCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { getTask, executeStep, pauseTask, resumeTask } from '@/api/task';
 import { TaskWithSOP, StepExecutionResponse } from '@/types/task';
 import { SOPStep } from '@/types/sop';
-import { TaskControl } from '@/components/TaskControl';
+import { TaskControl, type TaskControlProps } from '@/components/TaskControl';
 import { EvidencePanel } from '@/components/EvidencePanel';
+import { GuidanceModeModal } from '@/components/GuidanceModeModal';
+import { getUserPreference, updateGuidanceMode } from '@/api/preference';
+import { GuidanceMode } from '@/types/user';
+
+const getResponseStatus = (error: unknown): number | undefined => {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const response = (error as { response?: { status?: number } }).response;
+  return response?.status;
+};
+
+const getResponseMessage = (error: unknown): string | undefined => {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const response = (error as { response?: { data?: { message?: string } } }).response;
+  return response?.data?.message;
+};
 
 const TaskExecutionPage: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -24,7 +39,7 @@ const TaskExecutionPage: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
 
   // Evidence state (mock for now - will integrate with API)
-  const [evidenceStatus, setEvidenceStatus] = useState({
+  const [evidenceStatus, _setEvidenceStatus] = useState({
     required: [
       { id: 'ev-1', type: 'trajectory' as const, status: 'collected' as const },
       { id: 'ev-2', type: 'screenshot' as const, status: 'required' as const },
@@ -34,7 +49,15 @@ const TaskExecutionPage: React.FC = () => {
     ],
   });
 
+  // P2-4: Guidance mode modal state
+  const [showModeModal, setShowModeModal] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<GuidanceMode>('on_demand');
+  const [pendingStartStep, setPendingStartStep] = useState<number | null>(null);
+
   useEffect(() => {
+    // P2-4: Load user preference on mount
+    loadUserPreference();
+
     if (taskId) {
       loadTask(parseInt(taskId));
     } else {
@@ -52,8 +75,8 @@ const TaskExecutionPage: React.FC = () => {
       if (taskData.sop?.steps) {
         setSteps(taskData.sop.steps as SOPStep[]);
       }
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      if (getResponseStatus(error) === 404) {
         setNotFound(true);
         message.error('任务不存在');
       } else {
@@ -63,6 +86,43 @@ const TaskExecutionPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // P2-4: Load user preference
+  const loadUserPreference = async () => {
+    try {
+      const pref = await getUserPreference();
+      setSelectedMode(pref.guidance_mode);
+    } catch (error) {
+      // Use default if not logged in or preference not set
+      console.log('Using default guidance mode');
+    }
+  };
+
+  // P2-4: Handle mode selection and start
+  const handleStartWithMode = async (mode: GuidanceMode) => {
+    setShowModeModal(false);
+
+    // Save preference
+    try {
+      await updateGuidanceMode(mode);
+      setSelectedMode(mode);
+    } catch (error) {
+      console.error('Failed to save preference:', error);
+    }
+
+    // Start task with the selected mode
+    if (pendingStartStep !== null) {
+      // Pass mode to backend via executeStep
+      await handleExecuteStep(pendingStartStep);
+      setPendingStartStep(null);
+    }
+  };
+
+  // P2-4: Handle start click - show mode modal first
+  const handleStartClick = (stepIndex: number) => {
+    setPendingStartStep(stepIndex);
+    setShowModeModal(true);
   };
 
   const handleExecuteStep = async (stepIndex: number) => {
@@ -87,8 +147,8 @@ const TaskExecutionPage: React.FC = () => {
       } else {
         await loadTask(task.id);
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '步骤执行失败');
+    } catch (error: unknown) {
+      message.error(getResponseMessage(error) || '步骤执行失败');
     } finally {
       setExecuting(false);
     }
@@ -130,7 +190,7 @@ const TaskExecutionPage: React.FC = () => {
 
   // Mock permissions (should come from backend RBAC)
   const permissions = {
-    canStart: task?.status === 'ready',
+    canStart: task?.status === 'pending',
     canPause: task?.status === 'in_progress',
     canResume: task?.status === 'paused',
     canSkip: false,
@@ -140,9 +200,9 @@ const TaskExecutionPage: React.FC = () => {
   };
 
   // Map task status to FSM state
-  const getFSMStatus = () => {
+  const getFSMStatus = (): TaskControlProps['status'] => {
     if (!task) return 'READY';
-    const statusMap: Record<string, string> = {
+    const statusMap: Record<string, TaskControlProps['status']> = {
       'pending': 'READY',
       'in_progress': 'EXECUTING',
       'paused': 'PAUSED',
@@ -192,7 +252,7 @@ const TaskExecutionPage: React.FC = () => {
             taskName={task.title}
             taskId={String(task.id)}
             riskLevel="R1"
-            status={getFSMStatus() as any}
+            status={getFSMStatus()}
             currentStep={task.current_step_index + 1}
             totalSteps={steps.length}
             nextAction={nextAction}
@@ -203,7 +263,7 @@ const TaskExecutionPage: React.FC = () => {
             canRollback={permissions.canRollback}
             canAbort={permissions.canAbort}
             canForceContinue={permissions.canForceContinue}
-            onStart={() => handleExecuteStep(0)}
+            onStart={() => handleStartClick(0)}
             onPause={handlePause}
             onResume={handleResume}
             onHelp={handleHelp}
@@ -257,6 +317,17 @@ const TaskExecutionPage: React.FC = () => {
           />
         </Col>
       </Row>
+
+      {/* P2-4: Guidance Mode Selection Modal */}
+      <GuidanceModeModal
+        open={showModeModal}
+        defaultMode={selectedMode}
+        onSelect={handleStartWithMode}
+        onCancel={() => {
+          setShowModeModal(false);
+          setPendingStartStep(null);
+        }}
+      />
     </div>
   );
 };

@@ -64,8 +64,9 @@ const TeachingDiagnosisPage = () => {
       try {
         const response = await getAttemptDiagnosis(attemptId)
         setData(response)
-      } catch (err: any) {
-        if (err?.response?.status === 404) {
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } } | null)?.response?.status
+        if (status === 404) {
           setNotFound(true)
         }
         setErrorMessage(formatTeachingError(err, '加载诊断报告失败'))

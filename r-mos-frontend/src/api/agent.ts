@@ -9,17 +9,29 @@ export interface AgentRequest {
   request_id?: string;
   user_id: string;
   message: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface AgentResponse {
   response_id: string;
   request_id: string;
   message: string;
-  action_suggested?: Record<string, any>;
+  action_suggested?: Record<string, unknown>;
   confidence: number;
   evidence_refs: string[];
 }
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const readString = (value: unknown, fallback: string): string =>
+  typeof value === 'string' ? value : fallback;
+
+const readNumber = (value: unknown, fallback: number): number =>
+  typeof value === 'number' ? value : fallback;
+
+const readStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
 export interface NextAction {
   action_id: string;
@@ -33,7 +45,7 @@ export interface NextAction {
 export interface CoachOutput {
   next_action?: NextAction;
   explanation: string;
-  risk_events: Record<string, any>[];
+  risk_events: Record<string, unknown>[];
   confidence: number;
 }
 
@@ -41,8 +53,8 @@ export interface DiagnoserOutput {
   root_cause?: string;
   root_cause_confidence: number;
   evidence_refs: string[];
-  intervention?: Record<string, any>;
-  baseline_comparison?: Record<string, any>;
+  intervention?: Record<string, unknown>;
+  baseline_comparison?: Record<string, unknown>;
 }
 
 export interface KnowledgeEntry {
@@ -75,12 +87,31 @@ export interface KnowledgeEntry {
 // Agent Orchestrator API
 
 export const sendAgentRequest = async (request: AgentRequest): Promise<AgentResponse> => {
-  const response = await client.post<AgentResponse>('/agent/request', request);
-  return response.data;
+  // P2-1: Use unified /agent/execute endpoint (message mode)
+  const response = await client.post<AgentExecuteResponse>('/agent/execute', {
+    user_id: request.user_id,
+    mode: 'message',
+    message: request.message,
+    context: request.context,
+  });
+
+  // Convert to legacy response format for backward compatibility
+  const data = response.data;
+  const result = isObjectRecord(data.result) ? data.result : {};
+  const messageFromResult = readString(result.message, readString(result.response, JSON.stringify(result)));
+  const actionSuggested = isObjectRecord(result.action) ? result.action : undefined;
+  return {
+    response_id: data.trace_id,
+    request_id: request.request_id || data.trace_id,
+    message: messageFromResult,
+    action_suggested: actionSuggested,
+    confidence: readNumber(result.confidence, 0.9),
+    evidence_refs: readStringArray(result.evidence_refs),
+  };
 };
 
-export const getTaskStatus = async (userId: string): Promise<Record<string, any>> => {
-  const response = await client.get<Record<string, any>>(`/agent/task-status/${userId}`);
+export const getTaskStatus = async (userId: string): Promise<Record<string, unknown>> => {
+  const response = await client.get<Record<string, unknown>>(`/agent/task-status/${userId}`);
   return response.data;
 };
 
@@ -89,8 +120,8 @@ export const getTaskStatus = async (userId: string): Promise<Record<string, any>
 export const getCoachRecommendation = async (
   taskId: string,
   currentStep: number,
-  stepHistory: Record<string, any>[],
-  traineeAction?: Record<string, any>
+  stepHistory: Record<string, unknown>[],
+  traineeAction?: Record<string, unknown>
 ): Promise<CoachOutput> => {
   const response = await client.post<CoachOutput>('/agent/coach/recommend', {
     task_id: taskId,
@@ -105,8 +136,8 @@ export const getCoachRecommendation = async (
 
 export const diagnoseError = async (
   taskId: string,
-  errorHistory: Record<string, any>[],
-  actionHistory: Record<string, any>[],
+  errorHistory: Record<string, unknown>[],
+  actionHistory: Record<string, unknown>[],
   evidenceRefs: string[]
 ): Promise<DiagnoserOutput> => {
   const response = await client.post<DiagnoserOutput>('/agent/diagnoser/diagnose', {
@@ -134,7 +165,7 @@ export const createKnowledge = async (data: {
   title: string;
   content: string;
   type: string;
-  scope?: Record<string, any>;
+  scope?: Record<string, unknown>;
   risk_level?: string;
 }): Promise<KnowledgeEntry> => {
   const response = await client.post<KnowledgeEntry>('/agent/knowledge', data);
@@ -162,9 +193,9 @@ export const coordinateAgents = async (
   taskId: string,
   userId: string,
   action: string,
-  context: Record<string, any>
-): Promise<Record<string, any>> => {
-  const response = await client.post<Record<string, any>>('/agent/coordinate', {
+  context: Record<string, unknown>
+): Promise<Record<string, unknown>> => {
+  const response = await client.post<Record<string, unknown>>('/agent/coordinate', {
     task_id: taskId,
     user_id: userId,
     action,
@@ -175,8 +206,8 @@ export const coordinateAgents = async (
 
 // Evidence Enforcement API
 
-export const getEvidenceStatus = async (stepId: string): Promise<Record<string, any>> => {
-  const response = await client.get<Record<string, any>>(`/agent/evidence/status/${stepId}`);
+export const getEvidenceStatus = async (stepId: string): Promise<Record<string, unknown>> => {
+  const response = await client.get<Record<string, unknown>>(`/agent/evidence/status/${stepId}`);
   return response.data;
 };
 
@@ -194,5 +225,57 @@ export const collectEvidence = async (
 
 export const canProceedToNextStep = async (stepId: string): Promise<{ allowed: boolean; reason: string }> => {
   const response = await client.get<{ allowed: boolean; reason: string }>(`/agent/evidence/can-proceed/${stepId}`);
+  return response.data;
+};
+
+// ============ P2-1: Unified Agent Execute API ============
+
+export type AgentExecuteMode = 'command' | 'message' | 'auto';
+
+export interface AgentExecuteRequest {
+  // Common
+  user_id: string;
+  mode?: AgentExecuteMode;
+
+  // Command mode fields
+  intent?: string;
+  tool_name?: string;
+  tool_args?: Record<string, unknown>;
+  skill_id?: string;
+  side_effects?: string[];
+  input_text?: string;
+
+  // Message mode fields
+  message?: string;
+
+  // Shared fields
+  context?: Record<string, unknown>;
+  resource_ref?: Record<string, unknown>;
+  policy_context?: Record<string, unknown>;
+  intent_classification?: string;
+  trace_id?: string;
+  idempotency_key?: string;
+}
+
+export interface AgentExecuteResponse {
+  status: 'success' | 'pending_approval' | 'error';
+  result?: Record<string, unknown>;
+  trace_id: string;
+  from_cache: boolean;
+  approval_id?: number;
+  mode_used: 'command' | 'message';
+}
+
+/**
+ * Unified Agent Execute API - P2-1 Convergence
+ *
+ * Replaces both:
+ * - POST /ai/commands (Command mode)
+ * - POST /agent/v2/request (Message mode)
+ *
+ * Auto-detects mode if not specified.
+ */
+export const agentExecute = async (request: AgentExecuteRequest): Promise<AgentExecuteResponse> => {
+  const response = await client.post<AgentExecuteResponse>('/agent/execute', request);
   return response.data;
 };

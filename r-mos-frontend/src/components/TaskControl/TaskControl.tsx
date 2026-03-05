@@ -2,7 +2,7 @@
 // Phase 6: Guardrail UI - Task Control
 
 import React from 'react';
-import { Button, Card, Tag, Space, Tooltip, Badge } from 'antd';
+import { Button, Card, Tag, Space, Tooltip, Badge, type BadgeProps } from 'antd';
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -12,7 +12,7 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 
-interface TaskControlProps {
+export interface TaskControlProps {
   // Task info
   taskName: string;
   taskId: string;
@@ -55,11 +55,11 @@ const riskColors: Record<string, string> = {
   R3: 'red',
 };
 
-const statusColors: Record<string, string> = {
-  READY: 'blue',
+const statusColors: Record<TaskControlProps['status'], BadgeProps['status']> = {
+  READY: 'processing',
   EXECUTING: 'processing',
   PAUSED: 'warning',
-  WAITING_CONFIRM: 'orange',
+  WAITING_CONFIRM: 'warning',
   FAILED: 'error',
   COMPLETED: 'success',
   ABORTED: 'default',
@@ -67,7 +67,7 @@ const statusColors: Record<string, string> = {
 
 export const TaskControl: React.FC<TaskControlProps> = ({
   taskName,
-  taskId,
+  taskId: _taskId,
   riskLevel,
   status,
   currentStep,
@@ -102,7 +102,7 @@ export const TaskControl: React.FC<TaskControlProps> = ({
         </Space>
       }
       extra={
-        <Badge status={statusColors[status] as any} text={status} />
+        <Badge status={statusColors[status]} text={status} />
       }
       style={{ marginBottom: 16 }}
     >

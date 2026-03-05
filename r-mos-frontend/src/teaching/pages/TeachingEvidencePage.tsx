@@ -29,8 +29,9 @@ const TeachingEvidencePage = () => {
       try {
         const response = await getAttemptEvidence(attemptId)
         setData(response)
-      } catch (err: any) {
-        if (err?.response?.status === 404) {
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } } | null)?.response?.status
+        if (status === 404) {
           setNotFound(true)
         }
         setErrorMessage(formatTeachingError(err, '加载证据失败'))

@@ -88,8 +88,9 @@ const TeachingAttemptPage = () => {
       if (attemptData.status === 'completed' || attemptData.status === 'graded') {
         setEvidenceReady(true)
       }
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } } | null)?.response?.status
+      if (status === 404) {
         setNotFound(true)
       }
       message.error(formatTeachingError(err, '加载尝试失败'))
