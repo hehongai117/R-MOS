@@ -9,6 +9,7 @@ Gate-2 D-001（G2-001）迁移门禁测试。
 
 from __future__ import annotations
 
+from datetime import datetime
 import os
 from uuid import uuid4
 
@@ -29,13 +30,17 @@ def _insert_skill_sql() -> sa.TextClause:
     return sa.text(
         """
         INSERT INTO skills (
-            skill_id, version, name, risk_level, side_effects, allowlist_resources, status
+            skill_id, version, name, risk_level, side_effects, allowlist_resources, status, created_at, updated_at
         ) VALUES (
             :skill_id, :version, :name, :risk_level,
-            CAST(:side_effects AS JSON), CAST(:allowlist_resources AS JSON), :status
+            CAST(:side_effects AS JSON), CAST(:allowlist_resources AS JSON), :status, :created_at, :updated_at
         )
         """
     )
+
+
+def _utc_naive_now() -> datetime:
+    return datetime.utcnow()
 
 
 @pytest.mark.asyncio
@@ -102,6 +107,8 @@ async def test_skill_registry_migration_gate() -> None:
             await conn.execute(
                 _insert_skill_sql(),
                 {
+                    "created_at": _utc_naive_now(),
+                    "updated_at": _utc_naive_now(),
                     "skill_id": unique_skill_id,
                     "version": "1.0.0",
                     "name": "G2-001 迁移门禁技能",
@@ -117,6 +124,8 @@ async def test_skill_registry_migration_gate() -> None:
                 await conn.execute(
                     _insert_skill_sql(),
                     {
+                        "created_at": _utc_naive_now(),
+                        "updated_at": _utc_naive_now(),
                         "skill_id": unique_skill_id,
                         "version": "1.0.0",
                         "name": "G2-001 重复版本",

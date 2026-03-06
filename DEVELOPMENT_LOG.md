@@ -4261,3 +4261,47 @@
   - `AgentWorkbenchPage` 视觉重构改变了按钮语义和轨迹入口，已同步更新 Vitest 用例，并在测试内补 `ResizeObserver` mock。
 - Next Step:
   - 若需要补齐 `P3-04` 的 teacher/admin 运行态证据，优先补种子用户或引入标准 teaching demo 账号后，再用浏览器复测 canonical route、菜单和退出登录链路。
+- 任务22（Phase3 Step4 单命令回归）：提交 待提交；用例 T18-AUTO-01；报告段落 Phase3 Step4 单命令回归证据；RUNBOOK 入口 Phase3 单命令回归入口；attempt_id error=145 skip=146 slow=147
+
+- DateTime: 2026-03-06 12:32 CST
+- Task: 前后端全量测试复验 + 浏览器联调前置条件核实
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_skill_registry_migration_gate.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+  - /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx eslint src/ --ext .ts,.tsx --max-warnings 0
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/e2e -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh --e2e --audit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && bash scripts/run_phase3_regression.sh
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/health
+  - curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/
+  - curl --noproxy 127.0.0.1,localhost -s -o /tmp/login_admin.json -w "%{http_code}\n" -X POST http://127.0.0.1:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@rmos.test","password":"Admin@123"}'
+  - curl --noproxy 127.0.0.1,localhost -s -o /tmp/login_teacher1.json -w "%{http_code}\n" -X POST http://127.0.0.1:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"teacher1@rmos.test","password":"Teacher@123"}'
+  - curl --noproxy 127.0.0.1,localhost -s -o /tmp/login_student_a.json -w "%{http_code}\n" -X POST http://127.0.0.1:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"student_a@rmos.test","password":"Student@123"}'
+  - psql -d postgres -At -c "select id,email,role from users where email in ('admin@rmos.test','teacher1@rmos.test','teacher2@rmos.test','student_a@rmos.test','student_b@rmos.test') order by email;"
+- Tests:
+  - 前端类型检查：`npx tsc --noEmit` PASS
+  - 前端 ESLint：`npx eslint src/ --ext .ts,.tsx --max-warnings 0` PASS
+  - 前端单测：`npm test` PASS（8 files, 22 tests）
+  - 前端构建：`npm run build` PASS（入口 `dist/assets/index-Cm5MBKYF.js = 686.61 kB`）
+  - 后端迁移：`alembic upgrade head` PASS（Postgres）
+  - 后端单测：`pytest tests/unit -q` PASS；期间修复 `tests/unit/test_skill_registry_migration_gate.py` 中 aware/naive datetime 混用导致的 asyncpg 插入失败
+  - 后端 E2E：`pytest tests/e2e -q` PASS
+  - Gate2 smoke：`./scripts/run_gate2_smoke.sh --e2e --audit` PASS（AUDIT-T006 通过）
+  - Phase3 regression：`bash scripts/run_phase3_regression.sh` PASS（attempt_id error=145 skip=146 slow=147）
+  - 服务探活：`GET /api/v1/health` PASS；前端 `http://127.0.0.1:55173/` 返回 `HTTP/1.1 200 OK`
+  - 真实登录口径：`admin@rmos.test / Admin@123` 登录 PASS，但返回 `role=student`；`teacher1@rmos.test`、`student_a@rmos.test` 登录均 401
+- Result: PASS（全量门禁通过）；浏览器三角色联调阻塞
+- Risks/Notes:
+  - 浏览器 DevTools MCP 持续报 `Transport closed`，未能执行浏览器内自动化操作。
+  - 当前 Postgres 种子口径缺少 teacher/admin 可登录账号；`admin@rmos.test` 实际角色为 `student`，与 `docs/specs/ACCEPTANCE_TEST_MATRIX.md` 不一致。
+  - `make seed-demo` 仅补教学数据，不创建三角色用户；`/auth/register` 也不接受 `role`，无法通过受控 API 补 teacher/admin。
+  - 本次仅修复测试门禁文件 `tests/unit/test_skill_registry_migration_gate.py`，未处理现有 warning（Pydantic v2、`datetime.utcnow()` 等）。
+- Next Step:
+  - 若继续做浏览器三角色联调，需先恢复标准 seed 账号口径并排除 DevTools MCP 传输故障，然后再执行登录、默认跳转、刷新保持和退出登录回归。

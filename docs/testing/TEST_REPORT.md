@@ -7,10 +7,10 @@
 <!-- PHASE3_STEP4_START -->
 ### Phase3 Step4 单命令回归证据
 
-- 运行时间：2026-02-17T01:21:41.659852+00:00
-- 运行标识：81b9ef55c9ff44c5b7fd04c7f3eefbd2
+- 运行时间：2026-03-06T04:20:06.774229+00:00
+- 运行标识：c979ee4cae194bc6b0fd5a11a2cd82ed
 - 后端端口：`8000`
-- attempt_id：error=141 skip=142 slow=143
+- attempt_id：error=145 skip=146 slow=147
 
 #### 最新一次运行
 
@@ -19,19 +19,19 @@
 HTTP/1.1 200 OK
 ```
 
-**diagnosis（attempt_id=141）**
+**diagnosis（attempt_id=145）**
 ```
-{"attemptId": 141, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
-```
-
-**diagnosis（attempt_id=142）**
-```
-{"attemptId": 142, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+{"attemptId": 145, "diagnosisCode": "E_ERROR_OCCURRED", "ruleId": "R-DIAG-001", "severity": "HIGH", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_ERROR_OCCURRED", "severity": "HIGH", "findings": ["该步骤存在错误"]}]}
 ```
 
-**diagnosis（attempt_id=143）**
+**diagnosis（attempt_id=146）**
 ```
-{"attemptId": 143, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
+{"attemptId": 146, "diagnosisCode": "E_STEP_SKIPPED", "ruleId": "R-DIAG-002", "severity": "MEDIUM", "stepDiagnoses": [{"stepIndex": 1, "stepDiagnosisCode": "E_STEP_SKIPPED", "severity": "MEDIUM", "findings": ["该步骤被跳过"]}]}
+```
+
+**diagnosis（attempt_id=147）**
+```
+{"attemptId": 147, "diagnosisCode": "E_TOO_SLOW", "ruleId": "R-DIAG-003", "severity": "LOW", "stepDiagnoses": [{"stepIndex": 2, "stepDiagnosisCode": "E_TOO_SLOW", "severity": "LOW", "findings": ["步骤耗时偏长"]}]}
 ```
 <!-- PHASE3_STEP4_END -->
 
@@ -427,3 +427,110 @@ HTTP/1.1 200 OK
    - `bash scripts/run_phase3_regression.sh`
    - `npm run build && npm test`
 4. 交付包回滚：使用上一版 `gate3_delivery_repo_HEAD.tar.gz` 与 `gate3_delivery_docs_and_evidence.zip`（按 SHA-256 验签后恢复）。
+
+## Phase 2 补充记录（2026-03-05）｜T-04 风险闭环 + T-05 框架迁移
+
+### T-04 未闭环风险闭环（核心服务覆盖率门禁）
+
+- 命令：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/ --cov=app.services.approval_service --cov=app.services.preflight_check --cov=app.services.identity.agent_policy_factory --cov=app.services.identity.session_initializer --cov=app.services.identity.teacher_monitor --cov=app.services.intent.training_intent_router --cov=app.services.memory.skill_profile_service --cov=app.services.memory.training_memory_writer --cov=app.services.orchestrator_v2 --cov=app.services.tool_executor --cov=app.services.training.feedback_generator --cov=app.services.training.project_generator --cov=app.services.training.session_service --cov=app.services.training.submission_service --cov-report=html:coverage/services-core --cov-report=term-missing --cov-fail-under=70`
+- 输出摘要：
+  - `378 passed, 1 skipped, 0 failed`
+  - `Required test coverage of 70% reached. Total coverage: 74.63%`
+- 结论：PASS（T-04 覆盖率风险闭环）
+
+### T-05 前端测试框架迁移（自定义 runner -> Vitest）
+
+- 迁移动作：
+  - `r-mos-frontend/package.json`：`test` 脚本改为 `vitest run`
+  - 新增 `r-mos-frontend/vitest.config.ts`
+  - 新增 `src/adjudication/__tests__/adjudication.vitest.test.ts`
+  - 删除旧 runner：`scripts/run-adjudication-tests.mjs`、`src/adjudication/__tests__/run-adjudication-tests.ts`
+- 验证命令：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- 输出摘要：
+  - `npm test` -> `8 passed`
+  - `npm run build` -> PASS（存在 chunk size warning）
+- 结论：PASS（T-05-1/2/3 完成）
+
+## Phase 3 补充记录（2026-03-05）｜T-08 集成测试执行与报告
+
+### T-08 全量 E2E 复验（fresh evidence）
+
+- 命令：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && pytest tests/e2e/ -v --tb=long`
+- 输出摘要：
+  - `collected 16`
+  - `16 passed, 0 failed`
+  - 存在既有 warning：Pydantic v2 deprecation、`datetime.utcnow()` deprecation（不影响通过判定）
+
+### T-08 报告产出
+
+- 报告文件：
+  - `docs/testing/integration-test-report.md`
+- 证据日志：
+  - `docs/review/e2e-tests-t08-2026-03-05.log`
+  - `docs/review/e2e-tests-t08-2026-03-05-rerun.log`
+- 结论：
+  - T-08-1 / T-08-2 / T-08-3 全部完成，当前集成测试口径 PASS。
+
+## 2026-03-06 全量门禁复验（Postgres 基线）
+
+### 执行命令
+
+- 后端迁移：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic upgrade head`
+- 前端门禁：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx eslint src/ --ext .ts,.tsx --max-warnings 0`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build`
+- 后端门禁：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/e2e -q`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && ./scripts/run_gate2_smoke.sh --e2e --audit`
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && bash scripts/run_phase3_regression.sh`
+
+### 输出摘要
+
+- 前端：
+  - `npx tsc --noEmit` PASS
+  - `npx eslint src/ --ext .ts,.tsx --max-warnings 0` PASS
+  - `npm test` PASS（`8 files, 22 tests`）
+  - `npm run build` PASS（入口产物 `dist/assets/index-Cm5MBKYF.js = 686.61 kB`）
+- 后端：
+  - `alembic upgrade head` PASS
+  - `pytest tests/unit -q` PASS
+  - `pytest tests/e2e -q` PASS
+  - `./scripts/run_gate2_smoke.sh --e2e --audit` PASS（`全部通过：PASS`，`AUDIT-T006` 通过）
+  - `bash scripts/run_phase3_regression.sh` PASS（`attempt_id error=145 skip=146 slow=147`）
+
+### 过程修复
+
+- `tests/unit/test_skill_registry_migration_gate.py`
+  - 现象：asyncpg 对 Postgres `timestamp without time zone` 列插入 aware datetime 时失败，报 `can't subtract offset-naive and offset-aware datetimes`
+  - 修复：将测试用 `created_at/updated_at` 改为 naive UTC 时间，避免门禁误报
+  - 复验：单测重跑 PASS，随后 `pytest tests/unit -q` 全量 PASS
+
+### 浏览器联调前置条件核实
+
+- 服务探活：
+  - `curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/health` -> PASS
+  - `curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/` -> `HTTP/1.1 200 OK`
+- 真实登录口径：
+  - `admin@rmos.test / Admin@123` -> 200，但返回 `role=student`
+  - `teacher1@rmos.test / Teacher@123` -> 401
+  - `student_a@rmos.test / Student@123` -> 401
+- 数据库核对：
+  - `psql -d postgres -At -c "select id,email,role from users where email in (...)"` 仅返回 `16|admin@rmos.test|student`
+
+### 结论
+
+- 全量门禁：PASS
+- 浏览器三角色联调：阻塞，原因如下
+  - DevTools MCP 持续报 `Transport closed`，无法执行浏览器自动化
+  - 当前 Postgres 种子口径缺少 teacher/admin 可登录账号，且 `admin@rmos.test` 实际角色与验收矩阵不一致
+- 建议后续动作：
+  - 先恢复标准 seed 用户口径
+  - 再复做 student / teacher / admin 登录、默认跳转、刷新保持、退出登录的浏览器回归
