@@ -5,6 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, Input, Button, List, Avatar, Spin, message } from 'antd';
 import { SendOutlined, RobotOutlined, UserOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { sendAgentRequest } from '@/api/agent';
+import { useAuthStore } from '@/store/authStore'
 
 interface ChatMessage {
   id: string;
@@ -32,6 +33,7 @@ const normalizeSuggestedAction = (
 };
 
 const AIChatPage: React.FC = () => {
+  const user = useAuthStore((state) => state.user)
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -68,7 +70,7 @@ const AIChatPage: React.FC = () => {
 
     try {
       const response = await sendAgentRequest({
-        user_id: 'current-user', // TODO: Get from auth
+        user_id: user?.user_id ? String(user.user_id) : 'anonymous',
         message: userMessage.content,
         context: {},
       });

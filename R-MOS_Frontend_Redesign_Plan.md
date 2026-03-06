@@ -142,10 +142,10 @@
 | `P2-05` TeacherMonitor | `DONE WITH BACKLOG GUARDRAILS` | 已并入 `src/teaching/` 域，严格按现有 attempts/WS 边界实现，教师提示仍保留为后端 BACKLOG | `npm run build` |
 | `P2-06` AdminDashboard | `DONE WITH HISTORY ADDITIONS` | 已接入 users/approvals/metrics/reports/monitor/history/alerts/health 并 30 秒自动刷新 | `npm run build` |
 | `P2-07` SOPMaintenance | `DONE` | 已补入工作台式标题区与步骤导航外壳，保留现有 3D 渲染组合与逻辑 | `npm run build` |
-| `P3-01` 批量视觉统一 | `READY WITH EXCEPTIONS` | `EvidencePage`、`ApprovalQueuePage`、`LLMMetricsPage` 不是纯视觉，需先做 API 对齐 | `npm run build` |
-| `P3-02` 残余 TODO/API 对齐 | `READY` | 除 TODO 外，还需处理审批页旧 helper 路由漂移 | `npm run build` |
-| `P3-03` 样式清理 | `READY` | 使用 `rg` 检查引用，避免删错 | `npm run build` |
-| `P3-04` 联调 | `READY` | 验收预期必须改成 canonical route 和真实接口能力 | `npx tsc --noEmit` + `npm test` + `npm run build` |
+| `P3-01` 批量视觉统一 | `DONE` | 已完成 12 个页面的 PageHeader / SectionCard / StatusBadge 统一，并处理视觉例外页的真实 API 对齐 | `npm run build` |
+| `P3-02` 残余 TODO/API 对齐 | `DONE` | 已完成 authStore user_id 接线、审批薄封装切换、指标页真实 payload 重构与 TODO 规范化 | `npm run build` |
+| `P3-03` 样式清理 | `DONE` | 已删除废弃页面样式文件并收敛 `src/styles/index.css` 冗余全局类 | `npm run build` |
+| `P3-04` 联调 | `DONE WITH ENVIRONMENT NOTES` | 已完成 Postgres 口径下的健康检查、真实登录、student 流取数和前端门禁；teacher/admin 场景受本地 seed 账号缺失限制待补证据 | `npx tsc --noEmit` + `npm test` + `npm run build` |
 | `P3-05` CI 基线复核 | `DONE` | 已存在 `.github/workflows/frontend-ci.yml` 和 `.nvmrc=22` | `npx tsc --noEmit` + `npm test` + `npm run build` |
 
 ---
@@ -1006,7 +1006,7 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 
 ### P3-01 · 批量页面视觉统一
 
-> ✅ 已验证：本节作为收尾样式统一方向合理；其中 API 对齐例外项已单独指出。
+> ✅ 已完成：`KnowledgePage`、`AssessmentStatusPage`、`IncidentListPage`、`EvidencePage`、`ReportPage`、`ReplayPage`、`ApprovalQueuePage`、`AcceptanceDashboardPage`、`LLMMetricsPage`、`TeachingAssignmentsPage`、`TeachingDiagnosisPage`、`DiagnosisPage` 已统一到 P2 建立的设计系统。
 
 > 以下页面逻辑完善，只套用设计系统。每页约半天。
 > 例外：`EvidencePage` / `ApprovalQueuePage` / `LLMMetricsPage` 在当前仓库中都存在接口对齐问题，不属于纯视觉；这些页面必须先完成对应 API 薄封装或 TODO 清理，再做视觉统一。
@@ -1043,7 +1043,7 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 
 ### P3-02 · 残余 TODO 处理
 
-> ⚠️ 已修正：本节不仅处理 TODO，还需要处理真实 API payload 与现页面类型不一致的问题。
+> ✅ 已完成：`AIChatPage` / `AgentWorkbenchPage` 已从 `authStore` 读取 `user_id`，`LLMMetricsPage` 已切到真实 metrics payload，`TaskExecutionPage` TODO 已改为 BACKLOG 注释，审批页已切换到 `/api/v1/ai/approvals` 薄封装。
 
 **Codex 指令：**
 
@@ -1086,7 +1086,7 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 
 ### P3-03 · 样式文件清理
 
-> ✅ 已验证：本节清理动作与当前仓库习惯一致，保留原文。
+> ✅ 已完成：`src/pages/agent/AgentWorkbench.css` 与 `src/pages/HomePage.css` 已删除，`src/styles/index.css` 已去掉废弃 `.card/.page-*` 全局类，构建产物已复核。
 
 **Codex 指令：**
 
@@ -1112,7 +1112,9 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 
 ### P3-04 · 全面联调（三批次）
 
-> ⚠️ 已修正：本节联调口径需同时验证 canonical route、WebSocket 心跳和真实 payload 映射。
+> ✅ 已完成：已按 canonical route 与真实 payload 口径完成 `npx tsc --noEmit`、`npm test`、`npm run build`，并在 `Postgres` 环境下验证 `/api/v1/health`、`/api/v1/auth/login`、student 训练相关接口。
+>
+> ⚠️ 环境说明：当前本地 `postgres` 种子库仅存在 `admin@rmos.test -> role=student` 这一可登录账号，不存在可直接登录的 teacher/admin 账号；因此教师/管理员菜单与路由运行态证据需在补齐 seed 后复测。
 
 **第一批：鉴权流程（发给 Codex 测试）**
 
@@ -1235,10 +1237,10 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 - [x] P2-07 SOPMaintenancePage 视觉改造
 
 ### P3（第5-6周）收尾
-- [ ] P3-01 批量页面视觉统一（12个页面）
-- [ ] P3-02 残余 TODO 处理
-- [ ] P3-03 样式文件清理
-- [ ] P3-04 全面联调回归测试（三批次）
+- [x] P3-01 批量页面视觉统一（12个页面）
+- [x] P3-02 残余 TODO 处理
+- [x] P3-03 样式文件清理
+- [x] P3-04 全面联调回归测试（三批次）
 - [x] P3-05 前端 CI/.nvmrc 基线（已完成，本方案仅复核）
 
 ---

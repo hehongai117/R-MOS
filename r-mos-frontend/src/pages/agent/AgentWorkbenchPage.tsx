@@ -32,6 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 
 interface ChatMessage {
   id: string
@@ -138,6 +139,7 @@ function MessageBody({ content }: { content: string }) {
 }
 
 function AgentWorkbenchPage() {
+  const user = useAuthStore((state) => state.user)
   const [input, setInput] = useState('')
   const [intent, setIntent] = useState('general')
   const [loading, setLoading] = useState(false)
@@ -237,7 +239,7 @@ function AgentWorkbenchPage() {
 
     try {
       const request: AgentRequestV2 = {
-        user_id: 'current-user',
+        user_id: user?.user_id ? String(user.user_id) : 'anonymous',
         message: content,
         intent_classification: finalIntent,
         context: {},

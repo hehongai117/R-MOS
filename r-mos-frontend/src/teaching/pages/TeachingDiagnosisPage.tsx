@@ -1,21 +1,13 @@
-/**
- * 教学诊断报告页面
- */
+import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Card, Collapse, Descriptions, List, Result, Spin, Tag, Typography } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import { Collapse, Empty, List, Spin } from 'antd'
+
 import { getAttemptDiagnosis } from '@/api/teaching'
-import type { DiagnosisReport, DiagnosisSeverity, StepDiagnosisSourceRefs } from '@/types/teaching'
+import { EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
+import { Button } from '@/components/ui/button'
 import { formatTeachingError } from '@/teaching/utils/api'
-
-const { Title, Text } = Typography
-
-const severityColor: Record<DiagnosisSeverity, string> = {
-  LOW: 'green',
-  MEDIUM: 'orange',
-  HIGH: 'red',
-}
+import type { DiagnosisReport, DiagnosisSeverity, StepDiagnosisSourceRefs } from '@/types/teaching'
 
 const severityLabels: Record<DiagnosisSeverity, string> = {
   LOW: '低',
@@ -23,26 +15,17 @@ const severityLabels: Record<DiagnosisSeverity, string> = {
   HIGH: '高',
 }
 
-const diagnosisCodeLabels: Record<string, string> = {
-  OK: '无异常',
-  E_ERROR_OCCURRED: '存在错误步骤',
-  E_STEP_SKIPPED: '存在跳过步骤',
-  E_TOO_SLOW: '步骤耗时偏长',
+function severityTone(severity: DiagnosisSeverity) {
+  if (severity === 'LOW') return 'success'
+  if (severity === 'MEDIUM') return 'warning'
+  return 'error'
 }
 
-const getDiagnosisLabel = (code: string) => diagnosisCodeLabels[code] ?? code
-
-const formatStepSourceRefs = (refs?: StepDiagnosisSourceRefs) => {
-  if (!refs) {
-    return '-'
-  }
+function formatStepSourceRefs(refs?: StepDiagnosisSourceRefs) {
+  if (!refs) return '-'
   const parts: string[] = []
-  if (refs.stepId !== undefined && refs.stepId !== null && refs.stepId !== '') {
-    parts.push(`step_id=${refs.stepId}`)
-  }
-  if (refs.snapshotId !== undefined && refs.snapshotId !== null && refs.snapshotId !== '') {
-    parts.push(`snapshot_id=${refs.snapshotId}`)
-  }
+  if (refs.stepId !== undefined && refs.stepId !== null && refs.stepId !== '') parts.push(`step_id=${refs.stepId}`)
+  if (refs.snapshotId !== undefined && refs.snapshotId !== null && refs.snapshotId !== '') parts.push(`snapshot_id=${refs.snapshotId}`)
   return parts.length > 0 ? parts.join(', ') : '-'
 }
 
@@ -52,184 +35,129 @@ const TeachingDiagnosisPage = () => {
   const attemptId = Number(id)
 
   const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
   const [data, setData] = useState<DiagnosisReport | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!attemptId) {
+        setErrorMessage('无效的尝试 ID')
+        setLoading(false)
+        return
+      }
       setLoading(true)
-      setNotFound(false)
       setErrorMessage(null)
       try {
         const response = await getAttemptDiagnosis(attemptId)
         setData(response)
       } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } } | null)?.response?.status
-        if (status === 404) {
-          setNotFound(true)
-        }
         setErrorMessage(formatTeachingError(err, '加载诊断报告失败'))
       } finally {
         setLoading(false)
       }
     }
 
-    if (!attemptId) {
-      setNotFound(true)
-      setLoading(false)
-      return
-    }
-
-    fetchData()
+    void fetchData()
   }, [attemptId])
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px 0' }}>
+      <div className="flex min-h-[420px] items-center justify-center">
         <Spin size="large" />
-        <div style={{ marginTop: 16 }}>加载诊断报告中...</div>
       </div>
     )
   }
 
-  if (notFound || !data) {
+  if (!data) {
     return (
-      <Result
-        status="404"
-        title="诊断报告不存在"
-        subTitle={errorMessage || '未找到诊断报告，请确认尝试是否存在'}
-        extra={
-          <Button type="primary" icon={<ArrowLeftOutlined />} onClick={() => navigate('/teaching/assignments')}>
-            返回作业列表
-          </Button>
-        }
-      />
+      <div className="space-y-6">
+        <PageHeader title="诊断报告" subtitle="未找到诊断报告" breadcrumb={['教学域', '诊断报告']} />
+        <EmptyState description={errorMessage ?? '未找到诊断报告'} icon={ArrowLeft} title="诊断报告不存在" />
+      </div>
     )
   }
 
-  const diagnosisLabel = getDiagnosisLabel(data.diagnosisCode)
-  const stepDiagnoses = data.stepDiagnoses ?? []
-
   return (
-    <div>
-      <Title level={3} style={{ marginBottom: 8 }}>诊断报告</Title>
-      <Text type="secondary">面向教师的可解释诊断结果</Text>
+    <div className="space-y-6">
+      <PageHeader
+        actions={
+          <Button size="sm" type="button" variant="secondary" onClick={() => navigate(`/teaching/attempts/${attemptId}`)}>
+            <ArrowLeft className="h-4 w-4" />
+            返回尝试页面
+          </Button>
+        }
+        breadcrumb={['教学域', '诊断报告']}
+        subtitle="面向教师的可解释诊断结果"
+        title="诊断报告"
+      />
 
-      <Card style={{ marginTop: 16 }}>
-        <Descriptions column={2} size="small">
-          <Descriptions.Item label="尝试编号">{data.attemptId}</Descriptions.Item>
-          <Descriptions.Item label="规则编号">{data.ruleId}</Descriptions.Item>
-          <Descriptions.Item label="诊断代码">
-            <span>
-              <Text strong>{diagnosisLabel}</Text>
-              {diagnosisLabel !== data.diagnosisCode && (
-                <Text type="secondary" style={{ marginLeft: 8 }}>
-                  ({data.diagnosisCode})
-                </Text>
-              )}
-            </span>
-          </Descriptions.Item>
-          <Descriptions.Item label="严重等级">
-            <Tag color={severityColor[data.severity]}>{severityLabels[data.severity]}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="生成时间">{data.generatedAt}</Descriptions.Item>
-          <Descriptions.Item label="证据关联">{data.sourceRefs?.attemptEvidenceId ?? '-'}</Descriptions.Item>
-        </Descriptions>
-      </Card>
+      <SectionCard title="诊断摘要">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+            <div className="text-xs uppercase tracking-[0.2em] text-text-muted">尝试编号</div>
+            <div className="mt-2 font-mono text-text-primary">{data.attemptId}</div>
+          </div>
+          <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+            <div className="text-xs uppercase tracking-[0.2em] text-text-muted">诊断代码</div>
+            <div className="mt-2 text-text-primary">{data.diagnosisCode}</div>
+          </div>
+          <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+            <div className="text-xs uppercase tracking-[0.2em] text-text-muted">严重等级</div>
+            <div className="mt-2">
+              <StatusBadge label={severityLabels[data.severity]} status={severityTone(data.severity)} />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
-      <Card title="诊断发现" style={{ marginTop: 16 }}>
+      <SectionCard title="诊断发现">
         {data.findings.length === 0 ? (
-          <div>无</div>
+          <Empty description="无诊断发现" />
         ) : (
-          <List
-            size="small"
-            dataSource={data.findings}
-            renderItem={(item) => <List.Item>{item}</List.Item>}
-          />
+          <List dataSource={data.findings} renderItem={(item) => <List.Item>{item}</List.Item>} />
         )}
-      </Card>
+      </SectionCard>
 
-      <Card title="建议" style={{ marginTop: 16 }}>
+      <SectionCard title="建议">
         {data.recommendations.length === 0 ? (
-          <div>无</div>
+          <Empty description="无建议" />
         ) : (
-          <List
-            size="small"
-            dataSource={data.recommendations}
-            renderItem={(item) => <List.Item>{item}</List.Item>}
-          />
+          <List dataSource={data.recommendations} renderItem={(item) => <List.Item>{item}</List.Item>} />
         )}
-      </Card>
+      </SectionCard>
 
-      <Card title="步骤诊断" style={{ marginTop: 16 }}>
-        {stepDiagnoses.length === 0 ? (
-          <div>无</div>
+      <SectionCard title="步骤诊断">
+        {data.stepDiagnoses.length === 0 ? (
+          <Empty description="无步骤诊断" />
         ) : (
           <Collapse
             accordion
-            items={stepDiagnoses.map((step) => ({
+            items={data.stepDiagnoses.map((step) => ({
               key: String(step.stepIndex),
               label: (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="flex items-center gap-2">
                   <span>步骤 {step.stepIndex}</span>
-                  <Tag color={severityColor[step.severity]}>{severityLabels[step.severity]}</Tag>
-                  <Text type="secondary">{getDiagnosisLabel(step.stepDiagnosisCode)}</Text>
+                  <StatusBadge label={severityLabels[step.severity]} status={severityTone(step.severity)} />
+                  <span className="text-xs text-text-muted">{step.stepDiagnosisCode}</span>
                 </div>
               ),
               children: (
-                <div>
-                  <Descriptions column={2} size="small">
-                    <Descriptions.Item label="诊断代码">{getDiagnosisLabel(step.stepDiagnosisCode)}</Descriptions.Item>
-                    <Descriptions.Item label="规则编号">{step.ruleId}</Descriptions.Item>
-                    <Descriptions.Item label="严重等级">
-                      <Tag color={severityColor[step.severity]}>{severityLabels[step.severity]}</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="证据关联">{formatStepSourceRefs(step.sourceRefs)}</Descriptions.Item>
-                  </Descriptions>
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ marginBottom: 6 }}>
-                      <Text strong>诊断发现</Text>
-                    </div>
-                    {step.findings.length === 0 ? (
-                      <div>无</div>
-                    ) : (
-                      <List
-                        size="small"
-                        dataSource={step.findings}
-                        renderItem={(item) => <List.Item>{item}</List.Item>}
-                      />
-                    )}
+                <div className="space-y-4">
+                  <div className="text-sm text-text-secondary">证据关联：{formatStepSourceRefs(step.sourceRefs)}</div>
+                  <div>
+                    <div className="mb-2 text-sm font-medium text-text-primary">诊断发现</div>
+                    {step.findings.length === 0 ? <Empty description="无" /> : <List dataSource={step.findings} renderItem={(item) => <List.Item>{item}</List.Item>} />}
                   </div>
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ marginBottom: 6 }}>
-                      <Text strong>建议</Text>
-                    </div>
-                    {step.recommendations.length === 0 ? (
-                      <div>无</div>
-                    ) : (
-                      <List
-                        size="small"
-                        dataSource={step.recommendations}
-                        renderItem={(item) => <List.Item>{item}</List.Item>}
-                      />
-                    )}
+                  <div>
+                    <div className="mb-2 text-sm font-medium text-text-primary">建议</div>
+                    {step.recommendations.length === 0 ? <Empty description="无" /> : <List dataSource={step.recommendations} renderItem={(item) => <List.Item>{item}</List.Item>} />}
                   </div>
                 </div>
               ),
             }))}
           />
         )}
-      </Card>
-
-      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/teaching/attempts/${attemptId}/evidence`)}>
-          返回证据摘要
-        </Button>
-        <Button onClick={() => navigate(`/teaching/attempts/${attemptId}`)}>
-          返回尝试页面
-        </Button>
-      </div>
+      </SectionCard>
     </div>
   )
 }

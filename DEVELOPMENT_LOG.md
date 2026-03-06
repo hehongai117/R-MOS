@@ -4201,3 +4201,63 @@
   - `AdminDashboardPage` 已接入真实快照与历史接口，但未额外引入图表库，趋势区当前以历史报告列表方式呈现。
 - Next Step:
   - 进入 `P3-01` 批量页面视觉统一，并先处理 `ApprovalQueuePage` / `LLMMetricsPage` 的 API 对齐问题。
+
+- DateTime: 2026-03-06 12:08 CST
+- Task: 执行 `P3 · 剩余页面 + 清理 + 联调`，完成 P3-01 ~ P3-04，并同步标注方案状态
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/agent.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/approvals.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/AIChatPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/AssessmentStatusPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/DiagnosisPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/EvidencePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/IncidentListPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/KnowledgePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/ReportPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/ReplayPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/TaskExecutionPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/AcceptanceDashboardPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/AdminDashboardPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/ApprovalQueuePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/LLMMetricsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/styles/index.css
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/teaching/pages/TeachingAssignmentsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/teaching/pages/TeachingDiagnosisPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx eslint src/ --ext .ts,.tsx --max-warnings 0
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && uvicorn main:app --host 127.0.0.1 --port 8000
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173 --strictPort
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/health
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@rmos.test","password":"Admin@123"}'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && alembic upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && alembic upgrade head
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 8000
+  - psql -d postgres -At -c "select id,email,role from users order by id limit 40;"
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/training/users/16/active-session -H 'Authorization: Bearer <student-token>'
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/training/users/16/sessions -H 'Authorization: Bearer <student-token>'
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/students/16/profile -H 'Authorization: Bearer <student-token>'
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/students/16/weak-steps -H 'Authorization: Bearer <student-token>'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx vitest run src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test
+- Tests:
+  - 类型检查：`npx tsc --noEmit` PASS
+  - ESLint：`npx eslint src/ --ext .ts,.tsx --max-warnings 0` PASS
+  - 生产构建：`npm run build` PASS；路由分包后最大入口 `dist/assets/index-Cm5MBKYF.js = 686.61 kB`，最大惰性块 `dist/assets/OrbitControls--mCqHb7E.js = 816.52 kB`
+  - 前端单测：`npm test` PASS（8 files, 22 tests）
+  - 后端健康检查：`GET /api/v1/health` PASS
+  - 真实登录：`POST /api/v1/auth/login` PASS（当前可用 seed 账号 `admin@rmos.test`，返回 role=`student`）
+  - 学生训练链路：`/training/users/16/active-session` 返回 404（无活动会话，符合空状态设计）；`/training/users/16/sessions` 返回 `[]`；`/students/16/profile` 返回合法 profile；`/students/16/weak-steps` 返回 `[]`
+- Result: PASS
+- Risks/Notes:
+  - 本地 SQLite 库存在迁移漂移：登录时报 `users.role` 缺失，`alembic upgrade head` 又因 `ai_tool_calls.input_params` 重复列失败，因此联调最终切换到 runbook 规定的 Postgres 口径。
+  - 当前本地 Postgres seed 数据仅存在可登录的 student 账号，`admin@rmos.test` 实际 role=`student`；teacher/admin 运行态菜单和重定向仍需在补齐种子数据后复测。
+  - 浏览器 MCP 在本轮联调中出现 `Transport closed`，未能留下端到端浏览器录制证据；本轮以真实 API、服务探活、前端门禁和单测作为最小可复现证据。
+  - `AgentWorkbenchPage` 视觉重构改变了按钮语义和轨迹入口，已同步更新 Vitest 用例，并在测试内补 `ResizeObserver` mock。
+- Next Step:
+  - 若需要补齐 `P3-04` 的 teacher/admin 运行态证据，优先补种子用户或引入标准 teaching demo 账号后，再用浏览器复测 canonical route、菜单和退出登录链路。

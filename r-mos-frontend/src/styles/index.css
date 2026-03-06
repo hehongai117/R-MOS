@@ -56,26 +56,6 @@
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-lg);
   }
-
-  .card {
-    @apply rounded-xl border border-border-subtle bg-bg-surface p-6 shadow-sm;
-  }
-
-  .card-title {
-    @apply mb-4 text-base font-semibold text-text-primary;
-  }
-
-  .page-container {
-    @apply min-h-screen p-6;
-  }
-
-  .page-header {
-    @apply mb-6;
-  }
-
-  .page-title {
-    @apply m-0 text-xl font-semibold text-text-primary;
-  }
 }
 
 @layer utilities {

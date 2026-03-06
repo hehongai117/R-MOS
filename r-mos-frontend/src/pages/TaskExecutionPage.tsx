@@ -177,7 +177,7 @@ const TaskExecutionPage: React.FC = () => {
   };
 
   const handleHelp = () => {
-    // TODO: Integrate with Coach Agent API
+    // BACKLOG: Integrate with Coach Agent API - pending TrainingWorkbenchPage migration
     message.info('正在连接教练Agent...');
   };
 

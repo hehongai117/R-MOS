@@ -3,9 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
-  type ApprovalListItem,
   getAdminUsers,
-  getAiApprovals,
   getMonitorAlerts,
   getMonitorHealth,
   getMonitorMetrics,
@@ -14,6 +12,7 @@ import {
   type MonitorAlert,
   type MonitorMetricsResponse,
 } from '@/api/adminConsole'
+import { listApprovals, type ApprovalRecord } from '@/api/approvals'
 import { getAcceptanceReports, getCurrentMetrics, type MetricRecord } from '@/api/agent-v2'
 import { DataCard, EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Progress } from '@/components/ui/progress'
@@ -54,7 +53,7 @@ function AdminDashboardPage() {
 
   const [userTotal, setUserTotal] = useState(0)
   const [approvalsCount, setApprovalsCount] = useState(0)
-  const [pendingApprovals, setPendingApprovals] = useState<ApprovalListItem[]>([])
+  const [pendingApprovals, setPendingApprovals] = useState<ApprovalRecord[]>([])
   const [metrics, setMetrics] = useState<MetricRecord[]>([])
   const [metricReports, setMetricReports] = useState<
     Array<{
@@ -92,7 +91,7 @@ function AdminDashboardPage() {
           systemHealthResponse,
         ] = await Promise.all([
           getAdminUsers(200),
-          getAiApprovals('pending', 5),
+          listApprovals({ status: 'pending', limit: 5, offset: 0 }),
           getCurrentMetrics(),
           getAcceptanceReports(10),
           getMonitorHealth(),

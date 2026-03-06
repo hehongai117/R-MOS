@@ -1,252 +1,180 @@
-/**
- * 任务报告页面
- * 展示任务执行结果和评分
- */
+import { ArrowLeft, FileText } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import {
-    Card,
-    Row,
-    Col,
-    Typography,
-    Tag,
-    Table,
-    Spin,
-    Result,
-    Button,
-    Descriptions,
-    Progress,
-    Space,
-} from 'antd'
-import {
-    FileTextOutlined,
-    CheckCircleOutlined,
-    CloseCircleOutlined,
-    ClockCircleOutlined,
-    ArrowLeftOutlined,
-} from '@ant-design/icons'
-import apiClient from '@/api/client'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Empty, Table } from 'antd'
 
-const { Title, Text } = Typography
+import { getTaskReport } from '@/api/task'
+import { DataCard, EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
+import { Button } from '@/components/ui/button'
+import type { TaskReport } from '@/types/report'
 
-// 报告类型定义
-interface StepScore {
-    step_id: string
-    step_name: string
-    score: number
-    max_score: number
-    feedback?: string
+function formatDateTime(value?: string) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('zh-CN')
 }
 
-interface TaskReport {
-    task_id: string
-    sop_id: string
-    sop_title: string
-    status: string
-    total_score: number
-    max_score: number
-    percentage: number
-    started_at?: string
-    completed_at?: string
-    step_scores: StepScore[]
-}
+const ReportPage = () => {
+  const { taskId } = useParams<{ taskId: string }>()
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [report, setReport] = useState<TaskReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-function ReportPage() {
-    const { taskId } = useParams<{ taskId: string }>()
-    const navigate = useNavigate()
-    const [loading, setLoading] = useState(true)
-    const [report, setReport] = useState<TaskReport | null>(null)
-    const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const fetchReport = async () => {
+      if (!taskId) {
+        setError('缺少 taskId')
+        setLoading(false)
+        return
+      }
 
-    useEffect(() => {
-        const fetchReport = async () => {
-            if (!taskId) return
-
-            try {
-                setLoading(true)
-                const response = await apiClient.get(`/api/v1/tasks/${taskId}/report`)
-                setReport(response.data)
-            } catch (err: unknown) {
-                console.error('Failed to fetch report:', err)
-                const detail = (err as { response?: { data?: { detail?: string } } } | null)
-                    ?.response?.data?.detail
-                setError(detail || '获取报告失败')
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        fetchReport()
-    }, [taskId])
-
-    if (loading) {
-        return (
-            <div style={{ textAlign: 'center', padding: '100px' }}>
-                <Spin size="large" />
-                <p>加载报告中...</p>
-            </div>
-        )
+      try {
+        setLoading(true)
+        const response = await getTaskReport(Number(taskId))
+        setReport(response)
+      } catch (err: unknown) {
+        const detail = (err as { response?: { data?: { detail?: string } } } | null)
+          ?.response?.data?.detail
+        setError(detail || '获取报告失败')
+      } finally {
+        setLoading(false)
+      }
     }
 
-    if (error || !report) {
-        return (
-            <Result
-                status="error"
-                title="加载报告失败"
-                subTitle={error || '未知错误'}
-                extra={[
-                    <Button key="back" type="primary" onClick={() => navigate('/sops')}>
-                        返回SOP列表
-                    </Button>,
-                ]}
-            />
-        )
-    }
+    void fetchReport()
+  }, [taskId])
 
-    const getScoreColor = (percentage: number) => {
-        if (percentage >= 90) return '#52c41a'
-        if (percentage >= 70) return '#faad14'
-        return '#f5222d'
-    }
+  const columns = [
+    {
+      title: '步骤',
+      dataIndex: 'step_title',
+      key: 'step_title',
+    },
+    {
+      title: '得分',
+      key: 'score',
+      width: 160,
+      render: (_: unknown, record: TaskReport['step_scores'][number]) => (
+        <span className="font-mono text-text-primary">
+          {record.score} / {record.max_score}
+        </span>
+      ),
+    },
+    {
+      title: '扣分项',
+      dataIndex: 'deductions',
+      key: 'deductions',
+      render: (deductions: Array<{ reason: string; points: number }>) =>
+        deductions.length > 0 ? deductions.map((item) => `${item.reason}(-${item.points})`).join('；') : '-',
+    },
+    {
+      title: '备注',
+      dataIndex: 'remarks',
+      key: 'remarks',
+      render: (value: string | undefined) => value || '-',
+    },
+  ]
 
-    const getStatusTag = (status: string) => {
-        const statusMap: Record<string, { color: string; text: string }> = {
-            completed: { color: 'success', text: '已完成' },
-            failed: { color: 'error', text: '失败' },
-            timeout: { color: 'warning', text: '超时' },
-        }
-        const config = statusMap[status] || { color: 'default', text: status }
-        return <Tag color={config.color}>{config.text}</Tag>
-    }
-
-    const columns = [
-        {
-            title: '步骤名称',
-            dataIndex: 'step_name',
-            key: 'step_name',
-        },
-        {
-            title: '得分',
-            key: 'score',
-            render: (record: StepScore) => (
-                <Space>
-                    <Text strong>{record.score}</Text>
-                    <Text type="secondary">/ {record.max_score}</Text>
-                </Space>
-            ),
-        },
-        {
-            title: '评价',
-            dataIndex: 'feedback',
-            key: 'feedback',
-            render: (feedback: string) => feedback || '-',
-        },
-        {
-            title: '状态',
-            key: 'status',
-            render: (record: StepScore) => {
-                const passed = record.score >= record.max_score * 0.6
-                return passed ? (
-                    <Tag icon={<CheckCircleOutlined />} color="success">
-                        通过
-                    </Tag>
-                ) : (
-                    <Tag icon={<CloseCircleOutlined />} color="error">
-                        未通过
-                    </Tag>
-                )
-            },
-        },
-    ]
-
+  if (!report && !loading) {
     return (
-        <div>
-            <div style={{ marginBottom: 24 }}>
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate('/sops')}
-                    style={{ marginBottom: 16 }}
-                >
-                    返回SOP列表
-                </Button>
-
-                <Title level={3}>
-                    <FileTextOutlined style={{ marginRight: 8 }} />
-                    任务报告
-                </Title>
-            </div>
-
-            <Row gutter={[16, 16]}>
-                {/* 总分卡片 */}
-                <Col xs={24} md={8}>
-                    <Card>
-                        <div style={{ textAlign: 'center' }}>
-                            <Progress
-                                type="circle"
-                                percent={report.percentage}
-                                format={(percent) => (
-                                    <span style={{ color: getScoreColor(percent || 0) }}>
-                                        {percent}%
-                                    </span>
-                                )}
-                                strokeColor={getScoreColor(report.percentage)}
-                                size={120}
-                            />
-                            <div style={{ marginTop: 16 }}>
-                                <Text strong style={{ fontSize: 18 }}>
-                                    总分: {report.total_score} / {report.max_score}
-                                </Text>
-                            </div>
-                        </div>
-                    </Card>
-                </Col>
-
-                {/* 任务信息 */}
-                <Col xs={24} md={16}>
-                    <Card title="任务信息">
-                        <Descriptions column={{ xs: 1, sm: 2 }}>
-                            <Descriptions.Item label="SOP名称">
-                                {report.sop_title}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="任务状态">
-                                {getStatusTag(report.status)}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="开始时间">
-                                {report.started_at ? (
-                                    <Space>
-                                        <ClockCircleOutlined />
-                                        {new Date(report.started_at).toLocaleString('zh-CN')}
-                                    </Space>
-                                ) : (
-                                    '-'
-                                )}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="完成时间">
-                                {report.completed_at ? (
-                                    <Space>
-                                        <ClockCircleOutlined />
-                                        {new Date(report.completed_at).toLocaleString('zh-CN')}
-                                    </Space>
-                                ) : (
-                                    '-'
-                                )}
-                            </Descriptions.Item>
-                        </Descriptions>
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* 步骤得分详情 */}
-            <Card title="步骤得分详情" style={{ marginTop: 16 }}>
-                <Table
-                    dataSource={report.step_scores}
-                    columns={columns}
-                    rowKey="step_id"
-                    pagination={false}
-                />
-            </Card>
-        </div>
+      <div className="space-y-6">
+        <PageHeader title="任务报告" subtitle="报告加载失败" breadcrumb={['任务', '报告']} />
+        <EmptyState
+          description={error ?? '未知错误'}
+          icon={FileText}
+          title="无法加载报告"
+        />
+      </div>
     )
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        actions={
+          <Button size="sm" type="button" variant="secondary" onClick={() => navigate('/sops')}>
+            <ArrowLeft className="h-4 w-4" />
+            返回 SOP 列表
+          </Button>
+        }
+        breadcrumb={['任务', '报告']}
+        subtitle={report ? `${report.task_title} · 报告生成于 ${formatDateTime(report.generated_at)}` : '正在加载报告'}
+        title="任务报告"
+      />
+
+      {report ? (
+        <>
+          <div className="grid gap-4 xl:grid-cols-4">
+            <DataCard
+              status={report.is_passed ? 'success' : 'danger'}
+              title="最终得分"
+              unit="分"
+              value={report.final_score}
+            />
+            <DataCard title="总时长" unit="秒" value={report.total_duration_seconds} />
+            <DataCard title="完成步骤" unit="步" value={`${report.completed_steps}/${report.total_steps}`} />
+            <DataCard title="错误次数" unit="次" value={report.error_count} />
+          </div>
+
+          <SectionCard title="任务摘要">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-text-muted">SOP</div>
+                <div className="mt-2 text-sm text-text-primary">{report.sop_name ?? '未命名 SOP'}</div>
+              </div>
+              <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-text-muted">通过状态</div>
+                <div className="mt-2">
+                  <StatusBadge label={report.is_passed ? '通过' : '未通过'} status={report.is_passed ? 'success' : 'error'} />
+                </div>
+              </div>
+              <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-text-muted">开始时间</div>
+                <div className="mt-2 text-sm text-text-primary">{formatDateTime(report.started_at)}</div>
+              </div>
+              <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-text-muted">完成时间</div>
+                <div className="mt-2 text-sm text-text-primary">{formatDateTime(report.completed_at)}</div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="评分分解">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {Object.entries(report.score_breakdown).map(([key, value]) => (
+                <div key={key} className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-text-muted">{key}</div>
+                  <div className="mt-2 font-mono text-2xl text-primary">{value}</div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="步骤得分详情">
+            {report.step_scores.length === 0 ? (
+              <Empty description="暂无步骤得分" />
+            ) : (
+              <Table columns={columns} dataSource={report.step_scores} pagination={false} rowKey="step_index" />
+            )}
+          </SectionCard>
+
+          <SectionCard title="改进建议">
+            {report.recommendations.length === 0 ? (
+              <Empty description="暂无建议" />
+            ) : (
+              <div className="space-y-3">
+                {report.recommendations.map((item) => (
+                  <div key={item} className="rounded-lg border border-border-subtle bg-bg-elevated px-4 py-3 text-sm text-text-secondary">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </>
+      ) : null}
+    </div>
+  )
 }
 
 export default ReportPage

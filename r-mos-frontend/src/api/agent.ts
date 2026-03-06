@@ -84,6 +84,15 @@ export interface KnowledgeEntry {
   created_by: string;
 }
 
+export interface KnowledgeUploadJob {
+  job_id: string
+  status: string
+  filename?: string
+  content_type?: string
+  size_bytes?: number
+  brand?: string | null
+}
+
 // Agent Orchestrator API
 
 export const sendAgentRequest = async (request: AgentRequest): Promise<AgentResponse> => {
@@ -186,6 +195,25 @@ export const approveKnowledge = async (
     feedback,
   });
 };
+
+export const uploadKnowledgeFile = async (file: File, brand?: string): Promise<KnowledgeUploadJob> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (brand) {
+    formData.append('brand', brand)
+  }
+  const response = await client.post<KnowledgeUploadJob>('/agent/knowledge/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  return response.data
+}
+
+export const getKnowledgeUploadJob = async (jobId: string): Promise<KnowledgeUploadJob> => {
+  const response = await client.get<KnowledgeUploadJob>(`/agent/knowledge/upload/${jobId}`)
+  return response.data
+}
 
 // Multi-Agent Coordination API
 
