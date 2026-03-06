@@ -1,8 +1,10 @@
 import {
+  Activity,
   AlertTriangle,
   BarChart2,
   BarChart3,
   BookOpen,
+  Boxes,
   CheckSquare,
   ClipboardList,
   Cpu,
@@ -13,8 +15,10 @@ import {
   LogOut,
   MessageSquare,
   Monitor,
+  PlayCircle,
   Sparkles,
   Users,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import { Navigate, NavLink, Outlet } from 'react-router-dom'
@@ -49,6 +53,11 @@ interface LayoutConfig {
 const STUDENT_NAV: NavItem[] = [
   { label: '训练工作台', to: '/workbench/training', icon: Dumbbell },
   { label: '我的技能', to: '/student/skills', icon: BarChart3 },
+  { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+  { label: '3D 展示', to: '/atom01', icon: Boxes },
+  { label: '实时监控', to: '/monitor', icon: Activity },
+  { label: '任务报告', to: '/reports', icon: FileText },
+  { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
   { label: '知识库', to: '/knowledge', icon: BookOpen },
   { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
 ]
@@ -58,11 +67,21 @@ const TEACHER_NAV: NavItem[] = [
   { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
   { label: '学员档案', to: '/teacher/students', icon: Users },
   { label: 'SOP 管理', to: '/sops', icon: FileText },
+  { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+  { label: '3D 展示', to: '/atom01', icon: Boxes },
+  { label: '实时监控', to: '/monitor', icon: Activity },
+  { label: '任务报告', to: '/reports', icon: BarChart3 },
+  { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
   { label: '知识库', to: '/knowledge', icon: BookOpen },
 ]
 
 const ADMIN_NAV: NavItem[] = [
   { label: '系统概览', to: '/admin/console', icon: LayoutDashboard },
+  { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+  { label: '3D 展示', to: '/atom01', icon: Boxes },
+  { label: '实时监控', to: '/monitor', icon: Activity },
+  { label: '任务报告', to: '/reports', icon: FileText },
+  { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
   { label: '知识库', to: '/knowledge', icon: BookOpen },
   { label: '审批队列', to: '/admin/approvals', icon: CheckSquare },
   { label: '验收看板', to: '/admin/acceptance', icon: BarChart2 },

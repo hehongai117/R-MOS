@@ -4342,3 +4342,29 @@
   - Chrome 当前禁用了 Apple Events JavaScript；macOS 也未给 `System Events` 发按键权限，因此无法在本机留下真正的浏览器内交互证据。
 - Next Step:
   - 若继续推进“浏览器登录与功能测试”，需要先手工打开 Chrome 的 Apple Events JavaScript 开关或恢复 DevTools MCP；否则建议转入清理阶段，并把浏览器证据缺口单独列为环境项。
+
+- DateTime: 2026-03-06 16:55 CST
+- Task: 恢复前端旧功能入口的可见导航，找回 SOP 工作台、3D 展示、监控、报告与执行回放的页面可达性
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-06-legacy-feature-entry-restoration.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/__tests__/AppLayout.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/components/auth/__tests__/ProtectedRoute.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red: `src/components/Layout/__tests__/AppLayout.test.tsx` 初次执行 FAIL，失败原因为侧边栏缺少 `SOP 工作台 / 执行回放 / 任务报告` 等入口
+  - TDD Green: `src/components/Layout/__tests__/AppLayout.test.tsx` PASS（3 tests）
+  - 相关鉴权回归：`src/components/auth/__tests__/ProtectedRoute.test.tsx` PASS（3 tests）
+  - 前端类型检查：`npx tsc --noEmit` PASS
+  - 前端构建：`npm run build` PASS
+- Result: PASS
+- Risks/Notes:
+  - 本次只恢复“现有路由的可见入口”，没有恢复已在工作区删除的旧 3D 辅助组件 `DisassemblyDemoAdjudicated.tsx` 与 `PartInspector.tsx`。
+  - 当前仓库仍存在大量与本任务无关的脏改动；后续提交必须显式限定文件范围。
+  - 恢复入口后，页面内部仍可能暴露既有联调问题，例如 admin 侧 `agent/*` 接口 `403/500`、teacher 侧 WebSocket 失败。
+- Next Step:
+  - 若要继续补齐“旧功能体验”，下一步应决定是恢复已删除的 3D 辅助组件，还是把这些能力并回现有 `SOPMaintenancePage`。
