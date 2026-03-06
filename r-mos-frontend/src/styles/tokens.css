@@ -1,0 +1,55 @@
+:root {
+  --bg-base: #0a0a0f;
+  --bg-surface: #13131a;
+  --bg-elevated: #1c1c27;
+  --bg-overlay: #252535;
+
+  --color-primary: #2d7dd2;
+  --color-primary-hover: #3d8de2;
+  --color-primary-muted: rgba(45, 125, 210, 0.15);
+  --color-amber: #f4a261;
+  --color-green: #2ec4b6;
+  --color-red: #e63946;
+
+  --text-primary: #e8edf4;
+  --text-secondary: #8b95a5;
+  --text-muted: #4a5568;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-11: 44px;
+  --space-12: 48px;
+  --space-13: 52px;
+  --space-14: 56px;
+  --space-15: 60px;
+  --space-16: 64px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-sm: 0 14px 28px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(45, 125, 210, 0.08);
+  --shadow-md: 0 20px 42px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(45, 125, 210, 0.12);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(45, 125, 210, 0.16);
+
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-slow: 300ms;
+  --ease-base: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+}

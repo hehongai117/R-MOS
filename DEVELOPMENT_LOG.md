@@ -4111,3 +4111,53 @@
   - 工作区存在大量与本任务无关的既有变更；本次未触碰、未回退。
 - Next Step:
   - 如继续执行方案，应以更新后的文档为基线启动 `P1-01 ~ P1-04`，并在真正实现 `P2-05` 前先确认后端是否补齐 `pong` 消费链路与班级级预警事件。
+
+- DateTime: 2026-03-06 11:03:07 +0800
+- Task: 执行前端重构方案 P1 地基建设（P1-01 ~ P1-06：设计令牌、Tailwind、UI 基线、鉴权、三角色布局、路由与登录页）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/package.json
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/package-lock.json
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/tailwind.config.js
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/postcss.config.js
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/components.json
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/styles/tokens.css
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/styles/index.css
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/styles/theme.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/lib/utils.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/ui/*
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/store/authStore.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/auth/AuthContext.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/auth/ProtectedRoute.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/auth/__tests__/ProtectedRoute.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/p1/ComingSoonPanel.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/LoginPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/TrainingWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/StudentSkillsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/AdminDashboardPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/teaching/pages/TeacherMonitorPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/teaching/pages/TeacherStudentsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/main.tsx
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm install tailwindcss postcss autoprefixer lucide-react motion sonner @fontsource/inter @fontsource/jetbrains-mono class-variance-authority clsx tailwind-merge @radix-ui/react-avatar @radix-ui/react-dropdown-menu @radix-ui/react-progress @radix-ui/react-scroll-area @radix-ui/react-separator @radix-ui/react-slot @radix-ui/react-tabs @radix-ui/react-tooltip
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm install tailwindcss@3.4.17
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm ls tailwindcss lucide-react sonner @fontsource/inter @fontsource/jetbrains-mono
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/auth/__tests__/ProtectedRoute.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173 --strictPort
+  - curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/
+- Tests:
+  - 依赖与 UI 基线构建：`npm run build` PASS（Tailwind 3.4.17 + 字体 + UI 基础组件接入后可正常产出）
+  - 鉴权路由守卫：`npm test -- src/components/auth/__tests__/ProtectedRoute.test.tsx` PASS（3 tests）
+  - 类型检查：`npx tsc --noEmit` PASS
+  - 运行态可达性：`curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/` 返回 `HTTP/1.1 200 OK`
+- Result: PASS
+- Risks/Notes:
+  - `P1-04` 的 legacy token 兼容当前只能在存在 `rmos_role` / `rmos_default_route` 时安全恢复；若旧环境仅残留裸 `access_token` / `refresh_token` 且缺角色信息，前端无法从 opaque token 推断角色，只能要求重新登录。
+  - 本轮已将 `P1-01 ~ P1-06` 在方案文档中显式标为完成，但 `P1 验收标准` 中除构建项外，仍有部分是待后端联调时继续补证据的运行态项。
+- Next Step:
+  - 进入 `P2-01` 通用组件抽象与页面骨架替换，并在开始 `P2-05` 前再次确认 WebSocket 边界与 teaching 数据字段。

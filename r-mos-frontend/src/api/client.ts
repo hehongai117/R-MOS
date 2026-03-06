@@ -1,72 +1,126 @@
-/**
- * Axios客户端配置（V1.1修复版）
- * 
- * ⚠️ 强制约束（遵循骨架文档§2.3和§4.6）：
- * - 所有HTTP API必须包含 /api/v1/ 前缀
- * - WebSocket连接必须使用 /ws/robot/status 路径
- */
-import axios, { AxiosError, AxiosResponse } from 'axios';
-import { message } from 'antd';
+import axios, {
+  AxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios'
+import { message } from 'antd'
 
-// API基础路径配置（默认相对路径，配合 Vite proxy 消除 CORS）
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import {
+  AUTH_STORAGE_KEYS,
+  type AuthTokenResponse,
+  useAuthStore,
+} from '@/store/authStore'
 
-// 创建Axios实例（V1.1修正：添加/api/v1前缀）
+export interface ErrorResponse {
+  status_code: number
+  error_type: string
+  message: string
+  details?: {
+    code: string
+    message: string
+    field?: string
+    details?: Record<string, unknown>
+  }
+  timestamp: string
+  request_id?: string
+}
+
+interface RequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
+  skipAuthRefresh?: boolean
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_ROOT = `${API_BASE_URL}/api/v1`
+
+function getStoredRefreshToken() {
+  return (
+    localStorage.getItem(AUTH_STORAGE_KEYS.refreshToken) ??
+    localStorage.getItem(AUTH_STORAGE_KEYS.legacyRefreshToken)
+  )
+}
+
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,  // ✅ 强制约束：统一添加前缀（默认相对路径）
+  baseURL: API_ROOT,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
-});
+})
 
-// 请求拦截器
 apiClient.interceptors.request.use(
   (config) => {
-    // 可添加认证Token（MVP阶段暂不需要）
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+    const token =
+      useAuthStore.getState().accessToken ??
+      localStorage.getItem(AUTH_STORAGE_KEYS.accessToken) ??
+      localStorage.getItem(AUTH_STORAGE_KEYS.legacyAccessToken)
 
-// 响应拦截器（V1.1修正：遵循骨架文档§4.7错误格式）
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error: AxiosError<ErrorResponse>) => {
-    if (error.response) {
-      const errorData = error.response.data;
-
-      // 统一错误提示
-      const errorMessage = errorData?.message || '请求失败，请稍后重试';
-      message.error(errorMessage);
-
-      // 业务规则违反（409）特殊处理
-      if (error.response.status === 409) {
-        console.warn('Business rule violation:', errorData);
-      }
-    } else if (error.request) {
-      message.error('网络连接失败，请检查网络');
-    } else {
-      message.error('请求配置错误');
+    if (token) {
+      config.headers.set('Authorization', `Bearer ${token}`)
     }
 
-    return Promise.reject(error);
-  }
-);
+    return config
+  },
+  (error) => Promise.reject(error),
+)
 
-// 错误响应类型（遵循骨架文档§4.7）
-export interface ErrorResponse {
-  status_code: number;
-  error_type: string;
-  message: string;
-  details?: {
-    code: string;
-    message: string;
-    field?: string;
-    details?: Record<string, any>;
-  };
-  timestamp: string;
-  request_id?: string;
-}
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error: AxiosError<ErrorResponse>) => {
+    const originalRequest = error.config as RequestConfig | undefined
+    const status = error.response?.status
 
-export default apiClient;
+    if (
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest.skipAuthRefresh
+    ) {
+      const refreshToken = getStoredRefreshToken()
+      if (!refreshToken) {
+        await useAuthStore.getState().logout({ redirect: false, remote: false })
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login')
+        }
+        return Promise.reject(error)
+      }
+
+      originalRequest._retry = true
+
+      try {
+        const response = await axios.post<AuthTokenResponse>(`${API_ROOT}/auth/refresh`, {
+          refresh_token: refreshToken,
+        })
+
+        await useAuthStore.getState().applySession(response.data)
+        originalRequest.headers.set('Authorization', `Bearer ${response.data.access_token}`)
+        return apiClient(originalRequest)
+      } catch (refreshError) {
+        try {
+          await axios.post(`${API_ROOT}/auth/logout`, { refresh_token: refreshToken })
+        } catch {
+          // Best-effort cleanup.
+        }
+
+        await useAuthStore.getState().logout({ redirect: false, remote: false })
+        message.error('登录状态已失效，请重新登录')
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login')
+        }
+        return Promise.reject(refreshError)
+      }
+    }
+
+    if (error.response) {
+      message.error(error.response.data?.message || '请求失败，请稍后重试')
+    } else if (error.request) {
+      message.error('网络连接失败，请检查网络')
+    } else {
+      message.error('请求配置错误')
+    }
+
+    return Promise.reject(error)
+  },
+)
+
+export default apiClient

@@ -129,12 +129,12 @@
 
 | 子任务 | 状态 | 当前仓库对齐结论 | 最小验证 |
 |------|------|------------------|---------|
-| `P1-01` tokens/theme | `READY` | 仅涉及 `src/styles/`，无接口依赖 | `npm run build` |
-| `P1-02` Tailwind 映射 | `READY` | 仅配置层，需保持 AntD 现有主题共存 | `npm run build` |
-| `P1-03` shadcn 初始化 | `READY WITH ADR` | 依赖新增已由 `ADR-FE-REDESIGN-001` 覆盖 | `npm run build` |
-| `P1-04` 鉴权体系 | `READY WITH COMPAT` | 必须对齐 `/auth/login` 返回体，并兼容旧 `access_token`/`refresh_token` 键 | `npm test -- ProtectedRoute` + `npm run build` |
-| `P1-05` 角色布局 | `READY` | 菜单路径必须使用 canonical route：`/workbench/teaching`、`/admin/console` | `npm run build` |
-| `P1-06` 路由重组 | `READY` | `/admin/console` 对应 `P2-06`，`/teacher/monitor` 和 `/admin/dashboard` 仅保留别名 | `npm run build` |
+| `P1-01` tokens/theme | `DONE` | 仅涉及 `src/styles/`，无接口依赖 | `npm run build` |
+| `P1-02` Tailwind 映射 | `DONE` | 仅配置层，需保持 AntD 现有主题共存 | `npm run build` |
+| `P1-03` shadcn 初始化 | `DONE WITH ADR` | 依赖新增已由 `ADR-FE-REDESIGN-001` 覆盖 | `npm run build` |
+| `P1-04` 鉴权体系 | `DONE WITH COMPAT` | 必须对齐 `/auth/login` 返回体，并兼容旧 `access_token`/`refresh_token` 键 | `npm test -- ProtectedRoute` + `npm run build` |
+| `P1-05` 角色布局 | `DONE` | 菜单路径必须使用 canonical route：`/workbench/teaching`、`/admin/console` | `npm run build` |
+| `P1-06` 路由重组 | `DONE` | `/admin/console` 对应 `P2-06`，`/teacher/monitor` 和 `/admin/dashboard` 仅保留别名 | `npm run build` |
 | `P2-01` 通用组件 | `READY` | `src/components/common/` 已存在，应扩展而非重建目录 | `npm run build` |
 | `P2-02` AgentWorkbench | `READY` | 视觉改造可直接做；`user_id` 硬编码留到 `P3-02` 统一处理 | `npm run build` |
 | `P2-03` TrainingWorkbench | `READY WITH STORE EXTENSION` | 当前 `workbenchStore` 仅有 `currentStep/toolStatus/verdict`，子任务内需增量扩展且保持兼容 | `npm test` + `npm run build` |
@@ -287,6 +287,7 @@ P3  第5-6周   剩余页面 + 清理 + 联调 + CI           收尾，风险低
 ### P1-01 · 设计令牌系统（tokens.css）
 
 > ✅ 已验证：本节为纯样式层改造，不依赖后端契约，保留原文。
+> ✅ 2026-03-06 已完成：`tokens.css`、`index.css`、`theme.ts` 已按新令牌体系落地。
 
 **Codex 指令：**
 
@@ -336,6 +337,7 @@ P3  第5-6周   剩余页面 + 清理 + 联调 + CI           收尾，风险低
 ### P1-02 · Tailwind 配置
 
 > ✅ 已验证：本节为纯配置改造，不依赖后端契约，保留原文。
+> ✅ 2026-03-06 已完成：`tailwind.config.js`、`postcss.config.js` 与工具类映射已接入。
 
 **Codex 指令：**
 
@@ -376,6 +378,7 @@ P3  第5-6周   剩余页面 + 清理 + 联调 + CI           收尾，风险低
 ### P1-03 · shadcn/ui 安装初始化
 
 > ✅ 已验证：本节与当前仓库方向一致；新增依赖已被 ADR 覆盖。
+> ✅ 2026-03-06 已完成：基础依赖、`components.json`、`src/components/ui/` 基线组件与 `npm run build` 验证已完成。
 
 **Codex 指令：**
 
@@ -404,6 +407,7 @@ P3  第5-6周   剩余页面 + 清理 + 联调 + CI           收尾，风险低
 ### P1-04 · 鉴权上下文
 
 > ⚠️ 已修正：本节需要补齐 auth 生命周期接口与 legacy token 兼容说明。
+> ✅ 2026-03-06 已完成：`authStore`、`AuthProvider`、`axios refresh/logout` 流程与 `ProtectedRoute` 已接入。
 
 **Codex 指令：**
 
@@ -478,6 +482,7 @@ role 不在 allowedRoles 中 → 重定向到 localStorage('rmos_default_route')
 ### P1-05 · 角色分层布局
 
 > ✅ 已验证：本节的 canonical route 规划已与 `default_route` 对齐，保留原文。
+> ✅ 2026-03-06 已完成：`AppLayout` 已切换为三角色侧栏壳体与用户区。
 
 **Codex 指令：**
 
@@ -541,6 +546,7 @@ role 不在 allowedRoles 中 → 重定向到 localStorage('rmos_default_route')
 ### P1-06 · 路由重组 + 登录页
 
 > ✅ 已验证：本节路由重组方向与后端 `default_route` 一致，保留原文。
+> ✅ 2026-03-06 已完成：`LoginPage`、新路由树、P1 占位页和 `AuthProvider` 顶层包裹已落地。
 
 **Codex 指令：**
 
@@ -592,7 +598,7 @@ P1 阶段新路由的占位页：用一个简单的 div 显示「页面建设中
 ```
 
 **P1 验收标准：**
-- [ ] `npm run build` 无报错
+- [x] `npm run build` 无报错
 - [ ] 访问任意路由重定向到 `/login`，登录页视觉正确
 - [ ] student / teacher / admin 三种角色登录后按后端 `default_route` 跳转
 - [ ] 三种角色的侧边栏菜单项各自正确
@@ -1212,12 +1218,12 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 > ✅ 已验证：任务分期结构可保留；本轮修正聚焦各子任务的接口与契约边界。
 
 ### P1（第1-2周）基础建设
-- [ ] P1-01 tokens.css 设计令牌 + theme.ts 对齐
-- [ ] P1-02 Tailwind 配置和工具类映射
-- [ ] P1-03 shadcn/ui 安装初始化
-- [ ] P1-04 authStore + AuthContext + axios 拦截器 + ProtectedRoute 接入
-- [ ] P1-05 StudentLayout / TeacherLayout / AdminLayout
-- [ ] P1-06 路由重组 + LoginPage
+- [x] P1-01 tokens.css 设计令牌 + theme.ts 对齐
+- [x] P1-02 Tailwind 配置和工具类映射
+- [x] P1-03 shadcn/ui 安装初始化
+- [x] P1-04 authStore + AuthContext + axios 拦截器 + ProtectedRoute 接入
+- [x] P1-05 StudentLayout / TeacherLayout / AdminLayout
+- [x] P1-06 路由重组 + LoginPage
 
 ### P2（第3-4周）核心页面
 - [ ] P2-01 通用组件库（5个组件）

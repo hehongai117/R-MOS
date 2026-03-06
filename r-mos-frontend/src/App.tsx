@@ -1,79 +1,160 @@
-/**
- * R-MOS 根组件 + 路由配置（V2.3 增强 - Dark Mode Pro）
- */
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { ConfigProvider, App as AntdApp } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
-import AppLayout from './components/Layout/AppLayout'
-import HomePage from './pages/HomePage'
-import SOPListPage from './pages/SOPListPage'
-import TaskExecutionPage from './pages/TaskExecutionPage'
-import MonitorPage from './pages/MonitorPage'
-import ReportPage from './pages/ReportPage'
-import FaultManagePage from './pages/admin/FaultManagePage'
-import SeedDataPage from './pages/admin/SeedDataPage'
-import IncidentListPage from './pages/IncidentListPage'
-import EvidencePage from './pages/EvidencePage'
-import AssessmentStatusPage from './pages/AssessmentStatusPage'
-import Atom01DemoPage from './pages/Atom01DemoPage'
-import SOPMaintenancePage from './pages/SOPMaintenancePage'
-import TeachingAssignmentsPage from './teaching/pages/TeachingAssignmentsPage'
-import TeachingAttemptPage from './teaching/pages/TeachingAttemptPage'
-import TeachingEvidencePage from './teaching/pages/TeachingEvidencePage'
-import TeachingDiagnosisPage from './teaching/pages/TeachingDiagnosisPage'
-import AIChatPage from './pages/AIChatPage'
-import DiagnosisPage from './pages/DiagnosisPage'
-import KnowledgePage from './pages/KnowledgePage'
-import { darkTheme } from './styles/theme'
-import './styles/index.css'
+import { App as AntdApp } from 'antd'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+
+import AppLayout from '@/components/Layout/AppLayout'
+import { AuthProvider } from '@/components/auth/AuthContext'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import { Toaster } from '@/components/ui/toaster'
+import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
+import AcceptanceDashboardPage from '@/pages/admin/AcceptanceDashboardPage'
+import ApprovalQueuePage from '@/pages/admin/ApprovalQueuePage'
+import FaultManagePage from '@/pages/admin/FaultManagePage'
+import LLMMetricsPage from '@/pages/admin/LLMMetricsPage'
+import SeedDataPage from '@/pages/admin/SeedDataPage'
+import AIChatPage from '@/pages/AIChatPage'
+import AssessmentStatusPage from '@/pages/AssessmentStatusPage'
+import Atom01DemoPage from '@/pages/Atom01DemoPage'
+import DiagnosisPage from '@/pages/DiagnosisPage'
+import EvidencePage from '@/pages/EvidencePage'
+import IncidentListPage from '@/pages/IncidentListPage'
+import KnowledgePage from '@/pages/KnowledgePage'
+import LoginPage from '@/pages/LoginPage'
+import MonitorPage from '@/pages/MonitorPage'
+import ReplayPage from '@/pages/ReplayPage'
+import ReportPage from '@/pages/ReportPage'
+import SOPListPage from '@/pages/SOPListPage'
+import SOPMaintenancePage from '@/pages/SOPMaintenancePage'
+import StudentSkillsPage from '@/pages/StudentSkillsPage'
+import TaskExecutionPage from '@/pages/TaskExecutionPage'
+import TrainingWorkbenchPage from '@/pages/TrainingWorkbenchPage'
+import AgentWorkbenchPage from '@/pages/agent/AgentWorkbenchPage'
+import { AUTH_STORAGE_KEYS, type UserRole, useAuthStore } from '@/store/authStore'
+import TeachingAssignmentsPage from '@/teaching/pages/TeachingAssignmentsPage'
+import TeachingAttemptPage from '@/teaching/pages/TeachingAttemptPage'
+import TeachingDiagnosisPage from '@/teaching/pages/TeachingDiagnosisPage'
+import TeachingEvidencePage from '@/teaching/pages/TeachingEvidencePage'
+import TeacherMonitorPage from '@/teaching/pages/TeacherMonitorPage'
+import TeacherStudentsPage from '@/teaching/pages/TeacherStudentsPage'
+
+function DefaultRouteRedirect() {
+  const defaultRoute =
+    useAuthStore((state) => state.defaultRoute) ??
+    localStorage.getItem(AUTH_STORAGE_KEYS.defaultRoute) ??
+    '/login'
+
+  return <Navigate replace to={defaultRoute} />
+}
+
+function withRoles(element: JSX.Element, allowedRoles?: UserRole[]) {
+  if (!allowedRoles) {
+    return element
+  }
+
+  return <ProtectedRoute allowedRoles={allowedRoles}>{element}</ProtectedRoute>
+}
 
 function App() {
-    return (
-        <ConfigProvider
-            theme={darkTheme}
-            locale={zhCN}
-        >
-            <AntdApp>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/" element={<AppLayout />}>
-                            {/* 默认显示首页 */}
-                            <Route index element={<HomePage />} />
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AntdApp>
+          <Toaster />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
 
-                            {/* 核心页面 */}
-                            <Route path="sops" element={<SOPListPage />} />
-                            <Route path="tasks/:taskId" element={<TaskExecutionPage />} />
-                            <Route path="monitor" element={<MonitorPage />} />
-                            <Route path="reports" element={<ReportPage />} />
-                            <Route path="reports/:taskId" element={<ReportPage />} />
-                            <Route path="incidents" element={<IncidentListPage />} />
-                            <Route path="evidence" element={<EvidencePage />} />
-                            <Route path="assessments" element={<AssessmentStatusPage />} />
-                            <Route path="teaching/assignments" element={<TeachingAssignmentsPage />} />
-                            <Route path="teaching/attempts/:id" element={<TeachingAttemptPage />} />
-                            <Route path="teaching/attempts/:id/evidence" element={<TeachingEvidencePage />} />
-                            <Route path="teaching/attempts/:id/diagnosis" element={<TeachingDiagnosisPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<AppLayout />}>
+                <Route index element={<DefaultRouteRedirect />} />
 
-                            {/* Atom01 3D 展示 */}
-                            <Route path="atom01" element={<Atom01DemoPage />} />
+                <Route
+                  path="workbench/training"
+                  element={withRoles(<TrainingWorkbenchPage />, ['student'])}
+                />
+                <Route
+                  path="student/skills"
+                  element={withRoles(<StudentSkillsPage />, ['student'])}
+                />
+                <Route
+                  path="workbench/teaching"
+                  element={withRoles(<TeacherMonitorPage />, ['teacher', 'admin'])}
+                />
+                <Route
+                  path="teacher/monitor"
+                  element={<Navigate replace to="/workbench/teaching" />}
+                />
+                <Route
+                  path="teacher/students"
+                  element={withRoles(<TeacherStudentsPage />, ['teacher', 'admin'])}
+                />
+                <Route
+                  path="admin/console"
+                  element={withRoles(<AdminDashboardPage />, ['admin'])}
+                />
+                <Route
+                  path="admin/dashboard"
+                  element={<Navigate replace to="/admin/console" />}
+                />
 
-                            {/* SOP 维保系统 */}
-                            <Route path="maintenance" element={<SOPMaintenancePage />} />
+                <Route path="sops" element={<SOPListPage />} />
+                <Route path="knowledge" element={<KnowledgePage />} />
+                <Route path="ai-chat" element={<AIChatPage />} />
+                <Route path="monitor" element={<MonitorPage />} />
+                <Route path="maintenance" element={<SOPMaintenancePage />} />
+                <Route path="atom01" element={<Atom01DemoPage />} />
+                <Route
+                  path="teaching/assignments"
+                  element={withRoles(<TeachingAssignmentsPage />, ['teacher', 'admin'])}
+                />
+                <Route
+                  path="teaching/attempts/:id"
+                  element={withRoles(<TeachingAttemptPage />, ['teacher', 'admin'])}
+                />
+                <Route
+                  path="teaching/attempts/:id/evidence"
+                  element={withRoles(<TeachingEvidencePage />, ['teacher', 'admin'])}
+                />
+                <Route
+                  path="teaching/attempts/:id/diagnosis"
+                  element={withRoles(<TeachingDiagnosisPage />, ['teacher', 'admin'])}
+                />
+                <Route path="agent/workbench" element={<AgentWorkbenchPage />} />
+                <Route path="agent/replay" element={<ReplayPage />} />
+                <Route
+                  path="admin/approvals"
+                  element={withRoles(<ApprovalQueuePage />, ['admin'])}
+                />
+                <Route
+                  path="admin/acceptance"
+                  element={withRoles(<AcceptanceDashboardPage />, ['admin'])}
+                />
+                <Route
+                  path="admin/llm-metrics"
+                  element={withRoles(<LLMMetricsPage />, ['admin'])}
+                />
+                <Route
+                  path="admin/faults"
+                  element={withRoles(<FaultManagePage />, ['admin'])}
+                />
+                <Route
+                  path="admin/seed-data"
+                  element={withRoles(<SeedDataPage />, ['admin'])}
+                />
+                <Route path="incidents" element={<IncidentListPage />} />
+                <Route path="evidence" element={<EvidencePage />} />
+                <Route path="assessments" element={<AssessmentStatusPage />} />
+                <Route path="reports" element={<ReportPage />} />
+                <Route path="reports/:taskId" element={<ReportPage />} />
+                <Route path="diagnosis/:taskId" element={<DiagnosisPage />} />
+                <Route path="tasks/:taskId" element={<TaskExecutionPage />} />
+              </Route>
+            </Route>
 
-                            {/* 管理页面 */}
-                            <Route path="admin/faults" element={<FaultManagePage />} />
-                            <Route path="admin/seed-data" element={<SeedDataPage />} />
-
-                            {/* AI 功能页面 */}
-                            <Route path="ai-chat" element={<AIChatPage />} />
-                            <Route path="diagnosis/:taskId" element={<DiagnosisPage />} />
-                            <Route path="knowledge" element={<KnowledgePage />} />
-                        </Route>
-                    </Routes>
-                </BrowserRouter>
-            </AntdApp>
-        </ConfigProvider>
-    )
+            <Route path="*" element={<Navigate replace to="/" />} />
+          </Routes>
+        </AntdApp>
+      </BrowserRouter>
+    </AuthProvider>
+  )
 }
 
 export default App
