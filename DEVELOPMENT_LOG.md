@@ -4079,3 +4079,35 @@
   - 教师发送提示接口仍未在当前后端公开，执行 `P2-05` 时必须继续保持 disabled/backlog 策略。
 - Next Step:
   - 以当前文档为执行基线启动实施，优先进入 `P1-01 ~ P1-04`。
+
+- DateTime: 2026-03-06 10:45:45 +0800
+- Task: 修正前端重构方案问题清单 P-01 ~ P-08（依赖闭环、鉴权刷新、WS 边界、3D 组件落点、ADR 显式覆盖）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/adr/ADR-FE-REDESIGN-001.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg -n "tailwindcss|shadcn|fontsource|motion|sonner|Lucide|initFromStorage|401|default_route|现有 3D 组件|保留现有渲染|WebSocket|pong|step_warning|轮询接口兜底|修正总数" /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/docs/adr/ADR-FE-REDESIGN-001.md
+  - sed -n '190,230p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '416,460p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '540,560p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '720,745p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '868,880p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '958,972p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '1218,1238p' /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - rg -n "npm install lucide-react|rmos_access_token'\\)|POST /api/v1/auth/refresh|default_route|Atom01Viewer|SOPMaintenancePage.tsx|pong|step_warning|sonner|autoprefixer" /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md /Users/xuhehong/Desktop/r-mos/docs/adr/ADR-FE-REDESIGN-001.md
+  - git diff -- /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md /Users/xuhehong/Desktop/r-mos/docs/adr/ADR-FE-REDESIGN-001.md
+  - git diff --name-only
+  - date '+%Y-%m-%d %H:%M:%S %z'
+- Tests:
+  - 文档一致性自检：`lucide-react` 安装步骤、`default_route` 跳转、`POST /api/v1/auth/refresh` 重试流程、明确 localStorage 键名均已落到计划文档（PASS）
+  - ADR 闭环自检：`tailwindcss/postcss/autoprefixer/shadcn/ui/sonner/lucide-react/@fontsource/*/motion` 已在 ADR 正文中显式列出（PASS）
+  - WebSocket 边界自检：计划文档已改为“`pong` 尚未被后端正式消费，`step_warning` 无等价轮询替代”，不再把缺失能力写成现成功能（PASS）
+  - 组件引用自检：TrainingWorkbenchPage 明确指向 `Atom01Viewer`，SOP 页面明确指向 `SOPMaintenancePage.tsx` 现有 3D 组合（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仅修改文档与 ADR，未改动前后端业务代码；按文档类任务标准未重跑 `npm test` / `npm run build`。
+  - 工作区存在大量与本任务无关的既有变更；本次未触碰、未回退。
+- Next Step:
+  - 如继续执行方案，应以更新后的文档为基线启动 `P1-01 ~ P1-04`，并在真正实现 `P2-05` 前先确认后端是否补齐 `pong` 消费链路与班级级预警事件。

@@ -6,14 +6,14 @@
 
 ## 背景
 
-前端重构方案引入 `Tailwind CSS`、`shadcn/ui`、`@fontsource/*`、`motion` 等依赖，用于统一视觉语言与组件层样式能力。  
+前端重构方案引入 `tailwindcss`、`postcss`、`autoprefixer`、`shadcn/ui`、`sonner`、`lucide-react`、`@fontsource/*`、`motion` 等依赖，用于统一视觉语言、样式编译、通知与图标能力。  
 现有系统已存在 `Ant Design`、`react-router`、`zustand`、`three` 体系，且当前质量门禁（`tsc/lint/vitest/build`）已可通过，不能采用“推倒重来”。
 
 同时，后端鉴权 token 为 opaque string，登录返回 `role/default_route`，前端不能依赖 JWT payload 解码做身份恢复。
 
 ## 决策
 
-1. 采用“增量迁移”而非全量重写：保留 Ant Design 数据组件，新增 Tailwind + shadcn 仅用于布局与视觉层。
+1. 采用“增量迁移”而非全量重写：保留 Ant Design 数据组件，新增 `tailwindcss + postcss + autoprefixer + shadcn/ui + sonner + lucide-react + @fontsource/* + motion` 仅用于布局、图标、通知与视觉层。
 2. 鉴权对齐后端现状：以 `/api/v1/auth/login` 返回体作为身份来源，不做 JWT 解码。
 3. 接口优先级：仅使用仓库内已存在的后端路由；缺失接口标记 `BACKLOG/TBD`，不在本轮前端方案中伪造“已实现”。
 4. 质量门禁沿用现有 CI：`npx tsc --noEmit`、`npx eslint ... --max-warnings 0`、`npm test`、`npm run build`。
@@ -36,7 +36,7 @@
 
 ## 影响评估
 
-1. 依赖增加：构建体积和安装时间可能上升。
+1. 依赖增加：构建体积和安装时间可能上升，且需同步维护图标、toast 与样式编译链版本。
 2. 样式体系切换：需要在迁移期并行维护 AntD Token 与 CSS Tokens。
 3. 测试影响：视觉层改造会触发组件测试更新，必须同步补齐证据。
 4. 运维影响：无需新增外部服务，不改变后端部署拓扑。
