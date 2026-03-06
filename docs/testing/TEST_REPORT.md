@@ -534,3 +534,59 @@ HTTP/1.1 200 OK
 - 建议后续动作：
   - 先恢复标准 seed 用户口径
   - 再复做 student / teacher / admin 登录、默认跳转、刷新保持、退出登录的浏览器回归
+
+## 2026-03-06 验收账号口径修复补记
+
+### 修复动作
+
+- 新增脚本：
+  - `r-mos-backend/scripts/seed_acceptance_users.py`
+- 修复内容：
+  - 补齐 `admin@rmos.test`、`teacher1@rmos.test`、`teacher2@rmos.test`、`student_a@rmos.test`、`student_b@rmos.test`
+  - 同步 `users.role`
+  - 同步 `roles / permissions / user_roles / role_permissions`
+  - 补最小教学关系：`Acceptance Class 1 -> course-1 -> teacher1 -> student_a/student_b`，`Acceptance Class 2 -> course-2 -> teacher2`
+
+### 复验命令
+
+- 账号种子：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && python scripts/seed_acceptance_users.py`
+- 三角色登录：
+  - `POST /api/v1/auth/login` with `admin@rmos.test / Admin@123`
+  - `POST /api/v1/auth/login` with `teacher1@rmos.test / Teacher@123`
+  - `POST /api/v1/auth/login` with `student_a@rmos.test / Student@123`
+- 关键接口：
+  - `GET /api/v1/admin/users?limit=10` with admin token
+  - `GET /api/v1/classes` with teacher token
+  - `GET /api/v1/students/21/profile` with student token
+
+### 输出摘要
+
+- 脚本幂等执行 PASS；稳定输出：
+  - `admin -> id=16 role=admin`
+  - `teacher1 -> id=19 role=teacher`
+  - `teacher2 -> id=20 role=teacher`
+  - `student_a -> id=21 role=student`
+  - `student_b -> id=22 role=student`
+- 登录返回：
+  - admin -> `role=admin`, `default_route=/admin/console`
+  - teacher1 -> `role=teacher`, `default_route=/workbench/teaching`
+  - student_a -> `role=student`, `default_route=/workbench/training`
+- 关键接口：
+  - `GET /api/v1/admin/users?limit=10` -> 200
+  - `GET /api/v1/classes` -> 200，包含 `Acceptance Class 1/2`
+  - `GET /api/v1/students/21/profile` -> 200
+
+### 浏览器层阻塞现状
+
+- DevTools MCP 仍然 `Transport closed`
+- AppleScript DOM 注入被 Chrome 设置拦截：
+  - 需手工开启 `View > Developer > Allow JavaScript from Apple Events`
+- AppleScript 键盘输入也被系统权限拦截：
+  - `System Events` 当前不允许发送按键
+
+### 结论
+
+- 账号与 RBAC 口径：已修复
+- API 级三角色联调：PASS
+- 浏览器 UI 自动化：仍阻塞，但阻塞点已收敛为本机工具/权限，不再是代码或 seed 问题

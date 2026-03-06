@@ -4305,3 +4305,40 @@
   - 本次仅修复测试门禁文件 `tests/unit/test_skill_registry_migration_gate.py`，未处理现有 warning（Pydantic v2、`datetime.utcnow()` 等）。
 - Next Step:
   - 若继续做浏览器三角色联调，需先恢复标准 seed 账号口径并排除 DevTools MCP 传输故障，然后再执行登录、默认跳转、刷新保持和退出登录回归。
+
+- DateTime: 2026-03-06 16:36 CST
+- Task: 修复验收矩阵标准账号种子，并补齐 RBAC 角色联调口径
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/scripts/seed_acceptance_users.py
+  - /Users/xuhehong/Desktop/r-mos/docs/ops/RUNBOOK.md
+  - /Users/xuhehong/Desktop/r-mos/docs/testing/TEST_REPORT.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && python scripts/seed_acceptance_users.py
+  - psql -d postgres -At -c "select u.email,r.name from user_roles ur join users u on u.id=ur.user_id join roles r on r.id=ur.role_id where u.id in (16,19,20,21,22) order by u.email;"
+  - curl --noproxy 127.0.0.1,localhost http://127.0.0.1:8000/api/v1/health
+  - curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/
+  - POST /api/v1/auth/login with `admin@rmos.test / Admin@123`
+  - POST /api/v1/auth/login with `teacher1@rmos.test / Teacher@123`
+  - POST /api/v1/auth/login with `student_a@rmos.test / Student@123`
+  - GET /api/v1/admin/users?limit=10 with admin token
+  - GET /api/v1/classes with teacher token
+  - GET /api/v1/students/21/profile with student token
+  - osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "http://127.0.0.1:55173/login"'
+  - osascript fallback attempts for Apple Events JS / System Events keystroke automation
+- Tests:
+  - 标准账号种子脚本：PASS；重复执行幂等，账号与班级关系稳定
+  - RBAC 对齐：PASS；`user_roles` 已写入 admin/teacher/student 对应角色
+  - 三角色登录：PASS；admin/teacher/student 均返回正确 `role` 与 `default_route`
+  - Admin 关键接口：`GET /api/v1/admin/users?limit=10` PASS（200）
+  - Teacher 关键接口：`GET /api/v1/classes` PASS（200，含 `Acceptance Class 1/2`）
+  - Student 关键接口：`GET /api/v1/students/21/profile` PASS（200）
+  - 浏览器服务探活：前后端端口均 PASS
+  - 浏览器 UI 自动化：FAIL（工具/系统权限阻塞，不是业务失败）
+- Result: PASS（账号与 API 级联调闭环完成）；浏览器 UI 自动化仍阻塞
+- Risks/Notes:
+  - `seed_acceptance_users.py` 现在不仅同步 `users.role`，也同步 RBAC 三表；否则会出现“登录响应是 admin，但路由守卫仍 403”的口径分裂。
+  - `GET /api/v1/classes` 当前接口未做角色过滤，teacher token 能取到全量班级列表；这不是本轮阻塞，但后续若要严格按教师范围展示，后端仍需补过滤策略。
+  - Chrome 当前禁用了 Apple Events JavaScript；macOS 也未给 `System Events` 发按键权限，因此无法在本机留下真正的浏览器内交互证据。
+- Next Step:
+  - 若继续推进“浏览器登录与功能测试”，需要先手工打开 Chrome 的 Apple Events JavaScript 开关或恢复 DevTools MCP；否则建议转入清理阶段，并把浏览器证据缺口单独列为环境项。

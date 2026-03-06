@@ -75,6 +75,13 @@ cd /Users/xuhehong/Desktop/r-mos/.worktrees/phase1-teaching-p0/r-mos-backend && 
 - 种子：`make seed-demo`
 - 重置：`make reset-db`
 
+验收矩阵标准账号种子（补齐 student / teacher / admin 登录口径）：
+- `cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && python scripts/seed_acceptance_users.py`
+
+说明：
+- `make seed-demo` 只补教学域数据，不创建标准登录账号
+- `seed_acceptance_users.py` 会同步 `users.role`、`roles/user_roles/role_permissions`，并补最小 class/course/enrollment 关系
+
 使用说明：
 - 需先设置 `DATABASE_URL`（示例：`export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres`）
 - `make reset-db` 仅用于本地开发环境
