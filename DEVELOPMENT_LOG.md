@@ -4048,3 +4048,34 @@
   - `TeacherMonitorPage` 的“教师发送提示”仍缺后端公开接口，已明确降级为 BACKLOG；`ApprovalQueuePage` 需先从旧 `/agent/approval/*` helper 切到 `/ai/approvals` 薄封装。
 - Next Step:
   - 以当前方案为实施基线，先执行 `P1-01 ~ P1-04`；其中 `P1-04` 必须优先完成 legacy token 兼容与 ProtectedRoute 测试修订。
+
+- DateTime: 2026-03-06 10:20:06 +0800
+- Task: R-MOS_Frontend_Redesign_Plan.md 终版对齐收口（全量接口路径复核、TeacherMonitor 文案收紧、修正清单统计校准）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - git status --short
+  - sed -n '36,78p' R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '78,125p' R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '848,882p' R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '900,1090p' R-MOS_Frontend_Redesign_Plan.md
+  - sed -n '1090,1255p' R-MOS_Frontend_Redesign_Plan.md
+  - rg -n "class SkillProfileResponse|AssignmentAttemptResponse|student_name|display_name|full_name|name:" r-mos-backend/app -g '!**/__pycache__/**'
+  - sed -n '120,190p' r-mos-backend/app/api/v1/endpoints/training.py
+  - sed -n '130,190p' r-mos-backend/app/schemas/teaching.py
+  - node -e "const fs=require('fs');const text=fs.readFileSync('R-MOS_Frontend_Redesign_Plan.md','utf8');const paths=[...new Set((text.match(/(?:\\/api\\/v1\\/[A-Za-z0-9_./?{}=&:-]+|\\/ws\\/[A-Za-z0-9_./?{}=&:-]+)/g)||[]))].sort();console.log('unique_paths='+paths.length);"
+  - rg -n "POST /api/v1/auth/refresh|POST /api/v1/auth/logout|GET /api/v1/attempts/\\{attempt_id\\}/evidence|GET /api/v1/attempts/\\{attempt_id\\}/diagnosis|studentId 尾号|后端待实现接口/事件：2 个|其他类修正：2 处|step_warning" R-MOS_Frontend_Redesign_Plan.md
+  - git diff --name-only -- R-MOS_Frontend_Redesign_Plan.md DEVELOPMENT_LOG.md
+- Tests:
+  - 文档一致性自检：方案中新增的 `auth/refresh`、`auth/logout`、`attempt detail/evidence/diagnosis` 均已落入 Step 1 对照表（PASS）
+  - 全量路径静态枚举：`unique_paths=32`，已完成逐路由核对与必要合并说明（PASS）
+  - TeacherMonitor 契约收紧自检：姓名缺失场景已改为 `studentId` 回退，不再假设后端返回学生姓名（PASS）
+  - 修正清单一致性自检：分类计数与两个待实现项已对齐正文（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仍为文档修订，未改动前后端业务代码；按文档任务标准未重跑 `npm test` / `npm run build`。
+  - `WS /ws/robot/status` 目前仅能提供全局 telemetry + ping/pong，无法支撑班级级 `step_warning` 事件。
+  - 教师发送提示接口仍未在当前后端公开，执行 `P2-05` 时必须继续保持 disabled/backlog 策略。
+- Next Step:
+  - 以当前文档为执行基线启动实施，优先进入 `P1-01 ~ P1-04`。
