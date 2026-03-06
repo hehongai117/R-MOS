@@ -4368,3 +4368,33 @@
   - 恢复入口后，页面内部仍可能暴露既有联调问题，例如 admin 侧 `agent/*` 接口 `403/500`、teacher 侧 WebSocket 失败。
 - Next Step:
   - 若要继续补齐“旧功能体验”，下一步应决定是恢复已删除的 3D 辅助组件，还是把这些能力并回现有 `SOPMaintenancePage`。
+
+- DateTime: 2026-03-06 21:47 CST
+- Task: 第二层修复 SOP 深层交互，恢复独立小件 3D 检视器与裁决级拆卸动画并接回 SOP 工作台
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-06-sop-depth-recovery.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/PartInspector.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/DisassemblyDemoAdjudicated.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/PartInspector.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/DisassemblyDemoAdjudicated.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/PartInspector.test.tsx src/components/Viewer3D/__tests__/DisassemblyDemoAdjudicated.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/PartInspector.test.tsx src/components/Viewer3D/__tests__/DisassemblyDemoAdjudicated.test.tsx src/components/Layout/__tests__/AppLayout.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red: `PartInspector.test.tsx` / `DisassemblyDemoAdjudicated.test.tsx` 初次执行 FAIL，失败原因为两个组件文件不存在
+  - 组件恢复回归：`PartInspector.test.tsx` PASS（2 tests）
+  - 组件恢复回归：`DisassemblyDemoAdjudicated.test.tsx` PASS（1 test）
+  - 入口回归：`AppLayout.test.tsx` PASS（3 tests）
+  - 前端类型检查：`npx tsc --noEmit` PASS
+  - 前端构建：`npm run build` PASS（`SOPMaintenancePage-BxItoktb.js = 147.88 kB`）
+- Result: PASS
+- Risks/Notes:
+  - `DisassemblyDemoAdjudicated` 的单测在 jsdom 下会输出 three/fiber 自定义标签 warning，这是测试宿主限制，不是构建失败。
+  - 本次把“裁决级拆卸”重新暴露为现有 SOP 页面中的一个可见模式，没有重建旧的独立 demo 页面。
+  - admin `agent/*` 接口 `403/500`、teacher WebSocket 失败等联调问题仍未处理。
+- Next Step:
+  - 若继续做联调，应优先用浏览器验证 `/maintenance` 的螺丝选择 -> 工具选择 -> 裁决级拆卸提示链路，并决定是否还要恢复旧的独立 demo 页面。

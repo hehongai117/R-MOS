@@ -31,7 +31,9 @@ import { OrbitControls } from '@react-three/drei';
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
+import DisassemblyDemoAdjudicated from '@/components/Viewer3D/DisassemblyDemoAdjudicated';
 import { DisassemblyAnimation } from '@/components/Viewer3D/DisassemblyAnimation';
+import PartInspector from '@/components/Viewer3D/PartInspector';
 import {
     ALL_EXPLODE_PART_URLS,
     ISOLATION_DENSITY_CONFIG,
@@ -335,6 +337,11 @@ function SOPMaintenancePage() {
         () => (selectedDetailSelection ? getDetailPartDetailRecord(selectedDetailSelection) : null),
         [selectedDetailSelection],
     );
+    const partInspectorLink = useMemo(
+        () => selectedDetailSelection?.linkName ?? selectedPart?.name ?? null,
+        [selectedDetailSelection, selectedPart],
+    );
+    const adjudicatedDisassemblyReady = Boolean(selectedScrewId && selectedToolId);
     const activeDetailRecord = selectedDetailRecord ?? selectedCoreDetailRecord;
     const hoveredDetailRecord = useMemo(
         () => (hoveredDetailSelection ? getDetailPartDetailRecord(hoveredDetailSelection) : null),
@@ -941,6 +948,9 @@ function SOPMaintenancePage() {
                                     <Tag color={proxies <= ISOLATION_DENSITY_CONFIG.P_max ? 'blue' : 'red'}>
                                         代理入口 {proxies}/{ISOLATION_DENSITY_CONFIG.P_max}
                                     </Tag>
+                                    <Tag color={adjudicatedDisassemblyReady ? 'gold' : 'default'}>
+                                        {adjudicatedDisassemblyReady ? '裁决级拆卸已就绪' : '当前为普通演示模式'}
+                                    </Tag>
                                 </Space>
                                 <div style={{ marginTop: 12 }}>
                                     <Button
@@ -956,8 +966,17 @@ function SOPMaintenancePage() {
                                             }
                                         }}
                                     >
-                                        {disassemblyPlaying ? '⏹ 停止拆卸动画' : '▶ 播放拆卸动画'}
+                                        {disassemblyPlaying
+                                            ? '⏹ 停止拆卸动画'
+                                            : adjudicatedDisassemblyReady
+                                                ? '▶ 播放裁决级拆卸'
+                                                : '▶ 播放拆卸动画'}
                                     </Button>
+                                    <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                                        {adjudicatedDisassemblyReady
+                                            ? '已选择螺丝和工具，播放后将进入裁决校验；失败时显示阻断并回滚。'
+                                            : '当前仅播放序列演示。选中螺丝并选择工具后可切换为裁决级拆卸。'}
+                                    </Text>
                                     {disassemblyStep && (
                                         <div style={{
                                             marginTop: 6,
@@ -1240,15 +1259,36 @@ function SOPMaintenancePage() {
                                 </Suspense>
 
                                 {/* 拆卸动画演示 */}
-                                <DisassemblyAnimation
-                                    isPlaying={disassemblyPlaying}
-                                    onCurrentStep={setDisassemblyStep}
-                                    onExplodeAmountChange={setExplodeAmount}
-                                    onComplete={() => {
-                                        setDisassemblyPlaying(false);
-                                        message.success('拆卸动画播放完成');
-                                    }}
-                                />
+                                {adjudicatedDisassemblyReady && selectedScrewId ? (
+                                    <DisassemblyDemoAdjudicated
+                                        isPlaying={disassemblyPlaying}
+                                        screwId={selectedScrewId}
+                                        toolId={selectedToolId ?? undefined}
+                                        onAnimationRollback={() => {
+                                            setDisassemblyStep('↩ 裁决阻断，动画已回滚');
+                                        }}
+                                        onAdjudicationBlocked={(report) => {
+                                            setDisassemblyStep(`⛔ 裁决阻断：${report.reasonCode}`);
+                                            message.error(`拆卸被阻断：${report.reasonCode}`);
+                                            setDisassemblyPlaying(false);
+                                        }}
+                                        onAdjudicationComplete={() => {
+                                            setDisassemblyPlaying(false);
+                                            setDisassemblyStep('✅ 裁决通过，已提交拆卸状态');
+                                            message.success('拆卸裁决通过');
+                                        }}
+                                    />
+                                ) : (
+                                    <DisassemblyAnimation
+                                        isPlaying={disassemblyPlaying}
+                                        onCurrentStep={setDisassemblyStep}
+                                        onExplodeAmountChange={setExplodeAmount}
+                                        onComplete={() => {
+                                            setDisassemblyPlaying(false);
+                                            message.success('拆卸动画播放完成');
+                                        }}
+                                    />
+                                )}
 
                                 <OrbitControls
                                     key={`orbit-${viewState}-${selectedOverviewNode}`}
@@ -1391,6 +1431,17 @@ function SOPMaintenancePage() {
                                                 </Space>
                                             </Card>
                                         )}
+
+                                        <Card
+                                            size="small"
+                                            title="🧪 小件 3D 检视"
+                                            extra={partInspectorLink ? <Tag color="cyan">已接入独立检视器</Tag> : null}
+                                        >
+                                            <PartInspector
+                                                selectedLink={partInspectorLink}
+                                                showFasteners={Boolean(selectedScrewId)}
+                                            />
+                                        </Card>
 
                                         {/* L2 代理入口：列表选择（list_select） */}
                                         {isolationLevel >= 2 && l2TargetLink && (
