@@ -25,8 +25,10 @@ import {
     HomeOutlined,
     RightOutlined,
 } from '@ant-design/icons';
+import { Lock, ShieldAlert } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { PageHeader, SectionCard, StatusBadge } from '@/components/common';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
 import { DisassemblyAnimation } from '@/components/Viewer3D/DisassemblyAnimation';
@@ -425,6 +427,10 @@ function SOPMaintenancePage() {
 
     const examTimeText = useMemo(() => formatCountdown(examRemainingMs), [examRemainingMs]);
     const examUrgent = useMemo(() => isCountdownUrgent(examRemainingMs), [examRemainingMs]);
+    const activeSopScript = useMemo(() => {
+        const targetSopId = linkedSOPId ?? sopSceneSync.state.selectedSopId;
+        return ALL_SOP_SCRIPTS.find((sop) => sop.sopId === targetSopId) ?? ALL_SOP_SCRIPTS[0];
+    }, [linkedSOPId, sopSceneSync.state.selectedSopId]);
 
     const handleModeChange = useCallback((mode: 'teaching' | 'exam' | 'maintenance') => {
         Modal.confirm({
@@ -774,47 +780,42 @@ function SOPMaintenancePage() {
     };
 
     return (
-        <div style={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
-            {/* 顶部标题栏 */}
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 16,
-                gap: 16,
-            }}>
-                <Title level={3} style={{ margin: 0 }}>
-                    <ToolOutlined style={{ marginRight: 8 }} />
-                    SOP 维保系统
-                </Title>
-
-                {/* 考试模式顶栏 */}
-                {operationMode === 'exam' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Tag
-                            color={examUrgent ? 'red' : 'blue'}
-                            style={{ margin: 0, minWidth: 90, textAlign: 'center' }}
-                        >
-                            倒计时 {examTimeText}
-                        </Tag>
-                        <Tag
-                            color="green"
-                            style={{
-                                margin: 0,
-                                minWidth: 90,
-                                textAlign: 'center',
-                                transition: 'all 0.3s ease',
-                                transform: scoreFlash ? 'scale(1.05)' : 'scale(1)',
-                                color: scoreFlash ? '#faad14' : undefined,
-                                boxShadow: scoreFlash ? '0 0 8px rgba(250, 173, 20, 0.6)' : 'none',
-                            }}
-                        >
-                            得分 {scoreState.currentScore}
-                        </Tag>
-                    </div>
-                )}
-
-                <Space>
+        <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
+            <PageHeader
+                title="SOP 维保系统"
+                subtitle="步骤导航、3D 操作区和工具要求统一在同一工作台内处理"
+                breadcrumb={['维保端', 'SOP 工作台']}
+                actions={(
+                    <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge
+                            label={operationMode === 'exam' ? '考试模式' : operationMode === 'maintenance' ? '维保模式' : '教学模式'}
+                            status={operationMode === 'exam' ? 'warning' : 'active'}
+                        />
+                        {operationMode === 'exam' && (
+                            <>
+                                <Tag
+                                    color={examUrgent ? 'red' : 'blue'}
+                                    style={{ margin: 0, minWidth: 90, textAlign: 'center' }}
+                                >
+                                    倒计时 {examTimeText}
+                                </Tag>
+                                <Tag
+                                    color="green"
+                                    style={{
+                                        margin: 0,
+                                        minWidth: 90,
+                                        textAlign: 'center',
+                                        transition: 'all 0.3s ease',
+                                        transform: scoreFlash ? 'scale(1.05)' : 'scale(1)',
+                                        color: scoreFlash ? '#faad14' : undefined,
+                                        boxShadow: scoreFlash ? '0 0 8px rgba(250, 173, 20, 0.6)' : 'none',
+                                    }}
+                                >
+                                    得分 {scoreState.currentScore}
+                                </Tag>
+                            </>
+                        )}
+                        <Space>
                     <Segmented
                         value={viewMode}
                         onChange={v => {
@@ -862,14 +863,58 @@ function SOPMaintenancePage() {
                             { value: 'maintenance', label: '维保模式' },
                         ]}
                     />
-                </Space>
-            </div>
+                        </Space>
+                    </div>
+                )}
+            />
 
             {/* 主内容区 */}
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
                 {/* 左侧：控制面板 */}
                 <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <SectionCard
+                            title={activeSopScript?.title ?? 'SOP 步骤导航'}
+                            description="保留现有执行逻辑，仅统一为工作台式导航外壳"
+                        >
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="rounded bg-primary/10 px-2 py-1 font-mono text-xs text-primary">
+                                        ATOM-01
+                                    </span>
+                                    <StatusBadge
+                                        label={activeSopScript?.difficulty ?? 'normal'}
+                                        status="pending"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    {(activeSopScript?.steps ?? []).map((step, index) => {
+                                        const isCurrent = sopSceneSync.state.currentStepTitle === step.title;
+                                        const isBlock = step.onFailure?.action === 'block';
+                                        const isSafetyHalt = step.failureReasons?.some((reason) => reason.severity === 'critical');
+                                        return (
+                                            <div
+                                                key={step.stepId}
+                                                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${isCurrent ? 'border-l-[3px] border-primary bg-[#111f33]' : 'bg-[rgba(255,255,255,0.03)]'}`}
+                                            >
+                                                <span style={{ color: isCurrent ? '#58a6ff' : '#8b949e', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                                                    {String(index + 1).padStart(2, '0')}
+                                                </span>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ color: '#e6edf3' }}>{step.title}</div>
+                                                    <div style={{ color: '#8b949e', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {step.description}
+                                                    </div>
+                                                </div>
+                                                {isBlock ? <Lock size={14} color="#fbbf24" /> : null}
+                                                {isSafetyHalt ? <ShieldAlert size={14} color="#f87171" /> : null}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </SectionCard>
+
                         {/* 爆炸图控制 */}
                         <Card size="small" title={<><PartitionOutlined /> 爆炸图控制</>}>
                             <Space direction="vertical" style={{ width: '100%' }}>

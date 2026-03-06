@@ -4,6 +4,16 @@
 
 export type AttemptStatus = 'in_progress' | 'completed' | 'graded' | 'abandoned'
 
+export interface TeachingClass {
+  id: number
+  name: string
+  term?: string | null
+  teacherId?: number | null
+  metadata?: Record<string, unknown> | null
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Assignment {
   id: number
   classId: number

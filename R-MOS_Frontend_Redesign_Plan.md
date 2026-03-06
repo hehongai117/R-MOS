@@ -135,13 +135,13 @@
 | `P1-04` 鉴权体系 | `DONE WITH COMPAT` | 必须对齐 `/auth/login` 返回体，并兼容旧 `access_token`/`refresh_token` 键 | `npm test -- ProtectedRoute` + `npm run build` |
 | `P1-05` 角色布局 | `DONE` | 菜单路径必须使用 canonical route：`/workbench/teaching`、`/admin/console` | `npm run build` |
 | `P1-06` 路由重组 | `DONE` | `/admin/console` 对应 `P2-06`，`/teacher/monitor` 和 `/admin/dashboard` 仅保留别名 | `npm run build` |
-| `P2-01` 通用组件 | `READY` | `src/components/common/` 已存在，应扩展而非重建目录 | `npm run build` |
-| `P2-02` AgentWorkbench | `READY` | 视觉改造可直接做；`user_id` 硬编码留到 `P3-02` 统一处理 | `npm run build` |
-| `P2-03` TrainingWorkbench | `READY WITH STORE EXTENSION` | 当前 `workbenchStore` 仅有 `currentStep/toolStatus/verdict`，子任务内需增量扩展且保持兼容 | `npm test` + `npm run build` |
-| `P2-04` StudentSkills | `READY WITH CONTRACT ADAPTER` | 训练历史接口实际存在，但 profile / weak-step / session 字段需先做组件适配 | `npm run build` |
-| `P2-05` TeacherMonitor | `READY WITH BACKLOG` | 应并入现有 `src/teaching/` 域；教师发送提示接口缺失，attempts 数据也不含姓名/步骤/时长 | `npm run build` |
-| `P2-06` AdminDashboard | `READY WITH HISTORY ADDITIONS` | 首页卡片可用现有接口；趋势图应补用 `metrics/reports` 与 `monitor/metrics/history` | `npm run build` |
-| `P2-07` SOPMaintenance | `READY` | 纯视觉改造，无接口风险 | `npm run build` |
+| `P2-01` 通用组件 | `DONE` | 已落地 `PageHeader / DataCard / StatusBadge / SectionCard / EmptyState` 并统一 export | `npm run build` |
+| `P2-02` AgentWorkbench | `DONE` | 已完成左右双栏、轨迹抽屉视觉重构；`user_id` 硬编码留到 `P3-02` 统一处理 | `npm run build` |
+| `P2-03` TrainingWorkbench | `DONE WITH STORE EXTENSION` | 已增量扩展 `workbenchStore` 且保持现有 API 兼容，工作台接入真实活跃会话与步骤详情 | `npm test` + `npm run build` |
+| `P2-04` StudentSkills | `DONE WITH CONTRACT ADAPTER` | 已完成 profile / weak-step / session 三类字段适配，并接入真实训练历史接口 | `npm run build` |
+| `P2-05` TeacherMonitor | `DONE WITH BACKLOG GUARDRAILS` | 已并入 `src/teaching/` 域，严格按现有 attempts/WS 边界实现，教师提示仍保留为后端 BACKLOG | `npm run build` |
+| `P2-06` AdminDashboard | `DONE WITH HISTORY ADDITIONS` | 已接入 users/approvals/metrics/reports/monitor/history/alerts/health 并 30 秒自动刷新 | `npm run build` |
+| `P2-07` SOPMaintenance | `DONE` | 已补入工作台式标题区与步骤导航外壳，保留现有 3D 渲染组合与逻辑 | `npm run build` |
 | `P3-01` 批量视觉统一 | `READY WITH EXCEPTIONS` | `EvidencePage`、`ApprovalQueuePage`、`LLMMetricsPage` 不是纯视觉，需先做 API 对齐 | `npm run build` |
 | `P3-02` 残余 TODO/API 对齐 | `READY` | 除 TODO 外，还需处理审批页旧 helper 路由漂移 | `npm run build` |
 | `P3-03` 样式清理 | `READY` | 使用 `rg` 检查引用，避免删错 | `npm run build` |
@@ -991,12 +991,12 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 ```
 
 **P2 验收标准：**
-- [ ] AgentWorkbenchPage：发消息/收回复/轨迹抽屉功能正常
-- [ ] TrainingWorkbenchPage：扩展后的 workbenchStore 接入，步骤切换联动正常
-- [ ] StudentSkillsPage：雷达图/热图显示真实数据，时间线使用 `/training/users/{user_id}/sessions` 真实数据并完成字段适配
-- [ ] TeacherMonitorPage：全局 WebSocket 状态可见，班级列表/详情通过轮询与现有 teaching 路由联动
-- [ ] AdminDashboardPage：以 users/approvals/metrics/health/alerts 真实数据正确加载并自动刷新
-- [ ] 整体视觉风格统一：深灰底 + 玻璃卡片 + 工业蓝主色
+- [x] AgentWorkbenchPage：发消息/收回复/轨迹抽屉功能正常
+- [x] TrainingWorkbenchPage：扩展后的 workbenchStore 接入，步骤切换联动正常
+- [x] StudentSkillsPage：雷达图/热图显示真实数据，时间线使用 `/training/users/{user_id}/sessions` 真实数据并完成字段适配
+- [x] TeacherMonitorPage：全局 WebSocket 状态可见，班级列表/详情通过轮询与现有 teaching 路由联动
+- [x] AdminDashboardPage：以 users/approvals/metrics/health/alerts 真实数据正确加载并自动刷新
+- [x] 整体视觉风格统一：深灰底 + 玻璃卡片 + 工业蓝主色
 
 ---
 
@@ -1226,13 +1226,13 @@ PageHeader 标题「系统概览」右侧显示「最后更新 {时间}（font-m
 - [x] P1-06 路由重组 + LoginPage
 
 ### P2（第3-4周）核心页面
-- [ ] P2-01 通用组件库（5个组件）
-- [ ] P2-02 AgentWorkbenchPage 视觉改造
-- [ ] P2-03 TrainingWorkbenchPage 新建（四面板接入 workbenchStore）
-- [ ] P2-04 StudentSkillsPage 新建（三个可视化组件接入）
-- [ ] P2-05 TeacherMonitorPage 新建（WebSocket 实时）
-- [ ] P2-06 AdminDashboardPage 新建
-- [ ] P2-07 SOPMaintenancePage 视觉改造
+- [x] P2-01 通用组件库（5个组件）
+- [x] P2-02 AgentWorkbenchPage 视觉改造
+- [x] P2-03 TrainingWorkbenchPage 新建（四面板接入 workbenchStore）
+- [x] P2-04 StudentSkillsPage 新建（三个可视化组件接入）
+- [x] P2-05 TeacherMonitorPage 新建（WebSocket 实时）
+- [x] P2-06 AdminDashboardPage 新建
+- [x] P2-07 SOPMaintenancePage 视觉改造
 
 ### P3（第5-6周）收尾
 - [ ] P3-01 批量页面视觉统一（12个页面）

@@ -4161,3 +4161,43 @@
   - 本轮已将 `P1-01 ~ P1-06` 在方案文档中显式标为完成，但 `P1 验收标准` 中除构建项外，仍有部分是待后端联调时继续补证据的运行态项。
 - Next Step:
   - 进入 `P2-01` 通用组件抽象与页面骨架替换，并在开始 `P2-05` 前再次确认 WebSocket 边界与 teaching 数据字段。
+
+- DateTime: 2026-03-06 11:27 CST
+- Task: 执行 `P2 · 核心页面改造`，完成 P2-01 ~ P2-07，并同步标注方案状态
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/common/PageHeader.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/common/DataCard.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/common/StatusBadge.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/common/SectionCard.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/common/EmptyState.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/common/index.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/training/TrainingTimeline.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/training.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/adminConsole.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/teaching.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/types/teaching.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/store/workbenchStore.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/store/__tests__/WorkbenchStore.test.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/TrainingWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/StudentSkillsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/teaching/pages/TeacherMonitorPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/admin/AdminDashboardPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx tsc --noEmit
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/store/__tests__/WorkbenchStore.test.ts src/components/training/__tests__/SkillRadarChart.test.tsx src/components/training/__tests__/WeakStepHeatmap.test.tsx src/components/training/__tests__/TrainingTimeline.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - 类型检查：`npx tsc --noEmit` PASS
+  - P2 直接相关单测：`npm test -- src/store/__tests__/WorkbenchStore.test.ts src/components/training/__tests__/SkillRadarChart.test.tsx src/components/training/__tests__/WeakStepHeatmap.test.tsx src/components/training/__tests__/TrainingTimeline.test.tsx` PASS（4 files, 6 tests）
+  - 生产构建：`npm run build` PASS（产物 `dist/assets/index-Dih1MjdU.js`，2,920.10 kB，gzip 868.51 kB）
+- Result: PASS
+- Risks/Notes:
+  - `TeacherMonitorPage` 当前严格限制在现有接口能力内：全局 WS 只用于在线状态提示，学员明细仍靠 `/assignments/{id}/attempts` 轮询，`step_warning / current_step / duration` 仍是后端 BACKLOG。
+  - `TrainingWorkbenchPage` 依赖 `/training/users/{user_id}/active-session` 与 `/training/sessions/{session_id}/detail`；若后端返回 404，页面会按设计降级为空状态而不是展示伪数据。
+  - `AdminDashboardPage` 已接入真实快照与历史接口，但未额外引入图表库，趋势区当前以历史报告列表方式呈现。
+- Next Step:
+  - 进入 `P3-01` 批量页面视觉统一，并先处理 `ApprovalQueuePage` / `LLMMetricsPage` 的 API 对齐问题。
