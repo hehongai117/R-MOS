@@ -3979,3 +3979,72 @@
   - `alembic upgrade head` 在 SQLite 历史迁移链存在兼容限制（ALTER CONSTRAINT / ALTER COLUMN）；CI 迁移步骤改为 PostgreSQL service 执行并已实测通过。
 - Next Step:
   - 继续执行 C-01-a-4：迁移旧端点测试到新路由并逐步移除 backend-ci 的临时 `--ignore` 列表。
+
+- DateTime: 2026-03-06 09:34:38 +0800
+- Task: 前端重构方案修订（接口/鉴权对齐 + ADR补齐 + 已完成项去重）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/adr/ADR.md
+  - /Users/xuhehong/Desktop/r-mos/docs/adr/ADR-FE-REDESIGN-001.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/.codex/skills/skills/skills/doc-coauthoring/SKILL.md
+  - nl -ba R-MOS_Frontend_Redesign_Plan.md | sed -n '1,140p;240,420p;580,740p;860,1020p'
+  - rg -n "@router\\.(get|post|put).*preference|preference" r-mos-backend/app/api/v1/endpoints/agent.py
+  - nl -ba r-mos-backend/app/api/v1/endpoints/auth.py | sed -n '100,230p'
+  - nl -ba r-mos-backend/app/api/v1/endpoints/training.py | sed -n '220,340p'
+  - nl -ba r-mos-backend/app/api/v1/endpoints/websocket.py | sed -n '1,120p'
+  - rg -n "/ws/class/\\{class_id\\}|/api/v1/admin/stats|/api/v1/admin/llm-metrics|atob\\(\\)|rmos_token|修改 __tests__ 目录下任何文件" R-MOS_Frontend_Redesign_Plan.md
+  - test -f .github/workflows/frontend-ci.yml && echo 'frontend-ci: OK'
+  - echo -n '.nvmrc=' && cat .nvmrc
+  - rg -n "ADR-FE-REDESIGN-001|docs/adr/ADR-FE-REDESIGN-001.md" docs/adr/ADR.md docs/adr/ADR-FE-REDESIGN-001.md
+- Tests:
+  - 文档一致性自检：旧错误接口/鉴权假设检索为 0 命中（PASS）
+  - 已完成项去重自检：frontend-ci 存在（PASS）
+  - 已完成项去重自检：根 `.nvmrc=22`（PASS）
+  - ADR 索引与正文关联自检（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次为文档修订任务，未改动业务代码与测试实现；未触发后端/前端回归命令重跑。
+  - `R-MOS_Frontend_Redesign_Plan.md` 已将不存在接口标记为 BACKLOG/TBD，并对鉴权 token 语义改为与后端一致。
+- Next Step:
+  - 按修订后的方案进入实施：优先执行 P1-01~P1-04，并在每个子批次落地最小回归证据与日志记录。
+
+- DateTime: 2026-03-06 09:54:36 +0800
+- Task: 前端重构方案二次对齐（逐子任务消偏：目录/鉴权兼容/教师与管理员页面接口边界）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Frontend_Redesign_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - find r-mos-frontend/src/components -maxdepth 2 -type f | sort
+  - find r-mos-frontend/src/pages -maxdepth 3 -type f | sort
+  - find r-mos-frontend/src/store -maxdepth 2 -type f | sort
+  - find r-mos-frontend/src/api -maxdepth 2 -type f | sort
+  - sed -n '1,260p' r-mos-frontend/src/App.tsx
+  - sed -n '1,260p' r-mos-frontend/src/components/auth/ProtectedRoute.tsx
+  - sed -n '1,260p' r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - sed -n '1,280p' r-mos-frontend/src/store/workbenchStore.ts
+  - sed -n '1,260p' r-mos-frontend/src/components/training/SkillRadarChart.tsx
+  - sed -n '1,260p' r-mos-frontend/src/components/training/TrainingTimeline.tsx
+  - sed -n '1,260p' r-mos-frontend/src/components/training/WeakStepHeatmap.tsx
+  - sed -n '1,260p' r-mos-frontend/src/pages/admin/ApprovalQueuePage.tsx
+  - sed -n '1,260p' r-mos-frontend/src/pages/admin/LLMMetricsPage.tsx
+  - sed -n '120,240p' r-mos-backend/app/api/v1/endpoints/auth.py
+  - sed -n '1,220p' r-mos-backend/app/api/v1/endpoints/approvals.py
+  - sed -n '1520,1665p' r-mos-backend/app/api/v1/endpoints/agent.py
+  - sed -n '149,430p' r-mos-backend/app/api/v1/endpoints/teaching.py
+  - rg -n "src/pages/teacher|components/Auth|/teacher/watch|/teacher/monitor       Lucide|/admin/dashboard       Lucide|显示班级名称|技能等级 Lv\\.x|今日训练次数 / 知识库文档数|workbenchStore\\.project|处理以下三处 TODO|调用现有发送接口|查看工作台快照|从 authStore 读取 class_id|useEffect \\+ axios，显示加载态和错误态|P2-07 新建" R-MOS_Frontend_Redesign_Plan.md
+  - rg -n "workbenchStore\\.project|若无 project|SectionCard『技能雷达』|SectionCard『薄弱步骤』|SectionCard「技能雷达」|SectionCard「薄弱步骤」" R-MOS_Frontend_Redesign_Plan.md
+  - git diff -- R-MOS_Frontend_Redesign_Plan.md
+- Tests:
+  - 文档对齐自检：旧错误路径/旧菜单路由/不存在交互检索为预期结果（PASS）
+  - 方案一致性自检：已补“子任务对齐矩阵”、legacy token 兼容、teaching 域目录对齐、AdminDashboard 真实数据边界（PASS）
+  - 文档内部一致性自检：已移除 `workbenchStore.project` 假设与 StudentSkillsPage 双壳冲突（PASS）
+- Result: PASS
+- Risks/Notes:
+  - 本次仍为文档修订，未改业务代码；未执行前端构建/单测重跑。
+  - `TeacherMonitorPage` 的“教师发送提示”仍缺后端公开接口，已明确降级为 BACKLOG；`ApprovalQueuePage` 需先从旧 `/agent/approval/*` helper 切到 `/ai/approvals` 薄封装。
+- Next Step:
+  - 以当前方案为实施基线，先执行 `P1-01 ~ P1-04`；其中 `P1-04` 必须优先完成 legacy token 兼容与 ProtectedRoute 测试修订。

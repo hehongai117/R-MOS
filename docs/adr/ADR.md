@@ -70,13 +70,35 @@
 - 回滚方式：保留字段结构，将 stepDiagnoses 恢复为空数组即可
 
 ## ADR-TEACH-010
-- 决策：Phase2 基线冻结采用“先 worktree 回归、再合并主目录并复测”的流程
+- 决策：Phase2 基线冻结采用"先 worktree 回归、再合并主目录并复测"的流程
 - 背景：需保证 Phase2 P0/P1/P2 在主目录可复现，且避免结构性重构导致不可追溯差异
 - 合并范围：Phase2 相关后端/前端/文档改动（不引入重构、不移动目录）
 - 约束：
   - 禁止提交缓存文件
   - 合并后必须在主目录重新执行回归清单并追加证据
 - 取舍：
-  - 牺牲部分执行时间，换取“主目录可复现”的基线可信度
+  - 牺牲部分执行时间，换取"主目录可复现"的基线可信度
 - 影响范围：合并流程与验收文档（`docs/testing/TEST_REPORT.md`）
 - 回滚方式：回滚合并提交并保留 worktree 基线记录
+
+## ADR-OPS-003
+- 决策：引入 `psutil` 依赖用于系统资源监控
+- 背景：CompensationPlanner 服务需要获取系统 CPU/内存使用率以评估补偿任务的影响和资源可用性
+- 备选项：
+  - 使用 `resource` 模块（标准库，仅支持部分平台）
+  - 使用 `psutil`（跨平台，功能丰富）
+- 取舍：
+  - 采用 `psutil>=5.9.0` 跨平台兼容性好，API 稳定
+- 影响范围：
+  - 新增 `requirements.txt` 依赖
+  - 后端启动时需确保依赖已安装
+- 回滚方式：移除 `requirements.txt` 中的 `psutil` 并更新依赖安装脚本
+
+## ADR-FE-REDESIGN-001
+- 决策：前端重构采用 “Ant Design 保留 + Tailwind/shadcn 增量接入”，并以现有后端鉴权/路由契约为准
+- 背景：需要统一视觉体系，但不能推倒现有业务页面与回归基线
+- 影响：
+  - 新增前端依赖（Tailwind/shadcn/fontsource/motion）
+  - 迁移期并行维护 AntD Token 与 CSS Tokens
+  - 视觉改造引发的测试变更需同步补证
+- 详细文档：`docs/adr/ADR-FE-REDESIGN-001.md`
