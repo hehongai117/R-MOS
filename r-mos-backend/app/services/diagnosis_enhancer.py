@@ -361,8 +361,7 @@ class DiagnosisEnhancer:
 
     def _compare_baseline(
         self,
-        actual_duration_ms: int,
-        action_count: int
+        actual_duration_ms: int
     ) -> Optional[BaselineComparison]:
         """Compare against baseline metrics"""
         if "duration" not in self.baseline_metrics:

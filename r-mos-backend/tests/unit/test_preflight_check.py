@@ -2,7 +2,12 @@
 P0-4-4: PreflightCheck 单元测试
 测试三个检查器的正常/WARN/BLOCK 场景
 """
+from datetime import datetime
+
 import pytest
+from app.models.incident import Incident
+from app.models.sop import SOP, SOPStep
+from app.models.user import User
 from app.services.preflight_check import (
     PreflightCheckService,
     QualificationChecker,
@@ -212,3 +217,77 @@ async def test_preflight_can_proceed_returns_false_on_block():
 
     assert can_proceed is False
     assert "禁止执行" in reason
+
+
+@pytest.mark.asyncio
+async def test_qualification_checker_blocks_inactive_user_with_db(test_db):
+    checker = QualificationChecker()
+    user = User(
+        email="inactive_user@example.com",
+        password_hash="pbkdf2_sha256$fixture",
+        full_name="Inactive User",
+        role="student",
+        is_active=False,
+    )
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+
+    result = await checker.check(user_id=str(user.id), db=test_db)
+
+    assert result.status == CheckStatus.BLOCK
+    assert "停用" in result.message
+
+
+@pytest.mark.asyncio
+async def test_device_lock_checker_blocks_open_incident_with_db(test_db):
+    checker = DeviceLockChecker()
+    incident = Incident(
+        id="incident-001",
+        robot_id="robot-01",
+        incident_type="fault",
+        incident_level="high",
+        status="open",
+        event_time_start=datetime.utcnow(),
+    )
+    test_db.add(incident)
+    await test_db.commit()
+
+    result = await checker.check(user_id="1", robot_id="robot-01", db=test_db)
+
+    assert result.status == CheckStatus.BLOCK
+    assert result.details["incident_id"] == "incident-001"
+
+
+@pytest.mark.asyncio
+async def test_tool_availability_checker_blocks_when_missing_tools_with_db(test_db):
+    checker = ToolAvailabilityChecker()
+
+    sop = SOP(
+        name="Tool Check SOP",
+        description="SOP for tool checker test",
+        applicable_model="ABB-IRB120",
+    )
+    test_db.add(sop)
+    await test_db.flush()
+
+    step = SOPStep(
+        sop_id=sop.id,
+        step_index=1,
+        title="Use tools",
+        description="Need two tools",
+        expected_action="inspect",
+        tools_required=["wrench", "gauge"],
+    )
+    test_db.add(step)
+    await test_db.commit()
+
+    result = await checker.check(
+        user_id="1",
+        sop_id=sop.id,
+        available_tools=["wrench"],
+        db=test_db,
+    )
+
+    assert result.status == CheckStatus.BLOCK
+    assert result.details["shortages"] == ["gauge"]

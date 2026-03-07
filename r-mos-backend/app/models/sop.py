@@ -53,6 +53,7 @@ class SOPStep(Base, TimestampMixin):
     action_params = Column(JSON, nullable=True, comment="操作参数（JSON）")
     validation_rules = Column(JSON, nullable=True, comment="验证规则（JSON）")
     is_critical = Column(Boolean, default=False, comment="是否为关键步骤")
+    severity_level = Column(String(20), default="WARN", comment="严重程度等级：INFO/WARN/SAFETY_HALT")
     timeout_seconds = Column(Integer, default=300, comment="超时时长（秒）")
     allow_skip = Column(Boolean, default=False, comment="是否允许跳过")
     hints = Column(JSON, nullable=True, comment="提示信息（JSON）")

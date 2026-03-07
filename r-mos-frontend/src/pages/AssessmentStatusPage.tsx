@@ -6,24 +6,7 @@ import { listAssessments } from '@/api/assessment'
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import type { ExternalAssessmentListItem } from '@/types/assessment'
 
-const mockAssessments: ExternalAssessmentListItem[] = [
-  {
-    assessment_id: 'assess-001',
-    provider_id: 'provider-01',
-    assessment_type: 'diagnosis',
-    status: 'active',
-    report_time: '2026-01-16T10:00:00Z',
-    ingest_time: '2026-01-16T10:01:00Z',
-  },
-  {
-    assessment_id: 'assess-002',
-    provider_id: 'provider-02',
-    assessment_type: 'phm',
-    status: 'disputed',
-    report_time: '2026-01-16T09:40:00Z',
-    ingest_time: '2026-01-16T09:42:00Z',
-  },
-]
+
 
 function formatTime(value: string) {
   const date = new Date(value)
@@ -43,7 +26,7 @@ const AssessmentStatusPage = () => {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [usingMock, setUsingMock] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     const fetchAssessments = async () => {
@@ -52,12 +35,12 @@ const AssessmentStatusPage = () => {
         const response = await listAssessments({ page, size: pageSize })
         setAssessments(response.items)
         setTotal(response.total)
-        setUsingMock(false)
+        setFetchError(false)
       } catch {
-        message.warning('后端不可用，已降级到本地 mock 数据')
-        setAssessments(mockAssessments)
-        setTotal(mockAssessments.length)
-        setUsingMock(true)
+        message.warning('评估数据加载失败，请稍后重试')
+        setAssessments([])
+        setTotal(0)
+        setFetchError(true)
       } finally {
         setLoading(false)
       }
@@ -109,7 +92,7 @@ const AssessmentStatusPage = () => {
     <div className="space-y-6">
       <PageHeader
         title="外部评估状态"
-        subtitle={usingMock ? '当前使用本地 mock 数据' : '来自外部评估引用的状态'}
+        subtitle={fetchError ? '数据加载失败，显示可能不完整' : '来自外部评估引用的状态'}
         breadcrumb={['通用', '评估状态']}
       />
 

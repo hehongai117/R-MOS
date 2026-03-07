@@ -47,6 +47,10 @@ async def test_audit_query_indexes_exist() -> None:
 @pytest.mark.asyncio
 async def test_audit_trace_query_explain_uses_trace_index() -> None:
     database_url = _require_database_url()
+    backend = sa.engine.make_url(database_url).get_backend_name()
+    if backend != "postgresql":
+        pytest.skip("当前数据库非 PostgreSQL，跳过 G-001 执行计划索引命中断言。")
+
     engine = create_async_engine(database_url, future=True)
     trace_id = f"g001-trace-{uuid4().hex[:12]}"
 

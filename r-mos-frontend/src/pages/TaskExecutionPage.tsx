@@ -15,6 +15,7 @@ import { EvidencePanel } from '@/components/EvidencePanel';
 import { GuidanceModeModal } from '@/components/GuidanceModeModal';
 import { getUserPreference, updateGuidanceMode } from '@/api/preference';
 import { GuidanceMode } from '@/types/user';
+import { useAuthStore } from '@/store/authStore';
 
 const getResponseStatus = (error: unknown): number | undefined => {
   if (typeof error !== 'object' || error === null) return undefined;
@@ -38,15 +39,10 @@ const TaskExecutionPage: React.FC = () => {
   const [executing, setExecuting] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  // Evidence state (mock for now - will integrate with API)
+  // Evidence state — initially empty, populated when step execution provides evidence data
   const [evidenceStatus, _setEvidenceStatus] = useState({
-    required: [
-      { id: 'ev-1', type: 'trajectory' as const, status: 'collected' as const },
-      { id: 'ev-2', type: 'screenshot' as const, status: 'required' as const },
-    ],
-    collected: [
-      { id: 'ev-1', type: 'trajectory' as const, status: 'collected' as const },
-    ],
+    required: [] as Array<{ id: string; type: 'trajectory' | 'screenshot'; status: 'collected' | 'required' }>,
+    collected: [] as Array<{ id: string; type: 'trajectory' | 'screenshot'; status: 'collected' | 'required' }>,
   });
 
   // P2-4: Guidance mode modal state
@@ -181,22 +177,22 @@ const TaskExecutionPage: React.FC = () => {
     message.info('正在连接教练Agent...');
   };
 
-  // Mock next action from Coach Agent
-  const nextAction = {
-    actionType: 'select_tool',
-    target: 'screwdriver',
-    explanation: '请选择合适的螺丝刀工具',
-  };
+  // BACKLOG: nextAction should come from Coach Agent API once implemented
+  const nextAction = task
+    ? { actionType: 'execute_step', target: steps[task.current_step_index]?.title ?? '', explanation: '请执行当前步骤' }
+    : { actionType: 'select_tool', target: '', explanation: '加载中' };
 
-  // Mock permissions (should come from backend RBAC)
+  // Permissions derived from task status + user role
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isAdmin = userRole === 'admin';
   const permissions = {
     canStart: task?.status === 'pending',
     canPause: task?.status === 'in_progress',
     canResume: task?.status === 'paused',
-    canSkip: false,
-    canRollback: false,
+    canSkip: isAdmin,
+    canRollback: isAdmin,
     canAbort: true,
-    canForceContinue: false,
+    canForceContinue: isAdmin,
   };
 
   // Map task status to FSM state

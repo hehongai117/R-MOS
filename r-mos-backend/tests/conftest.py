@@ -1,18 +1,23 @@
-import pytest
+from datetime import datetime
+from uuid import uuid4
+
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
 # Import models to register tables with SQLAlchemy metadata
-from app.models import sop, task, event, snapshot, fault, incident, observation, evidence, assessment  # noqa: F401
+import app.models as app_models  # noqa: F401
+from app.models import skill_profile, training, training_submission  # noqa: F401
 from app.models.sop import SOP, SOPStep
+from app.models.training import TrainingSession
+from app.models.user import User
 from app.schemas.task import TaskCreate
 from app.services.task_service import TaskService
 
 
 @pytest_asyncio.fixture
-async def db_session():
+async def test_engine() -> AsyncEngine:
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -20,12 +25,67 @@ async def db_session():
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
-    Session = async_sessionmaker(engine, expire_on_commit=False)
-    async with Session() as session:
+
+@pytest_asyncio.fixture
+async def test_session_factory(
+    test_engine: AsyncEngine,
+) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(test_engine, expire_on_commit=False)
+
+
+@pytest_asyncio.fixture
+async def test_db(
+    test_session_factory: async_sessionmaker[AsyncSession],
+) -> AsyncSession:
+    async with test_session_factory() as session:
         yield session
 
-    await engine.dispose()
+
+@pytest_asyncio.fixture
+async def db_session(test_db: AsyncSession) -> AsyncSession:
+    """Backward-compatible alias for legacy tests."""
+    yield test_db
+
+
+@pytest_asyncio.fixture
+async def test_user(test_db: AsyncSession) -> User:
+    user = User(
+        email=f"student_{uuid4().hex[:8]}@example.com",
+        password_hash="pbkdf2_sha256$fixture",
+        full_name="Fixture Student",
+        role="student",
+        hint_level=3,
+    )
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_session(
+    test_db: AsyncSession,
+    test_user: User,
+) -> TrainingSession:
+    training_session = TrainingSession(
+        session_id=f"sess-{uuid4()}",
+        project_id=f"project-{uuid4()}",
+        user_id=test_user.id,
+        status="active",
+        current_step=0,
+        project_snapshot={"estimated_time": 60},
+        total_duration=0,
+        started_at=datetime.utcnow(),
+    )
+    test_db.add(training_session)
+    await test_db.commit()
+    await test_db.refresh(training_session)
+    return training_session
 
 
 async def _create_sop(db_session, *, allow_skip_first_step: bool = False) -> SOP:

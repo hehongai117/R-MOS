@@ -5,14 +5,14 @@ import React from 'react';
 import { Card, Tag, List, Badge, Space, Tooltip, Progress } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 
-interface EvidenceItem {
+export interface EvidenceItem {
   id: string;
   type: 'trajectory' | 'sensor_reading' | 'screenshot' | 'verdict' | 'timing' | 'state_snapshot';
   status: 'required' | 'collected' | 'missing';
   description?: string;
 }
 
-interface EvidencePanelProps {
+export interface EvidencePanelProps {
   // Step info
   stepId: string;
   stepName: string;

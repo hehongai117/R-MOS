@@ -55,22 +55,11 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
         run: alembic upgrade head
 
-      - name: Pytest core 14 services coverage gate (C-01-a4 excludes)
+      - name: Pytest core 14 services coverage gate
         env:
           DATABASE_URL: sqlite+aiosqlite:///./rmos_main.db
         run: |
           pytest tests/ \
-            --ignore=tests/unit/test_ai_commands_api.py \
-            --ignore=tests/unit/test_ai_replay_api.py \
-            --ignore=tests/unit/test_approval_api.py \
-            --ignore=tests/unit/test_approval_query_api.py \
-            --ignore=tests/unit/test_approval_read_api.py \
-            --ignore=tests/unit/test_e2e_phase5_t001_t004.py \
-            --ignore=tests/unit/test_eval_metrics_phase5.py \
-            --ignore=tests/unit/test_read_tool_success_rate_api.py \
-            --ignore=tests/unit/test_tool_execution_after_approval_api.py \
-            --ignore=tests/unit/test_tool_security_guard_api.py \
-            --ignore=tests/unit/test_training_memory_writer.py \
             --cov=app.services.approval_service \
             --cov=app.services.preflight_check \
             --cov=app.services.identity.agent_policy_factory \
@@ -88,22 +77,11 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=70
 
-      - name: Pytest app coverage xml (reference, C-01-a4 excludes)
+      - name: Pytest app coverage xml (reference)
         env:
           DATABASE_URL: sqlite+aiosqlite:///./rmos_main.db
         run: |
           pytest tests/ \
-            --ignore=tests/unit/test_ai_commands_api.py \
-            --ignore=tests/unit/test_ai_replay_api.py \
-            --ignore=tests/unit/test_approval_api.py \
-            --ignore=tests/unit/test_approval_query_api.py \
-            --ignore=tests/unit/test_approval_read_api.py \
-            --ignore=tests/unit/test_e2e_phase5_t001_t004.py \
-            --ignore=tests/unit/test_eval_metrics_phase5.py \
-            --ignore=tests/unit/test_read_tool_success_rate_api.py \
-            --ignore=tests/unit/test_tool_execution_after_approval_api.py \
-            --ignore=tests/unit/test_tool_security_guard_api.py \
-            --ignore=tests/unit/test_training_memory_writer.py \
             --cov=app \
             --cov-report=xml \
             --cov-config=.coveragerc

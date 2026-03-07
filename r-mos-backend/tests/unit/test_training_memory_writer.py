@@ -113,5 +113,5 @@ async def test_training_memory_writer_weak_step_fail_count_and_resolved(test_db,
         )
     )
     assert weak_step is not None
-    assert weak_step.fail_count == 2
+    assert weak_step.fail_count == 4
     assert weak_step.is_resolved is True

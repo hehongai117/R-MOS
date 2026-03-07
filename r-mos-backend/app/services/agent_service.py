@@ -10,12 +10,18 @@ from enum import Enum
 
 
 class AgentRequest(BaseModel):
-    """Request to agent"""
+    """Request to agent - Extended with resource binding fields (Phase 0)"""
     request_id: str = Field(default_factory=lambda: f"req-{uuid.uuid4().hex[:8]}")
     user_id: str
     message: str
     context: Dict[str, Any] = Field(default_factory=dict)
     timestamp: int = Field(default_factory=lambda: int(time.time() * 1000))
+    # Phase 0: Extended fields for Gate-0 hard gate
+    resource_ref: Optional[Dict[str, Any]] = Field(default=None, description="Resource reference for binding")
+    policy_context: Optional[Dict[str, Any]] = Field(default=None, description="Policy evaluation context")
+    intent_classification: Optional[str] = Field(default=None, description="Intent classification result")
+    trace_id: Optional[str] = Field(default=None, description="Trace ID for replay")
+    idempotency_key: Optional[str] = Field(default=None, description="Idempotency key for deduplication")
 
 
 class AgentResponse(BaseModel):

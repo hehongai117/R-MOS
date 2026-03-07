@@ -1,0 +1,145 @@
+tests/e2e/test_agent_execute.py: 9
+tests/unit/test_agent_authz.py: 11
+tests/unit/test_ai_commands_api.py: 12
+tests/unit/test_ai_replay_api.py: 3
+tests/unit/test_approval_api.py: 3
+tests/unit/test_approval_query_api.py: 4
+tests/unit/test_approval_read_api.py: 5
+tests/unit/test_attempt_replay_api.py: 4
+tests/unit/test_audit_events_api.py: 5
+tests/unit/test_audit_query_index_gate.py: 2
+tests/unit/test_auth_api.py: 9
+tests/unit/test_authz_guard_api.py: 3
+tests/unit/test_cors_settings.py: 1
+tests/unit/test_deny_audit_entrypoint_gate.py: 1
+tests/unit/test_diagnosis_service.py: 7
+tests/unit/test_e2e_phase5_t001_t004.py: 4
+tests/unit/test_eval_metrics_phase5.py: 7
+tests/unit/test_evidence_cards_api.py: 3
+tests/unit/test_evidence_engine.py: 3
+tests/unit/test_intent_engine.py: 13
+tests/unit/test_llm_router.py: 11
+tests/unit/test_migration_contract.py: 1
+tests/unit/test_mock_adapter.py: 3
+tests/unit/test_phase2_contract.py: 11
+tests/unit/test_phase3_contract.py: 8
+tests/unit/test_phase4_contract.py: 3
+tests/unit/test_preflight_check.py: 10
+tests/unit/test_prompt_engine.py: 16
+tests/unit/test_read_tool_success_rate_api.py: 3
+tests/unit/test_redteam_batch_j003_api.py: 3
+tests/unit/test_skill_governance_api.py: 8
+tests/unit/test_skill_registry_migration_gate.py: 1
+tests/unit/test_smoke_help_gate.py: 1
+tests/unit/test_task_service.py: 3
+tests/unit/test_teaching_api.py: 22
+tests/unit/test_teaching_models.py: 2
+tests/unit/test_teaching_schemas.py: 4
+tests/unit/test_teaching_service.py: 5
+tests/unit/test_timeline_schema_gate.py: 1
+tests/unit/test_tool_execution_after_approval_api.py: 5
+tests/unit/test_tool_security_guard_api.py: 5
+tests/unit/test_training_phase2_api.py: 4
+
+=============================== warnings summary ===============================
+app/schemas/task.py:22
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/task.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TaskResponse(BaseModel):
+
+app/schemas/task.py:61
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/task.py:61: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StepExecutionResponse(BaseModel):
+
+app/adapters/schemas.py:19
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/adapters/schemas.py:19: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class JointState(BaseModel):
+
+app/adapters/schemas.py:64
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/adapters/schemas.py:64: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SensorData(BaseModel):
+
+app/adapters/schemas.py:128
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/adapters/schemas.py:128: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TelemetryMessage(BaseModel):
+
+app/core/config.py:8
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/core/config.py:8: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+app/schemas/auth.py:12
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/auth.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class LoginRequest(BaseModel):
+
+app/schemas/auth.py:31
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/auth.py:31: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class RegisterRequest(BaseModel):
+
+app/schemas/auth.py:50
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/auth.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TokenResponse(BaseModel):
+
+app/api/v1/endpoints/adapter.py:14
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/adapter.py:14: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class FaultInjectionRequest(BaseModel):
+
+app/schemas/sop.py:29
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/sop.py:29: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SOPStepResponse(SOPStepBase):
+
+app/schemas/sop.py:60
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/sop.py:60: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SOPResponse(SOPBase):
+
+app/schemas/sop.py:73
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/sop.py:73: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SOPDeleteWarning(BaseModel):
+
+app/schemas/sop.py:100
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/sop.py:100: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SOPDeleteResponse(BaseModel):
+
+app/schemas/sop.py:119
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/sop.py:119: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SOPListItem(BaseModel):
+
+app/schemas/fault.py:65
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/fault.py:65: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class FaultCaseResponse(FaultCaseBase):
+
+app/schemas/fault.py:75
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/fault.py:75: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class FaultCaseListItem(BaseModel):
+
+app/schemas/incident.py:48
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/incident.py:48: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class IncidentResponse(IncidentCreate):
+
+app/schemas/observation.py:40
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/observation.py:40: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ObservationResponse(ObservationCreate):
+
+app/schemas/evidence.py:60
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/evidence.py:60: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class EvidenceBundleResponse(EvidenceBundleCreate):
+
+app/schemas/assessment.py:95
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/assessment.py:95: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AssessmentProviderResponse(BaseModel):
+
+app/schemas/assessment.py:138
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/schemas/assessment.py:138: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExternalAssessmentResponse(ExternalAssessmentCreate):
+
+app/api/v1/endpoints/agent.py:335
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/agent.py:335: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AgentExecuteRequest(BaseModel):
+
+app/api/v1/endpoints/training.py:37
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/training.py:37: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SessionResponse(BaseModel):
+
+app/api/v1/endpoints/training.py:55
+  /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/training.py:55: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StepRecordResponse(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

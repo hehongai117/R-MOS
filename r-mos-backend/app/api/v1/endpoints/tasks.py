@@ -12,6 +12,7 @@ from app.schemas.report import TaskReport
 from app.services.task_service import TaskService
 from app.services.event_service import EventService
 from app.services.scoring_service import ScoringService
+from app.services.preflight_check import preflight_check_service
 from app.models.task import TaskStatus
 from app.core.exceptions import BusinessRuleViolation
 
@@ -23,12 +24,40 @@ async def create_task(
     request: TaskCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """创建Task"""
+    """创建Task（带执行前检查）"""
+    # P0-4-3: 执行前检查
+    if request.user_id:
+        # 将 user_id 转换为字符串（preflight check 使用字符串）
+        user_id_str = str(request.user_id)
+
+        # 获取 SOP 中的 robot_id（如果有）
+
+        robot_id = None
+
+        can_proceed, reason = await preflight_check_service.can_proceed(
+            user_id=user_id_str,
+            sop_id=request.sop_id,
+            robot_id=robot_id,
+            db=db,
+        )
+
+        if not can_proceed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_type": "PreflightCheckFailed",
+                    "message": "执行前检查未通过",
+                    "reason": reason
+                }
+            )
+
     try:
         service = TaskService(db)
         task = await service.create_task(request)
         return task
     except BusinessRuleViolation:
+        raise
+    except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

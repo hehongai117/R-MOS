@@ -130,7 +130,45 @@ class TaskService:
         # 2. 验证步骤顺序（V2.3核心逻辑 - 响应审计P0-NEW-02）
         expected_step_index = task.current_step_index + 1
         requested_step_index = request.step_index
-        
+
+        # 获取当前步骤信息用于 severity 检查
+        current_step = await self._get_sop_step(sop.id, requested_step_index)
+
+        # 3. 检查 severity_level 并分级响应
+        if current_step:
+            severity = getattr(current_step, 'severity_level', 'WARN') or 'WARN'
+
+            if severity == 'SAFETY_HALT':
+                # SAFETY_HALT: 阻止执行并记录安全事件
+                await self.event_service.create_event(
+                    task_id=task_id,
+                    event_type=EventType.STEP_BLOCKED.value,
+                    step_index=requested_step_index,
+                    action=request.action,
+                    result="blocked",
+                    error_message=f"安全中断：步骤{requested_step_index}为SAFETY_HALT级别"
+                )
+                raise BusinessRuleViolation(
+                    message=f"安全中断：步骤{requested_step_index} ({current_step.title}) 为安全关键步骤，需人工确认后执行",
+                    code="SAFETY_HALT_BLOCKED",
+                    details={
+                        "step_index": requested_step_index,
+                        "step_title": current_step.title,
+                        "severity_level": severity
+                    }
+                )
+            elif severity == 'WARN':
+                # WARN: 记录警告但允许执行
+                await self.event_service.create_event(
+                    task_id=task_id,
+                    event_type=EventType.STEP_WARNING.value,
+                    step_index=requested_step_index,
+                    action=request.action,
+                    result="warning",
+                    error_message=f"警告：步骤{requested_step_index}为WARN级别"
+                )
+            # INFO: 正常执行，无特殊处理
+
         # 情况1：正常顺序执行
         if requested_step_index == expected_step_index:
             step_status = "success"

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Any, AsyncGenerator
 from enum import Enum
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.llm import llm_router, LLMProvider
@@ -166,12 +167,56 @@ class ProjectGenerator:
 
         获取 skill_level / weak_steps / completed_tasks / avg_duration
         """
-        # TODO: 实际从 MemoryHub 获取
+        from app.models.skill_profile import StudentSkillProfile, StudentWeakStep
+        from app.models.training import TrainingSession
+        from app.models.user import User
+
+        user_result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = user_result.scalar_one_or_none()
+
+        profile_result = await self.db.execute(
+            select(StudentSkillProfile).where(StudentSkillProfile.user_id == user_id)
+        )
+        profile = profile_result.scalar_one_or_none()
+
+        weak_result = await self.db.execute(
+            select(StudentWeakStep.step_id)
+            .where(
+                StudentWeakStep.user_id == user_id,
+                StudentWeakStep.is_resolved.is_(False),
+            )
+            .order_by(StudentWeakStep.fail_count.desc())
+            .limit(3)
+        )
+        weak_steps = [row[0] for row in weak_result.all() if row[0]]
+
+        session_result = await self.db.execute(
+            select(TrainingSession.project_id, TrainingSession.total_duration)
+            .where(
+                TrainingSession.user_id == user_id,
+                TrainingSession.status == "submitted",
+            )
+            .order_by(TrainingSession.submitted_at.desc())
+            .limit(10)
+        )
+        session_rows = session_result.all()
+        completed_tasks = [row[0] for row in session_rows if row[0]]
+        durations = [int(row[1] or 0) for row in session_rows if row[1] is not None]
+        avg_duration_minutes = int(sum(durations) / len(durations) / 60) if durations else 45
+
+        skill_level = int(getattr(profile, "overall_level", 1) or 1)
+        hint_level = int(getattr(user, "hint_level", 3) or 3)
+        if weak_steps:
+            hint_level = min(hint_level + 1, 5)
+
         return {
-            "skill_level": 2,
-            "weak_steps": ["step_002", "step_005"],
-            "completed_tasks": [],
-            "avg_duration": 45,
+            "skill_level": skill_level,
+            "weak_steps": weak_steps,
+            "completed_tasks": completed_tasks,
+            "avg_duration": avg_duration_minutes,
+            "hint_level": hint_level,
         }
 
     async def _generate_project(
@@ -228,6 +273,7 @@ class ProjectGenerator:
 薄弱步骤: {', '.join(history_context.get('weak_steps', [])[:3])}
 已完成任务数: {len(history_context.get('completed_tasks', []))}
 平均用时: {history_context.get('avg_duration', 0)}分钟
+建议提示等级: L{history_context.get('hint_level', 3)}
 """
 
         prompt = f"""你是一位维保培训专家。请根据以下信息生成一个训练项目。
@@ -250,6 +296,7 @@ class ProjectGenerator:
 3. 重点强化步骤: {', '.join(history_context.get('weak_steps', [])[:3])}
 4. 避免重复: 不要生成学员已完成的任务
 5. 估计时长: 60分钟
+6. 提示深度按建议提示等级执行: L{history_context.get('hint_level', 3)}
 
 ## 输出格式 (JSON)
 请直接输出 JSON，不要包含其他内容：
@@ -312,6 +359,7 @@ class ProjectGenerator:
                 description=data.get("description", ""),
                 estimated_time=data.get("estimated_time", 60),
                 difficulty_cap=data.get("difficulty_cap", 5),
+                emphasize_steps=data.get("emphasize_steps", []),
                 steps=[StepConfig(**s) for s in data.get("steps", [])],
                 tools_checklist=[ToolConfig(**t) for t in data.get("tools_checklist", [])],
                 verdict_config=VerdictConfig(**data.get("verdict_config", {})),
@@ -345,7 +393,7 @@ class ProjectGenerator:
             project.steps.insert(0, safety_step)
 
         # UF-04-c-3: verdict_config 生成规则
-        # TODO: 根据 intent 类型设置 mode
+
 
         return project
 

@@ -17,6 +17,8 @@ class EventType(str, Enum):
     TASK_RESUMED = "task_resumed"        # V2.1.2补充
     STEP_EXECUTED = "step_executed"
     STEP_SKIPPED = "step_skipped"        # V2.1.2补充
+    STEP_BLOCKED = "step_blocked"         # 安全中断
+    STEP_WARNING = "step_warning"        # 步骤警告
     FAULT_DETECTED = "fault_detected"
     FAULT_CLEARED = "fault_cleared"
     SNAPSHOT_CREATED = "snapshot_created"

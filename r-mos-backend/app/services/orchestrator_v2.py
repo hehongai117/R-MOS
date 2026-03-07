@@ -220,7 +220,7 @@ class OrchestratorV2:
             {"description": "Executes robot tasks"}
         )
 
-    def _default_module_handler(self, context: TaskContext, params: Dict[str, Any]) -> Any:
+    def _default_module_handler(self, context: TaskContext) -> Any:
         """Default module handler placeholder"""
         return {"status": "ok", "message": "Module handler not implemented"}
 

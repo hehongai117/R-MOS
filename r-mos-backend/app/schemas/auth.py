@@ -3,7 +3,7 @@
 
 用于登录、Token等请求和响应
 """
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
@@ -48,11 +48,15 @@ class RegisterRequest(BaseModel):
 # ============ 响应Schema ============
 
 class TokenResponse(BaseModel):
-    """Token响应"""
+    """Token响应 - V0.2 UF-01-c 新增 role 和 default_route"""
     access_token: str = Field(..., description="访问Token")
     refresh_token: str = Field(..., description="刷新Token")
     token_type: str = Field(default="bearer", description="Token类型")
     expires_in: int = Field(..., description="过期时间（秒）")
+    role: str = Field(default="student", description="用户角色: student | teacher | admin")
+    default_route: str = Field(..., description="默认跳转路由")
+    welcome_summary: Optional[str] = Field(default=None, description="登录欢迎摘要")
+    unfinished_session: Optional[dict[str, Any]] = Field(default=None, description="未完成训练会话")
 
     class Config:
         json_schema_extra = {
@@ -60,7 +64,9 @@ class TokenResponse(BaseModel):
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "token_type": "bearer",
-                "expires_in": 1800
+                "expires_in": 1800,
+                "role": "student",
+                "default_route": "/workbench/training"
             }
         }
 

@@ -4398,3 +4398,26 @@
   - admin `agent/*` 接口 `403/500`、teacher WebSocket 失败等联调问题仍未处理。
 - Next Step:
   - 若继续做联调，应优先用浏览器验证 `/maintenance` 的螺丝选择 -> 工具选择 -> 裁决级拆卸提示链路，并决定是否还要恢复旧的独立 demo 页面。
+
+- DateTime: 2026-03-07 11:40 CST
+- Task: 将当前工作区完整提交为本地快照，作为大规模试验改动前的可回退基线
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+  - 其余已存在于工作区的全部已修改、已删除、未跟踪文件（显式排除 `/Users/xuhehong/Desktop/r-mos/开源机器人`）
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && git status --short
+  - cd /Users/xuhehong/Desktop/r-mos && git diff --name-only
+  - cd /Users/xuhehong/Desktop/r-mos && git add -A
+  - cd /Users/xuhehong/Desktop/r-mos && git status --short | rg '开源机器人'
+  - cd /Users/xuhehong/Desktop/r-mos && git commit -m "chore: snapshot current workspace before experiment"
+  - cd /Users/xuhehong/Desktop/r-mos && git rev-parse HEAD
+  - cd /Users/xuhehong/Desktop/r-mos && git status --short
+- Tests:
+  - 代码测试：未执行；本次任务仅创建本地回退快照，不引入新的产品逻辑改动
+  - Git 验证：`git status --short | rg '开源机器人'` 无输出，且要求 `git commit` 成功并且提交后 `git status --short` 为空
+- Result: PASS
+- Risks/Notes:
+  - 本次提交会包含当前工作区内除 `开源机器人` 外的全部脏改动与未跟踪文件，用于完整回退，不做内容筛选
+  - 不执行 `git push`；若后续需要远端备份，必须由你单独授权
+- Next Step:
+  - 记录 commit hash，并在你开始试验前确认 `git status --short` 为空；需要回退时优先使用 `git reset --hard <hash>`

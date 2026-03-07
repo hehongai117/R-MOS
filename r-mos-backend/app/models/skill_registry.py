@@ -9,7 +9,7 @@ from .base import Base
 
 
 class Skill(Base):
-    """Skill 注册与版本主表。"""
+    """Skill 注册与版本主表。Extended with 5 governance fields (Phase 0 Week 2)"""
 
     __tablename__ = "skills"
     __table_args__ = (
@@ -31,6 +31,18 @@ class Skill(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Phase 0: Extended fields (5 new governance fields)
+    # 1. Evidence requirements
+    evidence_requirements = Column(JSON, nullable=True)
+    # 2. Approval workflow
+    approval_workflow = Column(JSON, nullable=True)
+    # 3. Policy rules
+    policy_rules = Column(JSON, nullable=True)
+    # 4. Execution timeout
+    execution_timeout_ms = Column(Integer, nullable=True)
+    # 5. Deprecated at
+    deprecated_at = Column(DateTime, nullable=True)
 
 
 class SkillReview(Base):

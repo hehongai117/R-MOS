@@ -35,7 +35,12 @@ class Settings(BaseSettings):
     
     # 日志配置
     LOG_LEVEL: str = "INFO"
-    
+
+    # Agent V2 Feature Flag (Phase 1 Week 5)
+    AGENT_V2_ENABLED: bool = False  # Set to True to enable V2 features
+    AGENT_V2_DEFAULT_BUDGET_MS: int = 300000  # 5 minutes
+    AGENT_V2_IDEMPOTENCY_TTL_SECONDS: int = 3600  # 1 hour
+
     class Config:
         env_file = ".env"
         case_sensitive = True

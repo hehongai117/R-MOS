@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, Request
@@ -16,6 +17,7 @@ from app.core.security import hash_password, hash_token, is_strong_password, ver
 from app.models.access_token import AccessToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.services.identity.session_initializer import SessionInitializer
 from app.schemas.auth import (
     LoginRequest,
     MessageResponse,
@@ -29,6 +31,7 @@ from app.schemas.auth import (
 router = APIRouter()
 ACCESS_TOKEN_EXPIRES_SECONDS = 900
 REFRESH_TOKEN_EXPIRES_SECONDS = 7 * 24 * 60 * 60
+logger = logging.getLogger(__name__)
 
 
 def _error_response(
@@ -149,11 +152,38 @@ async def login(
     )
     await db.commit()
 
+    # UF-01-c: Get user role and default route
+    user_role = getattr(user, 'role', 'student')
+    default_route = _get_default_route(user_role)
+    welcome_summary = None
+    unfinished_session = None
+    try:
+        initializer = SessionInitializer(db)
+        session_context = await initializer.initialize_session(user.id)
+        welcome_summary = session_context.welcome_summary
+        unfinished_session = session_context.unfinished_session
+    except Exception as exc:  # pragma: no cover - login should not fail on context init
+        logger.warning(f"[UF-02-a] Session init skipped for user {user.id}: {exc}")
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRES_SECONDS,
+        role=user_role,
+        default_route=default_route,
+        welcome_summary=welcome_summary,
+        unfinished_session=unfinished_session,
     )
+
+
+def _get_default_route(role: str) -> str:
+    """根据角色获取默认跳转路由"""
+    routes = {
+        "student": "/workbench/training",
+        "teacher": "/workbench/teaching",
+        "admin": "/admin/console",
+    }
+    return routes.get(role, "/workbench/training")
 
 
 @router.post("/auth/refresh", response_model=TokenResponse, status_code=200)
@@ -208,10 +238,20 @@ async def refresh_token(
     )
     await db.commit()
 
+    # Get user info for role
+    user_result = await db.execute(
+        select(User).where(User.id == session.user_id)
+    )
+    user = user_result.scalar_one_or_none()
+    user_role = getattr(user, 'role', 'student') if user else 'student'
+    default_route = _get_default_route(user_role)
+
     return TokenResponse(
         access_token=new_access_token,
         refresh_token=new_refresh_token,
         expires_in=ACCESS_TOKEN_EXPIRES_SECONDS,
+        role=user_role,
+        default_route=default_route,
     )
 
 

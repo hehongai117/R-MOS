@@ -7,11 +7,12 @@ from .base import Base
 
 
 class Command(Base):
-    """AI 命令入口记录。"""
+    """AI 命令入口记录。Extended with 10 evidence fields (Phase 0 Week 2)"""
 
     __tablename__ = "commands"
     __table_args__ = (
         UniqueConstraint("trace_id", name="ux_commands_trace_id"),
+        Index("ix_commands_risk_status", "risk_level", "status"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -24,13 +25,36 @@ class Command(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Phase 0: Extended fields (10 new evidence fields)
+    # 1. Resource binding
+    resource_ref = Column(JSON, nullable=True)
+    # 2. Policy context
+    policy_context = Column(JSON, nullable=True)
+    # 3. Intent classification
+    intent_classification = Column(String(64), nullable=True, index=True)
+    # 4. Idempotency key
+    idempotency_key = Column(String(128), nullable=True, unique=True, index=True)
+    # 5. Policy decision result
+    policy_decision = Column(JSON, nullable=True)
+    # 6. Risk level
+    risk_level = Column(String(8), nullable=True, index=True)
+    # 7. Evidence references
+    evidence_refs = Column(JSON, nullable=False, default=list)
+    # 8. Approved by
+    approved_by = Column(String(64), nullable=True)
+    # 9. Approved at
+    approved_at = Column(DateTime, nullable=True)
+    # 10. Execution budget
+    execution_budget_ms = Column(Integer, nullable=True)
+
 
 class AIToolCall(Base):
-    """命令内的工具调用记录。"""
+    """命令内的工具调用记录。Extended with 8 evidence fields (Phase 0 Week 2)"""
 
     __tablename__ = "ai_tool_calls"
     __table_args__ = (
         Index("ix_tool_calls_trace_skill", "trace_id", "skill_id"),
+        Index("ix_tool_calls_status_time", "status", "created_at"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -45,3 +69,21 @@ class AIToolCall(Base):
     result_payload = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    # Phase 0: Extended fields (8 new evidence fields)
+    # 1. Input parameters
+    input_params = Column(JSON, nullable=True)
+    # 2. Execution time
+    execution_time_ms = Column(Integer, nullable=True)
+    # 3. Retry count
+    retry_count = Column(Integer, nullable=False, default=0)
+    # 4. Parent tool call ID (for nested calls)
+    parent_tool_call_id = Column(Integer, ForeignKey("ai_tool_calls.id", ondelete="SET NULL"), nullable=True)
+    # 5. Call depth
+    call_depth = Column(Integer, nullable=False, default=0)
+    # 6. Evidence collected
+    evidence_collected = Column(JSON, nullable=False, default=list)
+    # 7. Safety check passed
+    safety_check_passed = Column(String(8), nullable=True)
+    # 8. Model version
+    model_version = Column(String(32), nullable=True)

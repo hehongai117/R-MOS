@@ -39,6 +39,15 @@ class AuditEvent(Base):
     tool_call_args = Column(JSON, nullable=True)
     side_effects_applied = Column(JSON, nullable=True)
     approval_id = Column(Integer, ForeignKey("approvals.id", ondelete="SET NULL"), nullable=True)
+
+    # LLM 审计字段 (P1-0)
+    prompt_hash = Column(String(64), nullable=True, index=True, comment="Prompt 内容哈希")
+    response_hash = Column(String(64), nullable=True, index=True, comment="Response 内容哈希")
+    provider = Column(String(32), nullable=True, comment="LLM Provider: openai/anthropic/ollama")
+    model = Column(String(64), nullable=True, comment="模型名称: gpt-4/claude-3/llama2")
+    tokens_in = Column(Integer, nullable=True, comment="输入 token 数量")
+    tokens_out = Column(Integer, nullable=True, comment="输出 token 数量")
+
     created_at = Column(
         DateTime,
         nullable=False,

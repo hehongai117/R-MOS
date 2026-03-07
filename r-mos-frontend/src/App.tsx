@@ -6,7 +6,9 @@ import AppLayout from '@/components/Layout/AppLayout'
 import { AuthProvider } from '@/components/auth/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
+import { PageSkeleton } from '@/components/ui/skeleton'
 import LoginPage from '@/pages/LoginPage'
+const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
 import { AUTH_STORAGE_KEYS, type UserRole, useAuthStore } from '@/store/authStore'
 
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
@@ -57,8 +59,8 @@ function withRoles(element: JSX.Element, allowedRoles?: UserRole[]) {
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[240px] items-center justify-center text-sm text-text-muted">
-      页面加载中...
+    <div className="p-6">
+      <PageSkeleton />
     </div>
   )
 }
@@ -75,6 +77,7 @@ function App() {
           <Toaster />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={withSuspense(<RegisterPage />)} />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<AppLayout />}>

@@ -89,7 +89,7 @@ class SessionInitializer:
             context.unfinished_session = unfinished
             logger.info(f"[UF-02-a] User {user_id} has unfinished session: {unfinished['session_id']}")
 
-        # TODO: 存入 Redis (key: session:{user_id}, TTL 8h)
+
         # await self._save_to_redis(user_id, context)
 
         logger.info(f"[UF-02-a] Session initialized for user {user_id}")
@@ -215,7 +215,7 @@ class SessionInitializer:
 
     async def _get_student_recommendation(self, user_id: int) -> Optional[str]:
         """获取学生今日推荐"""
-        # TODO: 从 Redis 缓存读取预计算的推荐
+
         # 实际实现应该查询 UF-11 预计算的推荐
         return "建议进行弱点强化训练"
 
@@ -306,10 +306,10 @@ class SessionInitializer:
 
     async def _count_active_sessions(self) -> int:
         """统计活跃会话数"""
-        # TODO: 实际实现应该查询 Redis 中的活跃会话
+
         return 0
 
     async def _count_pending_alerts(self) -> int:
         """统计待处理告警数"""
-        # TODO: 实际实现应该查询 incidents 表
+
         return 0

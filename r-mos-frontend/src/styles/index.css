@@ -113,6 +113,18 @@
   animation: slideUp var(--duration-slow) var(--ease-base);
 }
 
+@keyframes float-particle {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 0.4;
+  }
+
+  to {
+    transform: translateY(-20px) scale(1.5);
+    opacity: 0.1;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

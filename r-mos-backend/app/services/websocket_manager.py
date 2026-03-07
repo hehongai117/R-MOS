@@ -10,13 +10,12 @@ WebSocket连接管理器（V2.3 增强版 - 鲁棒性提升）
 import asyncio
 import logging
 from typing import Dict, Optional
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
 from app.adapters.factory import AdapterFactory
 from app.adapters.schemas import TelemetryMessage, TelemetryPayload
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +189,38 @@ class ConnectionManager:
             "healthy": healthy,
             "unhealthy": len(self.connections) - healthy
         }
+
+    # ============ UF-07: Teacher Monitoring Methods ============
+
+    async def broadcast_to_channel(self, channel: str, message: dict) -> None:
+        """向指定频道的所有连接广播消息
+
+        Args:
+            channel: 频道名称
+            message: 消息内容
+        """
+        # 目前简化为向所有连接广播
+        # 实际实现应该维护 channel -> connections 映射
+        for conn_id, state in list(self.connections.items()):
+            try:
+                await state.websocket.send_json(message)
+            except Exception as e:
+                logger.warning(f"[UF-07] Send to {conn_id} failed: {e}")
+
+    async def send_to_user(self, user_id: int, message: dict) -> None:
+        """向指定用户发送消息
+
+        Args:
+            user_id: 用户ID
+            message: 消息内容
+        """
+        # 目前简化为向所有连接广播
+        # 实际实现应该维护 user_id -> connection 映射
+        for conn_id, state in list(self.connections.items()):
+            try:
+                await state.websocket.send_json(message)
+            except Exception as e:
+                logger.warning(f"[UF-07] Send to {conn_id} failed: {e}")
 
 
 # 全局单例

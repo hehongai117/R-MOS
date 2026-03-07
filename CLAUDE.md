@@ -1,149 +1,96 @@
-# CLAUDE.md
+# R-MOS (Robot Maintenance Operating System)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project Context
 
-## Project Overview
+R-MOS is a full-stack application for robot maintenance training and monitoring. The system uses mock adapters for robot simulation in MVP phase.
 
-R-MOS (Robot Maintenance Operating System) is a full-stack application for robot maintenance training and monitoring. MVP phase uses mock adapters for robot simulation.
+### System Features
 
-## Development Commands
+- **Training System**: Multi-phase training workflow with AI-generated projects, session management, and progress tracking
+- **Agent System**: Multi-agent coordination for task execution with runtime state management
+- **Evidence System**: Evidence collection, enforcement, and panel display
+- **Knowledge Governance**: Knowledge chunk management and governance
+- **Teaching Features**: Teacher monitoring, approval queues, and skill profiling
+- **Assessment System**: Multi-dimensional scoring and feedback generation
+
+## Development
 
 ### Backend (FastAPI + PostgreSQL)
 
 ```bash
 cd r-mos-backend
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run database migrations
 alembic upgrade head
-
-# Start development server (http://localhost:8000)
 python main.py
-
-# Run tests
-pytest tests/unit -v
-
-# Run tests with coverage
-pytest --cov=app --cov-report=term-missing tests/unit
 ```
 
 ### Frontend (React + TypeScript + Vite)
 
 ```bash
 cd r-mos-frontend
-
-# Install dependencies
 npm install
-
-# Start development server (http://localhost:3000)
 npm run dev
-
-# Build for production
-npm run build
-
-# Lint code
-npm run lint
 ```
 
 ## Architecture
 
-### API Route Convention
-- **HTTP REST APIs**: All endpoints use `/api/v1` prefix
-- **WebSocket**: No prefix, uses `/ws/robot/status` directly
-
-### Backend Layer Structure
+### Backend Structure
 
 ```
 r-mos-backend/app/
-├── api/v1/endpoints/    # FastAPI route handlers
-├── services/            # Business logic (TaskService, SOPService, ScoringService, etc.)
-├── models/              # SQLAlchemy 2.0+ ORM models
-├── schemas/             # Pydantic 2.x request/response schemas
-├── adapters/            # Robot adapter abstraction layer
-│   ├── base.py          # Abstract adapter interface
-│   ├── mock.py          # Mock implementation for development
-│   └── factory.py       # Adapter factory pattern
-└── core/                # Configuration, database, exceptions
+├── api/v1/endpoints/    # FastAPI route handlers (21 endpoints)
+├── services/           # Business logic (50+ services)
+│   ├── training/       # Training: project_generator, session_service, submission_service
+│   ├── memory/         # Memory: skill_profile_service, training_memory_writer
+│   ├── intent/        # Intent recognition
+│   ├── policy/        # Policy and authorization
+│   ├── llm/           # LLM routing and prompts
+│   └── knowledge/     # Knowledge hub and governance
+├── models/            # SQLAlchemy 2.0+ ORM models (28+)
+├── schemas/           # Pydantic 2.x schemas
+├── adapters/          # Robot adapter (base, mock, factory)
+└── core/              # Configuration, database, exceptions
 ```
-
-### Adapter Pattern
-The robot communication layer uses an adapter pattern allowing future extension:
-- `MockAdapter` - Current MVP implementation
-- Future: `GazeboAdapter`, `RealHardwareAdapter`
 
 ### Frontend Structure
 
 ```
 r-mos-frontend/src/
-├── api/          # Axios API clients (aligned with backend endpoints)
-├── components/   # React components (Layout, Viewer3D, Task, Admin)
-├── hooks/        # Custom hooks (useWebSocket for real-time telemetry)
-├── pages/        # Route pages
-├── store/        # Zustand state management
-└── types/        # TypeScript type definitions (mirror backend schemas)
+├── api/               # Axios API clients
+├── components/        # React components (Layout, Viewer3D, Task, Agent)
+├── pages/            # Route pages (15+ pages)
+├── store/            # Zustand state management
+├── hooks/            # Custom hooks
+└── types/            # TypeScript definitions
 ```
-
-### Frontend-Backend Proxy
-Vite dev server proxies requests:
-- `/api/v1/*` → `http://localhost:8000`
-- `/ws/*` → `ws://localhost:8000`
 
 ## Key Technical Patterns
 
-### SQLAlchemy 2.0+ Async
-- Use `selectinload()` for eager loading relationships (e.g., `SOP.steps`)
-- Use `AsyncSession` with `await db.execute()`
-- Model base: `DeclarativeBase` (not legacy `declarative_base()`)
+- **SQLAlchemy**: Use `AsyncSession` with `await db.execute()`, `selectinload()` for relationships
+- **Pydantic**: Use `model_validate()` and `model_dump()` (not `.dict()`)
+- **Enums**: Use `.value` when serializing to JSON
 
-### Pydantic 2.x
-- Use `model_validate()` instead of `from_orm()`
-- Use `model_dump()` instead of `.dict()`
+## Available Commands
 
-### Enum Serialization
-TaskStatus and other enums use String database storage. Always use `.value` when serializing to JSON:
-```python
-details={"status": task.status.value}  # Not task.status
-```
+```bash
+# Backend
+/run-backend          # Start backend with pre-flight checks
+/test-backend         # Run pytest suite
 
-### Error Handling
-- `BusinessRuleViolation` → HTTP 409 Conflict
-- `AdapterConnectionError` → HTTP 503 Service Unavailable
-- Validation errors → HTTP 422
+# Frontend
+/run-frontend         # Start frontend dev server
+/test-frontend        # Run frontend tests
 
-## Available Skills
-
-Project-specific skills are defined in `.claude/skills/`:
-
-| Skill | Description |
-|-------|-------------|
-| `/run-backend` | Start backend with pre-flight checks |
-| `/run-frontend` | Start frontend dev server |
-| `/test-backend` | Run backend pytest suite |
-| `/test-frontend` | Run frontend tests |
-| `/new-api` | Create new API endpoint |
-| `/new-component` | Create React component |
-| `/new-model` | Create SQLAlchemy model |
-| `/new-service` | Create backend service |
-| `/db-migrate` | Run Alembic migrations |
-| `/debug-api` | Debug API issues |
-| `/debug-websocket` | Debug WebSocket connections |
-| `/check-deps` | Check dependency versions |
-
-## Environment Configuration
-
-### Backend (.env)
-```
-DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/rmos_dev
-ROBOT_ADAPTER_TYPE=mock
-```
-
-### Frontend (.env)
-```
-VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_BASE_URL=ws://localhost:8000
+# Project
+/new-api             # Create new API endpoint
+/new-component       # Create React component
+/new-model           # Create SQLAlchemy model
+/new-service         # Create backend service
+/db-migrate          # Run Alembic migrations
+/debug-api            # Debug API issues
+/debug-websocket     # Debug WebSocket connections
+/check-deps          # Check dependency versions
 ```
 
 ## Key Endpoints
@@ -153,18 +100,37 @@ VITE_WS_BASE_URL=ws://localhost:8000
 | `GET /api/v1/health` | Health check |
 | `GET /api/v1/sops` | List SOPs |
 | `POST /api/v1/tasks` | Create task |
-| `POST /api/v1/tasks/{id}/start` | Start task execution |
-| `POST /api/v1/tasks/{id}/steps` | Execute step |
-| `GET /api/v1/adapter/status` | Robot adapter status |
 | `WS /ws/robot/status` | Real-time telemetry (5Hz) |
-| `GET /docs` | OpenAPI documentation |
+| `POST /api/v1/training/sessions` | Create training session |
+| `POST /api/v1/training/sessions/{id}/submit` | Submit training |
+| `GET /api/v1/training/feedback/{id}` | Get AI feedback |
+| `GET /api/v1/students/{id}/profile` | Get skill profile |
 
-## Scoring System
+## Important Files
 
-Tasks are evaluated on 4 dimensions (25% each):
-- Professionalism
-- Compliance
-- Efficiency
-- Safety
+- `r-mos-backend/app/models/training.py` - Training session models
+- `r-mos-backend/app/models/skill_profile.py` - Skill profile models
+- `r-mos-backend/app/services/training/submission_service.py` - Submission logic
+- `r-mos-backend/app/services/training/feedback_generator.py` - AI feedback
+- `r-mos-backend/app/services/memory/skill_profile_service.py` - Profile updates
 
-Deductions: Skip step (-5), Error (-10), Timeout (-15). Target coverage: >80%.
+## Database
+
+- PostgreSQL 14+
+- Alembic for migrations
+- Models use `DeclarativeBase` (SQLAlchemy 2.0+)
+
+## Session State Machine
+
+- `active` → `paused` → `active` (pause/resume)
+- `active` → `submitted` (manual/timeout/teacher)
+- `active` → `abandoned` (user abandons)
+- `active` → `expired` (48h timeout)
+
+## Skill Profile (Five Dimensions)
+
+- Safety (安全规范执行)
+- Procedure (步骤规范性)
+- Precision (操作精度)
+- Efficiency (时间效率)
+- Tools (工具使用规范)

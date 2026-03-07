@@ -1,9 +1,8 @@
 # Evidence Enforcement Service
 # Phase 3: Evidence Reference Enforcement
 
-from typing import Dict, Any, List, Optional, Set
-from pydantic import BaseModel, Field
-from enum import Enum
+from typing import Dict, Any, List, Set
+from pydantic import BaseModel
 
 
 class EvidenceRequirement(BaseModel):

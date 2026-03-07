@@ -219,8 +219,6 @@ class SkillProfileService:
         logger.info(f"[UF-10] User {profile.user_id} leveled up to {profile.overall_level}")
         return True
 
-        return False
-
     async def _update_cert_eligibility(self, profile: StudentSkillProfile) -> None:
         """UF-10-b-4: 更新认证资格
 
@@ -236,6 +234,7 @@ class SkillProfileService:
         step_id: str,
         sop_id: Optional[str] = None,
         failed: bool = True,
+        fail_increment: int = 1,
         fail_tags: Optional[list] = None,
     ) -> None:
         """更新薄弱步骤
@@ -258,8 +257,9 @@ class SkillProfileService:
         weak_step = result.scalar_one_or_none()
 
         if failed:
+            increment = max(int(fail_increment), 1)
             if weak_step:
-                weak_step.fail_count += 1
+                weak_step.fail_count += increment
                 weak_step.last_failed_at = datetime.utcnow()
                 weak_step.is_resolved = False
 
@@ -272,7 +272,7 @@ class SkillProfileService:
                     user_id=user_id,
                     step_id=step_id,
                     sop_id=sop_id,
-                    fail_count=1,
+                    fail_count=increment,
                     last_failed_at=datetime.utcnow(),
                     fail_tags=fail_tags,
                     is_resolved=False,
