@@ -4647,3 +4647,34 @@
   - 工作区中仍存在用户未提交改动，提交时必须按文件白名单暂存。
 - Next Step:
   - 进入 `SOPMaintenancePage` 的第一批拆壳：先抽顶部头部、左栏、右栏和考试结束覆盖层，不动 3D 中栏与 adjudication 状态流。
+
+- DateTime: 2026-03-08 18:03:48 +0800
+- Task: 前端重构 Batch 2，抽离 `SOPMaintenancePage` 的头部、右栏和考试结束覆盖层展示壳
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/index.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red：首次 `npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` 失败，原因为 `@/components/Maintenance/SOPMaintenanceShell` 尚不存在，证明测试契约先于实现建立成功。
+  - TDD Green：新增 `SOPMaintenanceShell.tsx` 并接入页面后，定向测试再次执行一度因 tab 回调未稳定触发而失败；最小修正 trigger 点击透传后，`3 passed`。
+  - Build Red：第一次 `npm run build` 失败，原因为页面左栏仍使用 `StatusBadge`，但在整理 import 时被误删。
+  - Build Green：补回 `StatusBadge` import 后，`npm run build` PASS；产物显示 `SOPMaintenancePage-56_2_Ows.js 152.21 kB | gzip 45.79 kB`。
+- Result: PASS
+- Risks/Notes:
+  - 本轮只抽展示壳，不改 `SOPMaintenancePage` 的 3D Canvas、`useState/useEffect` 状态编排和 adjudication 交互。
+  - `SOPMaintenancePage.tsx` 当前降到 `1489` 行；新增展示壳文件 `SOPMaintenanceShell.tsx` 为 `206` 行，页面主体复杂度已开始下降，但左栏仍保留较多 Ant Design 组件，属于下一批边界。
+  - 当前工作区仍有用户未提交改动，提交时必须继续按文件白名单操作。
+- Next Step:
+  - 若继续执行计划，下一批应处理 `SOPMaintenancePage` 左栏控制面板的展示层收口，并补页面级回归测试。

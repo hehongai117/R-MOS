@@ -12,14 +12,13 @@
  */
 
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
-import { Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Tabs, Select, Modal, message, Switch } from 'antd';
+import { Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Select, Modal, message, Switch } from 'antd';
 import {
     ToolOutlined,
     PartitionOutlined,
     InfoCircleOutlined,
     EyeOutlined,
     ExpandOutlined,
-    SettingOutlined,
     FullscreenOutlined,
     FullscreenExitOutlined,
     HomeOutlined,
@@ -28,7 +27,7 @@ import {
 import { Lock, ShieldAlert } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { PageHeader, SectionCard, StatusBadge } from '@/components/common';
+import { SectionCard, StatusBadge } from '@/components/common';
 import { DiagnosisPanel, readLatestDiagnosisResult } from '@/components/DiagnosisPanel/DiagnosisPanel';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
@@ -52,7 +51,13 @@ import {
     linkHasDetailParts,
     type CameraPreset,
 } from '@/components/Viewer3D/assemblyTree';
-import { ToolSelector, ScrewInfo } from '@/components/Maintenance';
+import {
+    SOPMaintenanceExamOverlay,
+    SOPMaintenanceHeader,
+    SOPMaintenanceRightRail,
+    ToolSelector,
+    ScrewInfo,
+} from '@/components/Maintenance';
 import { SOPPlayerAdjudicated, type SOPActionEvent } from '@/components/Maintenance/SOPPlayerAdjudicated';
 import { ALL_SOP_SCRIPTS } from '@/data/sopScripts';
 import {
@@ -788,93 +793,236 @@ function SOPMaintenancePage() {
         return Object.values(PART_METADATA).filter(p => p.group === group);
     };
 
+    const headerViewModeControl = (
+        <Segmented
+            value={viewMode}
+            onChange={v => {
+                const nextMode = v as typeof viewMode;
+                if (nextMode === 'explode' && viewState !== 'ISOLATED') {
+                    message.info('请先在总览中点击一个大部件，再进入爆炸图。');
+                    setViewMode('normal');
+                    setExplodeAmount(0);
+                    return;
+                }
+                setViewMode(nextMode);
+                if (nextMode === 'explode') {
+                    setExplodeAmount(prev => Math.max(prev, EXPLODE_DEFAULT_ON_ENTER));
+                } else if (nextMode === 'normal') {
+                    resetToOverview();
+                }
+            }}
+            options={[
+                { label: <><EyeOutlined /> 正常</>, value: 'normal' },
+                { label: <><ExpandOutlined /> 爆炸图</>, value: 'explode' },
+            ]}
+        />
+    );
+
+    const detailToggleControl = (
+        <Switch
+            size="small"
+            checked={showDetailParts}
+            onChange={setShowDetailParts}
+            checkedChildren="细节"
+            unCheckedChildren="细节"
+        />
+    );
+
+    const modeSelectControl = (
+        <Select
+            size="small"
+            value={operationMode}
+            style={{ width: 120 }}
+            onChange={(value) => handleModeChange(value)}
+            options={[
+                { value: 'teaching', label: '教学模式' },
+                { value: 'exam', label: '考试模式' },
+                { value: 'maintenance', label: '维保模式' },
+            ]}
+        />
+    );
+
+    const quickSelectControl = (
+        <Select
+            showSearch
+            allowClear
+            placeholder="下拉选择核心件"
+            value={viewState === 'ISOLATED' ? selectedOverviewNode ?? undefined : undefined}
+            options={corePartQuickSelectOptions}
+            onChange={(value) => {
+                if (value) {
+                    handleCorePartQuickSelect(value);
+                }
+            }}
+            onClear={resetToOverview}
+            filterOption={(input, option) => String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+        />
+    );
+
+    const diagnosisContent = (
+        <DiagnosisPanel
+            diagnosisResult={diagnosisSnapshot?.diagnosisResult ?? null}
+            maintenancePlan={diagnosisSnapshot?.maintenancePlan ?? null}
+            verificationResult={diagnosisSnapshot?.verificationResult ?? null}
+            isLoading={false}
+            onConfirmExecution={() => message.success('已确认执行方案，请按 SOP 步骤继续操作')}
+            onEscalateToTeacher={() => message.info('已上报教师审核')}
+        />
+    );
+
+    const partPanel = (
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Card size="small" title={<><InfoCircleOutlined /> 零件详情</>}>
+                {activeDetailRecord ? (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                            <Title level={4} style={{ margin: 0 }}>
+                                {activeDetailRecord.displayName}
+                            </Title>
+                            <Tag color={activeDetailRecord.level === 'core' ? 'blue' : 'geekblue'} style={{ marginTop: 8 }}>
+                                {activeDetailRecord.level === 'core' ? '核心零件' : '细节零件'} · {activeDetailRecord.categoryLabel}
+                            </Tag>
+                        </div>
+
+                        <Descriptions column={1} size="small">
+                            <Descriptions.Item label="零件 ID">
+                                <Text code>{activeDetailRecord.id}</Text>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="所属总成">
+                                {activeDetailRecord.parentDisplayName}
+                            </Descriptions.Item>
+                            {activeDetailRecord.jointName && (
+                                <Descriptions.Item label="关联关节">
+                                    <Text code>{activeDetailRecord.jointName}</Text>
+                                </Descriptions.Item>
+                            )}
+                            <Descriptions.Item label="模型路径">
+                                <Text code style={{ fontSize: 11 }}>{activeDetailRecord.modelPath}</Text>
+                            </Descriptions.Item>
+                        </Descriptions>
+
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {activeDetailRecord.summary}
+                        </Text>
+                        <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
+                            <Text strong style={{ fontSize: 12 }}>维保要点</Text>
+                            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {activeDetailRecord.maintenancePoints.map((point) => (
+                                    <Text key={point} style={{ fontSize: 12 }}>
+                                        • {point}
+                                    </Text>
+                                ))}
+                            </div>
+                        </div>
+
+                        {activeDetailRecord.level === 'core' && (
+                            <Button
+                                type="default"
+                                block
+                                size="small"
+                                onClick={() => setSelectedPart(null)}
+                            >
+                                取消选中
+                            </Button>
+                        )}
+                    </Space>
+                ) : (
+                    <Empty
+                        description="点击零件查看详情"
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    />
+                )}
+            </Card>
+
+            {selectedPart && (
+                <Card
+                    size="small"
+                    title={`${GROUP_NAMES[selectedPart.group]} 零件列表`}
+                >
+                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        {getGroupParts(selectedPart.group).map(part => (
+                            <div
+                                key={part.name}
+                                style={{
+                                    padding: '4px 8px',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    background: part.name === selectedPart.name
+                                        ? 'rgba(24, 144, 255, 0.2)'
+                                        : 'transparent',
+                                    border: part.name === selectedPart.name
+                                        ? '1px solid #1890ff'
+                                        : '1px solid transparent',
+                                }}
+                                onClick={() => setSelectedPart(part)}
+                            >
+                                <Text>{part.displayName}</Text>
+                            </div>
+                        ))}
+                    </Space>
+                </Card>
+            )}
+
+            <Card
+                size="small"
+                title="🧪 小件 3D 检视"
+                extra={partInspectorLink ? <Tag color="cyan">已接入独立检视器</Tag> : null}
+            >
+                <PartInspector
+                    selectedLink={partInspectorLink}
+                    showFasteners={Boolean(selectedScrewId)}
+                />
+            </Card>
+
+            {isolationLevel >= 2 && l2TargetLink && (
+                <Card
+                    size="small"
+                    title={`📋 ${getLinkDisplayName(l2TargetLink)} 子零件列表`}
+                >
+                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            小件可通过列表快速定位并高亮（代理点击）
+                        </Text>
+                        <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                            {l2DetailParts.map((part, idx) => (
+                                <div
+                                    key={`${l2TargetLink}-list-${idx}`}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '4px 8px',
+                                        marginBottom: 4,
+                                        borderRadius: 4,
+                                        cursor: 'pointer',
+                                        border: l2SelectedPartIdx === idx ? '1px solid #40a9ff' : '1px solid transparent',
+                                        background: l2SelectedPartIdx === idx ? 'rgba(64, 169, 255, 0.15)' : 'rgba(255,255,255,0.02)',
+                                    }}
+                                    onClick={() => handleSubPartSelect(l2TargetLink, idx, part)}
+                                >
+                                    <Text style={{ fontSize: 12 }}>{part.displayName}</Text>
+                                    <Tag color="blue" style={{ marginRight: 0 }}>代理</Tag>
+                                </div>
+                            ))}
+                        </div>
+                    </Space>
+                </Card>
+            )}
+        </Space>
+    );
+
     return (
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
-            <PageHeader
-                title="SOP 维保系统"
-                subtitle="步骤导航、3D 操作区和工具要求统一在同一工作台内处理"
-                breadcrumb={['维保端', 'SOP 工作台']}
-                actions={(
-                    <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge
-                            label={operationMode === 'exam' ? '考试模式' : operationMode === 'maintenance' ? '维保模式' : '教学模式'}
-                            status={operationMode === 'exam' ? 'warning' : 'active'}
-                        />
-                        {operationMode === 'exam' && (
-                            <>
-                                <Tag
-                                    color={examUrgent ? 'red' : 'blue'}
-                                    style={{ margin: 0, minWidth: 90, textAlign: 'center' }}
-                                >
-                                    倒计时 {examTimeText}
-                                </Tag>
-                                <Tag
-                                    color="green"
-                                    style={{
-                                        margin: 0,
-                                        minWidth: 90,
-                                        textAlign: 'center',
-                                        transition: 'all 0.3s ease',
-                                        transform: scoreFlash ? 'scale(1.05)' : 'scale(1)',
-                                        color: scoreFlash ? '#faad14' : undefined,
-                                        boxShadow: scoreFlash ? '0 0 8px rgba(250, 173, 20, 0.6)' : 'none',
-                                    }}
-                                >
-                                    得分 {scoreState.currentScore}
-                                </Tag>
-                            </>
-                        )}
-                        <Space>
-                    <Segmented
-                        value={viewMode}
-                        onChange={v => {
-                            const nextMode = v as typeof viewMode;
-                            if (nextMode === 'explode' && viewState !== 'ISOLATED') {
-                                message.info('请先在总览中点击一个大部件，再进入爆炸图。');
-                                setViewMode('normal');
-                                setExplodeAmount(0);
-                                return;
-                            }
-                            setViewMode(nextMode);
-                            if (nextMode === 'explode') {
-                                setExplodeAmount(prev => Math.max(prev, EXPLODE_DEFAULT_ON_ENTER));
-                            } else if (nextMode === 'normal') {
-                                resetToOverview();
-                                return;
-                            }
-                        }}
-                        options={[
-                            { label: <><EyeOutlined /> 正常</>, value: 'normal' },
-                            { label: <><ExpandOutlined /> 爆炸图</>, value: 'explode' },
-                        ]}
-                    />
-                    {selectedToolId && (
-                        <Tag color="green" icon={<ToolOutlined />}>
-                            工具已选择
-                        </Tag>
-                    )}
-                    <Tag color="blue">{ALL_EXPLODE_PART_URLS.length} 个零件</Tag>
-                    <Switch
-                        size="small"
-                        checked={showDetailParts}
-                        onChange={setShowDetailParts}
-                        checkedChildren="细节"
-                        unCheckedChildren="细节"
-                    />
-                    <Select
-                        size="small"
-                        value={operationMode}
-                        style={{ width: 120 }}
-                        onChange={(value) => handleModeChange(value)}
-                        options={[
-                            { value: 'teaching', label: '教学模式' },
-                            { value: 'exam', label: '考试模式' },
-                            { value: 'maintenance', label: '维保模式' },
-                        ]}
-                    />
-                        </Space>
-                    </div>
-                )}
+            <SOPMaintenanceHeader
+                operationMode={operationMode}
+                examTimeText={examUrgent ? examTimeText : examTimeText}
+                currentScore={scoreState.currentScore}
+                scoreFlash={scoreFlash}
+                totalPartCount={ALL_EXPLODE_PART_URLS.length}
+                selectedToolIndicator={selectedToolId ? <><ToolOutlined /> 工具已选择</> : null}
+                viewModeControl={headerViewModeControl}
+                detailToggleControl={detailToggleControl}
+                modeSelectControl={modeSelectControl}
             />
 
             {/* 主内容区 */}
@@ -1308,244 +1456,31 @@ function SOPMaintenancePage() {
 
                 {/* 右侧：信息面板 */}
                 <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                        <Card size="small" title="🎯 核心件快速定位">
-                            <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    已合并上半身/下半身核心件，选择后直接进入隔离爆炸视图。
-                                </Text>
-                                <Select
-                                    showSearch
-                                    allowClear
-                                    placeholder="下拉选择核心件"
-                                    value={viewState === 'ISOLATED' ? selectedOverviewNode ?? undefined : undefined}
-                                    options={corePartQuickSelectOptions}
-                                    onChange={(value) => {
-                                        if (value) {
-                                            handleCorePartQuickSelect(value);
-                                        }
-                                    }}
-                                    onClear={resetToOverview}
-                                    filterOption={(input, option) => String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                                />
-                            </Space>
-                        </Card>
-                        <SectionCard
-                            title="最近诊断结果"
-                            description="从 Agent 工作台同步的最近一次故障推理与维保建议"
-                        >
-                            <DiagnosisPanel
-                                diagnosisResult={diagnosisSnapshot?.diagnosisResult ?? null}
-                                maintenancePlan={diagnosisSnapshot?.maintenancePlan ?? null}
-                                verificationResult={diagnosisSnapshot?.verificationResult ?? null}
-                                isLoading={false}
-                                onConfirmExecution={() => message.success('已确认执行方案，请按 SOP 步骤继续操作')}
-                                onEscalateToTeacher={() => message.info('已上报教师审核')}
+                    <SOPMaintenanceRightRail
+                        rightPanelTab={rightPanelTab}
+                        onRightPanelTabChange={setRightPanelTab}
+                        quickSelectControl={quickSelectControl}
+                        diagnosisContent={diagnosisContent}
+                        partPanel={partPanel}
+                        screwPanel={(
+                            <ScrewInfo
+                                partName={selectedPart?.name || null}
+                                detailSelection={selectedDetailSelection}
+                                onScrewSelect={handleScrewSelect}
+                                selectedScrewId={selectedScrewId}
                             />
-                        </SectionCard>
-                        <Tabs
-                        activeKey={rightPanelTab}
-                        onChange={setRightPanelTab}
-                        size="small"
-                        items={[
-                            {
-                                key: 'part',
-                                label: <><InfoCircleOutlined /> 零件</>
-                                ,
-                                children: (
-                                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                        {/* 零件详情 */}
-                                        <Card size="small" title={<><InfoCircleOutlined /> 零件详情</>}>
-                                            {activeDetailRecord ? (
-                                                <Space direction="vertical" style={{ width: '100%' }}>
-                                                    <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                                                        <Title level={4} style={{ margin: 0 }}>
-                                                            {activeDetailRecord.displayName}
-                                                        </Title>
-                                                        <Tag color={activeDetailRecord.level === 'core' ? 'blue' : 'geekblue'} style={{ marginTop: 8 }}>
-                                                            {activeDetailRecord.level === 'core' ? '核心零件' : '细节零件'} · {activeDetailRecord.categoryLabel}
-                                                        </Tag>
-                                                    </div>
-
-                                                    <Descriptions column={1} size="small">
-                                                        <Descriptions.Item label="零件 ID">
-                                                            <Text code>{activeDetailRecord.id}</Text>
-                                                        </Descriptions.Item>
-                                                        <Descriptions.Item label="所属总成">
-                                                            {activeDetailRecord.parentDisplayName}
-                                                        </Descriptions.Item>
-                                                        {activeDetailRecord.jointName && (
-                                                            <Descriptions.Item label="关联关节">
-                                                                <Text code>{activeDetailRecord.jointName}</Text>
-                                                            </Descriptions.Item>
-                                                        )}
-                                                        <Descriptions.Item label="模型路径">
-                                                            <Text code style={{ fontSize: 11 }}>{activeDetailRecord.modelPath}</Text>
-                                                        </Descriptions.Item>
-                                                    </Descriptions>
-
-                                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                                        {activeDetailRecord.summary}
-                                                    </Text>
-                                                    <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
-                                                        <Text strong style={{ fontSize: 12 }}>维保要点</Text>
-                                                        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                            {activeDetailRecord.maintenancePoints.map((point) => (
-                                                                <Text key={point} style={{ fontSize: 12 }}>
-                                                                    • {point}
-                                                                </Text>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    {activeDetailRecord.level === 'core' && (
-                                                        <Button
-                                                            type="default"
-                                                            block
-                                                            size="small"
-                                                            onClick={() => setSelectedPart(null)}
-                                                        >
-                                                            取消选中
-                                                        </Button>
-                                                    )}
-                                                </Space>
-                                            ) : (
-                                                <Empty
-                                                    description="点击零件查看详情"
-                                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                                />
-                                            )}
-                                        </Card>
-
-                                        {/* 零件分组 */}
-                                        {selectedPart && (
-                                            <Card
-                                                size="small"
-                                                title={`${GROUP_NAMES[selectedPart.group]} 零件列表`}
-                                            >
-                                                <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                                    {getGroupParts(selectedPart.group).map(part => (
-                                                        <div
-                                                            key={part.name}
-                                                            style={{
-                                                                padding: '4px 8px',
-                                                                borderRadius: 4,
-                                                                cursor: 'pointer',
-                                                                background: part.name === selectedPart.name
-                                                                    ? 'rgba(24, 144, 255, 0.2)'
-                                                                    : 'transparent',
-                                                                border: part.name === selectedPart.name
-                                                                    ? '1px solid #1890ff'
-                                                                    : '1px solid transparent',
-                                                            }}
-                                                            onClick={() => setSelectedPart(part)}
-                                                        >
-                                                            <Text>{part.displayName}</Text>
-                                                        </div>
-                                                    ))}
-                                                </Space>
-                                            </Card>
-                                        )}
-
-                                        <Card
-                                            size="small"
-                                            title="🧪 小件 3D 检视"
-                                            extra={partInspectorLink ? <Tag color="cyan">已接入独立检视器</Tag> : null}
-                                        >
-                                            <PartInspector
-                                                selectedLink={partInspectorLink}
-                                                showFasteners={Boolean(selectedScrewId)}
-                                            />
-                                        </Card>
-
-                                        {/* L2 代理入口：列表选择（list_select） */}
-                                        {isolationLevel >= 2 && l2TargetLink && (
-                                            <Card
-                                                size="small"
-                                                title={`📋 ${getLinkDisplayName(l2TargetLink)} 子零件列表`}
-                                            >
-                                                <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                                        小件可通过列表快速定位并高亮（代理点击）
-                                                    </Text>
-                                                    <div style={{ maxHeight: 180, overflowY: 'auto' }}>
-                                                        {l2DetailParts.map((part, idx) => (
-                                                            <div
-                                                                key={`${l2TargetLink}-list-${idx}`}
-                                                                style={{
-                                                                    display: 'flex',
-                                                                    justifyContent: 'space-between',
-                                                                    alignItems: 'center',
-                                                                    padding: '4px 8px',
-                                                                    marginBottom: 4,
-                                                                    borderRadius: 4,
-                                                                    cursor: 'pointer',
-                                                                    border: l2SelectedPartIdx === idx ? '1px solid #40a9ff' : '1px solid transparent',
-                                                                    background: l2SelectedPartIdx === idx ? 'rgba(64, 169, 255, 0.15)' : 'rgba(255,255,255,0.02)',
-                                                                }}
-                                                                onClick={() => handleSubPartSelect(l2TargetLink, idx, part)}
-                                                            >
-                                                                <Text style={{ fontSize: 12 }}>{part.displayName}</Text>
-                                                                <Tag color="blue" style={{ marginRight: 0 }}>代理</Tag>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </Space>
-                                            </Card>
-                                        )}
-
-                                    </Space>
-                                ),
-                            },
-                            {
-                                key: 'tool',
-                                label: <><SettingOutlined /> 螺丝</>
-                                ,
-                                children: (
-                                    <ScrewInfo
-                                        partName={selectedPart?.name || null}
-                                        detailSelection={selectedDetailSelection}
-                                        onScrewSelect={handleScrewSelect}
-                                        selectedScrewId={selectedScrewId}
-                                    />
-                                ),
-                            },
-                        ]}
-                        />
-                    </Space>
+                        )}
+                    />
                 </Col>
             </Row>
 
             {/* 考试结束覆盖层 */}
             {examSummaryReport && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(10, 15, 25, 0.92)',
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 9999,
-                        padding: 24,
-                    }}
-                >
-                    <div style={{ textAlign: 'center', maxWidth: 640 }}>
-                        <Title level={2} style={{ color: '#fff', marginBottom: 8 }}>
-                            考试结束
-                        </Title>
-                        <Text style={{ color: '#ff4d4f', fontSize: 22, display: 'block', marginBottom: 12 }}>
-                            原因码：{examSummaryReport.reasonCode}
-                        </Text>
-                        <Text style={{ fontSize: 20, display: 'block', marginBottom: 24 }}>
-                            最终得分：{scoreState.currentScore}
-                        </Text>
-                        <Button type="primary" onClick={handleResetExam}>
-                            重置
-                        </Button>
-                    </div>
-                </div>
+                <SOPMaintenanceExamOverlay
+                    reasonCode={examSummaryReport.reasonCode}
+                    currentScore={scoreState.currentScore}
+                    onReset={handleResetExam}
+                />
             )}
         </div>
     );
