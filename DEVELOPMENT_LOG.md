@@ -4486,3 +4486,61 @@
   - 工作区存在其他未提交改动与 Claude Code 新增文件，本次不做 `git push`，后续提交前需继续保持最小提交边界。
 - Next Step:
   - 等 Claude Code 完成 `T-02/T-04/T-05/T-09` 后，先对其新增诊断链路与记忆链路做代码审核和最小回归，再继续完成 `T-03/T-06/T-07/T-10`。
+
+- DateTime: 2026-03-08 12:16 CST
+- Task: 审核并修正 Claude Code 的 T-02/T-04/T-05/T-09 落地结果，并完成剩余 T-03/T-06/T-07/T-10
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/conversation.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/conversation_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/llm/telemetry_context_builder.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/llm/prompts.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/diagnosis/schemas.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/diagnosis/fault_diagnosis_engine.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/diagnosis/maintenance_plan_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/memory/training_memory_writer.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/adapters/mock.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/simulation/__init__.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/simulation/simulation_executor.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/orchestrator_v2.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/agent.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_prompt_engine.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_diagnosis_pipeline.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_mock_adapter.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_simulation_executor.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_orchestrator_v2.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_memory_writer.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/agent-v2.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_training_memory_writer.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_prompt_engine.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_diagnosis_pipeline.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_mock_adapter.py tests/unit/test_simulation_executor.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_orchestrator_v2.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_prompt_engine.py tests/unit/test_diagnosis_pipeline.py tests/unit/test_mock_adapter.py tests/unit/test_simulation_executor.py tests/unit/test_orchestrator_v2.py tests/unit/test_training_memory_writer.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -m py_compile app/models/conversation.py app/services/conversation_service.py app/services/llm/prompts.py app/services/llm/telemetry_context_builder.py app/services/diagnosis/fault_diagnosis_engine.py app/services/memory/training_memory_writer.py app/adapters/mock.py app/services/simulation/__init__.py app/services/simulation/simulation_executor.py app/services/orchestrator_v2.py app/api/v1/endpoints/agent.py
+- Tests:
+  - TDD Red（前端）：`npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx` 初次 FAIL，`DiagnosisPanel` 不存在，且工作台未渲染 `response.result` 中的结构化诊断结果。
+  - 审核发现 1（后端模型）：`pytest tests/unit/test_training_memory_writer.py -q` 初次在收集阶段报 `sqlalchemy.exc.InvalidRequestError: Attribute name 'metadata' is reserved`，说明 `ConversationTurn.metadata` 直接占用了 SQLAlchemy 保留属性；修正为 ORM 属性 `metadata_json` 映射到列名 `metadata` 后回归通过。
+  - 审核发现 2（语义误判）：新增 `test_telemetry_context_builder_does_not_flag_idle_joint_as_stall` 后验证 `TelemetryContextBuilder` 会把空载静止关节误判为 `STALL`；修正为同时检查低扭矩或明确错误码，并补 `build_from_payload()` 适配前端遥测结构。
+  - 审核发现 3（故障码漂移）：新增 `test_fault_diagnosis_engine_rule_based_detects_voltage_drop` 后验证规则诊断返回短码 `E003`，与 MockAdapter/计划文档要求的 `E003_VOLTAGE_DROP` 不一致；修正传感器异常到完整故障码的映射。
+  - 审核发现 4（链路接线缺口）：`PromptTemplateEngine` 仍向 prompt 注入原始 `robot_state` JSON，`OrchestratorV2` 的真实 diagnoser 链路和 `SimulationExecutor` 也缺前端展示入口；已补齐 `T-03/T-06/T-07/T-10` 接线与对应单测。
+  - TDD Green（前端）：`npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx` -> PASS（5 passed）
+  - 前端构建：`npm run build` -> PASS
+  - 后端最小回归：`pytest tests/unit/test_prompt_engine.py tests/unit/test_diagnosis_pipeline.py tests/unit/test_mock_adapter.py tests/unit/test_simulation_executor.py tests/unit/test_orchestrator_v2.py tests/unit/test_training_memory_writer.py -q` -> PASS（31 passed）
+  - 后端静态校验：`python -m py_compile ...` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - `AgentWorkbenchPage` 现在只有在存在实时 `telemetry_payload` 时才会发起真实诊断请求；这比伪造样本更安全，但也意味着未接到 WebSocket 遥测时会显式提示“暂无遥测数据”。
+  - `SOPMaintenancePage` 采用 `sessionStorage` 读取最近一次诊断结果做只读接入，满足本轮最小接入目标；若后续需要多页面实时同步，应再做统一状态源或服务端会话持久化设计。
+  - 后端最小回归仍存在既有 `datetime.utcnow()` 和 Pydantic v2 deprecation warnings，本次不扩大处理范围。
+  - 工作区内存在用户无关脏改动（如 `.serena/project.yml`、若干前端页面与 `pnpm-lock.yaml`），提交时需严格按文件白名单暂存，不能一并带入。
+- Next Step:
+  - 提交本轮最小变更集；如你允许下一步联调，我再继续做完整 E2E 场景验证并决定是否需要补统一状态源/更完整的诊断入口。

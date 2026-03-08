@@ -14,12 +14,17 @@ import {
 } from 'lucide-react'
 
 import {
+  type AgentExecutionResult,
   type AgentRequestV2,
   type PolicyDecision,
   getTraceEvents,
   sendAgentRequestV2,
 } from '@/api/agent-v2'
 import { setWorkbenchCapsule } from '@/components/Agent/AgentStatusCapsule'
+import {
+  DiagnosisPanel,
+  persistLatestDiagnosisResult,
+} from '@/components/DiagnosisPanel/DiagnosisPanel'
 import {
   DataCard,
   EmptyState,
@@ -31,6 +36,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
@@ -41,6 +47,7 @@ interface ChatMessage {
   timestamp: number
   traceId?: string
   policyDecision?: PolicyDecision
+  result?: AgentExecutionResult
 }
 
 interface QuickAction {
@@ -140,6 +147,7 @@ function MessageBody({ content }: { content: string }) {
 
 function AgentWorkbenchPage() {
   const user = useAuthStore((state) => state.user)
+  const { telemetryData } = useWebSocket()
   const [input, setInput] = useState('')
   const [intent, setIntent] = useState('general')
   const [loading, setLoading] = useState(false)
@@ -150,6 +158,16 @@ function AgentWorkbenchPage() {
 
   const latestTraceId = useMemo(
     () => [...messages].reverse().find((msg) => msg.traceId)?.traceId,
+    [messages],
+  )
+  const latestDiagnosisBundle = useMemo(
+    () =>
+      [...messages]
+        .reverse()
+        .find(
+          (msg) =>
+            msg.result?.diagnosis || msg.result?.maintenance_plan || msg.result?.verification,
+        )?.result ?? null,
     [messages],
   )
 
@@ -223,6 +241,10 @@ function AgentWorkbenchPage() {
     }
 
     const finalIntent = customIntent ?? intent
+    if (finalIntent === 'delegate-diagnoser' && !telemetryData) {
+      message.error('暂无遥测数据，无法发起诊断')
+      return
+    }
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -243,6 +265,7 @@ function AgentWorkbenchPage() {
         message: content,
         intent_classification: finalIntent,
         context: {},
+        telemetry_payload: finalIntent === 'delegate-diagnoser' ? telemetryData ?? undefined : undefined,
       }
 
       const response = await sendAgentRequestV2(request)
@@ -254,6 +277,16 @@ function AgentWorkbenchPage() {
         timestamp: Date.now(),
         traceId: response.trace_id,
         policyDecision: response.policy_decision,
+        result: response.result,
+      }
+
+      if (response.result?.diagnosis || response.result?.maintenance_plan || response.result?.verification) {
+        persistLatestDiagnosisResult({
+          diagnosisResult: response.result.diagnosis ?? null,
+          maintenancePlan: response.result.maintenance_plan ?? null,
+          verificationResult: response.result.verification ?? null,
+          timestamp: Date.now(),
+        })
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -263,6 +296,14 @@ function AgentWorkbenchPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleConfirmDiagnosisExecution = () => {
+    message.success('已确认执行方案，请转入 SOP 工作台执行')
+  }
+
+  const handleEscalateDiagnosis = () => {
+    message.info('已上报教师审核')
   }
 
   const openTrace = async (traceId: string) => {
@@ -539,6 +580,20 @@ function AgentWorkbenchPage() {
               </div>
             </div>
           </div>
+        </SectionCard>
+
+        <SectionCard
+          title="诊断结果"
+          description="展示故障推理、维保方案和仿真验证结果"
+        >
+          <DiagnosisPanel
+            diagnosisResult={latestDiagnosisBundle?.diagnosis ?? null}
+            maintenancePlan={latestDiagnosisBundle?.maintenance_plan ?? null}
+            verificationResult={latestDiagnosisBundle?.verification ?? null}
+            isLoading={loading && intent === 'delegate-diagnoser'}
+            onConfirmExecution={handleConfirmDiagnosisExecution}
+            onEscalateToTeacher={handleEscalateDiagnosis}
+          />
         </SectionCard>
       </div>
 

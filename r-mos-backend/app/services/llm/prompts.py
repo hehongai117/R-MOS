@@ -56,6 +56,7 @@ class ContextBlock:
     step_index: Optional[int] = None
     step_description: Optional[str] = None
     robot_state: Optional[dict] = None
+    use_context_builder: bool = True
     user_history: list[dict] = field(default_factory=list)
 
     def to_messages(self) -> list[dict]:
@@ -76,9 +77,28 @@ class ContextBlock:
                 "content": f"步骤描述: {self.step_description}"
             })
         if self.robot_state:
+            content = f"机器人状态: {json.dumps(self.robot_state, ensure_ascii=False)}"
+            if (
+                self.use_context_builder
+                and isinstance(self.robot_state, dict)
+                and "joints" in self.robot_state
+                and "sensors" in self.robot_state
+            ):
+                try:
+                    from app.services.llm.telemetry_context_builder import TelemetryContextBuilder
+
+                    builder = TelemetryContextBuilder()
+                    context = builder.build_from_payload(self.robot_state)
+                    content = "机器人状态分析: " + json.dumps(
+                        context.to_context_block(),
+                        ensure_ascii=False,
+                    )
+                except Exception:
+                    # 保留原始 JSON 注入作为回退路径，避免影响现有调用方。
+                    pass
             messages.append({
                 "role": "system",
-                "content": f"机器人状态: {json.dumps(self.robot_state)}"
+                "content": content
             })
         return messages
 

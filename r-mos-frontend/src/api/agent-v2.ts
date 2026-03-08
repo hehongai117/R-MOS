@@ -16,10 +16,100 @@ export interface ResourceRef {
   metadata?: Record<string, unknown>;
 }
 
+export interface TelemetryJointState {
+  joint_id: string;
+  position: number;
+  velocity: number;
+  torque?: number;
+  current?: number;
+  temperature?: number;
+  error_code?: string;
+}
+
+export interface TelemetrySensorData {
+  imu?: {
+    acceleration: { x: number; y: number; z: number };
+    angular_velocity: { x: number; y: number; z: number };
+    orientation?: { x: number; y: number; z: number; w: number };
+  };
+  battery?: number;
+  temperature?: number;
+  voltage?: Record<string, number>;
+  pressure?: Record<string, number>;
+}
+
+export interface TelemetryPayload {
+  joints: TelemetryJointState[];
+  sensors: TelemetrySensorData;
+  active_faults: string[];
+}
+
+export interface FaultHypothesis {
+  fault_code: string;
+  fault_name: string;
+  confidence: number;
+  affected_parts: string[];
+  possible_causes: string[];
+  evidence: Record<string, unknown>;
+}
+
+export interface DiagnosisResult {
+  success: boolean;
+  primary_hypothesis: FaultHypothesis | null;
+  alternative_hypotheses: FaultHypothesis[];
+  requires_supervisor: boolean;
+  reasoning: string;
+  recommended_actions: string[];
+  error_message?: string | null;
+}
+
+export interface MaintenanceAction {
+  action_id: string;
+  action_type: string;
+  target_part: string;
+  description: string;
+  estimated_duration_minutes: number;
+  required_tools: string[];
+  safety_warnings: string[];
+}
+
+export interface MaintenancePlan {
+  success: boolean;
+  plan_id: string;
+  fault_code: string;
+  fault_name: string;
+  actions: MaintenanceAction[];
+  total_duration_minutes: number;
+  requires_supervisor: boolean;
+  validation_required: boolean;
+  error_message?: string | null;
+}
+
+export interface VerificationResult {
+  success: boolean;
+  plan_id: string;
+  before_state: Record<string, unknown>;
+  after_state: Record<string, unknown>;
+  delta_summary: Record<string, unknown>;
+  verdict: string;
+  failed_steps: string[];
+}
+
+export interface AgentExecutionResult {
+  status?: string;
+  message?: string;
+  diagnosis?: DiagnosisResult | null;
+  maintenance_plan?: MaintenancePlan | null;
+  verification?: VerificationResult | null;
+  trace_id?: string;
+  action?: Record<string, unknown>;
+}
+
 export interface AgentRequestV2 {
   user_id: string;
   message: string;
   context?: Record<string, unknown>;
+  telemetry_payload?: TelemetryPayload;
   resource_ref?: {
     resources?: ResourceRef[];
     resource?: ResourceRef;
@@ -34,6 +124,7 @@ export interface AgentResponseV2 {
   success: boolean;
   trace_id: string;
   message: string;
+  result?: AgentExecutionResult;
   action_suggested?: Record<string, unknown>;
   confidence: string;
   evidence_refs: string[];

@@ -15,11 +15,15 @@ import time
 from typing import Dict, Any, List, Optional, Callable
 from enum import Enum
 from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime
 
+from app.adapters.factory import AdapterFactory
 from app.core.resource_parser import resource_parser, ResourceRef, ResourceBindingResult
+from app.services.diagnosis.fault_diagnosis_engine import diagnosis_engine
+from app.services.diagnosis.maintenance_plan_generator import maintenance_plan_generator
 from app.services.policy_matrix import policy_matrix, PolicyDecision, RiskLevel, ActionCategory
 from app.services.intent import intent_engine, IntentScene
+from app.services.llm.telemetry_context_builder import TelemetryContextBuilder
+from app.services.simulation.simulation_executor import SimulationExecutor
 
 
 class TaskFSMState(str, Enum):
@@ -164,9 +168,18 @@ class OrchestratorV2:
     - Policy evaluation
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        diagnosis_engine: Any = diagnosis_engine,
+        maintenance_plan_generator: Any = maintenance_plan_generator,
+        simulation_executor: Any = None,
+    ):
         # Task contexts
         self._task_contexts: Dict[str, TaskContext] = {}
+        self._diagnosis_engine = diagnosis_engine
+        self._maintenance_plan_generator = maintenance_plan_generator
+        self._simulation_executor = simulation_executor or SimulationExecutor()
+        self._telemetry_builder = TelemetryContextBuilder()
 
         # Module registry
         self._module_registry = ModuleRegistry()
@@ -204,7 +217,7 @@ class OrchestratorV2:
         self._module_registry.register(
             "diagnoser",
             "Diagnoser Agent",
-            self._default_module_handler,
+            self._diagnosis_handler,
             {"description": "Diagnoses errors and provides solutions"}
         )
         self._module_registry.register(
@@ -224,7 +237,7 @@ class OrchestratorV2:
         """Default module handler placeholder"""
         return {"status": "ok", "message": "Module handler not implemented"}
 
-    def process_request(
+    async def process_request(
         self,
         user_id: str,
         message: str,
@@ -233,6 +246,7 @@ class OrchestratorV2:
         intent_classification: Optional[str] = None,
         trace_id: Optional[str] = None,
         idempotency_key: Optional[str] = None,
+        telemetry_payload: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Process agent request with full Phase 1 features
@@ -279,13 +293,21 @@ class OrchestratorV2:
             }
 
         # 5. Dispatch to appropriate module
-        module_result = self._dispatch_module(intent, message, resources, user_id)
+        module_result = await self._dispatch_module(
+            intent=intent,
+            message=message,
+            resources=resources,
+            user_id=user_id,
+            trace_id=trace_id,
+            telemetry_payload=telemetry_payload,
+        )
 
         # 6. Build response
         response = {
             "success": True,
             "trace_id": trace_id,
             "message": module_result.output.get("message", "Operation completed") if module_result.output else "Completed",
+            "result": module_result.output,
             "action_suggested": module_result.output.get("action") if module_result.output else None,
             "confidence": policy_decision.risk_level.value,
             "evidence_refs": module_result.evidence_required,
@@ -350,12 +372,14 @@ class OrchestratorV2:
             else:
                 return "general"
 
-    def _dispatch_module(
+    async def _dispatch_module(
         self,
         intent: str,
         message: str,
         resources: List[ResourceRef],
-        user_id: str
+        user_id: str,
+        trace_id: str,
+        telemetry_payload: Optional[Dict[str, Any]] = None,
     ) -> ModuleDispatchResult:
         """Dispatch to appropriate skill module"""
         start_time = int(time.time() * 1000)
@@ -385,12 +409,18 @@ class OrchestratorV2:
         context = TaskContext(
             task_id=f"task-{uuid.uuid4().hex[:8]}",
             user_id=user_id,
-            trace_id=f"trace-{uuid.uuid4().hex[:12]}",
+            trace_id=trace_id,
             resource_refs=resources,
+            metadata={
+                "message": message,
+                "telemetry_payload": telemetry_payload,
+            },
         )
 
         try:
-            output = handler(context, {"message": message})
+            output = handler(context)
+            if hasattr(output, "__await__"):
+                output = await output
             return ModuleDispatchResult(
                 module_id=module_id,
                 module_name=self._module_registry.get_metadata(module_id).get("name", module_id),
@@ -406,6 +436,32 @@ class OrchestratorV2:
                 error=str(e),
                 execution_time_ms=int(time.time() * 1000) - start_time,
             )
+
+    async def _diagnosis_handler(self, context: TaskContext) -> Any:
+        telemetry_payload = context.metadata.get("telemetry_payload")
+        if not telemetry_payload:
+            return {"status": "error", "message": "缺少遥测数据，无法诊断"}
+
+        telemetry_context = self._telemetry_builder.build_from_payload(telemetry_payload)
+        diagnosis = await self._diagnosis_engine.diagnose(
+            telemetry_context,
+            use_llm=bool(getattr(self._diagnosis_engine, "llm_router", None)),
+        )
+        maintenance_plan = await self._maintenance_plan_generator.generate(
+            diagnosis,
+            use_llm=bool(getattr(self._maintenance_plan_generator, "llm_router", None)),
+        )
+        adapter = await AdapterFactory.get_adapter()
+        verification = await self._simulation_executor.execute_and_verify(maintenance_plan, adapter)
+
+        return {
+            "status": "ok",
+            "message": "诊断完成",
+            "diagnosis": self._to_dict(diagnosis),
+            "maintenance_plan": self._to_dict(maintenance_plan),
+            "verification": self._to_dict(verification),
+            "trace_id": context.trace_id,
+        }
 
     def _record_event(self, trace_id: str, event_type: str, payload: Dict[str, Any]):
         """Record event for replay"""

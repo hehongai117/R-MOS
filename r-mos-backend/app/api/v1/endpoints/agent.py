@@ -364,6 +364,7 @@ class AgentExecuteRequest(BaseModel):
     resource_ref: Optional[Dict[str, Any]] = Field(default=None, description="Resource reference")
     policy_context: Optional[Dict[str, Any]] = Field(default=None, description="Policy context")
     intent_classification: Optional[str] = Field(default=None, description="Pre-classified intent")
+    telemetry_payload: Optional[Dict[str, Any]] = Field(default=None, description="Telemetry payload for diagnosis flows")
     trace_id: Optional[str] = Field(default=None, description="Trace ID for replay")
     idempotency_key: Optional[str] = Field(default=None, description="Idempotency key")
 
@@ -572,12 +573,13 @@ async def execute_agent(
     else:
         # B-mode: Handle as message (via OrchestratorV2)
         try:
-            response = orchestrator_v2.process_request(
+            response = await orchestrator_v2.process_request(
                 user_id=request.user_id,
                 message=request.message or "",
                 resource_ref=request.resource_ref,
                 policy_context=request.policy_context,
                 intent_classification=request.intent_classification,
+                telemetry_payload=request.telemetry_payload,
                 trace_id=trace_id,
                 idempotency_key=request.idempotency_key,
             )

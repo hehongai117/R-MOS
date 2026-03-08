@@ -49,7 +49,7 @@ class ConversationService:
             content=content,
             task_id=task_id,
             step_index=step_index,
-            metadata=json.dumps(metadata) if metadata else None,
+            metadata_json=json.dumps(metadata) if metadata else None,
             created_at=datetime.utcnow(),
         )
 

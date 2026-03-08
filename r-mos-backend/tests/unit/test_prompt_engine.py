@@ -63,6 +63,35 @@ def test_context_block_full():
     assert any("3" in m["content"] for m in msgs)
 
 
+def test_context_block_uses_telemetry_context_builder_for_robot_state():
+    block = ContextBlock(
+        robot_state={
+            "joints": [
+                {
+                    "joint_id": "waist",
+                    "position": 0.0,
+                    "velocity": 0.0,
+                    "torque": 0.1,
+                    "temperature": 76.0,
+                    "error_code": "E002_STALL",
+                }
+            ],
+            "sensors": {
+                "battery": 82.0,
+                "temperature": 45.0,
+                "voltage": {"main": 24.0},
+            },
+            "active_faults": ["E002_STALL"],
+        }
+    )
+
+    msgs = block.to_messages()
+
+    assert len(msgs) == 1
+    assert "机器人状态分析" in msgs[0]["content"]
+    assert "STALL" in msgs[0]["content"] or "E002_STALL" in msgs[0]["content"]
+
+
 # ============ KnowledgeBlock 测试 ============
 
 def test_knowledge_block_empty():

@@ -10,6 +10,8 @@ import pytest
 from sqlalchemy import select
 
 from app.models.skill_profile import StudentWeakStep
+from app.models.skill_profile import StudentSkillProfile
+from app.models.conversation import ConversationTurn
 from app.models.training_submission import TrainingSubmission
 from app.services.memory.training_memory_writer import TrainingMemoryWriter
 
@@ -115,3 +117,105 @@ async def test_training_memory_writer_weak_step_fail_count_and_resolved(test_db,
     assert weak_step is not None
     assert weak_step.fail_count == 4
     assert weak_step.is_resolved is True
+
+
+@pytest.mark.asyncio
+async def test_training_memory_writer_writes_conversation_summary(monkeypatch, test_db, test_user, test_session):
+    submission = TrainingSubmission(
+        submission_id=str(uuid4()),
+        session_id=test_session.session_id,
+        user_id=test_user.id,
+        submit_type="manual",
+        submitted_at=datetime.utcnow(),
+        payload=_submission_payload(),
+    )
+    test_db.add_all(
+        [
+            submission,
+            ConversationTurn(
+                session_id=test_session.session_id,
+                role="user",
+                content="机器人出现堵转现象",
+                metadata_json='{"source":"chat"}',
+            ),
+            ConversationTurn(
+                session_id=test_session.session_id,
+                role="assistant",
+                content="建议先检查机械卡滞和驱动器状态",
+                metadata_json='{"source":"assistant"}',
+            ),
+        ]
+    )
+    await test_db.commit()
+
+    written: dict = {}
+
+    class _FakeMemoryHub:
+        async def write(self, **kwargs):
+            written.update(kwargs)
+            return True
+
+    writer = TrainingMemoryWriter(test_db)
+
+    async def fake_generate_summary(_conversation_text: str) -> str:
+        return "学员完成堵转排查对话，系统建议检查卡滞与驱动器。"
+
+    monkeypatch.setattr("app.services.memory.training_memory_writer.MemoryHub", _FakeMemoryHub)
+    monkeypatch.setattr(writer, "_generate_summary_with_llm", fake_generate_summary)
+
+    await writer._write_conversation_summary(submission)
+
+    assert written["session_id"] == submission.session_id
+    assert written["user_id"] == str(test_user.id)
+    assert written["is_long_term"] is True
+    assert written["data"]["type"] == "conversation_summary"
+    assert "堵转排查" in written["data"]["summary"]
+
+
+@pytest.mark.asyncio
+async def test_training_memory_writer_precomputes_next_recommendation(monkeypatch, test_db, test_user):
+    profile = StudentSkillProfile(
+        user_id=test_user.id,
+        overall_level=2,
+        total_sessions=3,
+        score_safety=85,
+        score_procedure=55,
+        score_precision=78,
+        score_efficiency=81,
+        score_tools=80,
+    )
+    weak_step = StudentWeakStep(
+        user_id=test_user.id,
+        step_id="step-weak-1",
+        sop_id="sop-1",
+        fail_count=3,
+        is_resolved=False,
+    )
+    test_db.add_all([profile, weak_step])
+    await test_db.commit()
+
+    cached: dict = {}
+
+    class _FakeShortTerm:
+        def __init__(self):
+            self._ttl = 1800
+
+        def write(self, session_id: str, data: dict) -> bool:
+            cached["session_id"] = session_id
+            cached["data"] = data
+            cached["ttl"] = self._ttl
+            return True
+
+    class _FakeMemoryHub:
+        def __init__(self):
+            self.short_term = _FakeShortTerm()
+
+    monkeypatch.setattr("app.services.memory.training_memory_writer.MemoryHub", _FakeMemoryHub)
+
+    writer = TrainingMemoryWriter(test_db)
+    await writer._precompute_next_recommendation(test_user.id)
+
+    assert cached["session_id"] == f"recommendation:{test_user.id}"
+    assert cached["ttl"] == 86400
+    assert cached["data"]["weak_step_count"] == 1
+    assert cached["data"]["recommended_steps"] == ["step-weak-1"]

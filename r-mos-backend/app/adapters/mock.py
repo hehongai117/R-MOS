@@ -79,6 +79,8 @@ class MockRobotAdapter(BaseRobotAdapter):
         
         # 记录故障注入的关节状态（用于STALL等冻结效果）
         self._frozen_joint_positions: Dict[str, float] = {}
+        self._emergency_stopped = False
+        self._battery_level_override: Optional[float] = None
         
         # 后台任务句柄
         self._simulation_task: Optional[asyncio.Task] = None
@@ -140,7 +142,11 @@ class MockRobotAdapter(BaseRobotAdapter):
             robot_id="mock_robot_001",
             model="MOCK_HUMANOID_V1",
             firmware_version="1.0.0-mock",
-            runtime_status=RobotStatus.ONLINE if not self._active_faults else RobotStatus.ERROR,
+            runtime_status=(
+                RobotStatus.MAINTENANCE
+                if self._emergency_stopped
+                else (RobotStatus.ONLINE if not self._active_faults else RobotStatus.ERROR)
+            ),
             last_update=datetime.utcnow()
         )
     
@@ -192,6 +198,11 @@ class MockRobotAdapter(BaseRobotAdapter):
             current = base_current
             temperature = base_temperature
             error_code = None
+
+            if self._emergency_stopped:
+                velocity = 0.0
+                torque = 0.0
+                current = 0.0
             
             # 检查是否有故障影响此关节
             for fault_code in self._active_faults:
@@ -241,7 +252,7 @@ class MockRobotAdapter(BaseRobotAdapter):
             raise ConnectionError("Adapter not connected")
         
         # 基础传感器数据
-        battery = 100.0 - (self._simulation_time * 0.1)  # 随时间缓慢降低
+        battery = self._battery_level_override if self._battery_level_override is not None else 100.0 - (self._simulation_time * 0.1)  # 随时间缓慢降低
         battery = max(0.0, min(100.0, battery))
         
         temperature = self._base_temperature + math.sin(self._simulation_time * 0.1) * 5.0
@@ -318,7 +329,55 @@ class MockRobotAdapter(BaseRobotAdapter):
             return True
         
         return False
-    
+
+    async def apply_maintenance_action(
+        self,
+        action_type: str,
+        target_joint: Optional[str] = None,
+    ) -> bool:
+        """应用维保动作，供 SimulationExecutor 预执行方案验证。"""
+        if not self._connected:
+            raise ConnectionError("Adapter not connected")
+
+        if action_type == "clear_fault":
+            self._active_faults.clear()
+            self._frozen_joint_positions.clear()
+            return True
+
+        if action_type == "emergency_stop":
+            self._emergency_stopped = True
+            return True
+
+        if action_type == "resume_operation":
+            self._emergency_stopped = False
+            return True
+
+        if action_type == "reset_joint":
+            if target_joint:
+                self._frozen_joint_positions.pop(target_joint, None)
+            else:
+                self._frozen_joint_positions.clear()
+            return True
+
+        if action_type == "cool_down":
+            self._active_faults = [code for code in self._active_faults if code != "E001_OVERHEAT"]
+            return True
+
+        if action_type == "recharge_battery":
+            self._battery_level_override = 100.0
+            self._active_faults = [code for code in self._active_faults if code != "E003_VOLTAGE_DROP"]
+            return True
+
+        if action_type == "stabilize_sensor":
+            self._active_faults = [code for code in self._active_faults if code != "E004_SENSOR_FAILURE"]
+            return True
+
+        if action_type == "tighten_joint":
+            self._active_faults = [code for code in self._active_faults if code != "E005_JOINT_LOOSE"]
+            return True
+
+        return False
+
     async def get_active_faults(self) -> List[str]:
         """获取活动故障列表"""
         return self._active_faults.copy()

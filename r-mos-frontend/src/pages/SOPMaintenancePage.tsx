@@ -29,6 +29,7 @@ import { Lock, ShieldAlert } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common';
+import { DiagnosisPanel, readLatestDiagnosisResult } from '@/components/DiagnosisPanel/DiagnosisPanel';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
 import DisassemblyDemoAdjudicated from '@/components/Viewer3D/DisassemblyDemoAdjudicated';
@@ -363,6 +364,7 @@ function SOPMaintenancePage() {
             })),
         },
     ]), []);
+    const diagnosisSnapshot = useMemo(() => readLatestDiagnosisResult(), []);
     const viewerModelScale = viewState === 'ISOLATED'
         ? (selectedOverviewNode ? (ISOLATION_MODEL_SCALE_OVERRIDES[selectedOverviewNode] ?? 1.15) : 1.15)
         : 2;
@@ -1328,6 +1330,19 @@ function SOPMaintenancePage() {
                                 />
                             </Space>
                         </Card>
+                        <SectionCard
+                            title="最近诊断结果"
+                            description="从 Agent 工作台同步的最近一次故障推理与维保建议"
+                        >
+                            <DiagnosisPanel
+                                diagnosisResult={diagnosisSnapshot?.diagnosisResult ?? null}
+                                maintenancePlan={diagnosisSnapshot?.maintenancePlan ?? null}
+                                verificationResult={diagnosisSnapshot?.verificationResult ?? null}
+                                isLoading={false}
+                                onConfirmExecution={() => message.success('已确认执行方案，请按 SOP 步骤继续操作')}
+                                onEscalateToTeacher={() => message.info('已上报教师审核')}
+                            />
+                        </SectionCard>
                         <Tabs
                         activeKey={rightPanelTab}
                         onChange={setRightPanelTab}

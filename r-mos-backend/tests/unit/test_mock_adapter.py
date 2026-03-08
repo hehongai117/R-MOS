@@ -42,3 +42,20 @@ async def test_mock_adapter_inject_fault():
     
     active_faults = await adapter.get_active_faults()
     assert "E001_OVERHEAT" in active_faults
+
+
+@pytest.mark.asyncio
+async def test_mock_adapter_apply_maintenance_action_clears_faults():
+    adapter = MockRobotAdapter()
+    await adapter.connect()
+
+    await adapter.inject_fault(
+        fault_code="E002_STALL",
+        target_part="knee_right",
+        severity="high",
+    )
+
+    success = await adapter.apply_maintenance_action("clear_fault")
+
+    assert success is True
+    assert await adapter.get_active_faults() == []

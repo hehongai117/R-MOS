@@ -24,7 +24,7 @@ class ConversationTurn(Base):
     step_index = Column(Integer, nullable=True, comment="步骤索引")
     role = Column(String(16), nullable=False, comment="角色: user/assistant/system")
     content = Column(Text, nullable=False, comment="对话内容")
-    metadata = Column(String(512), nullable=True, comment="元数据 JSON")
+    metadata_json = Column("metadata", String(512), nullable=True, comment="元数据 JSON")
     created_at = Column(
         DateTime,
         nullable=False,
