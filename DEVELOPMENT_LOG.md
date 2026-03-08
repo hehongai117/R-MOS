@@ -4737,3 +4737,30 @@
   - 当前工作区仍有用户既有脏改，提交时必须继续严格按白名单操作。
 - Next Step:
   - 若继续执行计划，下一批建议转向 `DiagnosisPanel` 的样式收口与回归测试补强，或为 `SOPMaintenancePage` 增补交互分支更深的测试用例。
+
+- DateTime: 2026-03-08 21:22:37 +0800
+- Task: 前端重构 Batch 5，完成 `DiagnosisPanel` 的样式收口与共享回归测试补强
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red：扩展 `DiagnosisPanel.test.tsx` 后，首次 `npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` 失败，原因为空态仍是通用 `EmptyState` 文案，且主/备假设缺少 `H1/H2` 排序标识与证据胶囊渲染。
+  - TDD Green：实现工业化空态、`H1/H2` 假设标识和证据/可能原因胶囊后，`DiagnosisPanel` 组件测试 PASS（`2 passed`）。
+  - 共享回归：`npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx` -> PASS（`6 passed`），确认 `AgentWorkbenchPage` 中的共享使用未回归。
+  - 前端构建：`npm run build` -> PASS；产物显示 `SOPMaintenancePage-COQn-Gd1.js 152.75 kB | gzip 45.89 kB`，前端整体构建无阻断。
+- Result: PASS
+- Risks/Notes:
+  - 本轮只收口 `DiagnosisPanel` 的展示层：空态文案、主/备假设层级、证据 chips；没有改动诊断数据结构、按钮行为或上层业务流程。
+  - 当前回归测试已覆盖组件本身和 `AgentWorkbenchPage` 共享使用点，但 `SOPMaintenancePage` 在页面测试里仍使用 `DiagnosisPanel` mock；这符合当前 smoke test 边界，不属于回归缺陷。
+  - 工作区仍存在用户既有脏改，提交时必须继续按白名单操作。
+- Next Step:
+  - 若以“本轮前端重构代码实施”为目标，核心代码工作已完成；后续只剩验收文档闭环或更深交互测试的扩展项。

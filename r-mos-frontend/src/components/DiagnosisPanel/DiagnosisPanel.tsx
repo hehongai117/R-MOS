@@ -1,8 +1,8 @@
-import { AlertTriangle, CheckCircle2, FileSearch, Wrench } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import type { DiagnosisResult, FaultHypothesis, MaintenancePlan, VerificationResult } from '@/api/agent-v2'
-import { EmptyState, StatusBadge } from '@/components/common'
+import { StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -72,6 +72,30 @@ function buildSortedHypotheses(diagnosisResult: DiagnosisResult | null): FaultHy
   return [...deduped.values()].sort((left, right) => right.confidence - left.confidence)
 }
 
+function formatEvidenceValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(formatEvidenceValue).join(', ')
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+
+  if (value && typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+
+  return 'unknown'
+}
+
+function buildEvidenceChips(hypothesis: FaultHypothesis): string[] {
+  const chips = Object.entries(hypothesis.evidence || {}).map(
+    ([key, value]) => `${key}: ${formatEvidenceValue(value)}`,
+  )
+
+  return [...chips, ...hypothesis.possible_causes]
+}
+
 export function DiagnosisPanel({
   diagnosisResult,
   maintenancePlan,
@@ -110,11 +134,13 @@ export function DiagnosisPanel({
 
   if (!diagnosisResult && !maintenancePlan && !verificationResult) {
     return (
-      <EmptyState
-        icon={FileSearch}
-        title="暂无诊断结果"
-        description="发起一次诊断后，故障推理、维保方案和仿真验证会显示在这里。"
-      />
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="font-mono text-2xl text-text-muted">◈</div>
+        <div className="mt-2 text-sm font-medium text-text-secondary">等待诊断触发</div>
+        <div className="mt-1 text-xs text-text-muted">
+          发送"诊断问题"意图后显示
+        </div>
+      </div>
     )
   }
 
@@ -124,21 +150,24 @@ export function DiagnosisPanel({
         {hypotheses.map((hypothesis, index) => {
           const isPrimary = diagnosisResult?.primary_hypothesis?.fault_code === hypothesis.fault_code
           const confidence = Math.round(hypothesis.confidence * 100)
+          const evidenceChips = buildEvidenceChips(hypothesis)
           return (
             <div
               key={`${hypothesis.fault_code}-${index}`}
               className={cn(
                 'rounded-xl border p-4 transition-colors',
                 isPrimary
-                  ? 'border-success/40 bg-success/10'
+                  ? 'border-success/30 bg-success/5'
                   : 'border-border-subtle bg-bg-elevated',
               )}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium text-text-primary">{hypothesis.fault_name}</div>
+                <div className="min-w-0">
+                  <div className={cn('text-xs font-medium', isPrimary ? 'text-success' : 'text-text-muted')}>
+                    {`H${index + 1} · ${hypothesis.fault_code}`}
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-text-primary">{hypothesis.fault_name}</div>
                   <div className="mt-1 flex flex-wrap gap-2">
-                    <StatusBadge status={isPrimary ? 'success' : 'pending'} label={hypothesis.fault_code} />
                     {isPrimary ? <StatusBadge status="active" label="主假设" /> : <StatusBadge status="idle" label="备选假设" />}
                   </div>
                 </div>
@@ -165,6 +194,19 @@ export function DiagnosisPanel({
                   </span>
                 ))}
               </div>
+
+              {evidenceChips.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {evidenceChips.map((chip) => (
+                    <span
+                      key={`${hypothesis.fault_code}-${chip}`}
+                      className="rounded border border-border-default bg-bg-overlay px-1.5 py-0.5 font-mono text-[10px] text-text-muted"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
           )
         })}

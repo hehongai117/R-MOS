@@ -4,6 +4,22 @@ import { describe, expect, it } from 'vitest'
 import { DiagnosisPanel } from '@/components/DiagnosisPanel/DiagnosisPanel'
 
 describe('DiagnosisPanel', () => {
+  it('renders industrial empty state when no diagnosis data is available', () => {
+    render(
+      <DiagnosisPanel
+        diagnosisResult={null}
+        maintenancePlan={null}
+        verificationResult={null}
+        isLoading={false}
+        onConfirmExecution={() => {}}
+        onEscalateToTeacher={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('等待诊断触发')).toBeTruthy()
+    expect(screen.getByText('发送"诊断问题"意图后显示')).toBeTruthy()
+  })
+
   it('disables confirm action when supervisor approval is required', () => {
     render(
       <DiagnosisPanel
@@ -69,6 +85,10 @@ describe('DiagnosisPanel', () => {
     )
 
     expect(screen.getByText('电机堵转')).toBeTruthy()
+    expect(screen.getByText('H1 · E002_STALL')).toBeTruthy()
+    expect(screen.getByText('H2 · E001_OVERHEAT')).toBeTruthy()
+    expect(screen.getByText('joint_id: waist')).toBeTruthy()
+    expect(screen.getByText('机械卡滞')).toBeTruthy()
     expect(screen.getByText('92%')).toBeTruthy()
     expect(screen.getByText('验证通过')).toBeTruthy()
     expect(screen.getByRole('button', { name: '确认执行方案' }).getAttribute('disabled')).not.toBeNull()
