@@ -24,10 +24,8 @@ import {
     HomeOutlined,
     RightOutlined,
 } from '@ant-design/icons';
-import { Lock, ShieldAlert } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { SectionCard, StatusBadge } from '@/components/common';
 import { DiagnosisPanel, readLatestDiagnosisResult } from '@/components/DiagnosisPanel/DiagnosisPanel';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
@@ -54,6 +52,7 @@ import {
 import {
     SOPMaintenanceExamOverlay,
     SOPMaintenanceHeader,
+    SOPMaintenanceLeftRail,
     SOPMaintenanceRightRail,
     ToolSelector,
     ScrewInfo,
@@ -1011,6 +1010,221 @@ function SOPMaintenancePage() {
         </Space>
     );
 
+    const leftRailExplodeControls = (
+        <Card size="small" title={<><PartitionOutlined /> 爆炸图控制</>}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+                <div>
+                    <Text>展开程度: {Math.round(explodeAmount * 100)}%</Text>
+                    <Slider
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={explodeAmount}
+                        onChange={setExplodeAmount}
+                        disabled={!canAdjustExplode}
+                    />
+                </div>
+                <Space wrap>
+                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0)}>收起</Button>
+                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.4)}>40%</Button>
+                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(1)}>完全展开</Button>
+                </Space>
+                <Space wrap>
+                    <Tag color={directPickableCount <= directPickableLimit ? 'green' : 'red'}>
+                        可直接点击 {directPickableCount}/{directPickableLimit}
+                    </Tag>
+                    <Tag color={proxies <= ISOLATION_DENSITY_CONFIG.P_max ? 'blue' : 'red'}>
+                        代理入口 {proxies}/{ISOLATION_DENSITY_CONFIG.P_max}
+                    </Tag>
+                    <Tag color={adjudicatedDisassemblyReady ? 'gold' : 'default'}>
+                        {adjudicatedDisassemblyReady ? '裁决级拆卸已就绪' : '当前为普通演示模式'}
+                    </Tag>
+                </Space>
+                <div style={{ marginTop: 12 }}>
+                    <Button
+                        type={disassemblyPlaying ? 'primary' : 'default'}
+                        danger={disassemblyPlaying}
+                        size="small"
+                        block
+                        onClick={() => {
+                            setDisassemblyPlaying(!disassemblyPlaying);
+                            if (disassemblyPlaying) {
+                                setDisassemblyStep('');
+                                setExplodeAmount(0);
+                            }
+                        }}
+                    >
+                        {disassemblyPlaying
+                            ? '⏹ 停止拆卸动画'
+                            : adjudicatedDisassemblyReady
+                                ? '▶ 播放裁决级拆卸'
+                                : '▶ 播放拆卸动画'}
+                    </Button>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                        {adjudicatedDisassemblyReady
+                            ? '已选择螺丝和工具，播放后将进入裁决校验；失败时显示阻断并回滚。'
+                            : '当前仅播放序列演示。选中螺丝并选择工具后可切换为裁决级拆卸。'}
+                    </Text>
+                    {disassemblyStep && (
+                        <div style={{
+                            marginTop: 6,
+                            padding: '4px 8px',
+                            background: 'rgba(24,144,255,0.12)',
+                            borderRadius: 4,
+                            fontSize: 12,
+                            color: '#69c0ff',
+                            textAlign: 'center',
+                        }}>
+                            {disassemblyStep}
+                        </div>
+                    )}
+                </div>
+            </Space>
+        </Card>
+    );
+
+    const leftRailIsolationControls = viewState === 'ISOLATED' && isolationSets ? (
+        <Card size="small" title="🧩 当前部位子组件">
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    点击子组件可直接进入下钻，避免在拥挤视图中盲点。
+                </Text>
+                {isolationSets.targetLinks.map((linkName) => {
+                    const isCurrent = l2TargetLink === linkName;
+                    return (
+                        <Button
+                            key={`link-entry-${linkName}`}
+                            size="small"
+                            type={isCurrent ? 'primary' : 'default'}
+                            block
+                            onClick={() => {
+                                const part = PART_METADATA[linkName];
+                                if (part) {
+                                    handlePartSelect(part);
+                                    return;
+                                }
+                                if (linkHasDetailParts(linkName)) {
+                                    enterL2(linkName);
+                                }
+                            }}
+                        >
+                            {getLinkDisplayName(linkName)}
+                        </Button>
+                    );
+                })}
+            </Space>
+        </Card>
+    ) : null;
+
+    const leftRailSopListContent = (
+        <Card size="small" title="📚 SOP 列表（联动）">
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    点击列表项会同步播放器和中间 3D 视图。
+                </Text>
+                {ALL_SOP_SCRIPTS.map((sop) => {
+                    const isActive = sop.sopId === linkedSOPId;
+                    return (
+                        <Button
+                            key={`sop-link-${sop.sopId}`}
+                            size="small"
+                            type={isActive ? 'primary' : 'default'}
+                            block
+                            onClick={() => setLinkedSOPId(sop.sopId)}
+                        >
+                            {sop.title}
+                        </Button>
+                    );
+                })}
+                {sopSceneSync.state.selectedSopId && (
+                    <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
+                        <Space wrap>
+                            <Tag color="blue" style={{ margin: 0 }}>{sopSceneSync.state.selectedSopTitle}</Tag>
+                            <Tag color="cyan" style={{ margin: 0 }}>步骤 {sopSceneSync.progressText}</Tag>
+                            {sopSceneSync.state.executionState && (
+                                <Tag
+                                    color={SOP_EXECUTION_STATE_TAG_COLOR[sopSceneSync.state.executionState] ?? 'default'}
+                                    style={{ margin: 0 }}
+                                >
+                                    {SOP_EXECUTION_STATE_LABEL[sopSceneSync.state.executionState]}
+                                </Tag>
+                            )}
+                        </Space>
+                        {sopSceneSync.state.currentStepTitle && (
+                            <Text style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                                当前步骤：{sopSceneSync.state.currentStepTitle}
+                            </Text>
+                        )}
+                        {sopSceneSync.state.blockedReason && (
+                            <Text type="danger" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
+                                阻断原因：{sopSceneSync.state.blockedReason}
+                            </Text>
+                        )}
+                    </div>
+                )}
+            </Space>
+        </Card>
+    );
+
+    const leftRailToolSelectorContent = (
+        <ToolSelector
+            selectedToolId={selectedToolId}
+            onToolSelect={(toolId) => {
+                setSelectedToolId(toolId);
+                setCurrentTool(toolId);
+                emitSOPActionEvent({
+                    type: 'tool_selected',
+                    toolId,
+                });
+            }}
+            requiredScrewId={selectedScrewId || undefined}
+        />
+    );
+
+    const leftRailSopPlayerContent = (
+        <SOPPlayerAdjudicated
+            availableSOPs={ALL_SOP_SCRIPTS}
+            selectedSOPId={linkedSOPId}
+            onSOPChange={handleSOPChange}
+            onStepChange={handleSOPStepChange}
+            onExecutionContextChange={handleSOPContextChange}
+            onBlocked={handleSOPBlocked}
+            onExplodeChange={setExplodeAmount}
+            onPartSelect={handleSOPPartSelect}
+            onToolRequired={handleSOPToolRequired}
+            currentToolId={selectedToolId}
+            actionEvent={sopActionEvent}
+            onSummarize={handleSummarize}
+            onExecutorReady={setSopExecutor}
+        />
+    );
+
+    const leftRailHoverContent = (
+        <Card size="small" title={<><InfoCircleOutlined /> 当前悬停</>}>
+            {hoveredDetailRecord ? (
+                <Space direction="vertical" size="small">
+                    <Text strong>{hoveredDetailRecord.displayName}</Text>
+                    <Tag color="geekblue">{hoveredDetailRecord.categoryLabel}</Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        所属总成：{hoveredDetailRecord.parentDisplayName}
+                    </Text>
+                </Space>
+            ) : hoveredPart ? (
+                <Space direction="vertical" size="small">
+                    <Text strong>{hoveredPart.displayName}</Text>
+                    <Tag color={GROUP_COLORS[hoveredPart.group]}>
+                        {GROUP_NAMES[hoveredPart.group]}
+                    </Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {hoveredPart.name}
+                    </Text>
+                </Space>
+            ) : (
+                <Text type="secondary">移动鼠标到零件上查看信息</Text>
+            )}
+        </Card>
+    );
+
     return (
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
             <SOPMaintenanceHeader
@@ -1029,258 +1243,24 @@ function SOPMaintenancePage() {
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
                 {/* 左侧：控制面板 */}
                 <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                        <SectionCard
-                            title={activeSopScript?.title ?? 'SOP 步骤导航'}
-                            description="保留现有执行逻辑，仅统一为工作台式导航外壳"
-                        >
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="rounded bg-primary/10 px-2 py-1 font-mono text-xs text-primary">
-                                        ATOM-01
-                                    </span>
-                                    <StatusBadge
-                                        label={activeSopScript?.difficulty ?? 'normal'}
-                                        status="pending"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    {(activeSopScript?.steps ?? []).map((step, index) => {
-                                        const isCurrent = sopSceneSync.state.currentStepTitle === step.title;
-                                        const isBlock = step.onFailure?.action === 'block';
-                                        const isSafetyHalt = step.failureReasons?.some((reason) => reason.severity === 'critical');
-                                        return (
-                                            <div
-                                                key={step.stepId}
-                                                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${isCurrent ? 'border-l-[3px] border-primary bg-[#111f33]' : 'bg-[rgba(255,255,255,0.03)]'}`}
-                                            >
-                                                <span style={{ color: isCurrent ? '#58a6ff' : '#8b949e', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-                                                    {String(index + 1).padStart(2, '0')}
-                                                </span>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ color: '#e6edf3' }}>{step.title}</div>
-                                                    <div style={{ color: '#8b949e', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                        {step.description}
-                                                    </div>
-                                                </div>
-                                                {isBlock ? <Lock size={14} color="#fbbf24" /> : null}
-                                                {isSafetyHalt ? <ShieldAlert size={14} color="#f87171" /> : null}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </SectionCard>
-
-                        {/* 爆炸图控制 */}
-                        <Card size="small" title={<><PartitionOutlined /> 爆炸图控制</>}>
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                                <div>
-                                    <Text>展开程度: {Math.round(explodeAmount * 100)}%</Text>
-                                    <Slider
-                                        min={0}
-                                        max={1}
-                                        step={0.01}
-                                        value={explodeAmount}
-                                        onChange={setExplodeAmount}
-                                        disabled={!canAdjustExplode}
-                                    />
-                                </div>
-                                <Space wrap>
-                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0)}>收起</Button>
-                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.4)}>40%</Button>
-                                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(1)}>完全展开</Button>
-                                </Space>
-                                <Space wrap>
-                                    <Tag color={directPickableCount <= directPickableLimit ? 'green' : 'red'}>
-                                        可直接点击 {directPickableCount}/{directPickableLimit}
-                                    </Tag>
-                                    <Tag color={proxies <= ISOLATION_DENSITY_CONFIG.P_max ? 'blue' : 'red'}>
-                                        代理入口 {proxies}/{ISOLATION_DENSITY_CONFIG.P_max}
-                                    </Tag>
-                                    <Tag color={adjudicatedDisassemblyReady ? 'gold' : 'default'}>
-                                        {adjudicatedDisassemblyReady ? '裁决级拆卸已就绪' : '当前为普通演示模式'}
-                                    </Tag>
-                                </Space>
-                                <div style={{ marginTop: 12 }}>
-                                    <Button
-                                        type={disassemblyPlaying ? 'primary' : 'default'}
-                                        danger={disassemblyPlaying}
-                                        size="small"
-                                        block
-                                        onClick={() => {
-                                            setDisassemblyPlaying(!disassemblyPlaying);
-                                            if (disassemblyPlaying) {
-                                                setDisassemblyStep('');
-                                                setExplodeAmount(0);
-                                            }
-                                        }}
-                                    >
-                                        {disassemblyPlaying
-                                            ? '⏹ 停止拆卸动画'
-                                            : adjudicatedDisassemblyReady
-                                                ? '▶ 播放裁决级拆卸'
-                                                : '▶ 播放拆卸动画'}
-                                    </Button>
-                                    <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
-                                        {adjudicatedDisassemblyReady
-                                            ? '已选择螺丝和工具，播放后将进入裁决校验；失败时显示阻断并回滚。'
-                                            : '当前仅播放序列演示。选中螺丝并选择工具后可切换为裁决级拆卸。'}
-                                    </Text>
-                                    {disassemblyStep && (
-                                        <div style={{
-                                            marginTop: 6,
-                                            padding: '4px 8px',
-                                            background: 'rgba(24,144,255,0.12)',
-                                            borderRadius: 4,
-                                            fontSize: 12,
-                                            color: '#69c0ff',
-                                            textAlign: 'center',
-                                        }}>
-                                            {disassemblyStep}
-                                        </div>
-                                    )}
-                                </div>
-                            </Space>
-                        </Card>
-
-                        {viewState === 'ISOLATED' && isolationSets && (
-                            <Card size="small" title="🧩 当前部位子组件">
-                                <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        点击子组件可直接进入下钻，避免在拥挤视图中盲点。
-                                    </Text>
-                                    {isolationSets.targetLinks.map((linkName) => {
-                                        const isCurrent = l2TargetLink === linkName;
-                                        return (
-                                            <Button
-                                                key={`link-entry-${linkName}`}
-                                                size="small"
-                                                type={isCurrent ? 'primary' : 'default'}
-                                                block
-                                                onClick={() => {
-                                                    const part = PART_METADATA[linkName];
-                                                    if (part) {
-                                                        handlePartSelect(part);
-                                                        return;
-                                                    }
-                                                    if (linkHasDetailParts(linkName)) {
-                                                        enterL2(linkName);
-                                                    }
-                                                }}
-                                            >
-                                                {getLinkDisplayName(linkName)}
-                                            </Button>
-                                        );
-                                    })}
-                                </Space>
-                            </Card>
-                        )}
-
-                        <Card size="small" title="📚 SOP 列表（联动）">
-                            <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    点击列表项会同步播放器和中间 3D 视图。
-                                </Text>
-                                {ALL_SOP_SCRIPTS.map((sop) => {
-                                    const isActive = sop.sopId === linkedSOPId;
-                                    return (
-                                        <Button
-                                            key={`sop-link-${sop.sopId}`}
-                                            size="small"
-                                            type={isActive ? 'primary' : 'default'}
-                                            block
-                                            onClick={() => setLinkedSOPId(sop.sopId)}
-                                        >
-                                            {sop.title}
-                                        </Button>
-                                    );
-                                })}
-                                {sopSceneSync.state.selectedSopId && (
-                                    <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
-                                        <Space wrap>
-                                            <Tag color="blue" style={{ margin: 0 }}>{sopSceneSync.state.selectedSopTitle}</Tag>
-                                            <Tag color="cyan" style={{ margin: 0 }}>步骤 {sopSceneSync.progressText}</Tag>
-                                            {sopSceneSync.state.executionState && (
-                                                <Tag
-                                                    color={SOP_EXECUTION_STATE_TAG_COLOR[sopSceneSync.state.executionState] ?? 'default'}
-                                                    style={{ margin: 0 }}
-                                                >
-                                                    {SOP_EXECUTION_STATE_LABEL[sopSceneSync.state.executionState]}
-                                                </Tag>
-                                            )}
-                                        </Space>
-                                        {sopSceneSync.state.currentStepTitle && (
-                                            <Text style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
-                                                当前步骤：{sopSceneSync.state.currentStepTitle}
-                                            </Text>
-                                        )}
-                                        {sopSceneSync.state.blockedReason && (
-                                            <Text type="danger" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
-                                                阻断原因：{sopSceneSync.state.blockedReason}
-                                            </Text>
-                                        )}
-                                    </div>
-                                )}
-                            </Space>
-                        </Card>
-
-                        {/* 工具选择器 */}
-                        <ToolSelector
-                            selectedToolId={selectedToolId}
-                            onToolSelect={(toolId) => {
-                                setSelectedToolId(toolId);
-                                setCurrentTool(toolId);
-                                emitSOPActionEvent({
-                                    type: 'tool_selected',
-                                    toolId,
-                                });
-                            }}
-                            requiredScrewId={selectedScrewId || undefined}
-                        />
-
-                        {/* SOP 播放器 */}
-                        <SOPPlayerAdjudicated
-                            availableSOPs={ALL_SOP_SCRIPTS}
-                            selectedSOPId={linkedSOPId}
-                            onSOPChange={handleSOPChange}
-                            onStepChange={handleSOPStepChange}
-                            onExecutionContextChange={handleSOPContextChange}
-                            onBlocked={handleSOPBlocked}
-                            onExplodeChange={setExplodeAmount}
-                            onPartSelect={handleSOPPartSelect}
-                            onToolRequired={handleSOPToolRequired}
-                            currentToolId={selectedToolId}
-                            actionEvent={sopActionEvent}
-                            onSummarize={handleSummarize}
-                            onExecutorReady={setSopExecutor}
-                        />
-
-                        {/* 悬停提示 */}
-                        <Card size="small" title={<><InfoCircleOutlined /> 当前悬停</>}>
-                            {hoveredDetailRecord ? (
-                                <Space direction="vertical" size="small">
-                                    <Text strong>{hoveredDetailRecord.displayName}</Text>
-                                    <Tag color="geekblue">{hoveredDetailRecord.categoryLabel}</Tag>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        所属总成：{hoveredDetailRecord.parentDisplayName}
-                                    </Text>
-                                </Space>
-                            ) : hoveredPart ? (
-                                <Space direction="vertical" size="small">
-                                    <Text strong>{hoveredPart.displayName}</Text>
-                                    <Tag color={GROUP_COLORS[hoveredPart.group]}>
-                                        {GROUP_NAMES[hoveredPart.group]}
-                                    </Tag>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        {hoveredPart.name}
-                                    </Text>
-                                </Space>
-                            ) : (
-                                <Text type="secondary">移动鼠标到零件上查看信息</Text>
-                            )}
-                        </Card>
-                    </Space>
+                    <SOPMaintenanceLeftRail
+                        sopTitle={activeSopScript?.title ?? 'SOP 步骤导航'}
+                        difficultyLabel={activeSopScript?.difficulty ?? 'normal'}
+                        currentStepTitle={sopSceneSync.state.currentStepTitle}
+                        steps={(activeSopScript?.steps ?? []).map((step) => ({
+                            stepId: step.stepId,
+                            title: step.title,
+                            description: step.description,
+                            onFailureAction: step.onFailure?.action,
+                            hasCriticalFailureReason: step.failureReasons?.some((reason) => reason.severity === 'critical') ?? false,
+                        }))}
+                        explodeControls={leftRailExplodeControls}
+                        isolationControls={leftRailIsolationControls}
+                        sopListContent={leftRailSopListContent}
+                        toolSelectorContent={leftRailToolSelectorContent}
+                        sopPlayerContent={leftRailSopPlayerContent}
+                        hoverContent={leftRailHoverContent}
+                    />
                 </Col>
 
                 {/* 中间：3D 视图 */}

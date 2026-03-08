@@ -4678,3 +4678,34 @@
   - 当前工作区仍有用户未提交改动，提交时必须继续按文件白名单操作。
 - Next Step:
   - 若继续执行计划，下一批应处理 `SOPMaintenancePage` 左栏控制面板的展示层收口，并补页面级回归测试。
+
+- DateTime: 2026-03-08 21:05:57 +0800
+- Task: 前端重构 Batch 3，抽离 `SOPMaintenancePage` 左栏展示壳并修复批次内编译回归
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/index.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red：新增 `SOPMaintenanceLeftRail` 契约测试后，`npm test -- src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` 失败，原因是新组件尚未定义，符合预期。
+  - TDD Green：补齐左栏展示壳与页面接线后，定向测试 PASS（`4 passed`），覆盖步骤导航、阻断/高危标记与各控制区 slot 渲染。
+  - Build Red：首次 `npm run build` 失败，报错为 `SOPMaintenancePage.tsx` 中残留未使用的 `StatusBadge` import。
+  - Debug + Build Green：按 `systematic-debugging` 流程确认根因后，删除无用 import，重跑 `npm run build` PASS；产物显示 `SOPMaintenancePage-hElcPm14.js 152.74 kB | gzip 45.87 kB`。
+- Result: PASS
+- Risks/Notes:
+  - 本轮继续保持 3D 中栏、状态编排、SOP/裁决交互逻辑不变，只把左栏导航与控制区的展示层外移。
+  - 用户在批次中途打断过一次，我在恢复后先重新核实了根因与文件状态，再继续做最小修复和验证。
+  - 当前 `SOPMaintenancePage` 仍保留较多 Ant Design 控件作为 slot 内容，后续若继续推进，重点应转向页面级回归测试与更细粒度的壳层收口。
+- Next Step:
+  - 若继续执行计划，下一批应为 `SOPMaintenancePage` 补页面级 smoke/regression 测试，并评估左栏 slot 中的 Ant Design 控件是否需要进一步替换。

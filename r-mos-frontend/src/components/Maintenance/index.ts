@@ -6,5 +6,6 @@ export { default as ScrewInfo } from './ScrewInfo';
 export {
     SOPMaintenanceExamOverlay,
     SOPMaintenanceHeader,
+    SOPMaintenanceLeftRail,
     SOPMaintenanceRightRail,
 } from './SOPMaintenanceShell';

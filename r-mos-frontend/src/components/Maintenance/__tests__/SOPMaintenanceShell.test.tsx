@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   SOPMaintenanceExamOverlay,
   SOPMaintenanceHeader,
+  SOPMaintenanceLeftRail,
   SOPMaintenanceRightRail,
 } from '@/components/Maintenance/SOPMaintenanceShell'
 
@@ -73,5 +74,48 @@ describe('SOPMaintenanceShell', () => {
     fireEvent.click(screen.getByRole('button', { name: '重置' }))
 
     expect(onReset).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders left rail step navigator and control slots', () => {
+    render(
+      <SOPMaintenanceLeftRail
+        sopTitle="更换肘关节模组"
+        difficultyLabel="hard"
+        currentStepTitle="拆卸外壳"
+        steps={[
+          {
+            stepId: 'step-1',
+            title: '拆卸外壳',
+            description: '断电后拆除保护罩',
+            onFailureAction: 'block',
+            hasCriticalFailureReason: true,
+          },
+          {
+            stepId: 'step-2',
+            title: '检查线束',
+            description: '确认线束固定状态',
+          },
+        ]}
+        explodeControls={<div>爆炸图控制区</div>}
+        isolationControls={<div>部位子组件区</div>}
+        sopListContent={<div>SOP 列表区</div>}
+        toolSelectorContent={<div>工具选择区</div>}
+        sopPlayerContent={<div>SOP 播放器区</div>}
+        hoverContent={<div>当前悬停区</div>}
+      />,
+    )
+
+    expect(screen.getByText('更换肘关节模组')).toBeTruthy()
+    expect(screen.getByText('hard')).toBeTruthy()
+    expect(screen.getByText('拆卸外壳')).toBeTruthy()
+    expect(screen.getByText('检查线束')).toBeTruthy()
+    expect(screen.getByLabelText('阻断步骤')).toBeTruthy()
+    expect(screen.getByLabelText('高危步骤')).toBeTruthy()
+    expect(screen.getByText('爆炸图控制区')).toBeTruthy()
+    expect(screen.getByText('部位子组件区')).toBeTruthy()
+    expect(screen.getByText('SOP 列表区')).toBeTruthy()
+    expect(screen.getByText('工具选择区')).toBeTruthy()
+    expect(screen.getByText('SOP 播放器区')).toBeTruthy()
+    expect(screen.getByText('当前悬停区')).toBeTruthy()
   })
 })

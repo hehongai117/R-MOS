@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Lock, ShieldAlert } from 'lucide-react'
 
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,27 @@ interface SOPMaintenanceRightRailProps {
   diagnosisContent: ReactNode
   partPanel: ReactNode
   screwPanel: ReactNode
+}
+
+interface SOPMaintenanceLeftRailStep {
+  stepId: string
+  title: string
+  description: string
+  onFailureAction?: string
+  hasCriticalFailureReason?: boolean
+}
+
+interface SOPMaintenanceLeftRailProps {
+  sopTitle: string
+  difficultyLabel: string
+  currentStepTitle?: string | null
+  steps: SOPMaintenanceLeftRailStep[]
+  explodeControls: ReactNode
+  isolationControls?: ReactNode
+  sopListContent: ReactNode
+  toolSelectorContent: ReactNode
+  sopPlayerContent: ReactNode
+  hoverContent: ReactNode
 }
 
 interface SOPMaintenanceExamOverlayProps {
@@ -181,6 +203,78 @@ export function SOPMaintenanceRightRail({
           </Tabs>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+export function SOPMaintenanceLeftRail({
+  sopTitle,
+  difficultyLabel,
+  currentStepTitle,
+  steps,
+  explodeControls,
+  isolationControls,
+  sopListContent,
+  toolSelectorContent,
+  sopPlayerContent,
+  hoverContent,
+}: SOPMaintenanceLeftRailProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      <SectionCard
+        title={sopTitle}
+        description="保留现有执行逻辑，仅统一为工作台式导航外壳"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="rounded bg-primary/10 px-2 py-1 font-mono text-xs text-primary">
+              ATOM-01
+            </span>
+            <StatusBadge label={difficultyLabel} status="pending" />
+          </div>
+          <div className="space-y-2">
+            {steps.map((step, index) => {
+              const isCurrent = currentStepTitle === step.title
+              const isBlock = step.onFailureAction === 'block'
+              return (
+                <div
+                  key={step.stepId}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm',
+                    isCurrent
+                      ? 'border-l-[3px] border-primary bg-[#111f33]'
+                      : 'bg-[rgba(255,255,255,0.03)]',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'font-mono text-xs',
+                      isCurrent ? 'text-primary' : 'text-text-muted',
+                    )}
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-text-primary">{step.title}</div>
+                    <div className="truncate text-xs text-text-muted">{step.description}</div>
+                  </div>
+                  {isBlock ? <Lock aria-label="阻断步骤" className="h-4 w-4 text-amber" /> : null}
+                  {step.hasCriticalFailureReason ? (
+                    <ShieldAlert aria-label="高危步骤" className="h-4 w-4 text-danger" />
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </SectionCard>
+
+      {explodeControls}
+      {isolationControls}
+      {sopListContent}
+      {toolSelectorContent}
+      {sopPlayerContent}
+      {hoverContent}
     </div>
   )
 }
