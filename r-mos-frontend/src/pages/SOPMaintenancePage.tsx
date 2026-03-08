@@ -1265,11 +1265,23 @@ function SOPMaintenancePage() {
 
                 {/* 中间：3D 视图 */}
                 <Col xs={24} lg={isFullscreen ? 24 : 12} style={{ height: '100%' }}>
-                    <div ref={viewerContainerRef} style={{ height: '100%', background: '#0a1929' }}>
+                    <div
+                        ref={viewerContainerRef}
+                        role="region"
+                        aria-label="SOP 3D 视图区"
+                        style={{ height: '100%', background: '#0a1929' }}
+                    >
                         <Card
                             size="small"
                             style={{ height: '100%' }}
-                            bodyStyle={{ height: 'calc(100% - 40px)', padding: 0, background: '#0a1929', borderRadius: '0 0 8px 8px' }}
+                            styles={{
+                                body: {
+                                    height: 'calc(100% - 40px)',
+                                    padding: 0,
+                                    background: '#0a1929',
+                                    borderRadius: '0 0 8px 8px',
+                                },
+                            }}
                             title={
                                 <Space size={4} style={{ fontSize: 14 }}>
                                     {breadcrumbPath.map((item, idx) => (

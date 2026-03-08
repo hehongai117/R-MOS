@@ -4709,3 +4709,31 @@
   - 当前 `SOPMaintenancePage` 仍保留较多 Ant Design 控件作为 slot 内容，后续若继续推进，重点应转向页面级回归测试与更细粒度的壳层收口。
 - Next Step:
   - 若继续执行计划，下一批应为 `SOPMaintenancePage` 补页面级 smoke/regression 测试，并评估左栏 slot 中的 Ant Design 控件是否需要进一步替换。
+
+- DateTime: 2026-03-08 21:13:48 +0800
+- Task: 前端重构 Batch 4，为 `SOPMaintenancePage` 补页面级 smoke/regression 测试并增强 3D 区可访问性
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red 1：首次页面级 `npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx` 失败，原因为测试选择器对 `更换肘关节模组` 匹配过宽；先收紧断言，继续验证真正契约。
+  - TDD Red 2：第二次执行失败，原因切换为页面缺少可访问标签 `SOP 3D 视图区`，证明 smoke test 已命中真实页面缺口。
+  - TDD Green：为 3D 容器补 `role="region"` 和 `aria-label="SOP 3D 视图区"` 后，页面级测试 PASS（`1 passed`）；同时测试宿主的 `Canvas` mock 收口为纯 stub，避免三维子节点噪音干扰。
+  - 回归校验：`npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` -> PASS（`5 passed`）。
+  - 前端构建：`npm run build` -> PASS；产物显示 `SOPMaintenancePage-FGwsg-7q.js 152.78 kB | gzip 45.91 kB`。
+- Result: PASS
+- Risks/Notes:
+  - 本轮新增的是页面级 smoke/regression 保护网，主要锁定头部、左右壳、3D 区可访问性和右栏 tab 切换，不覆盖所有 SOP 业务分支。
+  - `SOPMaintenancePage` 仍包含较多 `antd` 控件与复杂状态编排；当前测试策略是通过 mock 隔离 3D/播放器/工具链路，优先保证重构后的页面壳不回归。
+  - 当前工作区仍有用户既有脏改，提交时必须继续严格按白名单操作。
+- Next Step:
+  - 若继续执行计划，下一批建议转向 `DiagnosisPanel` 的样式收口与回归测试补强，或为 `SOPMaintenancePage` 增补交互分支更深的测试用例。
