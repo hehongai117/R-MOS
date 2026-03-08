@@ -313,7 +313,9 @@ class FaultDiagnosisEngine:
                     primary_hypothesis=hypotheses[0],
                     alternative_hypotheses=hypotheses[1:4],
                     reasoning=diagnosis_data.get("reasoning", ""),
-                    recommended_actions=diagnosis_data.get("recommended_actions", []),
+                    recommended_actions=self._normalize_recommended_actions(
+                        diagnosis_data.get("recommended_actions", [])
+                    ),
                 )
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
@@ -497,6 +499,16 @@ class FaultDiagnosisEngine:
         }
 
         return actions_map.get(fault_code, actions_map["UNKNOWN"])
+
+    def _normalize_recommended_actions(self, raw_actions: Any) -> list[str]:
+        """把 LLM 输出的推荐动作规范化为字符串列表。"""
+        if raw_actions is None:
+            return []
+        if isinstance(raw_actions, str):
+            return [raw_actions]
+        if isinstance(raw_actions, list):
+            return [str(action) for action in raw_actions if str(action).strip()]
+        return [str(raw_actions)]
 
 
 # 全局实例

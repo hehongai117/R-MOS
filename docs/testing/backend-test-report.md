@@ -94,3 +94,57 @@ pytest tests/ \
 
 - 闭环状态更新：
   - 先前“未闭环风险”已关闭（以核心服务门禁口径为准）。
+
+## 7) 诊断链路测试阶段（2026-03-08）
+
+> Scope: `docs/plans/2026-03-08-backend-diagnosis-test-phase-plan.md`  
+> Runtime: `r-mos-backend/.venv` + `DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db`
+
+### 7.1 执行摘要
+
+| Item | Command | Result | 通过率 | 覆盖率 | 备注 |
+|---|---|---|---|---|---|
+| 全量回归基线 | `pytest tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=json:coverage_post_refactor.json` | PASS | `388 passed, 3 skipped, 0 failed` | `63%` | 仅作全量参考口径，不与 `74.63%` 直接比较 |
+| 核心 14 服务门禁 | `COVERAGE_FILE=/tmp/services_core.coverage pytest tests/ --cov=...14 services... --cov-fail-under=70 -q` | PASS | `388 passed, 3 skipped, 0 failed` | `79.98%` | 同口径超过历史 `74.63%` |
+| TelemetryContextBuilder 专项 | `pytest tests/unit/test_telemetry_context_builder.py ...` | PASS | `11 passed` | `93%` | 覆盖多故障、payload hints、LLM 描述分支 |
+| FaultDiagnosisEngine 专项 | `pytest tests/unit/test_fault_diagnosis_engine.py ...` | PASS | `12 passed` | `95%` | 覆盖 JSON 解析、文本 fallback、低置信度监督 |
+| MaintenancePlanGenerator 专项 | `pytest tests/unit/test_maintenance_plan_generator.py ...` | PASS | `9 passed` | `92%` | 覆盖模板方案、LLM 优化与降级 |
+| SimulationExecutor 专项 | `pytest tests/unit/test_mock_adapter.py tests/unit/test_simulation_executor.py ...` | PASS | `8 passed` | `92%` (`simulation_executor.py`) | 覆盖堵转/过热恢复、失败步骤记录 |
+| OrchestratorV2 diagnoser 专项 | `pytest tests/unit/test_orchestrator_v2.py tests/unit/test_orchestrator_diagnoser.py ...` | PASS | `9 passed` | `94%` (`orchestrator_v2.py`) | 覆盖 handler、trace、资源/策略/状态机辅助分支 |
+| E2E diagnosis flow | `pytest tests/e2e/test_agent_diagnosis_flow.py -v` | PASS | `2 passed` | N/A | HTTP 诊断链路 + WebSocket 遥测协议一致性 |
+
+### 7.2 本轮新增/扩展测试文件
+
+- `r-mos-backend/tests/unit/test_telemetry_context_builder.py`
+- `r-mos-backend/tests/unit/test_fault_diagnosis_engine.py`
+- `r-mos-backend/tests/unit/test_maintenance_plan_generator.py`
+- `r-mos-backend/tests/unit/test_orchestrator_diagnoser.py`
+- `r-mos-backend/tests/e2e/test_agent_diagnosis_flow.py`
+- `r-mos-backend/tests/unit/test_mock_adapter.py`
+- `r-mos-backend/tests/unit/test_simulation_executor.py`
+
+### 7.3 本轮最小实现修复
+
+1. `TelemetryContextBuilder`
+   - 增加 `fault_hints` 字段并在 `build_from_payload()` 中保留 `active_faults`
+
+2. `FaultDiagnosisEngine`
+   - 规范化 `recommended_actions`，避免 LLM 返回字符串时破坏下游契约
+
+3. `SimulationExecutor`
+   - `delta_summary` 增加关节温度变化记录，支持过热恢复验证
+
+### 7.4 证据说明
+
+- 核心 14 服务覆盖率命令必须串行执行，并用独立 `COVERAGE_FILE` 隔离。
+- 若与全量 `--cov=app` 并行运行，会造成 `.coverage` 文件互相污染，得到不可比结果。
+- 本轮最终采信口径：
+  - 全量回归：`388 passed, 3 skipped, 0 failed`
+  - 核心 14 服务：`79.98%`
+
+### 7.5 结论
+
+- 后端诊断链路测试阶段可判定完成。
+- 新增诊断相关模块专项测试全部通过。
+- E2E 诊断链路与 WebSocket 协议检查通过。
+- 历史硬门禁已被保住并抬升：`79.98% >= 74.63%`。

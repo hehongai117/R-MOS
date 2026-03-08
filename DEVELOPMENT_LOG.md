@@ -4544,3 +4544,50 @@
   - 工作区内存在用户无关脏改动（如 `.serena/project.yml`、若干前端页面与 `pnpm-lock.yaml`），提交时需严格按文件白名单暂存，不能一并带入。
 - Next Step:
   - 提交本轮最小变更集；如你允许下一步联调，我再继续做完整 E2E 场景验证并决定是否需要补统一状态源/更完整的诊断入口。
+
+- DateTime: 2026-03-08 15:45 CST
+- Task: 执行后端诊断链路测试阶段计划，补齐专项测试、E2E、最小实现修复与最终门禁验证
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/llm/telemetry_context_builder.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/diagnosis/fault_diagnosis_engine.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/simulation/simulation_executor.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_telemetry_context_builder.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_fault_diagnosis_engine.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_maintenance_plan_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_mock_adapter.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_simulation_executor.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_orchestrator_diagnoser.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/e2e/test_agent_diagnosis_flow.py
+  - /Users/xuhehong/Desktop/r-mos/docs/testing/backend-test-report.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=json:coverage_post_refactor.json
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=sqlite+aiosqlite:///./rmos_main.db && COVERAGE_FILE=/tmp/services_core.coverage pytest tests/ --cov=app.services.approval_service --cov=app.services.preflight_check --cov=app.services.identity.agent_policy_factory --cov=app.services.identity.session_initializer --cov=app.services.identity.teacher_monitor --cov=app.services.intent.training_intent_router --cov=app.services.memory.skill_profile_service --cov=app.services.memory.training_memory_writer --cov=app.services.orchestrator_v2 --cov=app.services.tool_executor --cov=app.services.training.feedback_generator --cov=app.services.training.project_generator --cov=app.services.training.session_service --cov=app.services.training.submission_service --cov-report=html:coverage/services-core --cov-report=term-missing --cov-fail-under=70 -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_telemetry_context_builder.py -v
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && COVERAGE_FILE=/tmp/telemetry_builder.coverage pytest tests/unit/test_telemetry_context_builder.py --cov=app.services.llm.telemetry_context_builder --cov-report=term-missing -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_fault_diagnosis_engine.py -v
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && COVERAGE_FILE=/tmp/fault_diag.coverage pytest tests/unit/test_fault_diagnosis_engine.py --cov=app.services.diagnosis.fault_diagnosis_engine --cov-report=term-missing -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_maintenance_plan_generator.py -v
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && COVERAGE_FILE=/tmp/maintenance_plan.coverage pytest tests/unit/test_maintenance_plan_generator.py --cov=app.services.diagnosis.maintenance_plan_generator --cov-report=term-missing -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_mock_adapter.py tests/unit/test_simulation_executor.py -v
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && COVERAGE_FILE=/tmp/simulation_exec.coverage pytest tests/unit/test_mock_adapter.py tests/unit/test_simulation_executor.py --cov=app.services.simulation.simulation_executor --cov=app.adapters.mock --cov-report=term-missing -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_orchestrator_diagnoser.py -v
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && COVERAGE_FILE=/tmp/orchestrator_diagnoser.coverage pytest tests/unit/test_orchestrator_v2.py tests/unit/test_orchestrator_diagnoser.py --cov=app.services.orchestrator_v2 --cov-report=term-missing -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/e2e/test_agent_diagnosis_flow.py -v
+- Tests:
+  - 基线全量回归：`pytest tests/ -v --tb=short --cov=app ...` -> PASS（`388 passed, 3 skipped, 0 failed`），全量 `app` 覆盖率 `63%`，作为参考口径；产物写入 `r-mos-backend/coverage_post_refactor.json`。
+  - 同口径核心 14 服务门禁：串行重跑并隔离 `COVERAGE_FILE` 后 -> PASS（`388 passed, 3 skipped, 0 failed`，`79.98%`，高于历史 `74.63%`）。
+  - `TelemetryContextBuilder` 专项：`11 passed`，focused coverage `93%`。
+  - `FaultDiagnosisEngine` 专项：`12 passed`，focused coverage `95%`。
+  - `MaintenancePlanGenerator` 专项：`9 passed`，focused coverage `92%`。
+  - `SimulationExecutor + MockAdapter` 专项：`8 passed`，`simulation_executor.py` focused coverage `92%`。
+  - `OrchestratorV2 diagnoser` 专项：新增 `test_orchestrator_diagnoser.py` 后 `7 passed`；与既有 `test_orchestrator_v2.py` 合并覆盖率 `94%`。
+  - E2E 诊断链路：`pytest tests/e2e/test_agent_diagnosis_flow.py -v` -> PASS（`2 passed`）；HTTP `/api/v1/agent/execute` 诊断请求在测试中 `< 2s` 返回，并包含 `diagnosis + maintenance_plan + verification`；`/ws/robot/status` 返回 `type="telemetry"` 协议消息。
+- Result: PASS
+- Risks/Notes:
+  - `MaintenancePlanGenerator` 新专项测试在 RED 阶段即直接通过，说明当前实现已满足本轮专项契约；本轮对该模块未改生产代码。
+  - `SimulationExecutor` 的初始红灯来自两类不同问题：我新增测试使用了默认 MockAdapter 不存在的 `target_part`；以及真实实现中 `delta_summary` 未记录关节温度变化。最终仅最小修复 `simulation_executor.py` 的温度 delta 汇总。
+  - 核心 14 服务覆盖率命令若与全量 `--cov=app` 并行运行，会因共享默认 `.coverage` 文件导致口径污染。本轮已确认必须串行执行并使用独立 `COVERAGE_FILE`。
+  - 这轮仍保留大量既有 `datetime.utcnow()` / Pydantic v2 deprecation warnings，不在本次测试阶段的修复边界内。
+- Next Step:
+  - 如需继续，我可以按这轮结果整理可提交文件白名单、生成 commit，并在你明确许可前停在 `git push` 之前。

@@ -37,6 +37,7 @@ class TelemetryContext:
 
     # 异常列表
     anomalies: list[AnomalyDetection]
+    fault_hints: list[str] = field(default_factory=list)
 
     # 原始数据摘要（用于调试）
     raw_summary: dict[str, Any] = field(default_factory=dict)
@@ -45,6 +46,7 @@ class TelemetryContext:
         """转换为 PromptTemplateEngine 的 ContextBlock 格式"""
         return {
             "robot_status": self.robot_status,
+            "fault_hints": self.fault_hints,
             "joint_summary": {
                 "total": self.joint_count,
                 "anomalies": len(self.anomaly_joints)
@@ -170,12 +172,17 @@ class TelemetryContextBuilder:
         """从标准 telemetry payload 字典构建上下文。"""
         joints_raw = telemetry_payload.get("joints", [])
         sensor_raw = telemetry_payload.get("sensors", {})
+        active_faults = [fault for fault in telemetry_payload.get("active_faults", []) if fault]
         joint_states = [
             joint if isinstance(joint, JointState) else JointState.model_validate(joint)
             for joint in joints_raw
         ]
         sensor_data = sensor_raw if isinstance(sensor_raw, SensorData) else SensorData.model_validate(sensor_raw)
-        return self.build(joint_states=joint_states, sensor_data=sensor_data)
+        context = self.build(joint_states=joint_states, sensor_data=sensor_data)
+        if active_faults:
+            context.fault_hints = active_faults
+            context.raw_summary["active_faults"] = active_faults
+        return context
 
     def _detect_joint_anomalies(self, joint_states: list[Any]) -> list[dict]:
         """检测关节异常"""

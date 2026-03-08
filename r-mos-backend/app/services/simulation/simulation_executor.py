@@ -118,7 +118,12 @@ class SimulationExecutor:
             after_joint = after_state["joints"].get(joint_id, {})
             if before_joint.get("velocity") != after_joint.get("velocity"):
                 delta[f"{joint_id}.velocity"] = f"{before_joint.get('velocity')} -> {after_joint.get('velocity')}"
-                break
+                continue
+            if before_joint.get("temperature") != after_joint.get("temperature"):
+                delta[f"{joint_id}.temperature"] = (
+                    f"{before_joint.get('temperature')} -> {after_joint.get('temperature')}"
+                )
+                continue
 
         return delta
 
