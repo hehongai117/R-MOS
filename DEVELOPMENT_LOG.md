@@ -4591,3 +4591,59 @@
   - 这轮仍保留大量既有 `datetime.utcnow()` / Pydantic v2 deprecation warnings，不在本次测试阶段的修复边界内。
 - Next Step:
   - 如需继续，我可以按这轮结果整理可提交文件白名单、生成 commit，并在你明确许可前停在 `git push` 之前。
+
+- DateTime: 2026-03-08 16:43:58 +0800
+- Task: 审核 `R-MOS-前端重构方案-v1.0.md` 与当前前端实现的对齐度，并产出可执行的前端重构实施计划
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-08-frontend-refactor-implementation-plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - cd /Users/xuhehong/Desktop/r-mos && ~/.codex/superpowers/.codex/superpowers-codex use-skill spec-forge
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,860p' R-MOS-前端重构方案-v1.0.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,320p' r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' r-mos-frontend/src/pages/MonitorPage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' r-mos-frontend/src/styles/tokens.css
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' r-mos-frontend/tailwind.config.js
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' AGENTS.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '250,330p' R-MOS_Review_Test_Cleanup_Plan.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/testing/ACCEPTANCE_CHARTER.md
+  - cd /Users/xuhehong/Desktop/r-mos && git status --short
+- Tests:
+  - 文档任务自检：核对方案文档、前端真实实现、Tailwind/token 基线、测试计划和 AGENTS 状态快照的一致性；重点确认 `MonitorPage`、`SOPMaintenancePage`、`DiagnosisPanel`、`AgentWorkbenchPage` 当前实现边界与文档假设是否一致。
+  - 代码测试：N/A。本轮仅新增实施计划文档与开发日志，按 `AGENTS.md` 4.1“仅文档变更”规则执行一致性自检，不编造代码测试结果。
+- Result: PASS
+- Risks/Notes:
+  - 发现方案文档与当前仓库存在三类偏差：设计 token 体系不一致、假定存在的 UI 基础组件并不存在、`T-06` 状态与 `AGENTS.md` 快照冲突。
+  - 当前工作区存在用户未提交改动（如 `r-mos-frontend/src/App.tsx`、`r-mos-frontend/src/components/Layout/AppLayout.tsx` 等），后续真正实施重构时必须按白名单操作。
+  - 本轮产出的执行计划已明确“不引入新依赖、不改 3D/业务逻辑、不把页面重构扩成组件库重建”。
+- Next Step:
+  - 若你确认这份审查结论和计划方向，我下一步按计划从 `MonitorPage` 开始实施，并在每个批次同步更新测试证据与日志。
+
+- DateTime: 2026-03-08 17:56:36 +0800
+- Task: 前端重构 Batch 1，完成 `MonitorPage` 去 Ant Design 可视层重构与最小测试闭环
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/MonitorPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/MonitorPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red 1：首次 `npm test -- src/pages/__tests__/MonitorPage.test.tsx` 失败，原因为当前页面仍依赖 `antd Row`，测试宿主缺少 `matchMedia`；补齐宿主后继续执行。
+  - TDD Red 2：第二次执行失败，原因切换为页面仍是旧契约：缺少 `REALTIME MONITOR` 头部、无可访问 `重连` 按钮、无 `BATTERY/JOINT STATUS` 等新分区标签。
+  - TDD Green：`npm test -- src/pages/__tests__/MonitorPage.test.tsx` -> PASS（`3 passed`），覆盖失败态头部、telemetry 分区与重连交互。
+  - 前端构建：`npm run build` -> PASS（`MonitorPage-lYMSgwVD.js 26.59 kB | gzip 9.29 kB`）。
+- Result: PASS
+- Risks/Notes:
+  - 本轮只替换 `MonitorPage` 的可视层，保留 `useWebSocket()`、`RobotViewer`、`Viewer3DErrorBoundary` 和 `joints3D` 数据整形逻辑不变。
+  - 当前 `ErrorBoundary` 与 `useWebSocket` 仍内部依赖 `antd`，但不属于本轮 `MonitorPage` UI 重构边界。
+  - 工作区中仍存在用户未提交改动，提交时必须按文件白名单暂存。
+- Next Step:
+  - 进入 `SOPMaintenancePage` 的第一批拆壳：先抽顶部头部、左栏、右栏和考试结束覆盖层，不动 3D 中栏与 adjudication 状态流。
