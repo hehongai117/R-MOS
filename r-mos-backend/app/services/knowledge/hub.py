@@ -3,11 +3,12 @@ KnowledgeHub - P1-7-4
 混合检索 API: 关键词召回 + 向量语义召回 + 简单重排序
 """
 import logging
+import math
 from typing import Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.knowledge_chunk import AIKnowledgeChunk as KnowledgeChunk
@@ -147,41 +148,111 @@ class KnowledgeHub:
         embedding: list[float],
         limit: int,
     ) -> list[RetrievalResult]:
-        """语义向量搜索 (简化版)
+        """语义向量搜索。
 
-        注意：实际生产环境应使用 pgvector 的向量相似度搜索
-        这里简化实现为从有 embedding 的记录中随机返回
+        PostgreSQL 环境优先走 pgvector 余弦相似度；
+        其余测试/降级环境回退到 Python 余弦计算，避免重新退化为随机结果。
         """
         try:
-            # 简化实现：查找有 embedding 的记录
-            # 实际应该用向量距离计算，如：
-            # SELECT * FROM knowledge_chunks
-            # ORDER BY embedding <=> embedding
-            # LIMIT :limit
+            bind = db.get_bind()
+            if bind is not None and bind.dialect.name == "postgresql":
+                try:
+                    return await self._semantic_search_pgvector(db, embedding, limit)
+                except Exception as exc:
+                    logger.warning(f"pgvector semantic search failed, falling back to Python cosine search: {exc}")
 
-            result = await db.execute(
-                select(KnowledgeChunk).where(
-                    KnowledgeChunk.embedding.isnot(None)
-                ).limit(limit)
-            )
-
-            chunks = result.scalars().all()
-
-            # 简化：返回前 N 条，实际应该计算向量距离
-            return [
-                RetrievalResult(
-                    chunk_id=c.id,
-                    title=c.source_id or "chunk",
-                    content=c.content[:200],
-                    source="semantic",
-                    score=0.6,  # 简化分数
-                    metadata=c.metadata_json if isinstance(c.metadata_json, dict) else None,
-                )
-                for c in chunks
-            ]
+            return await self._semantic_search_python(db, embedding, limit)
         except Exception as e:
             logger.warning(f"Semantic search failed: {e}")
             return []
+
+    async def _semantic_search_pgvector(
+        self,
+        db: AsyncSession,
+        embedding: list[float],
+        limit: int,
+    ) -> list[RetrievalResult]:
+        query_vector = "[" + ",".join(f"{value:.12g}" for value in embedding) + "]"
+        result = await db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    source_id,
+                    content,
+                    metadata,
+                    1 - (embedding_vec <=> CAST(:query_vector AS vector)) AS similarity
+                FROM ai_knowledge_chunks
+                WHERE embedding_vec IS NOT NULL
+                ORDER BY embedding_vec <=> CAST(:query_vector AS vector)
+                LIMIT :limit
+                """
+            ),
+            {"query_vector": query_vector, "limit": limit},
+        )
+
+        rows = result.mappings().all()
+        return [
+            RetrievalResult(
+                chunk_id=str(row["id"]),
+                title=row.get("source_id") or "chunk",
+                content=str(row["content"])[:200],
+                source="semantic",
+                score=float(row["similarity"]),
+                metadata=row.get("metadata") if isinstance(row.get("metadata"), dict) else None,
+            )
+            for row in rows
+        ]
+
+    async def _semantic_search_python(
+        self,
+        db: AsyncSession,
+        embedding: list[float],
+        limit: int,
+    ) -> list[RetrievalResult]:
+        result = await db.execute(
+            select(KnowledgeChunk).where(
+                KnowledgeChunk.embedding.isnot(None)
+            )
+        )
+        chunks = result.scalars().all()
+
+        scored_results: list[RetrievalResult] = []
+        for chunk in chunks:
+            similarity = self._cosine_similarity(embedding, chunk.embedding)
+            if similarity is None:
+                continue
+            scored_results.append(
+                RetrievalResult(
+                    chunk_id=chunk.id,
+                    title=chunk.source_id or "chunk",
+                    content=chunk.content[:200],
+                    source="semantic",
+                    score=similarity,
+                    metadata=chunk.metadata_json if isinstance(chunk.metadata_json, dict) else None,
+                )
+            )
+
+        scored_results.sort(key=lambda item: item.score, reverse=True)
+        return scored_results[:limit]
+
+    def _cosine_similarity(
+        self,
+        query_embedding: list[float],
+        chunk_embedding: Any,
+    ) -> Optional[float]:
+        if not isinstance(chunk_embedding, list) or len(query_embedding) != len(chunk_embedding):
+            return None
+        if not query_embedding or not chunk_embedding:
+            return None
+
+        dot_product = sum(q * c for q, c in zip(query_embedding, chunk_embedding))
+        query_norm = math.sqrt(sum(q * q for q in query_embedding))
+        chunk_norm = math.sqrt(sum(c * c for c in chunk_embedding))
+        if query_norm == 0 or chunk_norm == 0:
+            return None
+
+        return dot_product / (query_norm * chunk_norm)
 
     def _rerank(
         self,

@@ -4,32 +4,22 @@
  * 连接 WebSocket 获取机器人关节状态、传感器数据和故障信息
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { JointState } from '@/types/robot';
+import { JointState, SensorData, TelemetryMessage } from '@/types/robot';
 import { WS_CONFIG } from '../constants';
 
-interface SensorData {
-    sensor_id: string;
-    value: number;
-    unit: string;
+export interface RobotDataSnapshot {
+    joints: JointState[];
+    sensors: SensorData;
+    faults: string[];
     timestamp: string;
 }
 
-interface FaultInfo {
-    fault_code: string;
-    fault_type: string;
-    severity: string;
-    target_part: string;
-    description: string;
-    injected_at: string;
-}
-
-interface RobotStatusMessage {
-    type: 'robot_status';
-    data: {
-        joints: JointState[];
-        sensors: SensorData[];
-        faults: FaultInfo[];
-        timestamp: string;
+export function mapTelemetryMessageToRobotData(message: TelemetryMessage): RobotDataSnapshot {
+    return {
+        joints: message.payload.joints || [],
+        sensors: message.payload.sensors || {},
+        faults: message.payload.active_faults || [],
+        timestamp: message.timestamp,
     };
 }
 
@@ -37,9 +27,9 @@ interface UseRobotDataReturn {
     /** 关节状态列表 */
     joints: JointState[];
     /** 传感器数据列表 */
-    sensors: SensorData[];
+    sensors: SensorData;
     /** 故障信息列表 */
-    faults: FaultInfo[];
+    faults: string[];
     /** WebSocket 连接状态 */
     connected: boolean;
     /** 连接错误 */
@@ -57,8 +47,8 @@ export function useRobotData(wsUrl?: string): UseRobotDataReturn {
     const url = wsUrl || WS_CONFIG.url;
 
     const [joints, setJoints] = useState<JointState[]>([]);
-    const [sensors, setSensors] = useState<SensorData[]>([]);
-    const [faults, setFaults] = useState<FaultInfo[]>([]);
+    const [sensors, setSensors] = useState<SensorData>({});
+    const [faults, setFaults] = useState<string[]>([]);
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -67,16 +57,16 @@ export function useRobotData(wsUrl?: string): UseRobotDataReturn {
     const reconnectAttemptsRef = useRef(0);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const throttleRef = useRef<NodeJS.Timeout | null>(null);
-    const pendingDataRef = useRef<RobotStatusMessage['data'] | null>(null);
+    const pendingDataRef = useRef<RobotDataSnapshot | null>(null);
 
     /**
      * 处理消息（带节流）
      */
-    const processData = useCallback((data: RobotStatusMessage['data']) => {
+    const processData = useCallback((data: RobotDataSnapshot) => {
         setJoints(data.joints || []);
-        setSensors(data.sensors || []);
+        setSensors(data.sensors || {});
         setFaults(data.faults || []);
-        setLastUpdate(new Date());
+        setLastUpdate(data.timestamp ? new Date(data.timestamp) : new Date());
     }, []);
 
     /**
@@ -84,16 +74,17 @@ export function useRobotData(wsUrl?: string): UseRobotDataReturn {
      */
     const handleMessage = useCallback((event: MessageEvent) => {
         try {
-            const message: RobotStatusMessage = JSON.parse(event.data);
+            const message = JSON.parse(event.data) as TelemetryMessage;
 
-            if (message.type === 'robot_status') {
+            if (message.type === 'telemetry' && message.payload) {
+                const mappedData = mapTelemetryMessageToRobotData(message);
                 // 节流处理
                 if (throttleRef.current) {
-                    pendingDataRef.current = message.data;
+                    pendingDataRef.current = mappedData;
                     return;
                 }
 
-                processData(message.data);
+                processData(mappedData);
 
                 throttleRef.current = setTimeout(() => {
                     throttleRef.current = null;

@@ -4421,3 +4421,68 @@
   - 不执行 `git push`；若后续需要远端备份，必须由你单独授权
 - Next Step:
   - 记录 commit hash，并在你开始试验前确认 `git status --short` 为空；需要回退时优先使用 `git reset --hard <hash>`
+
+- DateTime: 2026-03-08 10:39 CST
+- Task: 梳理当前项目结构、技术栈、数据流、LLM/数字孪生接口与已知局限，输出结构化现状报告
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/development/2026-03-08-project-current-state-report.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos && find . -maxdepth 2 \\( -path './.git' -o -path './node_modules' -o -path './开源机器人' -o -path './.venv' \\) -prune -o -maxdepth 2 -print | sort
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' README.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' PROJECT_MANUAL.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' PROJECT_DIRECTORY_FULL.txt
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' r-mos-frontend/package.json
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,240p' r-mos-backend/requirements.txt
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,360p' r-mos-backend/app/services/llm/router.py
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,320p' r-mos-backend/app/adapters/mock.py
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,320p' r-mos-backend/app/services/knowledge/hub.py
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,260p' r-mos-backend/app/services/memory/training_memory_writer.py
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,320p' r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,280p' r-mos-frontend/src/pages/MonitorPage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,240p' r-mos-frontend/src/hooks/useWebSocket.ts
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,340p' r-mos-backend/app/services/orchestrator_v2.py
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/testing/backend-test-report.md
+  - cd /Users/xuhehong/Desktop/r-mos && sed -n '1,220p' docs/review/review-checklist.md
+  - cd /Users/xuhehong/Desktop/r-mos && rg -n "^## 1\\.|^## 2\\.|^## 3\\.|^## 4\\.|^## 5\\.|^## 6\\.|^## 7\\." docs/development/2026-03-08-project-current-state-report.md
+  - cd /Users/xuhehong/Desktop/r-mos && wc -l docs/development/2026-03-08-project-current-state-report.md
+- Tests:
+  - 代码测试：未执行；本次任务仅新增文档，不修改业务代码
+  - 文档自检：报告已覆盖 7 个必需章节，文件行数 `771`
+- Result: PASS
+- Risks/Notes:
+  - 报告中的“完整目录树”引用仓库现有 `PROJECT_DIRECTORY_FULL.txt` 作为原始事实源，正文中给出业务相关目录树和模块职责映射，避免把技能缓存等非业务目录全文内嵌进报告。
+  - 结论严格以代码现状为准，已显式指出文档描述与代码实现存在的成熟度漂移（如 RAG、记忆闭环、Agent loop、真实 adapter 接入）。
+- Next Step:
+  - 若需要，我可以在这份现状报告基础上继续输出一版“下一阶段重构/补全优先级建议”
+
+- DateTime: 2026-03-08 11:52 CST
+- Task: 完成改造方案 T-01（真实语义检索）与 T-08（Viewer3D WebSocket 协议统一）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/knowledge/hub.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_knowledge_hub.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/requirements.txt
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/alembic/versions/20260308_1200_add_knowledge_chunk_pgvector.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/useRobotData.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/__tests__/useRobotData.test.ts
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && pytest tests/unit/test_knowledge_hub.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useRobotData.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && python -m py_compile app/services/knowledge/hub.py alembic/versions/20260308_1200_add_knowledge_chunk_pgvector.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - TDD Red（后端）：`pytest tests/unit/test_knowledge_hub.py -q` 初次 FAIL，新增断言证明 `_semantic_search()` 仍按存储顺序返回 `chunk-far -> chunk-mid -> chunk-near`，未按相似度排序。
+  - TDD Red（前端）：`npm test -- src/components/Viewer3D/hooks/__tests__/useRobotData.test.ts` 初次 FAIL，`mapTelemetryMessageToRobotData is not a function`，说明 Viewer3D 尚未具备统一 `telemetry` 协议映射入口。
+  - TDD Green（后端）：`pytest tests/unit/test_knowledge_hub.py -q` -> PASS（4 passed）
+  - TDD Green（前端）：`npm test -- src/components/Viewer3D/hooks/__tests__/useRobotData.test.ts` -> PASS（1 passed）
+  - 后端静态校验：`python -m py_compile app/services/knowledge/hub.py alembic/versions/20260308_1200_add_knowledge_chunk_pgvector.py` -> PASS
+  - 前端构建回归：`npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - `KnowledgeHub` 在 PostgreSQL 下优先走 pgvector SQL；SQLite/测试环境回退到 Python 余弦计算，以兼容现有单测基线与本地最小环境。
+  - 本次仅新增 pgvector 迁移脚本，没有把 `embedding_vec` 反映到 ORM 模型字段；当前检索通过原生 SQL 使用该列，不影响现有模型序列化，但后续若做 ORM 层直接查询可再补模型映射。
+  - 工作区存在其他未提交改动与 Claude Code 新增文件，本次不做 `git push`，后续提交前需继续保持最小提交边界。
+- Next Step:
+  - 等 Claude Code 完成 `T-02/T-04/T-05/T-09` 后，先对其新增诊断链路与记忆链路做代码审核和最小回归，再继续完成 `T-03/T-06/T-07/T-10`。

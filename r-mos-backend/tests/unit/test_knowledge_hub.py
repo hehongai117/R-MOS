@@ -132,3 +132,37 @@ async def test_knowledge_hub_degraded_mode_relaxes_expired_filter(test_db):
 
     assert results
     assert results[0].title == "only-expired"
+
+
+@pytest.mark.asyncio
+async def test_knowledge_hub_semantic_search_ranks_by_similarity(test_db):
+    test_db.add_all(
+        [
+            _chunk(
+                source_id="chunk-far",
+                content="General maintenance appendix",
+                embedding=[0.0, 1.0, 0.0],
+            ),
+            _chunk(
+                source_id="chunk-mid",
+                content="Motor inspection checklist",
+                embedding=[0.7, 0.3, 0.0],
+            ),
+            _chunk(
+                source_id="chunk-near",
+                content="Motor stall recovery procedure",
+                embedding=[1.0, 0.0, 0.0],
+            ),
+        ]
+    )
+    await test_db.commit()
+
+    hub = KnowledgeHub()
+    results = await hub._semantic_search(
+        db=test_db,
+        embedding=[1.0, 0.0, 0.0],
+        limit=3,
+    )
+
+    assert [item.title for item in results] == ["chunk-near", "chunk-mid", "chunk-far"]
+    assert results[0].score > results[1].score > results[2].score
