@@ -12,8 +12,9 @@
  */
 
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
-import { Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Select, Modal, message, Switch } from 'antd';
+import { Alert, Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Select, Modal, message, Switch } from 'antd';
 import {
+    ArrowRightOutlined,
     ToolOutlined,
     PartitionOutlined,
     InfoCircleOutlined,
@@ -26,6 +27,7 @@ import {
 } from '@ant-design/icons';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { useNavigate } from 'react-router-dom';
 import { DiagnosisPanel, readLatestDiagnosisResult } from '@/components/DiagnosisPanel/DiagnosisPanel';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
@@ -64,6 +66,10 @@ import {
     getDetailPartDetailRecord,
     type DetailPartSelection,
 } from '@/data/maintenanceKnowledge';
+import { RuntimeAssetPreview } from '@/components/Viewer3D/RuntimeAssetPreview';
+import { buildRobotProjectAssetUrl, buildRuntimeSopScript, createRuntimeManifestAdapter, resolveRuntimeAssetPaths, type RuntimeManifestAdapter } from '@/components/Viewer3D/runtimeManifest';
+import { readMaintenanceWorkspaceSession, type MaintenanceWorkspaceSession } from '@/features/maintenance/runtimeWorkspaceSession';
+import type { MaintenanceDraftResponse } from '@/types/maintenance';
 import {
     AdjudicationReport,
     SOPExecutor,
@@ -224,6 +230,7 @@ const LoadingFallback = () => (
 );
 
 function SOPMaintenancePage() {
+    const navigate = useNavigate();
     const [explodeAmount, setExplodeAmount] = useState(0);
     const [hoveredPart, setHoveredPart] = useState<PartInfo | null>(null);
     const [selectedPart, setSelectedPart] = useState<PartInfo | null>(null);
@@ -238,6 +245,11 @@ function SOPMaintenancePage() {
     const [disassemblyPlaying, setDisassemblyPlaying] = useState(false);
     const [disassemblyStep, setDisassemblyStep] = useState<string>('');
     const [showDetailParts, setShowDetailParts] = useState(false);
+    const [runtimeWorkspaceSession, setRuntimeWorkspaceSession] = useState<MaintenanceWorkspaceSession | null>(null);
+    const [runtimeDraft, setRuntimeDraft] = useState<MaintenanceDraftResponse | null>(null);
+    const [runtimeManifest, setRuntimeManifest] = useState<RuntimeManifestAdapter | null>(null);
+    const [runtimeTargetIds, setRuntimeTargetIds] = useState<string[]>([]);
+    const [runtimeSelectedAssetPath, setRuntimeSelectedAssetPath] = useState<string | null>(null);
     const [examRemainingMs, setExamRemainingMs] = useState(EXAM_DURATION_MS);
     const [scoreState, setScoreState] = useState(scoringEngine.getState());
     const [scoreFlash, setScoreFlash] = useState(false);
@@ -440,10 +452,32 @@ function SOPMaintenancePage() {
 
     const examTimeText = useMemo(() => formatCountdown(examRemainingMs), [examRemainingMs]);
     const examUrgent = useMemo(() => isCountdownUrgent(examRemainingMs), [examRemainingMs]);
+    const runtimeSopScript = useMemo(() => {
+        if (!runtimeDraft) {
+            return null;
+        }
+        return buildRuntimeSopScript(runtimeDraft);
+    }, [runtimeDraft]);
+    const availableSopScripts = useMemo(() => {
+        if (!runtimeSopScript) {
+            return ALL_SOP_SCRIPTS;
+        }
+        return [runtimeSopScript];
+    }, [runtimeSopScript]);
+    const runtimeResolvedAssetPaths = useMemo(() => {
+        if (!runtimeManifest) {
+            return [];
+        }
+        return resolveRuntimeAssetPaths(runtimeManifest, runtimeTargetIds);
+    }, [runtimeManifest, runtimeTargetIds]);
+    const runtimePreviewAssetPath = runtimeSelectedAssetPath ?? runtimeResolvedAssetPaths[0] ?? runtimeManifest?.parts[0] ?? null;
+    const runtimePreviewAssetUrl = runtimePreviewAssetPath && runtimeManifest
+        ? buildRobotProjectAssetUrl(runtimeManifest.projectId, runtimePreviewAssetPath)
+        : null;
     const activeSopScript = useMemo(() => {
         const targetSopId = linkedSOPId ?? sopSceneSync.state.selectedSopId;
-        return ALL_SOP_SCRIPTS.find((sop) => sop.sopId === targetSopId) ?? ALL_SOP_SCRIPTS[0];
-    }, [linkedSOPId, sopSceneSync.state.selectedSopId]);
+        return availableSopScripts.find((sop) => sop.sopId === targetSopId) ?? availableSopScripts[0];
+    }, [availableSopScripts, linkedSOPId, sopSceneSync.state.selectedSopId]);
 
     const handleModeChange = useCallback((mode: 'teaching' | 'exam' | 'maintenance') => {
         Modal.confirm({
@@ -473,6 +507,30 @@ function SOPMaintenancePage() {
         setExamRemainingMs(EXAM_DURATION_MS);
         examEndAtRef.current = operationMode === 'exam' ? Date.now() + EXAM_DURATION_MS : null;
     }, [sopExecutor, operationMode]);
+
+    const applyRuntimeDraft = useCallback((draft: MaintenanceDraftResponse) => {
+        const manifest = createRuntimeManifestAdapter(draft);
+        setRuntimeDraft(draft);
+        setRuntimeManifest(manifest);
+        const firstTarget = draft.draft.steps[0]?.model_targets ?? [];
+        setRuntimeTargetIds(firstTarget);
+        setRuntimeSelectedAssetPath(resolveRuntimeAssetPaths(manifest, firstTarget)[0] ?? manifest.parts[0] ?? null);
+        setLinkedSOPId(`runtime-${draft.draft_id}`);
+        setRightPanelTab('part');
+    }, []);
+
+    useEffect(() => {
+        const session = readMaintenanceWorkspaceSession();
+        if (!session) {
+            return;
+        }
+
+        setRuntimeWorkspaceSession(session);
+        if (session.draft) {
+            applyRuntimeDraft(session.draft);
+        }
+    }, [applyRuntimeDraft]);
+
     const handlePartHover = useCallback((part: PartInfo | null) => {
         if (part) {
             setHoveredDetailSelection(null);
@@ -701,6 +759,12 @@ function SOPMaintenancePage() {
 
     // SOP 播放器回调
     const handleSOPPartSelect = useCallback((partName: string | null) => {
+        if (runtimeManifest) {
+            const targetIds = partName ? [partName] : [];
+            setRuntimeTargetIds(targetIds);
+            const assetPaths = resolveRuntimeAssetPaths(runtimeManifest, targetIds);
+            setRuntimeSelectedAssetPath(assetPaths[0] ?? runtimeManifest.parts[0] ?? null);
+        }
         if (partName) {
             const part = PART_METADATA[partName];
             if (part) {
@@ -713,7 +777,7 @@ function SOPMaintenancePage() {
         } else {
             setSelectedPart(null);
         }
-    }, [viewState, selectedOverviewNode, enterIsolation]);
+    }, [runtimeManifest, viewState, selectedOverviewNode, enterIsolation]);
 
     const handleSOPToolRequired = useCallback((toolId: string | null) => {
         if (toolId) setSelectedToolId(toolId);
@@ -735,10 +799,16 @@ function SOPMaintenancePage() {
     const handleSOPStepChange = useCallback((step: SOPStepAdjudication | null, index: number) => {
         const intent = sopSceneSync.bindStep(step, index);
         applySOPIntent(intent);
+        if (runtimeManifest) {
+            const targetIds = step?.targetParts ?? [];
+            setRuntimeTargetIds(targetIds);
+            const assetPaths = resolveRuntimeAssetPaths(runtimeManifest, targetIds);
+            setRuntimeSelectedAssetPath(assetPaths[0] ?? runtimeManifest.parts[0] ?? null);
+        }
         if (step && /收起|恢复正常|复位/.test(`${step.title} ${step.description}`)) {
             setExplodeAmount(0);
         }
-    }, [sopSceneSync, applySOPIntent]);
+    }, [runtimeManifest, sopSceneSync, applySOPIntent]);
 
     const handleSOPContextChange = useCallback((context: SOPExecutionContext | null, _step: SOPStepAdjudication | null) => {
         sopSceneSync.bindContext(context);
@@ -1122,7 +1192,7 @@ function SOPMaintenancePage() {
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     点击列表项会同步播放器和中间 3D 视图。
                 </Text>
-                {ALL_SOP_SCRIPTS.map((sop) => {
+                {availableSopScripts.map((sop) => {
                     const isActive = sop.sopId === linkedSOPId;
                     return (
                         <Button
@@ -1183,7 +1253,7 @@ function SOPMaintenancePage() {
 
     const leftRailSopPlayerContent = (
         <SOPPlayerAdjudicated
-            availableSOPs={ALL_SOP_SCRIPTS}
+            availableSOPs={availableSopScripts}
             selectedSOPId={linkedSOPId}
             onSOPChange={handleSOPChange}
             onStepChange={handleSOPStepChange}
@@ -1232,12 +1302,78 @@ function SOPMaintenancePage() {
                 examTimeText={examUrgent ? examTimeText : examTimeText}
                 currentScore={scoreState.currentScore}
                 scoreFlash={scoreFlash}
-                totalPartCount={ALL_EXPLODE_PART_URLS.length}
+                totalPartCount={runtimeManifest?.parts.length ?? ALL_EXPLODE_PART_URLS.length}
                 selectedToolIndicator={selectedToolId ? <><ToolOutlined /> 工具已选择</> : null}
                 viewModeControl={headerViewModeControl}
                 detailToggleControl={detailToggleControl}
                 modeSelectControl={modeSelectControl}
             />
+
+            <Card size="small" title="项目草案入口">
+                <div style={{ display: 'grid', gap: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div style={{ display: 'grid', gap: 4 }}>
+                            <Text strong>工作台只保留执行、3D 交互与裁决流程</Text>
+                            <Text type="secondary">
+                                机器人项目选择、AI 草案生成和批准执行版加载已迁移到独立页面，避免顶部区域过度拥挤。
+                            </Text>
+                        </div>
+                        <Button
+                            type="primary"
+                            aria-label="进入项目草案页"
+                            icon={<ArrowRightOutlined />}
+                            onClick={() => navigate('/maintenance/project-draft')}
+                        >
+                            进入项目草案页
+                        </Button>
+                    </div>
+
+                    {runtimeWorkspaceSession ? (
+                        <Descriptions size="small" column={4} bordered>
+                            <Descriptions.Item label="当前项目">
+                                {runtimeWorkspaceSession.projectLabel ?? runtimeWorkspaceSession.projectId ?? '未选择'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="维保目标">
+                                {runtimeWorkspaceSession.maintenanceGoal || '执行器弯曲维护'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="关注部位">
+                                {runtimeWorkspaceSession.focusArea || '肘关节'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="当前草案">
+                                {runtimeDraft?.draft.title ?? '尚未加载'}
+                            </Descriptions.Item>
+                        </Descriptions>
+                    ) : (
+                        <Text type="secondary">尚未从项目草案页带入运行时草案，点击右侧按钮后可生成并回到工作台执行。</Text>
+                    )}
+
+                    {runtimeDraft && runtimeManifest?.parts.length ? (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                            <Text strong>当前运行时模型资源</Text>
+                            <Space wrap>
+                                {(runtimeManifest.parts ?? []).map((assetPath) => (
+                                    <Button
+                                        key={assetPath}
+                                        size="small"
+                                        type={runtimeSelectedAssetPath === assetPath ? 'primary' : 'default'}
+                                        onClick={() => setRuntimeSelectedAssetPath(assetPath)}
+                                    >
+                                        {assetPath}
+                                    </Button>
+                                ))}
+                            </Space>
+                        </div>
+                    ) : null}
+
+                    {runtimeManifest?.reviewWarnings.length ? (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            message={runtimeManifest.reviewWarnings.join('；')}
+                        />
+                    ) : null}
+                </div>
+            </Card>
 
             {/* 主内容区 */}
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
@@ -1369,35 +1505,41 @@ function SOPMaintenancePage() {
                                 <CameraController focusTarget={focusTarget} />
 
                                 <Suspense fallback={<LoadingFallback />}>
-                                    <Atom01Interactive
-                                        scale={viewerModelScale}
-                                        position={[0, 0.5, 0]}
-                                        explodeAmount={effectiveExplodeAmount}
-                                        showSubParts={viewState === 'ISOLATED' && viewMode === 'explode'}
-                                        visiblePartNames={visibleLinks}
-                                        clickablePartNames={clickableLinks}
-                                        referencePartNames={referenceLinks}
-                                        preserveReferenceInExplode={true}
-                                        fadedPartNames={fadedLinks}
-                                        fadeOpacity={isFullscreen ? 0.12 : 0.15}
-                                        onPartHover={handlePartHover}
-                                        onPartSelect={handlePartSelect}
-                                        onPartDoubleClick={handlePartDoubleClick}
-                                        hoveredPart={hoveredPart?.name}
-                                        selectedPart={selectedPart?.name}
-                                        isolationLevel={isolationLevel}
-                                        l2TargetLink={l2TargetLink}
-                                        l2SelectedPartIdx={l2SelectedPartIdx}
-                                        onSubPartSelect={handleSubPartSelect}
-                                        onSubPartHover={handleSubPartHover}
-                                        subPartEnabledNames={subPartEnabledLinks}
-                                        fullscreenMode={isFullscreen}
-                                        onVisibleBoundsChange={handleVisibleBoundsChange}
-                                    />
-                                    <DetailParts
-                                        selectedLink={selectedPart?.name ?? null}
-                                        visible={showDetailParts}
-                                    />
+                                    {runtimeManifest ? (
+                                        <RuntimeAssetPreview assetUrl={runtimePreviewAssetUrl} assetPath={runtimePreviewAssetPath} />
+                                    ) : (
+                                        <>
+                                            <Atom01Interactive
+                                                scale={viewerModelScale}
+                                                position={[0, 0.5, 0]}
+                                                explodeAmount={effectiveExplodeAmount}
+                                                showSubParts={viewState === 'ISOLATED' && viewMode === 'explode'}
+                                                visiblePartNames={visibleLinks}
+                                                clickablePartNames={clickableLinks}
+                                                referencePartNames={referenceLinks}
+                                                preserveReferenceInExplode={true}
+                                                fadedPartNames={fadedLinks}
+                                                fadeOpacity={isFullscreen ? 0.12 : 0.15}
+                                                onPartHover={handlePartHover}
+                                                onPartSelect={handlePartSelect}
+                                                onPartDoubleClick={handlePartDoubleClick}
+                                                hoveredPart={hoveredPart?.name}
+                                                selectedPart={selectedPart?.name}
+                                                isolationLevel={isolationLevel}
+                                                l2TargetLink={l2TargetLink}
+                                                l2SelectedPartIdx={l2SelectedPartIdx}
+                                                onSubPartSelect={handleSubPartSelect}
+                                                onSubPartHover={handleSubPartHover}
+                                                subPartEnabledNames={subPartEnabledLinks}
+                                                fullscreenMode={isFullscreen}
+                                                onVisibleBoundsChange={handleVisibleBoundsChange}
+                                            />
+                                            <DetailParts
+                                                selectedLink={selectedPart?.name ?? null}
+                                                visible={showDetailParts}
+                                            />
+                                        </>
+                                    )}
                                 </Suspense>
 
                                 {/* 拆卸动画演示 */}

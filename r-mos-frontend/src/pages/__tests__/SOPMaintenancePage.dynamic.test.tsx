@@ -1,5 +1,5 @@
+import { Children, isValidElement } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -63,7 +63,16 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('@react-three/fiber', () => ({
-  Canvas: () => <div>CanvasStub</div>,
+  Canvas: ({ children }: { children?: React.ReactNode }) => (
+    <div>
+      {Children.map(children, (child) => {
+        if (!isValidElement(child)) {
+          return child ?? 'CanvasStub'
+        }
+        return typeof child.type === 'string' ? null : child
+      })}
+    </div>
+  ),
 }))
 
 vi.mock('@react-three/drei', () => ({
@@ -153,7 +162,14 @@ vi.mock('@/components/Maintenance', async () => {
 })
 
 vi.mock('@/components/Maintenance/SOPPlayerAdjudicated', () => ({
-  SOPPlayerAdjudicated: () => <div>SOPPlayerStub</div>,
+  SOPPlayerAdjudicated: ({ availableSOPs }: { availableSOPs: Array<{ title: string }> }) => (
+    <div>
+      SOPPlayerStub
+      {availableSOPs.map((sop) => (
+        <div key={sop.title}>{sop.title}</div>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('@/data/sopScripts', () => ({
@@ -195,6 +211,10 @@ vi.mock('@/adjudication', () => ({
     FAILED: 'FAILED',
     BLOCKED: 'BLOCKED',
   },
+  ActionType: {
+    SELECT_TOOL: 'SELECT_TOOL',
+    FOCUS_CAMERA: 'FOCUS_CAMERA',
+  },
   ErrorCategory: {
     INCOMPLETE_ACTION: 'incomplete',
   },
@@ -233,36 +253,108 @@ vi.mock('@/adjudication/ui/examHeader', () => ({
 }))
 
 import SOPMaintenancePage from '@/pages/SOPMaintenancePage'
+import { writeMaintenanceWorkspaceSession } from '@/features/maintenance/runtimeWorkspaceSession'
 
-describe('SOPMaintenancePage', () => {
+describe('SOPMaintenancePage runtime draft flow', () => {
   beforeEach(() => {
     setOperationModeMock.mockReset()
     setCurrentToolMock.mockReset()
     preloadAllPartsMock.mockReset()
     clientGetMock.mockReset()
     clientPostMock.mockReset()
-    clientGetMock.mockResolvedValue({ data: { projects: [] } })
-    clientPostMock.mockResolvedValue({ data: {} })
+    navigateMock.mockReset()
+    window.sessionStorage.clear()
+
+    writeMaintenanceWorkspaceSession({
+      projectId: 'project-fourier-n1',
+      projectLabel: 'Fourier N1 runtime',
+      maintenanceGoal: '执行器弯曲维护',
+      focusArea: '肘关节',
+      draft: {
+        draft_id: 'draft-runtime-001',
+        project_id: 'project-fourier-n1',
+        request_id: 'req-runtime-001',
+        review_status: 'draft_pending_review',
+        draft: {
+          title: 'Fourier N1 肘关节维保',
+          maintenance_goal: '执行器弯曲维护',
+          steps: [
+            {
+              step_id: 'step_001',
+              title: '检查肘关节温度',
+              description: '确认目标模组无异常温升',
+              model_targets: ['elbow_joint'],
+            },
+          ],
+          review_notes: ['part mapping requires review: elbow_joint'],
+        },
+        verdict_steps: [
+          {
+            stepId: 'step_001',
+            title: '检查肘关节温度',
+          },
+        ],
+        viewer_manifest: {
+          robotId: 'fourier-n1-runtime',
+          label: 'Fourier N1',
+          parts: ['viewer/elbow.glb'],
+          assets: [
+            {
+              asset_id: 'elbow_joint::viewer/elbow.glb',
+              asset_type: 'gltf',
+              node_id: 'elbow_joint',
+              path: 'viewer/elbow.glb',
+              source_paths: ['viewer/elbow.glb'],
+            },
+          ],
+          needs_review_nodes: ['elbow_joint'],
+        },
+        manifest_tree: {
+          robot_key: 'fourier-n1-runtime',
+          root_nodes: ['elbow_joint'],
+          nodes: [
+            {
+              id: 'elbow_joint',
+              display_name: 'elbow_joint',
+              parent_id: null,
+              children: [],
+              source_paths: ['viewer/elbow.glb'],
+              runtime_asset_paths: ['viewer/elbow.glb'],
+              file_kinds: ['viewer_asset'],
+            },
+          ],
+        },
+        manifest_mapping: {
+          elbow_joint: {
+            source_paths: ['viewer/elbow.glb'],
+            runtime_asset_paths: ['viewer/elbow.glb'],
+            file_kinds: ['viewer_asset'],
+          },
+        },
+        citations: [
+          {
+            title: '执行器维护说明',
+            source: 'semantic',
+          },
+        ],
+      },
+    })
   })
 
-  it('renders shell layout with accessible 3d region and supports right rail tab switching', async () => {
-    const user = userEvent.setup()
-
+  it('hydrates runtime maintenance draft from the dedicated project draft page session', async () => {
     render(<SOPMaintenancePage />)
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
-    expect(screen.queryByText('机器人项目与 AI 草案')).toBeNull()
     expect(screen.getByRole('button', { name: '进入项目草案页' })).toBeTruthy()
-    expect(screen.getAllByText('更换肘关节模组').length).toBeGreaterThan(0)
-    expect(screen.getByText('核心件快速定位')).toBeTruthy()
-    expect(screen.getByText('ToolSelectorStub')).toBeTruthy()
-    expect(screen.getByLabelText('SOP 3D 视图区')).toBeTruthy()
-    expect(screen.queryByText('ScrewInfoStub')).toBeFalsy()
-
-    await user.click(screen.getByRole('tab', { name: '螺丝' }))
+    expect(screen.queryByText('机器人项目与 AI 草案')).toBeNull()
 
     await waitFor(() => {
-      expect(screen.getByText('ScrewInfoStub')).toBeTruthy()
+      expect(screen.getByText('Fourier N1 runtime')).toBeTruthy()
     })
+
+    expect((await screen.findAllByText('Fourier N1 肘关节维保')).length).toBeGreaterThan(0)
+    expect(await screen.findByText('part mapping requires review: elbow_joint')).toBeTruthy()
+    expect(await screen.findByText('viewer/elbow.glb')).toBeTruthy()
+    expect(screen.getByText('RuntimeAssetPreviewStub')).toBeTruthy()
   })
 })

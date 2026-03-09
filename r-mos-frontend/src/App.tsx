@@ -17,6 +17,10 @@ const ApprovalQueuePage = lazy(() => import('@/pages/admin/ApprovalQueuePage'))
 const FaultManagePage = lazy(() => import('@/pages/admin/FaultManagePage'))
 const LLMMetricsPage = lazy(() => import('@/pages/admin/LLMMetricsPage'))
 const SeedDataPage = lazy(() => import('@/pages/admin/SeedDataPage'))
+const FeatureFlagPage = lazy(() => import('@/pages/admin/FeatureFlagPage'))
+const CompensationPage = lazy(() => import('@/pages/admin/CompensationPage'))
+const BeliefTrackerPage = lazy(() => import('@/pages/BeliefTrackerPage'))
+const UserSettingsPage = lazy(() => import('@/pages/UserSettingsPage'))
 const AIChatPage = lazy(() => import('@/pages/AIChatPage'))
 const AssessmentStatusPage = lazy(() => import('@/pages/AssessmentStatusPage'))
 const Atom01DemoPage = lazy(() => import('@/pages/Atom01DemoPage'))
@@ -24,6 +28,7 @@ const DiagnosisPage = lazy(() => import('@/pages/DiagnosisPage'))
 const EvidencePage = lazy(() => import('@/pages/EvidencePage'))
 const IncidentListPage = lazy(() => import('@/pages/IncidentListPage'))
 const KnowledgePage = lazy(() => import('@/pages/KnowledgePage'))
+const MaintenanceProjectDraftPage = lazy(() => import('@/pages/MaintenanceProjectDraftPage'))
 const MonitorPage = lazy(() => import('@/pages/MonitorPage'))
 const ReplayPage = lazy(() => import('@/pages/ReplayPage'))
 const ReportPage = lazy(() => import('@/pages/ReportPage'))
@@ -95,10 +100,7 @@ function App() {
                   path="workbench/teaching"
                   element={withSuspense(withRoles(<TeacherMonitorPage />, ['teacher', 'admin']))}
                 />
-                <Route
-                  path="teacher/monitor"
-                  element={<Navigate replace to="/workbench/teaching" />}
-                />
+
                 <Route
                   path="teacher/students"
                   element={withSuspense(withRoles(<TeacherStudentsPage />, ['teacher', 'admin']))}
@@ -107,15 +109,13 @@ function App() {
                   path="admin/console"
                   element={withSuspense(withRoles(<AdminDashboardPage />, ['admin']))}
                 />
-                <Route
-                  path="admin/dashboard"
-                  element={<Navigate replace to="/admin/console" />}
-                />
 
-                <Route path="sops" element={withSuspense(<SOPListPage />)} />
+
+                <Route path="sops" element={withSuspense(withRoles(<SOPListPage />, ['teacher', 'admin']))} />
                 <Route path="knowledge" element={withSuspense(<KnowledgePage />)} />
                 <Route path="ai-chat" element={withSuspense(<AIChatPage />)} />
                 <Route path="monitor" element={withSuspense(<MonitorPage />)} />
+                <Route path="maintenance/project-draft" element={withSuspense(<MaintenanceProjectDraftPage />)} />
                 <Route path="maintenance" element={withSuspense(<SOPMaintenancePage />)} />
                 <Route path="atom01" element={withSuspense(<Atom01DemoPage />)} />
                 <Route
@@ -156,6 +156,19 @@ function App() {
                   path="admin/seed-data"
                   element={withSuspense(withRoles(<SeedDataPage />, ['admin']))}
                 />
+                <Route
+                  path="admin/features"
+                  element={withSuspense(withRoles(<FeatureFlagPage />, ['admin']))}
+                />
+                <Route
+                  path="admin/compensation"
+                  element={withSuspense(withRoles(<CompensationPage />, ['admin']))}
+                />
+                <Route
+                  path="belief-tracker"
+                  element={withSuspense(withRoles(<BeliefTrackerPage />, ['teacher', 'admin']))}
+                />
+                <Route path="settings" element={withSuspense(<UserSettingsPage />)} />
                 <Route path="incidents" element={withSuspense(<IncidentListPage />)} />
                 <Route path="evidence" element={withSuspense(<EvidencePage />)} />
                 <Route path="assessments" element={withSuspense(<AssessmentStatusPage />)} />
