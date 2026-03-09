@@ -4,24 +4,30 @@ import {
   BarChart2,
   BarChart3,
   BookOpen,
+  Bot,
   Boxes,
+  Brain,
   CheckSquare,
   ClipboardList,
   Cpu,
   Database,
   Dumbbell,
+  FileSearch,
   FileText,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Monitor,
   PlayCircle,
+  Settings,
+  ShieldCheck,
   Sparkles,
+  ToggleRight,
   Users,
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { Navigate, NavLink, Outlet } from 'react-router-dom'
+import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -44,67 +50,159 @@ interface NavItem {
   icon: LucideIcon
 }
 
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
 interface LayoutConfig {
   badgeLabel: string
   badgeVariant: 'default' | 'success' | 'destructive'
-  navItems: NavItem[]
+  navGroups: NavGroup[]
 }
 
-const STUDENT_NAV: NavItem[] = [
-  { label: '训练工作台', to: '/workbench/training', icon: Dumbbell },
-  { label: '我的技能', to: '/student/skills', icon: BarChart3 },
-  { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
-  { label: '3D 展示', to: '/atom01', icon: Boxes },
-  { label: '实时监控', to: '/monitor', icon: Activity },
-  { label: '任务报告', to: '/reports', icon: FileText },
-  { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
-  { label: '知识库', to: '/knowledge', icon: BookOpen },
-  { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
+const STUDENT_NAV: NavGroup[] = [
+  {
+    label: '工作台',
+    items: [
+      { label: '训练工作台', to: '/workbench/training', icon: Dumbbell },
+      { label: 'AI 工作台', to: '/agent/workbench', icon: Bot },
+      { label: 'ATOM01 维保工作台', to: '/workbench/atom01-maintenance', icon: Boxes },
+      { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+    ],
+  },
+  {
+    label: '工具',
+    items: [
+      { label: '3D 展示', to: '/atom01', icon: Boxes },
+      { label: '实时监控', to: '/monitor', icon: Activity },
+    ],
+  },
+  {
+    label: '记录与资源',
+    items: [
+      { label: '我的技能', to: '/student/skills', icon: BarChart3 },
+      { label: '任务报告', to: '/reports', icon: FileText },
+      { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
+      { label: '知识库', to: '/knowledge', icon: BookOpen },
+      { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
+    ],
+  },
 ]
 
-const TEACHER_NAV: NavItem[] = [
-  { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-  { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
-  { label: '学员档案', to: '/teacher/students', icon: Users },
-  { label: 'SOP 管理', to: '/sops', icon: FileText },
-  { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
-  { label: '3D 展示', to: '/atom01', icon: Boxes },
-  { label: '实时监控', to: '/monitor', icon: Activity },
-  { label: '任务报告', to: '/reports', icon: BarChart3 },
-  { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
-  { label: '知识库', to: '/knowledge', icon: BookOpen },
+const TEACHER_NAV: NavGroup[] = [
+  {
+    label: '工作台',
+    items: [
+      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
+      { label: 'ATOM01 维保工作台', to: '/workbench/atom01-maintenance', icon: Boxes },
+      { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+    ],
+  },
+  {
+    label: '教学管理',
+    items: [
+      { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
+      { label: '学员档案', to: '/teacher/students', icon: Users },
+    ],
+  },
+  {
+    label: 'SOP & 工具',
+    items: [
+      { label: 'SOP 管理', to: '/sops', icon: FileText },
+      { label: '3D 展示', to: '/atom01', icon: Boxes },
+    ],
+  },
+  {
+    label: '监控与审核',
+    items: [
+      { label: '实时监控', to: '/monitor', icon: Activity },
+      { label: '事件列表', to: '/incidents', icon: AlertTriangle },
+      { label: '证据查看', to: '/evidence', icon: FileSearch },
+      { label: '评估状态', to: '/assessments', icon: ShieldCheck },
+    ],
+  },
+  {
+    label: '记录与资源',
+    items: [
+      { label: '任务报告', to: '/reports', icon: BarChart3 },
+      { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
+      { label: '知识库', to: '/knowledge', icon: BookOpen },
+      { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
+    ],
+  },
 ]
 
-const ADMIN_NAV: NavItem[] = [
-  { label: '系统概览', to: '/admin/console', icon: LayoutDashboard },
-  { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
-  { label: '3D 展示', to: '/atom01', icon: Boxes },
-  { label: '实时监控', to: '/monitor', icon: Activity },
-  { label: '任务报告', to: '/reports', icon: FileText },
-  { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
-  { label: '知识库', to: '/knowledge', icon: BookOpen },
-  { label: '审批队列', to: '/admin/approvals', icon: CheckSquare },
-  { label: '验收看板', to: '/admin/acceptance', icon: BarChart2 },
-  { label: 'LLM 指标', to: '/admin/llm-metrics', icon: Cpu },
-  { label: '故障管理', to: '/admin/faults', icon: AlertTriangle },
-  { label: '数据管理', to: '/admin/seed-data', icon: Database },
+const ADMIN_NAV: NavGroup[] = [
+  {
+    label: '概览',
+    items: [
+      { label: '系统概览', to: '/admin/console', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: '工作台',
+    items: [
+      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
+      { label: 'ATOM01 维保工作台', to: '/workbench/atom01-maintenance', icon: Boxes },
+      { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+    ],
+  },
+  {
+    label: '教学管理',
+    items: [
+      { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
+      { label: '学员档案', to: '/teacher/students', icon: Users },
+    ],
+  },
+  {
+    label: 'SOP & 工具',
+    items: [
+      { label: 'SOP 管理', to: '/sops', icon: FileText },
+      { label: '3D 展示', to: '/atom01', icon: Boxes },
+    ],
+  },
+  {
+    label: '监控与审核',
+    items: [
+      { label: '实时监控', to: '/monitor', icon: Activity },
+      { label: '事件列表', to: '/incidents', icon: AlertTriangle },
+      { label: '证据查看', to: '/evidence', icon: FileSearch },
+      { label: '评估状态', to: '/assessments', icon: ShieldCheck },
+      { label: '信念追踪', to: '/belief-tracker', icon: Brain },
+    ],
+  },
+  {
+    label: '平台管理',
+    items: [
+      { label: '审批队列', to: '/admin/approvals', icon: CheckSquare },
+      { label: '补偿方案', to: '/admin/compensation', icon: Wrench },
+      { label: 'Feature Flag', to: '/admin/features', icon: ToggleRight },
+      { label: '验收看板', to: '/admin/acceptance', icon: BarChart2 },
+      { label: 'LLM 指标', to: '/admin/llm-metrics', icon: Cpu },
+      { label: '故障管理', to: '/admin/faults', icon: AlertTriangle },
+      { label: '数据管理', to: '/admin/seed-data', icon: Database },
+      { label: '知识库', to: '/knowledge', icon: BookOpen },
+      { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
+    ],
+  },
 ]
 
 const LAYOUT_CONFIG: Record<UserRole, LayoutConfig> = {
   student: {
     badgeLabel: '学员',
     badgeVariant: 'default',
-    navItems: STUDENT_NAV,
+    navGroups: STUDENT_NAV,
   },
   teacher: {
     badgeLabel: '教师',
     badgeVariant: 'success',
-    navItems: TEACHER_NAV,
+    navGroups: TEACHER_NAV,
   },
   admin: {
     badgeLabel: '管理员',
     badgeVariant: 'destructive',
-    navItems: ADMIN_NAV,
+    navGroups: ADMIN_NAV,
   },
 }
 
@@ -123,7 +221,7 @@ function SidebarNavItem({ icon: Icon, label, to }: NavItem) {
       to={to}
       className={({ isActive }) =>
         cn(
-          'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors duration-base ease-base',
+          'group relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] transition-colors duration-base ease-base',
           isActive
             ? 'bg-primary-muted text-primary'
             : 'text-text-secondary hover:bg-bg-elevated hover:text-text-primary',
@@ -134,15 +232,30 @@ function SidebarNavItem({ icon: Icon, label, to }: NavItem) {
         <>
           <span
             className={cn(
-              'absolute left-0 top-2.5 h-6 w-[3px] rounded-r-full transition-opacity',
+              'absolute left-0 top-2 h-5 w-[3px] rounded-r-full transition-opacity',
               isActive ? 'bg-primary opacity-100' : 'opacity-0',
             )}
           />
-          <Icon className="h-[18px] w-[18px]" />
-          <span>{label}</span>
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{label}</span>
         </>
       )}
     </NavLink>
+  )
+}
+
+function SidebarNavGroup({ group, isFirst }: { group: NavGroup; isFirst: boolean }) {
+  return (
+    <div className={cn(!isFirst && 'mt-4')}>
+      <div className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+        {group.label}
+      </div>
+      <div className="space-y-0.5">
+        {group.items.map((item) => (
+          <SidebarNavItem key={item.to} {...item} />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -156,6 +269,7 @@ function RoleLayoutShell({
   email?: string
 }) {
   const logout = useAuthStore((state) => state.logout)
+  const navigate = useNavigate()
   const config = LAYOUT_CONFIG[role]
   const displayName = getDisplayName(fullName, email)
 
@@ -174,17 +288,17 @@ function RoleLayoutShell({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 px-3 py-4">
-          <nav className="space-y-1">
-            {config.navItems.map((item) => (
-              <SidebarNavItem key={item.to} {...item} />
+        <ScrollArea className="flex-1 px-3 py-3">
+          <nav>
+            {config.navGroups.map((group, idx) => (
+              <SidebarNavGroup key={group.label} group={group} isFirst={idx === 0} />
             ))}
           </nav>
         </ScrollArea>
 
         <Separator />
 
-        <div className="h-14 px-3 py-2">
+        <div className="px-3 py-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors duration-base ease-base hover:bg-bg-elevated">
@@ -205,6 +319,10 @@ function RoleLayoutShell({
                 <div className="text-xs text-text-secondary">{email ?? '未绑定邮箱'}</div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                个人设置
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void logout()}>
                 <LogOut className="mr-2 h-4 w-4" />
                 退出登录

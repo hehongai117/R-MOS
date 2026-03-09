@@ -19,6 +19,9 @@ interface SOPMaintenanceHeaderProps {
   viewModeControl: ReactNode
   detailToggleControl: ReactNode
   modeSelectControl: ReactNode
+  title?: string
+  subtitle?: string
+  breadcrumb?: string[]
 }
 
 interface SOPMaintenanceRightRailProps {
@@ -99,6 +102,9 @@ export function SOPMaintenanceHeader({
   viewModeControl,
   detailToggleControl,
   modeSelectControl,
+  title = 'SOP 维保系统',
+  subtitle = '步骤导航、3D 操作区和工具要求统一在同一工作台内处理',
+  breadcrumb = ['维保端', 'SOP 工作台'],
 }: SOPMaintenanceHeaderProps) {
   const modeLabel =
     operationMode === 'exam'
@@ -109,9 +115,9 @@ export function SOPMaintenanceHeader({
 
   return (
     <PageHeader
-      title="SOP 维保系统"
-      subtitle="步骤导航、3D 操作区和工具要求统一在同一工作台内处理"
-      breadcrumb={['维保端', 'SOP 工作台']}
+      title={title}
+      subtitle={subtitle}
+      breadcrumb={breadcrumb}
       actions={(
         <div className="flex max-w-4xl flex-wrap items-center justify-end gap-2">
           <StatusBadge

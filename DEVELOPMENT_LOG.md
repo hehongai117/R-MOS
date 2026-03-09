@@ -5339,3 +5339,71 @@
   - 草案内容仍会把 `README / LICENSE / .gitignore` 等文档节点混入引用与 review warning，这属于知识清洗问题，不是这次页面拆分回归问题。
 - Next Step:
   - 若继续推进，建议下一步清理草案生成阶段的文档噪声，让项目草案页里的步骤与引用更聚焦于真实部件与维保动作。
+
+- DateTime: 2026-03-09 15:48:12 +0800
+- Task: 提交维护草案拆页改动并分别验证教师与学生账号的实际效果
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - git add DEVELOPMENT_LOG.md r-mos-frontend/src/App.tsx r-mos-frontend/src/api/maintenance.ts r-mos-frontend/src/api/robotKnowledge.ts r-mos-frontend/src/components/Viewer3D/RuntimeAssetPreview.tsx r-mos-frontend/src/components/Viewer3D/runtimeManifest.ts r-mos-frontend/src/features/maintenance/runtimeWorkspaceSession.ts r-mos-frontend/src/pages/BeliefTrackerPage.tsx r-mos-frontend/src/pages/MaintenanceProjectDraftPage.tsx r-mos-frontend/src/pages/SOPMaintenancePage.tsx r-mos-frontend/src/pages/UserSettingsPage.tsx r-mos-frontend/src/pages/__tests__/MaintenanceProjectDraftPage.test.tsx r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx r-mos-frontend/src/pages/admin/CompensationPage.tsx r-mos-frontend/src/pages/admin/FeatureFlagPage.tsx r-mos-frontend/src/types/maintenance.ts r-mos-frontend/src/types/robotKnowledge.ts
+  - git stash push --keep-index -u -m "pre-commit-verify-maintenance-draft-ui"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/MaintenanceProjectDraftPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - git commit -m "feat: split maintenance draft workspace"
+  - git stash pop
+  - /bin/zsh -lc "lsof -iTCP:8000 -sTCP:LISTEN -nP || true; lsof -iTCP:55173 -sTCP:LISTEN -nP || true"
+  - Chrome MCP isolated context: rmos-maint-split-teacher-20260309
+  - Chrome MCP isolated context: rmos-maint-split-student-20260309
+- Tests:
+  - 前端测试：`npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/MaintenanceProjectDraftPage.test.tsx` => PASS（`3 passed`）。
+  - 前端构建：`npm run build` => PASS。
+  - Git 提交：`git commit -m "feat: split maintenance draft workspace"` => PASS，commit `cee4a87`。
+  - 服务检查：后端 `127.0.0.1:8000`、前端 `127.0.0.1:55173` 均在监听，无需重启。
+  - 教师浏览器验证（新隔离上下文，不触碰现有浏览器）：
+    - 登录 `teacher1@rmos.test / Teacher@123` PASS。
+    - 进入 `/maintenance/project-draft` PASS，页面显示项目选择、维保目标、关注部位与草案按钮。
+    - 默认项目 `Fourier N1 wiki-stl-runtime-v3`，可见“生成 AI 草案”与“加载批准执行版”。
+  - 学生浏览器验证（新隔离上下文，不触碰现有浏览器）：
+    - 登录 `student_a@rmos.test / Student@123` PASS。
+    - 进入 `/maintenance/project-draft` PASS。
+    - 点击“生成 AI 草案”后页面返回 `Fourier N1 执行器弯曲维护`、`draft_pending_review`、`引用数量 3`，说明学生当前也能生成维护草案。
+- Result: PASS（提交与双账号回归完成）
+- Risks/Notes:
+  - 当前教师端效果符合拆页预期；项目草案页与 SOP 工作台已分离。
+  - 学生角色当前也可访问并生成维护草案，这更像权限边界缺口，而不是 UI 问题；若产品预期是仅教师/admin 操作，应补后端与路由级权限限制。
+  - 为了只提交本轮相关文件，使用了 `git stash push --keep-index` 临时收起其余脏改，提交后已 `git stash pop` 完整恢复工作区。
+- Next Step:
+  - 若继续推进，应先确认“学生是否允许生成维护草案”的产品口径；若不允许，优先补角色权限与前端入口限制。
+
+- DateTime: 2026-03-09 16:40:26 +0800
+- Task: 恢复 ATOM01 专用维保工作台为独立页，并将 SOP 工作台移动到工作台导航分组
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/__tests__/AppLayout.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01MaintenanceWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - /bin/zsh -lc "lsof -iTCP:8000 -sTCP:LISTEN -nP || true; lsof -iTCP:55173 -sTCP:LISTEN -nP || true"
+  - Chrome MCP isolated context: rmos-workbench-nav-student-20260309
+  - Chrome MCP isolated context: rmos-workbench-nav-teacher-20260309
+- Tests:
+  - 前端导航与维保页测试：`npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx`
+    - 首次 FAIL：管理员导航测试仍断言旧的 `执行回放`
+    - 修正断言后 PASS（`3 files, 6 tests passed`）
+  - 前端构建：`npm run build` => PASS
+  - 浏览器回归（新隔离上下文，不触碰现有浏览器）：
+    - 教师登录 `teacher1@rmos.test / Teacher@123` PASS，侧边栏出现 `工作台 -> 班级监控台 / ATOM01 维保工作台 / SOP 工作台`
+    - 学生登录 `student_a@rmos.test / Student@123` PASS，侧边栏 `工作台` 下出现 `训练工作台 / AI 工作台 / ATOM01 维保工作台 / SOP 工作台`
+    - 学生点击 `ATOM01 维保工作台` 后进入 `/workbench/atom01-maintenance` PASS，页面标题为 `ATOM01 维保工作台`，且不再显示“项目草案入口”
+- Result: PASS
+- Risks/Notes:
+  - 本轮只重组导航和页面分流，没有改后端权限或数据流。
+  - 通用 `/maintenance` 仍保留项目草案入口与运行时草案承接；`/workbench/atom01-maintenance` 则固定为不读取 runtime session 的 ATOM01 专用体验。
+- Next Step:
+  - 若继续推进，可进一步把 `ATOM01 维保工作台` 的标题、默认 SOP 列表和说明文案收得更像“历史版本原貌”，减少与通用 SOP 工作台的视觉相似度。

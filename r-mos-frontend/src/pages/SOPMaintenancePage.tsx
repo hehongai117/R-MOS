@@ -214,6 +214,34 @@ const REMAINING_CORE_LINKS = [
     'right_ankle_roll_link',
 ] as const;
 
+type WorkspaceVariant = 'runtime' | 'atom01';
+
+interface WorkspaceChrome {
+    title: string;
+    subtitle: string;
+    breadcrumb: string[];
+    showDraftEntry: boolean;
+}
+
+const WORKSPACE_CHROME: Record<WorkspaceVariant, WorkspaceChrome> = {
+    runtime: {
+        title: 'SOP 维保系统',
+        subtitle: '步骤导航、3D 操作区和工具要求统一在同一工作台内处理',
+        breadcrumb: ['维保端', 'SOP 工作台'],
+        showDraftEntry: true,
+    },
+    atom01: {
+        title: 'ATOM01 维保工作台',
+        subtitle: '保留原有 ATOM01 专用维保体验，直接进入隔离爆炸、裁决和 3D 交互执行。',
+        breadcrumb: ['工作台', 'ATOM01 维保工作台'],
+        showDraftEntry: false,
+    },
+};
+
+interface SOPMaintenancePageProps {
+    workspaceVariant?: WorkspaceVariant;
+}
+
 function resolveScrewSpecIdFromDetailPart(part: DetailPart): string | null {
     const source = `${part.displayName} ${part.path}`;
     const matched = source.match(/M\s*(\d+)\s*[x×]\s*(\d+)/i);
@@ -229,8 +257,9 @@ const LoadingFallback = () => (
     </mesh>
 );
 
-function SOPMaintenancePage() {
+function SOPMaintenancePage({ workspaceVariant = 'runtime' }: SOPMaintenancePageProps) {
     const navigate = useNavigate();
+    const workspaceChrome = WORKSPACE_CHROME[workspaceVariant];
     const [explodeAmount, setExplodeAmount] = useState(0);
     const [hoveredPart, setHoveredPart] = useState<PartInfo | null>(null);
     const [selectedPart, setSelectedPart] = useState<PartInfo | null>(null);
@@ -453,11 +482,11 @@ function SOPMaintenancePage() {
     const examTimeText = useMemo(() => formatCountdown(examRemainingMs), [examRemainingMs]);
     const examUrgent = useMemo(() => isCountdownUrgent(examRemainingMs), [examRemainingMs]);
     const runtimeSopScript = useMemo(() => {
-        if (!runtimeDraft) {
+        if (workspaceVariant === 'atom01' || !runtimeDraft) {
             return null;
         }
         return buildRuntimeSopScript(runtimeDraft);
-    }, [runtimeDraft]);
+    }, [runtimeDraft, workspaceVariant]);
     const availableSopScripts = useMemo(() => {
         if (!runtimeSopScript) {
             return ALL_SOP_SCRIPTS;
@@ -520,6 +549,15 @@ function SOPMaintenancePage() {
     }, []);
 
     useEffect(() => {
+        if (workspaceVariant === 'atom01') {
+            setRuntimeWorkspaceSession(null);
+            setRuntimeDraft(null);
+            setRuntimeManifest(null);
+            setRuntimeTargetIds([]);
+            setRuntimeSelectedAssetPath(null);
+            return;
+        }
+
         const session = readMaintenanceWorkspaceSession();
         if (!session) {
             return;
@@ -529,7 +567,7 @@ function SOPMaintenancePage() {
         if (session.draft) {
             applyRuntimeDraft(session.draft);
         }
-    }, [applyRuntimeDraft]);
+    }, [applyRuntimeDraft, workspaceVariant]);
 
     const handlePartHover = useCallback((part: PartInfo | null) => {
         if (part) {
@@ -1307,8 +1345,12 @@ function SOPMaintenancePage() {
                 viewModeControl={headerViewModeControl}
                 detailToggleControl={detailToggleControl}
                 modeSelectControl={modeSelectControl}
+                title={workspaceChrome.title}
+                subtitle={workspaceChrome.subtitle}
+                breadcrumb={workspaceChrome.breadcrumb}
             />
 
+            {workspaceChrome.showDraftEntry ? (
             <Card size="small" title="项目草案入口">
                 <div style={{ display: 'grid', gap: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1374,6 +1416,7 @@ function SOPMaintenancePage() {
                     ) : null}
                 </div>
             </Card>
+            ) : null}
 
             {/* 主内容区 */}
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
