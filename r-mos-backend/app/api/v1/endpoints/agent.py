@@ -3,7 +3,8 @@ Agent API Endpoints
 P0: Frontend integration for Agent services
 """
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -13,6 +14,7 @@ import logging
 import enum
 
 from app.core.database import get_db
+from app.core.database import AsyncSessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.command_runtime import Command, AIToolCall
 from app.models.approval import Approval
@@ -37,11 +39,31 @@ from app.services.compensation_planner import compensation_planner, Compensation
 from app.services.approval_queue import approval_queue, ApprovalPriority
 from app.services.policy_matrix import policy_matrix, PolicyDecision
 from app.services.authz_guard import require_permission
+from app.services.knowledge.project_ingest_worker import ProjectIngestWorker
+from app.services.knowledge.project_ingest_service import project_ingest_service
 from app.services.teaching.report_generator import ReportGenerator
+from app.schemas.robot_project import (
+    RobotProjectListResponse,
+    RobotProjectManifestResponse,
+    RobotProjectUploadJobResponse,
+)
 from app.schemas.report import LLMEvaluationReport
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 knowledge_upload_jobs: dict[str, dict[str, Any]] = {}
+
+
+async def _run_project_ingest(project_id: str) -> None:
+    async with AsyncSessionLocal() as session:
+        await ProjectIngestWorker().ingest_project(session, project_id)
+
+
+def _should_use_request_session_for_ingest(db: AsyncSession) -> bool:
+    bind = db.get_bind()
+    if bind is None or bind.dialect.name != "sqlite":
+        return False
+    database = getattr(bind.engine.url, "database", None)
+    return database in (None, "", ":memory:")
 
 
 class CoachRecommendRequest(BaseModel):
@@ -210,34 +232,92 @@ async def create_knowledge(
 
 @router.post("/knowledge/upload")
 async def upload_knowledge_file(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     brand: Optional[str] = None,
+    model: Optional[str] = None,
+    version: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission("agent:execute")),
 ):
     """Upload a knowledge file and create an ingest job record."""
     content = await file.read()
-    job_id = f"kb-job-{uuid.uuid4().hex[:12]}"
-    knowledge_upload_jobs[job_id] = {
-        "job_id": job_id,
-        "status": "completed" if content else "failed",
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "size_bytes": len(content),
-        "brand": brand,
-    }
-    return knowledge_upload_jobs[job_id]
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    job = await project_ingest_service.create_upload_job(
+        db,
+        filename=file.filename or "upload.bin",
+        content=content,
+        content_type=file.content_type,
+        brand=brand,
+        model=model,
+        version=version,
+    )
+    if _should_use_request_session_for_ingest(db):
+        background_tasks.add_task(ProjectIngestWorker().ingest_project, db, job.project_id)
+    else:
+        background_tasks.add_task(_run_project_ingest, job.project_id)
+    return job.model_dump()
 
 
 @router.get("/knowledge/upload/{job_id}")
 async def get_knowledge_upload_job(
     job_id: str,
+    db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission("agent:read")),
 ):
     """Query upload ingest job status."""
-    job = knowledge_upload_jobs.get(job_id)
+    job: RobotProjectUploadJobResponse | dict[str, Any] | None = await project_ingest_service.get_upload_job(
+        db,
+        job_id=job_id,
+    )
+    if isinstance(job, RobotProjectUploadJobResponse):
+        return job.model_dump()
+
+    if job is None:
+        job = knowledge_upload_jobs.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Knowledge upload job not found")
     return job
+
+
+@router.get("/knowledge/projects", response_model=RobotProjectListResponse)
+async def list_robot_projects(
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_permission("agent:read")),
+):
+    return await project_ingest_service.list_projects(db)
+
+
+@router.get("/knowledge/projects/{project_id}/manifest", response_model=RobotProjectManifestResponse)
+async def get_robot_project_manifest(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_permission("agent:read")),
+):
+    manifest = await project_ingest_service.get_project_manifest(db, project_id=project_id)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="robot project manifest not found")
+    return manifest
+
+
+@router.get("/knowledge/projects/{project_id}/assets/{asset_path:path}")
+async def get_robot_project_asset(
+    project_id: str,
+    asset_path: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_permission("agent:read")),
+):
+    try:
+        content, media_type = await project_ingest_service.get_project_asset(
+            db,
+            project_id=project_id,
+            asset_path=asset_path,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="robot project asset not found") from exc
+    return Response(content=content, media_type=media_type)
 
 
 @router.post("/knowledge/{entry_id}/submit")
@@ -1836,7 +1916,7 @@ async def get_user_preference(
     from app.services.user_preference_service import UserPreferenceService, GuidanceMode
 
     service = UserPreferenceService(db)
-    pref = await service.get_or_create_preference(actor.user.id)
+    pref = await service.get_or_create_preference(actor.user_id)
 
     return UserPreferenceResponse(
         user_id=pref.user_id,
@@ -1862,7 +1942,7 @@ async def update_guidance_mode(
     from app.services.user_preference_service import UserPreferenceService, GuidanceMode
 
     service = UserPreferenceService(db)
-    pref = await service.update_guidance_mode(actor.user.id, request.mode)
+    pref = await service.update_guidance_mode(actor.user_id, request.mode)
 
     return UserPreferenceResponse(
         user_id=pref.user_id,

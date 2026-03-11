@@ -72,6 +72,8 @@ ROLE_SPECS = {
 }
 
 PERMISSION_SPECS = {
+    "agent:read": ("读取智能体知识与项目资产", "agent", "read"),
+    "agent:execute": ("执行智能体知识与项目操作", "agent", "execute"),
     "users:read": ("读取用户列表", "users", "read"),
     "users:write": ("管理用户角色", "users", "write"),
     "teaching:read": ("读取教学域基础数据", "teaching", "read"),
@@ -81,14 +83,16 @@ PERMISSION_SPECS = {
 
 ROLE_PERMISSION_KEYS = {
     "admin": {
+        "agent:read",
+        "agent:execute",
         "users:read",
         "users:write",
         "teaching:read",
         "assignment_attempts:read",
         "audit_events:read",
     },
-    "teacher": {"teaching:read", "assignment_attempts:read"},
-    "student": {"teaching:read", "assignment_attempts:read"},
+    "teacher": {"agent:read", "agent:execute", "teaching:read", "assignment_attempts:read"},
+    "student": {"agent:read", "teaching:read", "assignment_attempts:read"},
     "auditor": {"audit_events:read"},
 }
 

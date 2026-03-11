@@ -1,22 +1,27 @@
-import { FileUp, Search } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Empty, Form, Select, Table, Tabs, message } from 'antd'
 
 import {
   KnowledgeEntry,
-  type KnowledgeUploadJob,
   approveKnowledge,
   createKnowledge,
-  getKnowledgeUploadJob,
   searchKnowledge,
   submitKnowledgeForReview,
-  uploadKnowledgeFile,
 } from '@/api/agent'
+import {
+  getRobotProjectUploadJob,
+  listRobotProjects,
+  uploadRobotProjectPackage,
+} from '@/api/robotKnowledge'
+import { RobotProjectTable } from '@/components/knowledge/RobotProjectTable'
+import { RobotProjectUploadPanel } from '@/components/knowledge/RobotProjectUploadPanel'
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
+import { useAuthStore } from '@/store/authStore'
+import type { RobotProjectSummary, RobotProjectUploadJob } from '@/types/robotKnowledge'
 
 const { Option } = Select
 
@@ -34,19 +39,57 @@ function riskTone(level: string) {
   return 'success'
 }
 
+function uploadStatusTone(status: string) {
+  if (status === 'ready') return 'success'
+  if (status === 'failed') return 'error'
+  if (status === 'ingesting') return 'warning'
+  return 'active'
+}
+
 const KnowledgePage = () => {
+  const role = useAuthStore((state) => state.user?.role ?? 'student')
+  const canManageKnowledge = role === 'teacher' || role === 'admin'
+
   const [activeTab, setActiveTab] = useState('search')
   const [loading, setLoading] = useState(false)
   const [knowledgeList, setKnowledgeList] = useState<KnowledgeEntry[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDevice, setSelectedDevice] = useState<string | undefined>()
-  const [uploadBrand, setUploadBrand] = useState<string | undefined>()
+  const [projectsLoading, setProjectsLoading] = useState(false)
+  const [projects, setProjects] = useState<RobotProjectSummary[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
-  const [uploadJobs, setUploadJobs] = useState<KnowledgeUploadJob[]>([])
+  const [uploadJobs, setUploadJobs] = useState<RobotProjectUploadJob[]>([])
+  const pollingTimersRef = useRef<Record<string, number>>({})
   const [form] = Form.useForm()
 
-  const handleSearch = async () => {
+  const upsertUploadJob = useCallback((job: RobotProjectUploadJob) => {
+    setUploadJobs((prev) => {
+      const next = [job, ...prev.filter((item) => item.job_id !== job.job_id)]
+      return next.slice(0, 10)
+    })
+  }, [])
+
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true)
+    try {
+      const result = await listRobotProjects()
+      const nextProjects = Array.isArray(result)
+        ? result
+        : Array.isArray(result.projects)
+          ? result.projects
+          : []
+      setProjects(nextProjects)
+      setSelectedProjectId((current) => current ?? nextProjects[0]?.project_id ?? null)
+    } catch {
+      message.error('机器人项目列表加载失败')
+    } finally {
+      setProjectsLoading(false)
+    }
+  }, [])
+
+  const handleSearch = useCallback(async () => {
     setLoading(true)
     try {
       const result = await searchKnowledge({
@@ -59,13 +102,54 @@ const KnowledgePage = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, selectedDevice])
+
+  const startPollingUploadJob = useCallback((jobId: string) => {
+    const clearCurrent = () => {
+      const timerId = pollingTimersRef.current[jobId]
+      if (timerId) {
+        window.clearTimeout(timerId)
+        delete pollingTimersRef.current[jobId]
+      }
+    }
+
+    const poll = async () => {
+      try {
+        const job = await getRobotProjectUploadJob(jobId)
+        upsertUploadJob(job)
+
+        if (job.status === 'ready' || job.status === 'failed') {
+          clearCurrent()
+          setUploadProgress(100)
+          await loadProjects()
+          return
+        }
+
+        setUploadProgress((current) => Math.min(current + 15, 90))
+        pollingTimersRef.current[jobId] = window.setTimeout(() => {
+          void poll()
+        }, 2000)
+      } catch {
+        clearCurrent()
+        setUploadProgress(0)
+        message.error('ingest 状态轮询失败')
+      }
+    }
+
+    void poll()
+  }, [loadProjects, upsertUploadJob])
 
   useEffect(() => {
-    if (activeTab === 'search') {
-      void handleSearch()
+    void handleSearch()
+    void loadProjects()
+
+    return () => {
+      Object.values(pollingTimersRef.current).forEach((timerId) => {
+        window.clearTimeout(timerId)
+      })
+      pollingTimersRef.current = {}
     }
-  }, [activeTab])
+  }, [handleSearch, loadProjects])
 
   const handleCreate = async (values: {
     title: string
@@ -85,33 +169,40 @@ const KnowledgePage = () => {
       message.success('知识条目已创建')
       form.resetFields()
       setActiveTab('search')
-      void handleSearch()
+      await handleSearch()
     } catch {
       message.error('创建失败')
     }
   }
 
-  const handleUpload = async (file: File) => {
+  const handleRobotUpload = async (payload: {
+    file: File
+    brand: string
+    model: string
+    version: string
+  }) => {
     setUploading(true)
-    setUploadProgress(15)
+    setUploadProgress(10)
     try {
-      const job = await uploadKnowledgeFile(file, uploadBrand)
-      setUploadProgress(70)
-      const finalJob = await getKnowledgeUploadJob(job.job_id)
-      setUploadProgress(100)
-      setUploadJobs((prev) => [finalJob, ...prev].slice(0, 10))
-      message.success(`上传完成：${finalJob.filename ?? file.name}`)
+      const job = await uploadRobotProjectPackage(payload.file, {
+        brand: payload.brand,
+        model: payload.model,
+        version: payload.version,
+      })
+      upsertUploadJob(job)
+      setUploadProgress(35)
+      setActiveTab('projects')
+      startPollingUploadJob(job.job_id)
+      message.success(`项目包已提交：${payload.file.name}`)
     } catch {
       setUploadProgress(0)
-      message.error('上传失败')
+      message.error('项目包上传失败')
     } finally {
-      setTimeout(() => setUploadProgress(0), 600)
       setUploading(false)
     }
-    return false
   }
 
-  const columns = [
+  const knowledgeColumns = [
     {
       title: '标题',
       dataIndex: 'title',
@@ -146,11 +237,16 @@ const KnowledgePage = () => {
       render: (_: unknown, record: KnowledgeEntry) => (
         <div className="flex gap-2">
           {record.status === 'DRAFT' ? (
-            <Button size="sm" type="button" variant="secondary" onClick={() => void submitKnowledgeForReview(record.id).then(handleSearch)}>
+            <Button
+              size="sm"
+              type="button"
+              variant="secondary"
+              onClick={() => void submitKnowledgeForReview(record.id).then(handleSearch)}
+            >
               提交
             </Button>
           ) : null}
-          {record.status === 'PENDING' ? (
+          {record.status === 'PENDING' && canManageKnowledge ? (
             <>
               <Button
                 size="sm"
@@ -174,184 +270,196 @@ const KnowledgePage = () => {
     },
   ]
 
+  const robotProjectTab = (
+    <div className="space-y-4">
+      {canManageKnowledge ? (
+        <SectionCard title="项目包 ingest">
+          <RobotProjectUploadPanel
+            uploading={uploading}
+            uploadProgress={uploadProgress}
+            onUpload={handleRobotUpload}
+          />
+        </SectionCard>
+      ) : null}
+
+      <SectionCard title="最近项目">
+        {projects.length === 0 && !projectsLoading ? (
+          <Empty description="暂无机器人项目" />
+        ) : (
+          <RobotProjectTable
+            loading={projectsLoading}
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+          />
+        )}
+      </SectionCard>
+
+      <SectionCard title="ingest 任务">
+        {uploadJobs.length === 0 ? (
+          <Empty description="暂无 ingest 记录" />
+        ) : (
+          <div className="space-y-3">
+            {uploadJobs.map((job) => (
+              <div
+                key={job.job_id}
+                className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-elevated px-4 py-3"
+              >
+                <div>
+                  <div className="text-sm text-text-primary">
+                    {(job.brand ?? '未知品牌') + ' ' + (job.model ?? '未知型号')}
+                  </div>
+                  <div className="mt-1 text-xs text-text-muted">
+                    {job.filename ?? job.job_id} · {job.version ?? '-'}
+                  </div>
+                </div>
+                <StatusBadge label={job.status} status={uploadStatusTone(job.status)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  )
+
+  const items = useMemo(() => {
+    const baseItems = [
+      {
+        key: 'search',
+        label: '知识搜索',
+        children: (
+          <div className="space-y-4">
+            <SectionCard title="搜索条件">
+              <div className="flex flex-wrap gap-3">
+                <Input
+                  className="max-w-[320px]"
+                  placeholder="搜索知识..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+                <Select
+                  allowClear
+                  className="min-w-[180px]"
+                  placeholder="选择设备"
+                  value={selectedDevice}
+                  onChange={setSelectedDevice}
+                >
+                  <Option value="ATOM01">ATOM01</Option>
+                  <Option value="ATOM02">ATOM02</Option>
+                  <Option value="ATOM03">ATOM03</Option>
+                </Select>
+                <Button size="sm" type="button" onClick={() => void handleSearch()}>
+                  <Search className="h-4 w-4" />
+                  搜索
+                </Button>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="知识列表">
+              {knowledgeList.length === 0 && !loading ? (
+                <Empty description="暂无知识条目" />
+              ) : (
+                <Table
+                  columns={knowledgeColumns}
+                  dataSource={knowledgeList}
+                  loading={loading}
+                  pagination={{ pageSize: 10 }}
+                  rowKey="id"
+                />
+              )}
+            </SectionCard>
+          </div>
+        ),
+      },
+      {
+        key: 'projects',
+        label: '机器人项目',
+        children: robotProjectTab,
+      },
+    ]
+
+    if (!canManageKnowledge) {
+      return baseItems
+    }
+
+    return [
+      baseItems[0],
+      {
+        key: 'create',
+        label: '创建知识',
+        children: (
+          <SectionCard title="新建知识条目">
+            <Form form={form} layout="vertical" onFinish={handleCreate}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Form.Item label="标题" name="title" rules={[{ required: true }]}>
+                  <Input placeholder="输入知识标题" />
+                </Form.Item>
+                <Form.Item label="类型" name="type" rules={[{ required: true }]}>
+                  <Select placeholder="选择类型">
+                    <Option value="solution">解决方案</Option>
+                    <Option value="pattern">模式</Option>
+                    <Option value="document">文档</Option>
+                    <Option value="tip">技巧</Option>
+                    <Option value="warning">警告</Option>
+                  </Select>
+                </Form.Item>
+              </div>
+
+              <Form.Item label="内容" name="content" rules={[{ required: true }]}>
+                <Textarea placeholder="输入知识内容..." rows={8} />
+              </Form.Item>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Form.Item label="适用设备" name="device_model">
+                  <Select allowClear placeholder="选择适用设备">
+                    <Option value="ATOM01">ATOM01</Option>
+                    <Option value="ATOM02">ATOM02</Option>
+                    <Option value="ATOM03">ATOM03</Option>
+                  </Select>
+                </Form.Item>
+                <Form.Item initialValue="R1" label="风险等级" name="risk_level">
+                  <Select>
+                    <Option value="R0">R0 - 无风险</Option>
+                    <Option value="R1">R1 - 低风险</Option>
+                    <Option value="R2">R2 - 中风险</Option>
+                    <Option value="R3">R3 - 高风险</Option>
+                  </Select>
+                </Form.Item>
+              </div>
+
+              <Button type="submit">创建条目</Button>
+            </Form>
+          </SectionCard>
+        ),
+      },
+      baseItems[1],
+    ]
+  }, [
+    activeTab,
+    canManageKnowledge,
+    form,
+    handleSearch,
+    knowledgeColumns,
+    knowledgeList,
+    loading,
+    projects,
+    projectsLoading,
+    robotProjectTab,
+    searchQuery,
+    selectedDevice,
+    selectedProjectId,
+    uploadJobs,
+  ])
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="知识库"
-        subtitle="知识搜索、条目创建和 PDF 上传统一到同一工作台"
+        subtitle="把文本知识、机器人项目包和运行时资产统一在同一工作台中管理"
         breadcrumb={['通用', '知识库']}
       />
 
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          {
-            key: 'search',
-            label: '知识搜索',
-            children: (
-              <div className="space-y-4">
-                <SectionCard title="搜索条件">
-                  <div className="flex flex-wrap gap-3">
-                    <Input
-                      className="max-w-[320px]"
-                      placeholder="搜索知识..."
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                    />
-                    <Select
-                      allowClear
-                      className="min-w-[180px]"
-                      placeholder="选择设备"
-                      value={selectedDevice}
-                      onChange={setSelectedDevice}
-                    >
-                      <Option value="ATOM01">ATOM01</Option>
-                      <Option value="ATOM02">ATOM02</Option>
-                      <Option value="ATOM03">ATOM03</Option>
-                    </Select>
-                    <Button size="sm" type="button" onClick={() => void handleSearch()}>
-                      <Search className="h-4 w-4" />
-                      搜索
-                    </Button>
-                  </div>
-                </SectionCard>
-
-                <SectionCard title="知识列表">
-                  {knowledgeList.length === 0 && !loading ? (
-                    <Empty description="暂无知识条目" />
-                  ) : (
-                    <Table
-                      columns={columns}
-                      dataSource={knowledgeList}
-                      loading={loading}
-                      pagination={{ pageSize: 10 }}
-                      rowKey="id"
-                    />
-                  )}
-                </SectionCard>
-              </div>
-            ),
-          },
-          {
-            key: 'create',
-            label: '创建知识',
-            children: (
-              <SectionCard title="新建知识条目">
-                <Form form={form} layout="vertical" onFinish={handleCreate}>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Form.Item label="标题" name="title" rules={[{ required: true }]}>
-                      <Input placeholder="输入知识标题" />
-                    </Form.Item>
-                    <Form.Item label="类型" name="type" rules={[{ required: true }]}>
-                      <Select placeholder="选择类型">
-                        <Option value="solution">解决方案</Option>
-                        <Option value="pattern">模式</Option>
-                        <Option value="document">文档</Option>
-                        <Option value="tip">技巧</Option>
-                        <Option value="warning">警告</Option>
-                      </Select>
-                    </Form.Item>
-                  </div>
-
-                  <Form.Item label="内容" name="content" rules={[{ required: true }]}>
-                    <Textarea placeholder="输入知识内容..." rows={8} />
-                  </Form.Item>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Form.Item label="适用设备" name="device_model">
-                      <Select allowClear placeholder="选择适用设备">
-                        <Option value="ATOM01">ATOM01</Option>
-                        <Option value="ATOM02">ATOM02</Option>
-                        <Option value="ATOM03">ATOM03</Option>
-                      </Select>
-                    </Form.Item>
-                    <Form.Item initialValue="R1" label="风险等级" name="risk_level">
-                      <Select>
-                        <Option value="R0">R0 - 无风险</Option>
-                        <Option value="R1">R1 - 低风险</Option>
-                        <Option value="R2">R2 - 中风险</Option>
-                        <Option value="R3">R3 - 高风险</Option>
-                      </Select>
-                    </Form.Item>
-                  </div>
-
-                  <Button type="submit">创建条目</Button>
-                </Form>
-              </SectionCard>
-            ),
-          },
-          {
-            key: 'upload',
-            label: '上传 PDF',
-            children: (
-              <div className="space-y-4">
-                <SectionCard title="上传文档">
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-3">
-                      <Select
-                        allowClear
-                        className="min-w-[180px]"
-                        placeholder="选择品牌"
-                        value={uploadBrand}
-                        onChange={setUploadBrand}
-                      >
-                        <Option value="ATOM">ATOM</Option>
-                        <Option value="R-MOS">R-MOS</Option>
-                      </Select>
-                      <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border-default bg-bg-elevated px-4 py-2 text-sm text-text-primary">
-                        <FileUp className="h-4 w-4" />
-                        选择 PDF
-                        <input
-                          accept="application/pdf"
-                          className="hidden"
-                          type="file"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0]
-                            if (file) {
-                              void handleUpload(file)
-                            }
-                            event.target.value = ''
-                          }}
-                        />
-                      </label>
-                    </div>
-                    {uploading || uploadProgress > 0 ? (
-                      <div className="space-y-2">
-                        <div className="text-xs text-text-muted">上传进度</div>
-                        <Progress value={uploadProgress} />
-                      </div>
-                    ) : null}
-                  </div>
-                </SectionCard>
-
-                <SectionCard title="文档列表">
-                  {uploadJobs.length === 0 ? (
-                    <Empty description="暂无上传记录" />
-                  ) : (
-                    <div className="space-y-3">
-                      {uploadJobs.map((job) => (
-                        <div
-                          key={job.job_id}
-                          className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-elevated px-4 py-3"
-                        >
-                          <div>
-                            <div className="text-sm text-text-primary">{job.filename ?? job.job_id}</div>
-                            <div className="mt-1 text-xs text-text-muted">
-                              {job.content_type ?? 'unknown'} · {job.size_bytes ?? 0} bytes
-                            </div>
-                          </div>
-                          <StatusBadge label={job.status} status={job.status === 'completed' ? 'success' : 'warning'} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </SectionCard>
-              </div>
-            ),
-          },
-        ]}
-      />
+      <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} />
     </div>
   )
 }

@@ -8,11 +8,19 @@ import type {
   AttemptEvidenceResponse,
   AttemptStatus,
   DiagnosisReport,
+  Enrollment,
   TeachingClass,
 } from '@/types/teaching'
 
 export async function listClasses(): Promise<TeachingClass[]> {
   const response = await apiClient.get<TeachingClass[]>('/classes')
+  return response.data
+}
+
+export async function listEnrollments(classId?: number): Promise<Enrollment[]> {
+  const response = await apiClient.get<Enrollment[]>('/enrollments', {
+    params: classId ? { class_id: classId } : undefined,
+  })
   return response.data
 }
 

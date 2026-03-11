@@ -1,4 +1,4 @@
-import { BarChart3, Flame, History, Sparkles } from 'lucide-react'
+import { BarChart3, Flame, History, Sparkles, Lightbulb } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Spin } from 'antd'
 
@@ -11,6 +11,7 @@ import {
   type SkillProfileResponse,
   type WeakStepResponse,
 } from '@/api/training'
+import { apiClient } from '@/api/client'
 import { DataCard, EmptyState, PageHeader, SectionCard } from '@/components/common'
 import { SkillRadarChart } from '@/components/training/SkillRadarChart'
 import { TrainingTimeline } from '@/components/training/TrainingTimeline'
@@ -63,6 +64,8 @@ function StudentSkillsPage() {
   const [weakSteps, setWeakSteps] = useState<WeakStepResponse[]>([])
   const [sessions, setSessions] = useState<SessionResponse[]>([])
   const [activeSession, setActiveSession] = useState<SessionResponse | null>(null)
+  const [recommendations, setRecommendations] = useState<{ focus_areas?: string[]; suggested_sops?: string[]; summary?: string } | null>(null)
+  const [recsLoading, setRecsLoading] = useState(false)
 
   const [profileLoading, setProfileLoading] = useState(false)
   const [weakStepsLoading, setWeakStepsLoading] = useState(false)
@@ -157,6 +160,25 @@ function StudentSkillsPage() {
       alive = false
     }
   }, [userId])
+
+  // Load coach recommendations when profile is available
+  useEffect(() => {
+    if (!profile) return
+    let alive = true
+    setRecsLoading(true)
+    apiClient.post('/api/v1/agent/coach/recommend', {
+      student_id: userId,
+      overall_level: profile.overall_level,
+      weak_areas: weakSteps.map(s => s.step_id),
+    }).then(res => {
+      if (alive) setRecommendations(res.data)
+    }).catch(() => {
+      if (alive) setRecommendations(null)
+    }).finally(() => {
+      if (alive) setRecsLoading(false)
+    })
+    return () => { alive = false }
+  }, [profile, weakSteps, userId])
 
   const dimensions = useMemo(() => (profile ? dimensionRows(profile) : []), [profile])
 
@@ -330,6 +352,44 @@ function StudentSkillsPage() {
           />
         )}
       </div>
+
+      {/* AI Coach Recommendations */}
+      <SectionCard title="AI 推荐训练" description="基于你的技能画像和薄弱环节，AI 教练推荐以下训练重点">
+        {recsLoading ? (
+          <div className="flex min-h-[120px] items-center justify-center"><Spin /></div>
+        ) : recommendations ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {recommendations.summary && (
+              <div className="md:col-span-3 rounded-lg border border-border-subtle bg-bg-elevated p-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary"><Lightbulb className="h-4 w-4" />综合建议</div>
+                <p className="mt-2 text-sm text-text-secondary">{recommendations.summary}</p>
+              </div>
+            )}
+            {recommendations.focus_areas && recommendations.focus_areas.length > 0 && (
+              <div className="rounded-lg border border-border-subtle p-4">
+                <div className="text-xs font-medium text-text-muted">重点提升领域</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {recommendations.focus_areas.map((area, i) => (
+                    <span key={i} className="rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-400">{area}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {recommendations.suggested_sops && recommendations.suggested_sops.length > 0 && (
+              <div className="rounded-lg border border-border-subtle p-4">
+                <div className="text-xs font-medium text-text-muted">推荐 SOP</div>
+                <ul className="mt-2 space-y-1">
+                  {recommendations.suggested_sops.map((sop, i) => (
+                    <li key={i} className="text-sm text-text-secondary">• {sop}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <EmptyState description="暂无 AI 推荐，完成更多训练后将自动生成" icon={Lightbulb} title="等待推荐" />
+        )}
+      </SectionCard>
 
       <div>
         {sessionsLoading ? (

@@ -14,6 +14,15 @@ export interface TeachingClass {
   updatedAt?: string
 }
 
+export interface Enrollment {
+  id: number
+  classId: number
+  studentId: number
+  role: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Assignment {
   id: number
   classId: number

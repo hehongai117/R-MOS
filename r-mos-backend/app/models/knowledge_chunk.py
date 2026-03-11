@@ -22,7 +22,7 @@ class AIKnowledgeChunk(Base):
     source_type = Column(String(64), nullable=False, index=True)
     source_id = Column(String(128), nullable=True, index=True)
     content = Column(Text, nullable=False)
-    embedding = Column(JSON, nullable=True)
+    embedding = Column(JSON(none_as_null=True), nullable=True)
     owner_user_id = Column(String(64), nullable=True, index=True)
     course_id = Column(String(64), nullable=True, index=True)
     attempt_id = Column(String(64), nullable=True, index=True)

@@ -15,6 +15,7 @@ export default defineConfig({
       "src/adjudication/__tests__/adjudication.vitest.test.ts",
       "src/components/**/__tests__/**/*.test.{ts,tsx}",
       "src/pages/**/__tests__/**/*.test.{ts,tsx}",
+      "src/teaching/**/__tests__/**/*.test.{ts,tsx}",
       "src/store/**/__tests__/**/*.test.{ts,tsx}",
     ],
     environment: "jsdom",

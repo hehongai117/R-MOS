@@ -10,8 +10,8 @@ import {
   type WeakStepResponse,
   type SessionResponse,
 } from '@/api/training'
-import { listClasses, listAssignments, listAssignmentAttempts } from '@/api/teaching'
-import type { TeachingClass, Assignment } from '@/types/teaching'
+import { listClasses, listEnrollments, listAssignments, listAssignmentAttempts } from '@/api/teaching'
+import type { TeachingClass, Assignment, Enrollment } from '@/types/teaching'
 import { DataCard, EmptyState, PageHeader, SectionCard } from '@/components/common'
 import { SkillRadarChart } from '@/components/training/SkillRadarChart'
 import { WeakStepHeatmap } from '@/components/training/WeakStepHeatmap'
@@ -85,6 +85,7 @@ function TeacherStudentsPage() {
   /* when class changes, gather unique student IDs from assignments' attempts */
   useEffect(() => {
     if (selectedClassId === null) return
+    const activeClassId = selectedClassId
     let alive = true
     setListLoading(true)
     setStudents([])
@@ -92,8 +93,24 @@ function TeacherStudentsPage() {
 
     async function loadStudents() {
       try {
-        const assignments: Assignment[] = await listAssignments(selectedClassId!)
+        const [enrollments, assignments]: [Enrollment[], Assignment[]] = await Promise.all([
+          listEnrollments(activeClassId),
+          listAssignments(activeClassId),
+        ])
         const studentMap = new Map<number, StudentSummary>()
+
+        for (const enrollment of enrollments) {
+          if (enrollment.role !== 'student') {
+            continue
+          }
+
+          studentMap.set(enrollment.studentId, {
+            studentId: enrollment.studentId,
+            attemptCount: 0,
+            bestScore: null,
+            latestStatus: '未开始',
+          })
+        }
 
         await Promise.all(
           assignments.map(async (assignment) => {

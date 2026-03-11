@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.llm import llm_router, LLMProvider
 from app.services.knowledge.hub import KnowledgeHub
+from app.services.knowledge.query_embedding_service import query_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -134,13 +135,19 @@ class ProjectGenerator:
 
     async def _retrieve_knowledge(self, intent: Any) -> list[dict]:
         """UF-04-a-2: 知识库检索"""
-        # 构建查询
-        query = f"{intent.category or ''} {intent.brand or ''} {intent.model or ''}"
+        query = self._build_retrieval_query(intent)
+        query_embedding: Optional[list[float]] = None
+
+        try:
+            query_embedding = await query_embedding_service.embed_query(query)
+        except Exception as exc:
+            logger.warning(f"[UF-04] Query embedding generation failed: {exc}")
 
         try:
             results = await self.knowledge_hub.search(
                 db=self.db,
                 query=query,
+                embedding=query_embedding,
                 top_k=10,
                 filters={"brand": intent.brand, "model": intent.model},
                 allow_degraded=True,
@@ -161,6 +168,16 @@ class ProjectGenerator:
         except Exception as e:
             logger.warning(f"[UF-04] Knowledge retrieval failed: {e}")
             return []
+
+    def _build_retrieval_query(self, intent: Any) -> str:
+        parts: list[str] = [
+            getattr(intent, "category", "") or "",
+            getattr(intent, "brand", "") or "",
+            getattr(intent, "model", "") or "",
+        ]
+        focus_areas = getattr(intent, "focus_areas", None) or []
+        parts.extend(area for area in focus_areas if area)
+        return " ".join(part.strip() for part in parts if part and part.strip())
 
     async def _analyze_history(self, user_id: int, intent: Any) -> dict:
         """UF-04-a-3: 个人记忆分析

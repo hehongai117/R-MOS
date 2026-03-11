@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
     listClassesMock,
+    listEnrollmentsMock,
     listAssignmentsMock,
     listAssignmentAttemptsMock,
     getStudentProfileMock,
@@ -11,6 +12,7 @@ const {
     getTrainingSessionsMock,
 } = vi.hoisted(() => ({
     listClassesMock: vi.fn(),
+    listEnrollmentsMock: vi.fn(),
     listAssignmentsMock: vi.fn(),
     listAssignmentAttemptsMock: vi.fn(),
     getStudentProfileMock: vi.fn(),
@@ -20,6 +22,7 @@ const {
 
 vi.mock('@/api/teaching', () => ({
     listClasses: listClassesMock,
+    listEnrollments: listEnrollmentsMock,
     listAssignments: listAssignmentsMock,
     listAssignmentAttempts: listAssignmentAttemptsMock,
 }))
@@ -37,6 +40,10 @@ describe('TeacherStudentsPage', () => {
         listClassesMock.mockReset().mockResolvedValue([
             { id: 1, name: '机器人维保 A 班', term: '2026春' },
         ])
+        listEnrollmentsMock.mockReset().mockResolvedValue([
+            { id: 1, classId: 1, studentId: 42, role: 'student' },
+            { id: 2, classId: 1, studentId: 43, role: 'student' },
+        ])
         listAssignmentsMock.mockReset().mockResolvedValue([
             { id: 10, classId: 1, title: '减速器拆装' },
         ])
@@ -53,7 +60,7 @@ describe('TeacherStudentsPage', () => {
         render(<TeacherStudentsPage />)
 
         await waitFor(() => {
-            expect(screen.getByText('学员档案')).toBeTruthy()
+            expect(screen.getByRole('heading', { name: '学员档案' })).toBeTruthy()
         })
 
         await waitFor(() => {
@@ -81,13 +88,14 @@ describe('TeacherStudentsPage', () => {
         await user.click(screen.getByText(/学员 #42/))
 
         await waitFor(() => {
-            expect(screen.getByText('Lv.2')).toBeTruthy()
+            expect(screen.getAllByText('Lv.2').length).toBeGreaterThanOrEqual(1)
         })
         expect(getStudentProfileMock).toHaveBeenCalledWith(42)
         expect(getWeakStepsMock).toHaveBeenCalledWith(42)
     })
 
     it('shows empty state when no students in class', async () => {
+        listEnrollmentsMock.mockResolvedValue([])
         listAssignmentAttemptsMock.mockResolvedValue([])
 
         render(<TeacherStudentsPage />)
@@ -95,6 +103,18 @@ describe('TeacherStudentsPage', () => {
         await waitFor(() => {
             expect(screen.getByText('暂无学员数据')).toBeTruthy()
         })
+    })
+
+    it('shows enrolled students even when class has no attempts yet', async () => {
+        listAssignmentsMock.mockResolvedValue([])
+
+        render(<TeacherStudentsPage />)
+
+        await waitFor(() => {
+            expect(screen.getByText(/学员 #42/)).toBeTruthy()
+        })
+        expect(screen.getByText(/学员 #43/)).toBeTruthy()
+        expect(screen.queryByText('暂无学员数据')).toBeNull()
     })
 
     it('shows select prompt when no student selected', async () => {

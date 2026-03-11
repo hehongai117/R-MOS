@@ -19,6 +19,10 @@ from app.models.skill_registry import Skill, SkillReview, SkillRelease
 from app.models.command_runtime import Command, AIToolCall
 from app.models.approval import Approval
 from app.models.knowledge_chunk import AIKnowledgeChunk
+from app.models.robot_project import RobotProject, RobotProjectStatus
+from app.models.robot_project_file import RobotProjectFile
+from app.models.robot_part_manifest import RobotPartManifest
+from app.models.robot_sop_draft import RobotSOPDraft, RobotSOPDraftReviewStatus
 from app.models.timeline import MultimodalTimeline, TimelineSegment, AlignmentMap, EvidenceCard
 from app.models.rbac import Role, Permission, UserRole, RolePermission
 from app.models.refresh_token import RefreshToken
@@ -75,6 +79,12 @@ __all__ = [
     "AIToolCall",
     "Approval",
     "AIKnowledgeChunk",
+    "RobotProject",
+    "RobotProjectStatus",
+    "RobotProjectFile",
+    "RobotPartManifest",
+    "RobotSOPDraft",
+    "RobotSOPDraftReviewStatus",
     "MultimodalTimeline",
     "TimelineSegment",
     "AlignmentMap",

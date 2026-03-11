@@ -437,6 +437,10 @@ function TeacherMonitorPage() {
                 )}
 
                 <div className="flex flex-wrap gap-2">
+                  {/*
+                    Legacy attempts can exist without a linked task, so evidence/diagnosis
+                    pages are intentionally gated to avoid dead-end 404s.
+                  */}
                   <Button
                     type="button"
                     variant="default"
@@ -447,6 +451,8 @@ function TeacherMonitorPage() {
                   <Button
                     type="button"
                     variant="secondary"
+                    disabled={!selectedAttempt.taskId}
+                    title={!selectedAttempt.taskId ? '该尝试未绑定任务，暂时无法查看证据' : undefined}
                     onClick={() => navigate(`/teaching/attempts/${selectedAttempt.id}/evidence`)}
                   >
                     查看证据
@@ -454,6 +460,8 @@ function TeacherMonitorPage() {
                   <Button
                     type="button"
                     variant="secondary"
+                    disabled={!selectedAttempt.taskId}
+                    title={!selectedAttempt.taskId ? '该尝试未绑定任务，暂时无法查看诊断' : undefined}
                     onClick={() => navigate(`/teaching/attempts/${selectedAttempt.id}/diagnosis`)}
                   >
                     查看诊断

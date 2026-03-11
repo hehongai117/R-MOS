@@ -133,16 +133,26 @@ const TeachingAssignmentsPage = () => {
       title: '操作',
       key: 'action',
       width: 220,
-      render: (_: unknown, record: AssignmentAttempt) => (
-        <div className="flex gap-2">
-          <Button size="sm" type="button" variant="secondary" onClick={() => navigate(`/teaching/attempts/${record.id}`)}>
-            进入尝试
-          </Button>
-          <Button size="sm" type="button" variant="outline" onClick={() => navigate(`/teaching/attempts/${record.id}/evidence`)}>
-            查看证据
-          </Button>
-        </div>
-      ),
+      render: (_: unknown, record: AssignmentAttempt) => {
+        const evidenceUnavailable = !record.taskId
+        return (
+          <div className="flex gap-2">
+            <Button size="sm" type="button" variant="secondary" onClick={() => navigate(`/teaching/attempts/${record.id}`)}>
+              进入尝试
+            </Button>
+            <Button
+              size="sm"
+              type="button"
+              variant="outline"
+              disabled={evidenceUnavailable}
+              title={evidenceUnavailable ? '该尝试未绑定任务，暂时无法查看证据' : undefined}
+              onClick={() => navigate(`/teaching/attempts/${record.id}/evidence`)}
+            >
+              查看证据
+            </Button>
+          </div>
+        )
+      },
     },
   ]
 

@@ -5407,3 +5407,31 @@
   - 通用 `/maintenance` 仍保留项目草案入口与运行时草案承接；`/workbench/atom01-maintenance` 则固定为不读取 runtime session 的 ATOM01 专用体验。
 - Next Step:
   - 若继续推进，可进一步把 `ATOM01 维保工作台` 的标题、默认 SOP 列表和说明文案收得更像“历史版本原貌”，减少与通用 SOP 工作台的视觉相似度。
+
+- DateTime: 2026-03-11 09:55:24 +0800
+- Task: 对当前累计版本做提交前完整验证并收敛剩余红测
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/maintenance/sop_draft_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_robot_sop_draft_api.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_file_format_census.py tests/unit/test_robot_project_models.py tests/unit/test_file_classifier.py tests/unit/test_api_robot_project_upload.py tests/unit/test_project_ingest_worker.py tests/unit/test_robot_manifest_builder.py tests/unit/test_fallback_embedding.py tests/unit/test_project_generator.py tests/unit/test_sop_draft_generator.py tests/unit/test_verdict_step_generator.py tests/unit/test_robot_sop_draft_api.py tests/e2e/test_e2e_robot_project_semantic_flow.py tests/e2e/test_e2e_sop_draft_review_flow.py tests/e2e/test_agent_diagnosis_flow.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/pages/__tests__/KnowledgePage.test.tsx src/pages/__tests__/MaintenanceProjectDraftPage.test.tsx src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/teaching/pages/__tests__/TeacherMonitorPage.test.tsx src/teaching/pages/__tests__/TeacherStudentsPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_sop_draft_generator.py tests/unit/test_robot_sop_draft_api.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_file_format_census.py tests/unit/test_robot_project_models.py tests/unit/test_file_classifier.py tests/unit/test_api_robot_project_upload.py tests/unit/test_project_ingest_worker.py tests/unit/test_robot_manifest_builder.py tests/unit/test_fallback_embedding.py tests/unit/test_project_generator.py tests/unit/test_sop_draft_generator.py tests/unit/test_verdict_step_generator.py tests/unit/test_robot_sop_draft_api.py tests/e2e/test_e2e_robot_project_semantic_flow.py tests/e2e/test_e2e_sop_draft_review_flow.py tests/e2e/test_agent_diagnosis_flow.py -q
+- Tests:
+  - 首轮后端回归 FAIL（`29 tests, 4 failed`）：
+    - `tests/unit/test_sop_draft_generator.py`：`manifest.tree_json` 在 `SimpleNamespace` 夹具上不存在
+    - `tests/unit/test_robot_sop_draft_api.py`：stub 返回的 payload 缺失 `manifest_tree / manifest_mapping`，与当前 API 契约不一致
+  - 前端回归：`npm test -- ...` => PASS（`8 files, 21 tests passed`）
+  - 前端构建：`npm run build` => PASS
+  - 红转绿验证：`pytest tests/unit/test_sop_draft_generator.py tests/unit/test_robot_sop_draft_api.py -q` => PASS（`5 passed`）
+  - 后端整组回归复跑：`pytest tests/unit/test_file_format_census.py ... tests/e2e/test_agent_diagnosis_flow.py -q` => PASS（`29 passed`）
+- Result: PASS
+- Risks/Notes:
+  - 本轮修复的是“提交前验证暴露的契约漂移”，没有新增功能范围。
+  - 后端与前端测试仍有大量 `PydanticDeprecatedSince20` 和 `datetime.utcnow()` deprecation warning，但不影响本次提交通过。
+  - 当前工作区其余改动属于累计版本内容，将在本次整体提交中一并纳入。
+- Next Step:
+  - 将当前工作区全部改动执行一次完整 commit，作为“当前版本”基线快照，不做 push。

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -96,3 +97,37 @@ def test_websocket_telemetry_protocol_is_consistent(
     assert isinstance(message["payload"]["active_faults"], list)
     assert "battery" in message["payload"]["sensors"]
     assert "temperature" in message["payload"]["sensors"]
+
+
+@pytest.mark.e2e
+def test_get_user_preference_uses_actor_user_id(
+    e2e_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    client, _ = e2e_env
+    app.dependency_overrides[get_current_actor] = _actor
+    captured: dict[str, int] = {}
+
+    async def _fake_get_or_create_preference(self, user_id: int):
+        captured["user_id"] = user_id
+        return SimpleNamespace(
+            user_id=user_id,
+            guidance_mode="full_time",
+            preferences={},
+        )
+
+    monkeypatch.setattr(
+        "app.services.user_preference_service.UserPreferenceService.get_or_create_preference",
+        _fake_get_or_create_preference,
+    )
+
+    try:
+        response = client.get("/api/v1/agent/preference")
+    finally:
+        app.dependency_overrides.pop(get_current_actor, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert captured["user_id"] == 1
+    assert body["user_id"] == 1
+    assert body["guidance_mode"] == "full_time"

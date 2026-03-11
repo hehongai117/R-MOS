@@ -16,6 +16,7 @@ class _Intent:
         self.brand = "ABB"
         self.model = "IRB1200"
         self.category = "工业机器人"
+        self.focus_areas = ["执行器弯曲维护"]
         self.intent_type = SimpleNamespace(value="training_new")
 
 
@@ -116,3 +117,54 @@ async def test_project_generator_generate_fallback_when_llm_timeout(monkeypatch,
     project = events[-1]["project"]
     assert project.project_id.startswith("fallback_")
     assert project.title == "标准训练项目"
+
+
+@pytest.mark.asyncio
+async def test_project_generator_retrieve_knowledge_passes_query_embedding(monkeypatch, test_db):
+    generator = ProjectGenerator(test_db)
+    intent = _Intent()
+    captured: dict[str, object] = {}
+
+    async def fake_embed_query(text: str):
+        captured["query_text"] = text
+        return [0.1, 0.2, 0.3]
+
+    async def fake_search(**kwargs):
+        captured["search_kwargs"] = kwargs
+        return []
+
+    monkeypatch.setattr(
+        "app.services.training.project_generator.query_embedding_service.embed_query",
+        fake_embed_query,
+    )
+    monkeypatch.setattr(generator.knowledge_hub, "search", fake_search)
+
+    await generator._retrieve_knowledge(intent)
+
+    assert "ABB" in str(captured["query_text"])
+    assert "执行器弯曲维护" in str(captured["query_text"])
+    assert captured["search_kwargs"]["embedding"] == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.asyncio
+async def test_project_generator_retrieve_knowledge_falls_back_when_embedding_fails(monkeypatch, test_db):
+    generator = ProjectGenerator(test_db)
+    intent = _Intent()
+    captured: dict[str, object] = {}
+
+    async def fake_embed_query(_text: str):
+        raise RuntimeError("embedding unavailable")
+
+    async def fake_search(**kwargs):
+        captured["search_kwargs"] = kwargs
+        return []
+
+    monkeypatch.setattr(
+        "app.services.training.project_generator.query_embedding_service.embed_query",
+        fake_embed_query,
+    )
+    monkeypatch.setattr(generator.knowledge_hub, "search", fake_search)
+
+    await generator._retrieve_knowledge(intent)
+
+    assert captured["search_kwargs"]["embedding"] is None
