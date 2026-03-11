@@ -412,6 +412,7 @@ Week 5   │  Phase 4 · 清理收尾（Cleanup & CI）
 - [x] **C-02-c-1** 确认 `dist/` 目录在 `.gitignore` 中（构建产物不应提交 git）（本轮核查：已忽略）
 - [x] **C-02-c-2** 清理 `node_modules/` 中因删除组件引入的孤立依赖（执行 `npm prune`）（本轮结果：up to date）
 - [x] **C-02-c-3** 执行 `npm run build`，确认构建无 warning 和 error（本轮结果：PASS，无 chunk warning）
+- [x] **C-02-c-4** 清理重复 Vite 配置派生文件：删除 `r-mos-frontend/vite.config.js` 与 `r-mos-frontend/vite.config.d.ts`（保留 `vite.config.ts` 作为唯一事实源）
 
 ---
 
@@ -423,6 +424,7 @@ Week 5   │  Phase 4 · 清理收尾（Cleanup & CI）
 - [x] **C-03-2** 检查 `logs/` 目录：确认 `.gitignore` 中已忽略日志文件
 - [x] **C-03-3** 检查 `开源机器人/` 目录：确认是第三方资料，与项目代码无混用，在 README 中说明
 - [x] **C-03-4** 更新根目录 `README.md`（若存在）：反映 V1.0 + V0.2 完成后的实际项目结构
+- [x] **C-03-5** 清理根目录过时产物与重复状态文档：删除本地交付压缩包/目录快照/缓存目录，以及已被 `docs/` 体系替代且无当前活跃引用的 `IMPLEMENTATION_PLAN.md`、`R-MOS-改造方案-v1.0.md`、`R-MOS_V0.2_Implementation_Plan.md`、`R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md`
 
 ---
 

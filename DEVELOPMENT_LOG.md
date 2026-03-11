@@ -5435,3 +5435,64 @@
   - 当前工作区其余改动属于累计版本内容，将在本次整体提交中一并纳入。
 - Next Step:
   - 将当前工作区全部改动执行一次完整 commit，作为“当前版本”基线快照，不做 push。
+
+- DateTime: 2026-03-11 10:34:42 +0800
+- Task: 清理低风险重复配置、过时根目录文档与本地生成产物
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-11-repo-prune-unused-artifacts.md
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_Review_Test_Cleanup_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - /Users/xuhehong/Desktop/r-mos/docs/review/review-checklist.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/vite.config.js
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/vite.config.d.ts
+  - /Users/xuhehong/Desktop/r-mos/IMPLEMENTATION_PLAN.md
+  - /Users/xuhehong/Desktop/r-mos/R-MOS-改造方案-v1.0.md
+  - /Users/xuhehong/Desktop/r-mos/R-MOS_V0.2_Implementation_Plan.md
+  - /Users/xuhehong/Desktop/r-mos/R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill spec-forge
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - sed -n '1,240p' AGENTS.md
+  - sed -n '1,240p' docs/plans/2026-03-05-review-test-cleanup-execution.md
+  - sed -n '1,240p' docs/testing/ACCEPTANCE_CHARTER.md
+  - sed -n '1,240p' docs/review/review-checklist.md
+  - sed -n '1,220p' DEVELOPMENT_LOG.md
+  - git status --short
+  - find . -maxdepth 2 -type d | LC_ALL=C sort
+  - sed -n '1,240p' .gitignore
+  - sed -n '1,240p' r-mos-frontend/package.json
+  - sed -n '1,240p' Makefile
+  - sed -n '1,240p' r-mos-backend/requirements.txt
+  - git ls-files r-mos-frontend/dist r-mos-backend/.venv r-mos-backend/venv docs-archive robot 开源机器人
+  - sed -n '1,240p' docs/cleanup-candidates.md
+  - sed -n '1,220p' README.md
+  - sed -n '1,240p' r-mos-frontend/vite.config.ts
+  - sed -n '1,240p' r-mos-frontend/vite.config.js
+  - sed -n '1,200p' r-mos-frontend/vite.config.d.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx ts-prune
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx unimported
+  - sed -n '1,240p' r-mos-backend/app/api/v1/__init__.py
+  - rg -n "vite\\.config\\.js|vite\\.config\\.d\\.ts" . -g '!**/node_modules/**' -g '!**/.git/**'
+  - find r-mos-backend/app -type d -name '__pycache__' -prune -exec rm -rf {} +
+  - rm -rf logs r-mos-backend/logs r-mos-backend/.pytest_cache r-mos-backend/venv r-mos-frontend/dist scripts/__pycache__
+  - rm -f .DS_Store PROJECT_DIRECTORY_FULL.txt gate3_delivery_docs_and_evidence.zip gate3_delivery_repo_HEAD.tar.gz 上传.zip
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - rm -f docs/.DS_Store .codex/.DS_Store
+  - rm -rf r-mos-frontend/dist
+  - git diff --name-only
+- Tests:
+  - 前端最小回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test` -> PASS（`25 files, 67 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 差异核对：`git diff --name-only` -> 仅命中预期 tracked 删除与文档同步
+  - 清理副产物：构建验证后再次删除 `r-mos-frontend/dist`
+- Result: PASS
+- Risks/Notes:
+  - 本轮未删除 `docs-archive/`、`开源机器人/`、`robot/`、`PROJECT_MANUAL.md` 等当前仍有事实引用或运行引用的内容。
+  - `npm test` 存在既有 React Router / Three.js / Ant Design warning，但未新增失败。
+  - `rm -f docs/.DS_Store .codex/.DS_Store` 时 `.codex/.DS_Store` 因沙箱权限限制未删除；该文件不参与项目构建、运行与验收。
+- Next Step:
+  - 若继续收缩仓库体积，可再单独审查未被 repo 引用的根目录剩余设计文档与前端未使用依赖，但需逐项给出保留/删除依据。

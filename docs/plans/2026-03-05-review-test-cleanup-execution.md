@@ -170,3 +170,24 @@
   - `pytest ... --cov=app --cov-report=xml --cov-config=.coveragerc`（含临时排除）-> PASS（`coverage.xml`）
   - 前端 `npx tsc --noEmit` / `npm run lint` / `npm test` / `npm run build` -> PASS
   - `pytest tests/e2e/ -v --tb=long` -> `16 passed, 0 failed`
+
+### Batch 16（已完成）
+
+- Phase 4：C-02/C-03 尾项收口（重复配置派生文件 + 根目录过时产物）
+- 完成项：
+  - C-02-c-4：删除 `r-mos-frontend/vite.config.js`、`r-mos-frontend/vite.config.d.ts`
+  - C-03-5：删除根目录过时文档
+    - `IMPLEMENTATION_PLAN.md`
+    - `R-MOS-改造方案-v1.0.md`
+    - `R-MOS_V0.2_Implementation_Plan.md`
+    - `R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md`
+  - 本地生成物清理：
+    - 删除 `.DS_Store`、`PROJECT_DIRECTORY_FULL.txt`
+    - 删除 `gate3_delivery_docs_and_evidence.zip`、`gate3_delivery_repo_HEAD.tar.gz`、`上传.zip`
+    - 删除 `logs/`、`r-mos-backend/logs/`、`r-mos-backend/.pytest_cache/`、`r-mos-backend/venv/`
+    - 删除 `r-mos-backend/app/**/__pycache__/`、`scripts/__pycache__/`
+- 验证结果：
+  - `npm test` -> `25 files, 67 tests passed`
+  - `npm run build` -> PASS
+  - `git diff --name-only` -> 仅命中预期 tracked 删除
+  - 备注：`.codex/.DS_Store` 受沙箱限制未删除，不影响项目运行/构建/验收

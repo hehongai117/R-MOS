@@ -589,3 +589,34 @@
   - 后端 app 覆盖率 xml：PASS（`coverage.xml` 生成）
   - 前端：`npx tsc --noEmit` PASS；`npm run lint` PASS；`npm test` PASS（`20 passed`）；`npm run build` PASS
   - E2E：`pytest tests/e2e/ -v --tb=long` -> `16 passed, 0 failed`
+
+## 32. Batch 16 / C-02-C-03 尾项清理（2026-03-11）
+
+- C-02-c-4（重复配置派生文件）✅：
+  - 删除 `r-mos-frontend/vite.config.js`
+  - 删除 `r-mos-frontend/vite.config.d.ts`
+  - 保留 `r-mos-frontend/vite.config.ts` 作为唯一配置事实源
+
+- C-03-5（过时文档与本地产物）✅：
+  - 删除根目录旧计划/旧状态文档：
+    - `IMPLEMENTATION_PLAN.md`
+    - `R-MOS-改造方案-v1.0.md`
+    - `R-MOS_V0.2_Implementation_Plan.md`
+    - `R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md`
+  - 删除本地生成物：
+    - `.DS_Store`
+    - `PROJECT_DIRECTORY_FULL.txt`
+    - `gate3_delivery_docs_and_evidence.zip`
+    - `gate3_delivery_repo_HEAD.tar.gz`
+    - `上传.zip`
+    - `logs/`、`r-mos-backend/logs/`、`r-mos-backend/.pytest_cache/`、`r-mos-backend/venv/`
+    - `r-mos-backend/app/**/__pycache__/`、`scripts/__pycache__/`
+
+- 本批验证命令与结果：
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test` -> PASS（`25 files, 67 tests passed`）
+  - `cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - `cd /Users/xuhehong/Desktop/r-mos && git diff --name-only` -> 仅命中预期 tracked 删除
+  - `cd /Users/xuhehong/Desktop/r-mos && for f in IMPLEMENTATION_PLAN.md R-MOS-改造方案-v1.0.md R-MOS_V0.2_Implementation_Plan.md R_MOS_COMPREHENSIVE_STATUS_2026-03-04.md; do rg -n --fixed-strings "$f" . -g '!**/node_modules/**' -g '!**/.git/**' || true; done` -> 仅 DEVELOPMENT_LOG 历史记录命中
+
+- 残余说明：
+  - `.codex/.DS_Store` 因沙箱权限限制未删除；该文件不参与构建、测试、运行或验收链路
