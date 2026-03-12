@@ -6081,3 +6081,38 @@
   - 本轮仅在 `resetJoints` 中追加 `setIsAnimating(false)` 与 `setAnimationTime(0)`，没有扩大到其他预设按钮。
 - Next Step:
   - 如果后续用户也要求“动画中点击 `站立` 同样应停止动画”，可以复用这次模式把“预设姿态”切换是否中断动画做成统一策略。
+
+- DateTime: 2026-03-12 17:40:00 CST
+- Task: 重构实时监控页，接入 ATOM01 3D 数字孪生并重组监控数据展示
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/MonitorPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/MonitorPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill ui-ux-pro-max
+  - rg -n "MonitorPage|实时监控|telemetry|useWebSocket|monitor" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src /Users/xuhehong/Desktop/r-mos/r-mos-backend/app
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/MonitorPage.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/hooks/useWebSocket.ts
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/RobotViewer.tsx
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Viewer.tsx
+  - sed -n '1,140p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/teaching/utils/ghostHand.ts
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/MonitorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx -> FAIL（预期红灯；旧页面不存在“机器人态势/姿态与运动/电源与载荷”等新分区）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：打开 `http://127.0.0.1:55173/monitor`
+- Tests:
+  - 页面回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/MonitorPage.test.tsx` -> PASS（`1 passed, 3 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器人工验证：
+    - 空数据态下仍能看到 `机器人态势 / 姿态与运动 / 电源与载荷 / 3D 数字孪生 / 故障定位 / 重点关节`
+    - 监控页不再只显示通用 `RobotViewer` 壳子，而是改成面向 ATOM01 的 3D 数字孪生区
+    - 连接断开时会保留 3D 区和监控分区，占位文案可读
+- Result: PASS
+- Risks/Notes:
+  - 后端 mock 适配器当前推送的是 `knee_right / hip_left / shoulder_right` 这类通用关节名，不是 ATOM01 的 `right_knee_joint` 命名；因此本轮在前端新增了最小映射层，把通用遥测映射到 ATOM01 关节与 link。
+  - 这次没有改动后端协议或 WebSocket 推送逻辑，3D 接入完全基于现有遥测结构完成。
+  - 若后续接入更多机器人型号，应把这层映射提炼为按型号切换的监控映射表，而不是继续写死在页面里。
+- Next Step:
+  - 如果继续打磨监控页，下一步建议补“真实在线时的 3D 高亮动效复查”，并评估是否要给告警卡片增加一键跳转到 AI 工作台诊断。

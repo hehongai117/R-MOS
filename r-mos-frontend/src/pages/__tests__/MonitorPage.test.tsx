@@ -10,12 +10,24 @@ vi.mock('@/hooks/useWebSocket', () => ({
   useWebSocket: useWebSocketMock,
 }))
 
-vi.mock('@/components/Viewer3D/RobotViewer', () => ({
-  default: ({ height }: { height: number }) => <div>RobotViewer height={height}</div>,
-}))
-
-vi.mock('@/components/common/ErrorBoundary', () => ({
-  Viewer3DErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock('@/components/Viewer3D/Atom01Viewer', () => ({
+  default: ({
+    jointAngles = {},
+    faultJoints = [],
+    highlightLinks = [],
+  }: {
+    jointAngles?: Record<string, number>
+    faultJoints?: string[]
+    highlightLinks?: string[]
+  }) => (
+    <div
+      data-fault-joints={faultJoints.join(',')}
+      data-highlight-links={highlightLinks.join(',')}
+      data-joint-count={Object.keys(jointAngles).length}
+      data-right-knee={jointAngles.right_knee_joint?.toFixed(4) ?? 'unset'}
+      data-testid="atom01-monitor-viewer"
+    />
+  ),
 }))
 
 import MonitorPage from '@/pages/MonitorPage'
@@ -35,7 +47,7 @@ describe('MonitorPage', () => {
   beforeEach(() => {
     reconnectMock.mockReset()
     useWebSocketMock.mockReset().mockReturnValue({
-      isConnected: false,
+      isConnected: true,
       telemetryData: {
         sensors: {
           battery: 18,
@@ -46,51 +58,108 @@ describe('MonitorPage', () => {
               y: 2.345,
               z: 3.456,
             },
+            angular_velocity: {
+              x: 0.123,
+              y: 0.234,
+              z: 0.345,
+            },
+          },
+          voltage: {
+            main_bus: 48.6,
+            servo_bus: 24.2,
+          },
+          pressure: {
+            left_foot: 128.4,
           },
         },
         joints: [
           {
-            joint_id: 'J1',
+            joint_id: 'knee_right',
             position: 0.1234,
-            velocity: 0,
-            torque: 0.1,
+            velocity: 0.02,
+            torque: 5.2,
+            current: 2.1,
+            temperature: 54.3,
             error_code: 'E002_STALL',
+          },
+          {
+            joint_id: 'hip_left',
+            position: -0.3421,
+            velocity: 0.12,
+            torque: 4.1,
+            current: 1.9,
+            temperature: 46.7,
+          },
+          {
+            joint_id: 'shoulder_right',
+            position: 0.4567,
+            velocity: 0.08,
+            torque: 2.8,
+            current: 1.1,
+            temperature: 43.5,
           },
         ],
         active_faults: ['E002_STALL'],
       },
-      error: '机器人适配器不可用',
-      status: 'failed',
+      error: null,
+      status: 'connected',
       isDataStale: false,
-      retryCount: 3,
+      retryCount: 0,
+      lastUpdateTime: new Date('2026-03-12T17:30:00.000Z'),
       reconnect: reconnectMock,
     })
   })
 
-  it('renders industrial monitor header and reconnect action for failed status', () => {
+  it('renders monitor dashboard sections and passes mapped telemetry to the atom01 viewer', () => {
     render(<MonitorPage />)
 
     expect(screen.getByText('REALTIME MONITOR')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '实时监控' })).toBeTruthy()
+    expect(screen.getByText('机器人态势')).toBeTruthy()
+    expect(screen.getByText('姿态与运动')).toBeTruthy()
+    expect(screen.getByText('电源与载荷')).toBeTruthy()
+    expect(screen.getByText('重点关节')).toBeTruthy()
+    expect(screen.getByText('故障定位')).toBeTruthy()
+    expect(screen.getAllByText('右膝关节').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('左髋关节').length).toBeGreaterThan(0)
+
+    const viewer = screen.getByTestId('atom01-monitor-viewer')
+    expect(viewer.getAttribute('data-right-knee')).toBe('0.1234')
+    expect(viewer.getAttribute('data-fault-joints')).toContain('right_knee_joint')
+    expect(viewer.getAttribute('data-highlight-links')).toContain('right_knee_link')
+    expect(Number(viewer.getAttribute('data-joint-count'))).toBeGreaterThan(0)
+  })
+
+  it('renders reconnect action for failed status', () => {
+    useWebSocketMock.mockReturnValue({
+      isConnected: false,
+      telemetryData: null,
+      error: '机器人适配器不可用',
+      status: 'failed',
+      isDataStale: false,
+      retryCount: 3,
+      lastUpdateTime: null,
+      reconnect: reconnectMock,
+    })
+
+    render(<MonitorPage />)
+
     expect(screen.getByRole('button', { name: '重连' })).toBeTruthy()
     expect(screen.getByText('机器人适配器不可用')).toBeTruthy()
   })
 
-  it('renders telemetry sections and joint error details', () => {
-    render(<MonitorPage />)
-
-    expect(screen.getByText('BATTERY')).toBeTruthy()
-    expect(screen.getAllByText('ACTIVE FAULTS').length).toBeGreaterThan(0)
-    expect(screen.getByText('SYS TEMP')).toBeTruthy()
-    expect(screen.getByText('IMU ACCELERATION')).toBeTruthy()
-    expect(screen.getByText('JOINT STATUS')).toBeTruthy()
-    expect(screen.getByText('18')).toBeTruthy()
-    expect(screen.getByText('67')).toBeTruthy()
-    expect(screen.getAllByText('E002_STALL').length).toBeGreaterThan(0)
-    expect(screen.getByText('0.1234')).toBeTruthy()
-  })
-
   it('calls reconnect when reconnect button is clicked', () => {
+    useWebSocketMock.mockReturnValue({
+      isConnected: false,
+      telemetryData: null,
+      error: '机器人适配器不可用',
+      status: 'failed',
+      isDataStale: false,
+      retryCount: 3,
+      lastUpdateTime: null,
+      reconnect: reconnectMock,
+    })
+
     render(<MonitorPage />)
 
     fireEvent.click(screen.getByRole('button', { name: '重连' }))
