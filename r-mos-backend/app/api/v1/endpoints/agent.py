@@ -1896,6 +1896,14 @@ class GuidanceModeRequest(BaseModel):
     mode: str = Field(..., description="Guidance mode: full_time | on_demand | silent")
 
 
+class LLMPreferenceRequest(BaseModel):
+    """Request to update user-level LLM settings."""
+    provider: str = Field(..., min_length=1, description="LLM provider, e.g. openai")
+    model: str = Field(..., min_length=1, description="Model name")
+    base_url: str = Field(..., min_length=1, description="Provider base URL")
+    api_key: Optional[str] = Field(default=None, description="User-specific API key")
+
+
 class UserPreferenceResponse(BaseModel):
     """User preference response"""
     user_id: int
@@ -1922,7 +1930,7 @@ async def get_user_preference(
         user_id=pref.user_id,
         guidance_mode=pref.guidance_mode,
         guidance_mode_display=GuidanceMode.get_display_name(pref.guidance_mode),
-        preferences=pref.preferences or {},
+        preferences=service.build_public_preferences(pref.preferences),
     )
 
 
@@ -1948,5 +1956,31 @@ async def update_guidance_mode(
         user_id=pref.user_id,
         guidance_mode=pref.guidance_mode,
         guidance_mode_display=GuidanceMode.get_display_name(pref.guidance_mode),
-        preferences=pref.preferences or {},
+        preferences=service.build_public_preferences(pref.preferences),
+    )
+
+
+@router.put("/preference/llm", response_model=UserPreferenceResponse)
+async def update_llm_preference(
+    request: LLMPreferenceRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """Update current user's LLM provider/model/base_url/api_key settings."""
+    from app.services.user_preference_service import UserPreferenceService, GuidanceMode
+
+    service = UserPreferenceService(db)
+    pref = await service.update_llm_preferences(
+        actor.user_id,
+        provider=request.provider,
+        model=request.model,
+        base_url=request.base_url,
+        api_key=request.api_key,
+    )
+
+    return UserPreferenceResponse(
+        user_id=pref.user_id,
+        guidance_mode=pref.guidance_mode,
+        guidance_mode_display=GuidanceMode.get_display_name(pref.guidance_mode),
+        preferences=service.build_public_preferences(pref.preferences),
     )

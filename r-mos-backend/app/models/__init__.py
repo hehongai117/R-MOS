@@ -28,6 +28,7 @@ from app.models.rbac import Role, Permission, UserRole, RolePermission
 from app.models.refresh_token import RefreshToken
 from app.models.access_token import AccessToken
 from app.models.user import User
+from app.models.user_preference import UserPreference
 from app.models.teaching import (
     GuidancePolicy,
     TeachingClass,
@@ -99,6 +100,7 @@ __all__ = [
     "RefreshToken",
     # Auth
     "User",
+    "UserPreference",
     # Teaching domain
     "GuidancePolicy",
     "TeachingClass",

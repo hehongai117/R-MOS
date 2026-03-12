@@ -5496,3 +5496,40 @@
   - `rm -f docs/.DS_Store .codex/.DS_Store` 时 `.codex/.DS_Store` 因沙箱权限限制未删除；该文件不参与项目构建、运行与验收。
 - Next Step:
   - 若继续收缩仓库体积，可再单独审查未被 repo 引用的根目录剩余设计文档与前端未使用依赖，但需逐项给出保留/删除依据。
+
+- DateTime: 2026-03-12 10:33:10 CST
+- Task: 为学生设置页补充个人大模型配置，并打通后端账号偏好持久化
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/agent.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/models/__init__.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/user_preference_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_user_preference_api.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/UserSettingsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/UserSettingsPage.test.tsx
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - rg -n "UserPreference|user_preference" r-mos-backend/app/models r-mos-backend/tests/unit/test_user_preference_api.py
+  - sed -n '1,220p' r-mos-backend/app/models/__init__.py
+  - sed -n '1,260p' r-mos-backend/tests/unit/test_user_preference_api.py
+  - sed -n '1,260p' r-mos-frontend/src/pages/__tests__/UserSettingsPage.test.tsx
+  - sed -n '1,260p' r-mos-backend/app/services/user_preference_service.py
+  - sed -n '1,280p' r-mos-backend/app/api/v1/endpoints/agent.py
+  - sed -n '1,320p' r-mos-frontend/src/pages/UserSettingsPage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_user_preference_api.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/UserSettingsPage.test.tsx
+  - git diff --name-only
+  - git status --short
+- Tests:
+  - 后端偏好接口回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_user_preference_api.py -q` -> PASS（`1 passed`）
+  - 前端设置页交互：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/UserSettingsPage.test.tsx` -> PASS（`1 file, 2 tests passed`）
+  - 差异核对：`git diff --name-only` -> 仅命中本次设置页与用户偏好相关文件
+- Result: PASS
+- Risks/Notes:
+  - 当前实现按用户要求把 API Key 保存在后端账号偏好中，但仍为明文持久化，接口返回时仅做掩码处理；若进入生产，应补充加密/密钥管理方案。
+  - `r-mos-backend/app/models/__init__.py` 原先漏导出 `UserPreference`，会导致基于 `Base.metadata` 的测试建表漏表；本次已一并修正。
+  - 工作区仍存在无关未跟踪文件 `add_rmos_to_ppt.py`、`reorder_pptx.py`、`reorder_slides.py`，本次未处理。
+- Next Step:
+  - 在浏览器里用学生账号进入 `/settings`，手工验证保存后提示、掩码展示以及重新打开页面后的回填表现。
