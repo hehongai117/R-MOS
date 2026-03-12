@@ -345,7 +345,7 @@ describe('SOPMaintenancePage runtime draft flow', () => {
     render(<SOPMaintenancePage />)
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '进入项目草案页' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '项目草案页' })).toBeTruthy()
     expect(screen.queryByText('机器人项目与 AI 草案')).toBeNull()
 
     await waitFor(() => {

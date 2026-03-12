@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -231,9 +232,9 @@ vi.mock('@/adjudication/ui/examHeader', () => ({
   isCountdownUrgent: () => false,
 }))
 
-import SOPMaintenancePage from '@/pages/SOPMaintenancePage'
+import SOPMaintenanceInspectorPage from '@/pages/SOPMaintenanceInspectorPage'
 
-describe('SOPMaintenancePage', () => {
+describe('SOPMaintenanceInspectorPage', () => {
   beforeEach(() => {
     setOperationModeMock.mockReset()
     setCurrentToolMock.mockReset()
@@ -244,27 +245,23 @@ describe('SOPMaintenancePage', () => {
     clientPostMock.mockResolvedValue({ data: {} })
   })
 
-  it('renders shell layout with accessible 3d region and supports right rail tab switching', async () => {
-    render(<SOPMaintenancePage />)
+  it('renders inspection-focused layout with diagnosis and detail tabs', async () => {
+    const user = userEvent.setup()
+
+    render(<SOPMaintenanceInspectorPage />)
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
-    expect(screen.queryByText('项目草案入口')).toBeNull()
+    expect(screen.getByRole('button', { name: '返回执行页' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '项目草案页' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '打开检视页' })).toBeTruthy()
-    expect(screen.getAllByText('更换肘关节模组').length).toBeGreaterThan(0)
-    expect(screen.getByText('ToolSelectorStub')).toBeTruthy()
+    expect(screen.getByText('核心件快速定位')).toBeTruthy()
+    expect(screen.getByText('DiagnosisPanelStub')).toBeTruthy()
     expect(screen.getByLabelText('SOP 3D 视图区')).toBeTruthy()
-    expect(screen.queryByText('ScrewInfoStub')).toBeFalsy()
-    expect(screen.queryByText('核心件快速定位')).toBeNull()
-    expect(screen.queryByText('DiagnosisPanelStub')).toBeNull()
-  })
+    expect(screen.queryByText('ToolSelectorStub')).toBeNull()
 
-  it('keeps atom01 maintenance workbench as a dedicated full page without the project draft entry', () => {
-    render(<SOPMaintenancePage workspaceVariant="atom01" />)
+    await user.click(screen.getByRole('tab', { name: '螺丝' }))
 
-    expect(screen.getByRole('heading', { name: 'ATOM01 维保工作台' })).toBeTruthy()
-    expect(screen.queryByText('项目草案入口')).toBeNull()
-    expect(screen.queryByRole('button', { name: '进入项目草案页' })).toBeNull()
-    expect(screen.getByLabelText('SOP 3D 视图区')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText('ScrewInfoStub')).toBeTruthy()
+    })
   })
 })

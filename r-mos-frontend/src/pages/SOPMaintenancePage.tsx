@@ -14,7 +14,6 @@
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
 import { Alert, Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Select, Modal, message, Switch } from 'antd';
 import {
-    ArrowRightOutlined,
     ToolOutlined,
     PartitionOutlined,
     InfoCircleOutlined,
@@ -215,6 +214,7 @@ const REMAINING_CORE_LINKS = [
 ] as const;
 
 type WorkspaceVariant = 'runtime' | 'atom01';
+type MaintenanceLayoutMode = 'execution' | 'inspector' | 'full';
 
 interface WorkspaceChrome {
     title: string;
@@ -240,6 +240,7 @@ const WORKSPACE_CHROME: Record<WorkspaceVariant, WorkspaceChrome> = {
 
 interface SOPMaintenancePageProps {
     workspaceVariant?: WorkspaceVariant;
+    layoutMode?: MaintenanceLayoutMode;
 }
 
 function resolveScrewSpecIdFromDetailPart(part: DetailPart): string | null {
@@ -257,9 +258,12 @@ const LoadingFallback = () => (
     </mesh>
 );
 
-function SOPMaintenancePage({ workspaceVariant = 'runtime' }: SOPMaintenancePageProps) {
+function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
     const navigate = useNavigate();
     const workspaceChrome = WORKSPACE_CHROME[workspaceVariant];
+    const effectiveLayoutMode: MaintenanceLayoutMode = workspaceVariant === 'atom01' ? 'full' : (layoutMode ?? 'execution');
+    const showExecutionRail = effectiveLayoutMode !== 'inspector';
+    const showInspectorRail = effectiveLayoutMode !== 'execution';
     const [explodeAmount, setExplodeAmount] = useState(0);
     const [hoveredPart, setHoveredPart] = useState<PartInfo | null>(null);
     const [selectedPart, setSelectedPart] = useState<PartInfo | null>(null);
@@ -1333,6 +1337,81 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime' }: SOPMaintenancePage
         </Card>
     );
 
+    const workspaceSwitcherCard = workspaceVariant === 'runtime' ? (
+        <Card size="small">
+            <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'grid', gap: 4 }}>
+                        <Text strong>
+                            {effectiveLayoutMode === 'execution'
+                                ? '执行页仅保留步骤、工具、播放器与 3D 操作区'
+                                : '检视页聚焦诊断、部件定位与维保详情'}
+                        </Text>
+                        <Text type="secondary">
+                            {effectiveLayoutMode === 'execution'
+                                ? '分析信息已迁移到独立检视页，减少执行中断。'
+                                : '执行步骤与工具操作保留在独立执行页，便于专注完成 SOP。'}
+                        </Text>
+                    </div>
+                    <Space wrap>
+                        <Button onClick={() => navigate('/maintenance/project-draft')}>
+                            项目草案页
+                        </Button>
+                        <Button
+                            type={effectiveLayoutMode === 'execution' ? 'primary' : 'default'}
+                            onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance/inspector' : '/maintenance')}
+                        >
+                            {effectiveLayoutMode === 'execution' ? '打开检视页' : '返回执行页'}
+                        </Button>
+                    </Space>
+                </div>
+
+                {runtimeWorkspaceSession ? (
+                    <Descriptions size="small" column={4} bordered>
+                        <Descriptions.Item label="当前项目">
+                            {runtimeWorkspaceSession.projectLabel ?? runtimeWorkspaceSession.projectId ?? '未选择'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="维保目标">
+                            {runtimeWorkspaceSession.maintenanceGoal || '执行器弯曲维护'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="关注部位">
+                            {runtimeWorkspaceSession.focusArea || '肘关节'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="当前草案">
+                            {runtimeDraft?.draft.title ?? '尚未加载'}
+                        </Descriptions.Item>
+                    </Descriptions>
+                ) : null}
+
+                {runtimeDraft && runtimeManifest?.parts.length ? (
+                    <div style={{ display: 'grid', gap: 8 }}>
+                        <Text strong>当前运行时模型资源</Text>
+                        <Space wrap>
+                            {(runtimeManifest.parts ?? []).map((assetPath) => (
+                                <Button
+                                    key={assetPath}
+                                    size="small"
+                                    type={runtimeSelectedAssetPath === assetPath ? 'primary' : 'default'}
+                                    onClick={() => setRuntimeSelectedAssetPath(assetPath)}
+                                >
+                                    {assetPath}
+                                </Button>
+                            ))}
+                        </Space>
+                    </div>
+                ) : null}
+
+                {runtimeManifest?.reviewWarnings.length ? (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message={runtimeManifest.reviewWarnings.join('；')}
+                    />
+                ) : null}
+            </div>
+        </Card>
+    ) : null;
+
     return (
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
             <SOPMaintenanceHeader
@@ -1350,100 +1429,37 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime' }: SOPMaintenancePage
                 breadcrumb={workspaceChrome.breadcrumb}
             />
 
-            {workspaceChrome.showDraftEntry ? (
-            <Card size="small" title="项目草案入口">
-                <div style={{ display: 'grid', gap: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <div style={{ display: 'grid', gap: 4 }}>
-                            <Text strong>工作台只保留执行、3D 交互与裁决流程</Text>
-                            <Text type="secondary">
-                                机器人项目选择、AI 草案生成和批准执行版加载已迁移到独立页面，避免顶部区域过度拥挤。
-                            </Text>
-                        </div>
-                        <Button
-                            type="primary"
-                            aria-label="进入项目草案页"
-                            icon={<ArrowRightOutlined />}
-                            onClick={() => navigate('/maintenance/project-draft')}
-                        >
-                            进入项目草案页
-                        </Button>
-                    </div>
+            {workspaceChrome.showDraftEntry ? workspaceSwitcherCard : null}
 
-                    {runtimeWorkspaceSession ? (
-                        <Descriptions size="small" column={4} bordered>
-                            <Descriptions.Item label="当前项目">
-                                {runtimeWorkspaceSession.projectLabel ?? runtimeWorkspaceSession.projectId ?? '未选择'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="维保目标">
-                                {runtimeWorkspaceSession.maintenanceGoal || '执行器弯曲维护'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="关注部位">
-                                {runtimeWorkspaceSession.focusArea || '肘关节'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="当前草案">
-                                {runtimeDraft?.draft.title ?? '尚未加载'}
-                            </Descriptions.Item>
-                        </Descriptions>
-                    ) : (
-                        <Text type="secondary">尚未从项目草案页带入运行时草案，点击右侧按钮后可生成并回到工作台执行。</Text>
-                    )}
-
-                    {runtimeDraft && runtimeManifest?.parts.length ? (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                            <Text strong>当前运行时模型资源</Text>
-                            <Space wrap>
-                                {(runtimeManifest.parts ?? []).map((assetPath) => (
-                                    <Button
-                                        key={assetPath}
-                                        size="small"
-                                        type={runtimeSelectedAssetPath === assetPath ? 'primary' : 'default'}
-                                        onClick={() => setRuntimeSelectedAssetPath(assetPath)}
-                                    >
-                                        {assetPath}
-                                    </Button>
-                                ))}
-                            </Space>
-                        </div>
-                    ) : null}
-
-                    {runtimeManifest?.reviewWarnings.length ? (
-                        <Alert
-                            type="warning"
-                            showIcon
-                            message={runtimeManifest.reviewWarnings.join('；')}
-                        />
-                    ) : null}
-                </div>
-            </Card>
-            ) : null}
-
-            {/* 主内容区 */}
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
-                {/* 左侧：控制面板 */}
-                <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
-                    <SOPMaintenanceLeftRail
-                        sopTitle={activeSopScript?.title ?? 'SOP 步骤导航'}
-                        difficultyLabel={activeSopScript?.difficulty ?? 'normal'}
-                        currentStepTitle={sopSceneSync.state.currentStepTitle}
-                        steps={(activeSopScript?.steps ?? []).map((step) => ({
-                            stepId: step.stepId,
-                            title: step.title,
-                            description: step.description,
-                            onFailureAction: step.onFailure?.action,
-                            hasCriticalFailureReason: step.failureReasons?.some((reason) => reason.severity === 'critical') ?? false,
-                        }))}
-                        explodeControls={leftRailExplodeControls}
-                        isolationControls={leftRailIsolationControls}
-                        sopListContent={leftRailSopListContent}
-                        toolSelectorContent={leftRailToolSelectorContent}
-                        sopPlayerContent={leftRailSopPlayerContent}
-                        hoverContent={leftRailHoverContent}
-                    />
-                </Col>
+                {showExecutionRail ? (
+                    <Col xs={24} lg={effectiveLayoutMode === 'full' ? 6 : 8} style={{ height: '100%', overflowY: 'auto' }}>
+                        <SOPMaintenanceLeftRail
+                            sopTitle={activeSopScript?.title ?? 'SOP 步骤导航'}
+                            difficultyLabel={activeSopScript?.difficulty ?? 'normal'}
+                            currentStepTitle={sopSceneSync.state.currentStepTitle}
+                            steps={(activeSopScript?.steps ?? []).map((step) => ({
+                                stepId: step.stepId,
+                                title: step.title,
+                                description: step.description,
+                                onFailureAction: step.onFailure?.action,
+                                hasCriticalFailureReason: step.failureReasons?.some((reason) => reason.severity === 'critical') ?? false,
+                            }))}
+                            explodeControls={leftRailExplodeControls}
+                            isolationControls={leftRailIsolationControls}
+                            sopListContent={leftRailSopListContent}
+                            toolSelectorContent={leftRailToolSelectorContent}
+                            sopPlayerContent={leftRailSopPlayerContent}
+                            hoverContent={leftRailHoverContent}
+                        />
+                    </Col>
+                ) : null}
 
-                {/* 中间：3D 视图 */}
-                <Col xs={24} lg={isFullscreen ? 24 : 12} style={{ height: '100%' }}>
+                <Col
+                    xs={24}
+                    lg={isFullscreen ? 24 : effectiveLayoutMode === 'full' ? 12 : 16}
+                    style={{ height: '100%' }}
+                >
                     <div
                         ref={viewerContainerRef}
                         role="region"
@@ -1631,24 +1647,25 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime' }: SOPMaintenancePage
                     </div>
                 </Col>
 
-                {/* 右侧：信息面板 */}
-                <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
-                    <SOPMaintenanceRightRail
-                        rightPanelTab={rightPanelTab}
-                        onRightPanelTabChange={setRightPanelTab}
-                        quickSelectControl={quickSelectControl}
-                        diagnosisContent={diagnosisContent}
-                        partPanel={partPanel}
-                        screwPanel={(
-                            <ScrewInfo
-                                partName={selectedPart?.name || null}
-                                detailSelection={selectedDetailSelection}
-                                onScrewSelect={handleScrewSelect}
-                                selectedScrewId={selectedScrewId}
-                            />
-                        )}
-                    />
-                </Col>
+                {showInspectorRail ? (
+                    <Col xs={24} lg={effectiveLayoutMode === 'full' ? 6 : 8} style={{ height: '100%', overflowY: 'auto' }}>
+                        <SOPMaintenanceRightRail
+                            rightPanelTab={rightPanelTab}
+                            onRightPanelTabChange={setRightPanelTab}
+                            quickSelectControl={quickSelectControl}
+                            diagnosisContent={diagnosisContent}
+                            partPanel={partPanel}
+                            screwPanel={(
+                                <ScrewInfo
+                                    partName={selectedPart?.name || null}
+                                    detailSelection={selectedDetailSelection}
+                                    onScrewSelect={handleScrewSelect}
+                                    selectedScrewId={selectedScrewId}
+                                />
+                            )}
+                        />
+                    </Col>
+                ) : null}
             </Row>
 
             {/* 考试结束覆盖层 */}

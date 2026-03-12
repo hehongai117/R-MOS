@@ -34,6 +34,7 @@ const MonitorPage = lazy(() => import('@/pages/MonitorPage'))
 const ReplayPage = lazy(() => import('@/pages/ReplayPage'))
 const ReportPage = lazy(() => import('@/pages/ReportPage'))
 const SOPListPage = lazy(() => import('@/pages/SOPListPage'))
+const SOPMaintenanceInspectorPage = lazy(() => import('@/pages/SOPMaintenanceInspectorPage'))
 const SOPMaintenancePage = lazy(() => import('@/pages/SOPMaintenancePage'))
 const StudentSkillsPage = lazy(() => import('@/pages/StudentSkillsPage'))
 const TaskExecutionPage = lazy(() => import('@/pages/TaskExecutionPage'))
@@ -118,6 +119,7 @@ function App() {
                 <Route path="monitor" element={withSuspense(<MonitorPage />)} />
                 <Route path="workbench/atom01-maintenance" element={withSuspense(<Atom01MaintenanceWorkbenchPage />)} />
                 <Route path="maintenance/project-draft" element={withSuspense(<MaintenanceProjectDraftPage />)} />
+                <Route path="maintenance/inspector" element={withSuspense(<SOPMaintenanceInspectorPage />)} />
                 <Route path="maintenance" element={withSuspense(<SOPMaintenancePage />)} />
                 <Route path="atom01" element={withSuspense(<Atom01DemoPage />)} />
                 <Route

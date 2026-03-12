@@ -5763,3 +5763,37 @@
   - `runtimeManifest` 相关的运行时模型资源按钮仅在带入项目草案后出现，本轮未触发该条件分支。
 - Next Step:
   - 依据文档先拆出 `/maintenance/inspector`，再精简 `/maintenance`，并把诊断区假动作接成真实后端提交。
+
+- DateTime: 2026-03-12 15:56:00 CST
+- Task: 按 SOP 工作台拆页方案完成第一批实现，新增 inspector 页面并收紧 execution 页面
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenanceInspectorPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-12-sop-workbench-audit-and-split-plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - sed -n '220,420p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx -> FAIL（预期红灯，原因为 inspector 页面尚不存在，execution 页面仍渲染旧版右侧分析区）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：
+    - 打开 `http://127.0.0.1:55173/maintenance`，确认出现 `项目草案页` / `打开检视页`，且右侧分析区不再渲染
+    - 从 `/maintenance` 跳转到 `http://127.0.0.1:55173/maintenance/inspector`，确认出现 `返回执行页`、`核心件快速定位`、`最近诊断结果`、`维保详情`
+- Tests:
+  - 前端页面测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx` -> PASS（`3 passed, 4 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 这次是拆页第一批实现，`/maintenance/inspector` 复用了 `SOPMaintenancePage` 的状态和 3D 视图，没有做更深的状态抽离。
+  - 诊断区两个按钮仍是假动作，本次未触碰后端。
+  - 执行页顶部的大卡片已缩成轻量切换卡，但运行时草案信息和模型资源按钮仍保留。
+- Next Step:
+  - 继续第二批：把 inspector 页里的诊断区动作接成真实后端，随后补 `ToolSelector` / `ScrewInfo` 的语义化按钮改造。
