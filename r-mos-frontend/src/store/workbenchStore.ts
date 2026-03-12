@@ -18,14 +18,26 @@ export interface WorkbenchTool {
   recommendation?: string
 }
 
+export interface WorkbenchToolConfirmation {
+  toolId: string
+  status: WorkbenchToolStatus
+}
+
 export interface WorkbenchStep {
   id: string
+  stepIndex: number
   title: string
   durationSec?: number
   status: WorkbenchStepStatus
   instruction: string
   evidenceHint?: string
+  modelTargets?: string[]
   tools: WorkbenchTool[]
+  attemptCount?: number
+  toolsConfirmed?: WorkbenchToolConfirmation[]
+  evidenceBundleId?: string | null
+  evidenceNote?: string | null
+  verdict?: WorkbenchVerdict | null
 }
 
 export interface WorkbenchChatMessage {
@@ -47,6 +59,7 @@ export interface WorkbenchHydrationPayload {
   steps: WorkbenchStep[]
   currentStepId?: string | null
   messages?: WorkbenchChatMessage[]
+  toolStatusMap?: Record<string, WorkbenchToolStatus>
 }
 
 export interface WorkbenchState {
@@ -63,19 +76,22 @@ export interface WorkbenchState {
   resetTrainingProject: () => void
   setCurrentStep: (stepId: string | null) => void
   setToolStatus: (toolId: string, status: WorkbenchToolStatus) => void
-  setVerdict: (verdict: WorkbenchVerdict) => void
+  setVerdict: (verdict: WorkbenchVerdict | null) => void
   resetVerdict: () => void
   setNoteDraft: (value: string) => void
   setEvidenceName: (value: string | null) => void
   setMessages: (messages: WorkbenchChatMessage[]) => void
   addMessage: (message: WorkbenchChatMessage) => void
   setViewerFullscreen: (value: boolean) => void
+  setSteps: (steps: WorkbenchStep[]) => void
+  setProject: (project: WorkbenchProject) => void
 }
 
 function buildToolStatusMap(steps: WorkbenchStep[]) {
   return steps.reduce<Record<string, WorkbenchToolStatus>>((acc, step) => {
     step.tools.forEach((tool) => {
-      acc[tool.id] = acc[tool.id] ?? 'PENDING'
+      const existing = step.toolsConfirmed?.find((candidate) => candidate.toolId === tool.id)?.status
+      acc[tool.id] = acc[tool.id] ?? existing ?? 'PENDING'
     })
     return acc
   }, {})
@@ -101,7 +117,7 @@ export function createWorkbenchStore() {
         project: payload.project,
         steps: payload.steps,
         currentStepId: payload.currentStepId ?? payload.steps.find((step) => step.status === 'active')?.id ?? payload.steps[0]?.id ?? null,
-        toolStatusMap: buildToolStatusMap(payload.steps),
+        toolStatusMap: payload.toolStatusMap ?? buildToolStatusMap(payload.steps),
         verdict: null,
         noteDraft: '',
         evidenceName: null,
@@ -127,6 +143,15 @@ export function createWorkbenchStore() {
         messages: [...state.messages.slice(-4), message],
       })),
     setViewerFullscreen: (value) => set({ isViewerFullscreen: value }),
+    setSteps: (steps) =>
+      set((state) => ({
+        steps,
+        toolStatusMap: {
+          ...buildToolStatusMap(steps),
+          ...state.toolStatusMap,
+        },
+      })),
+    setProject: (project) => set({ project }),
   }))
 }
 

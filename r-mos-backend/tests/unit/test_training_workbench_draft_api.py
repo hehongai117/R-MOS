@@ -104,6 +104,7 @@ def test_training_workbench_draft_uses_user_llm_preferences(
                             "title": "步骤 1: 准备工位",
                             "instruction": "确认 PPE、断电和工具摆位。",
                             "evidence_hint": "上传工位全景照片。",
+                            "model_targets": ["torso_link"],
                             "tools": [
                                 {
                                     "name": "绝缘手套",
@@ -144,6 +145,7 @@ def test_training_workbench_draft_uses_user_llm_preferences(
     payload = draft_resp.json()
     assert payload["project"]["title"] == "ATOM01 关节盖拆装训练"
     assert payload["steps"][0]["status"] == "active"
+    assert payload["steps"][0]["model_targets"] == ["torso_link"]
     assert payload["steps"][0]["tools"][0]["name"] == "绝缘手套"
     assert payload["messages"][0]["role"] == "assistant"
     assert captured["provider"] == "openai"
@@ -151,6 +153,12 @@ def test_training_workbench_draft_uses_user_llm_preferences(
     assert captured["api_key"] == "sk-training-1234567890"
     assert captured["base_url"] == "https://api.minimaxi.com/v1"
     assert "髋关节电机盖拆装" in captured["prompt"]
+
+    session_detail_resp = client.get(f"/api/v1/training/sessions/{payload['project']['session_id']}/detail")
+    assert session_detail_resp.status_code == 200
+    detail_payload = session_detail_resp.json()
+    assert detail_payload["session"]["project_snapshot"]["title"] == "ATOM01 关节盖拆装训练"
+    assert detail_payload["steps"][0]["step_id"] == "step_prepare"
 
 
 def test_training_workbench_draft_falls_back_when_llm_returns_plain_text(
@@ -200,4 +208,5 @@ def test_training_workbench_draft_falls_back_when_llm_returns_plain_text(
     payload = draft_resp.json()
     assert payload["project"]["title"] == "ATOM01 关节电机盖拆装"
     assert len(payload["steps"]) == 3
+    assert payload["steps"][0]["model_targets"]
     assert payload["messages"][0]["content"].startswith("建议先完成断电挂牌")

@@ -22,11 +22,16 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from 'zustand'
 
 import {
+  askTrainingWorkbenchAssistant,
   generateTrainingWorkbenchDraft,
   getActiveTrainingSession,
   getTrainingSessionDetail,
   type SessionDetailResponse,
   type SessionResponse,
+  submitTrainingWorkbenchStep,
+  type TrainingWorkbenchAssistantMessage,
+  type TrainingWorkbenchDraftResponse,
+  uploadTrainingWorkbenchEvidence,
 } from '@/api/training'
 import { EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -47,16 +52,28 @@ import {
   getConfirmedCriticalToolCount,
   getCurrentStep,
   type WorkbenchChatMessage,
+  type WorkbenchProject,
   type WorkbenchStep,
   type WorkbenchTool,
+  type WorkbenchToolConfirmation,
   type WorkbenchToolStatus,
   workbenchStore,
 } from '@/store/workbenchStore'
 
-const STEP_COPY: Record<string, { title: string; instruction: string; tools: WorkbenchTool[] }> = {
+type StepBlueprint = {
+  title: string
+  instruction: string
+  evidenceHint?: string
+  modelTargets?: string[]
+  tools: WorkbenchTool[]
+}
+
+const STEP_COPY: Record<string, StepBlueprint> = {
   prepare_station: {
     title: '准备工位',
     instruction: '确认作业台清洁、安全防护到位，并校验本步骤需要使用的关键工具。',
+    evidenceHint: '建议上传工位全景、断电挂牌或 PPE 佩戴照片。',
+    modelTargets: ['torso_link', 'left_arm_pitch_link', 'right_arm_pitch_link'],
     tools: [
       { id: 'ppe-gloves', name: '防护手套', spec: 'A级绝缘', isCritical: true },
       { id: 'torque-wrench', name: '扭矩扳手', spec: '5-25Nm', isCritical: true },
@@ -66,6 +83,8 @@ const STEP_COPY: Record<string, { title: string; instruction: string; tools: Wor
   motor_cover_remove: {
     title: '拆解电机盖',
     instruction: '按对角顺序松开固定螺钉，记录拆下零件的摆放方向，避免混放。',
+    evidenceHint: '建议上传螺钉拆卸顺序照片和电机盖拆下后的局部特写。',
+    modelTargets: ['torso_link', 'left_arm_yaw_link'],
     tools: [
       { id: 'hex-key', name: '六角扳手', spec: '4mm', isCritical: true },
       { id: 'parts-tray', name: '零件托盘', spec: '分区托盘', isCritical: true },
@@ -75,6 +94,8 @@ const STEP_COPY: Record<string, { title: string; instruction: string; tools: Wor
   align_reducer: {
     title: '校准减速器',
     instruction: '复核定位点和齿面状态，必要时拍照留证并记录偏差范围。',
+    evidenceHint: '建议上传定位点和齿面状态照片，保留偏差读数。',
+    modelTargets: ['torso_link', 'left_knee_link', 'right_knee_link'],
     tools: [
       { id: 'dial-indicator', name: '百分表', spec: '0.01mm', isCritical: true },
       { id: 'inspection-card', name: '检查记录卡', spec: '纸质/电子', isCritical: false },
@@ -83,6 +104,8 @@ const STEP_COPY: Record<string, { title: string; instruction: string; tools: Wor
   final_check: {
     title: '最终复核',
     instruction: '完成工具回收、螺钉复紧和风险复盘后，再提交本步骤裁决。',
+    evidenceHint: '建议上传复装后整体照片和关键紧固点复核照片。',
+    modelTargets: ['torso_link', 'left_arm_pitch_link', 'right_arm_pitch_link'],
     tools: [
       { id: 'torque-wrench-final', name: '扭矩扳手', spec: '15Nm', isCritical: true },
       { id: 'clean-cloth', name: '清洁布', spec: '无纤维脱落', isCritical: false },
@@ -103,30 +126,209 @@ function formatDuration(seconds?: number | null) {
 }
 
 function mapStepStatus(status: string, currentStep: number, index: number): WorkbenchStep['status'] {
-  if (status === 'completed') {
+  if (status === 'completed' || status === 'pass') {
     return 'passed'
   }
-  if (status === 'failed') {
+  if (status === 'failed' || status === 'fail') {
     return 'failed'
   }
-  if (index === currentStep) {
+  if (index + 1 === currentStep) {
     return 'active'
   }
   return 'pending'
 }
 
-function buildStep(step: SessionDetailResponse['steps'][number], session: SessionResponse): WorkbenchStep {
-  const fallback = STEP_COPY[step.step_id] ?? STEP_COPY[FALLBACK_STEP_ORDER[(step.step_index - 1) % FALLBACK_STEP_ORDER.length]]
+function buildFallbackStep(step: SessionDetailResponse['steps'][number], session: SessionResponse): WorkbenchStep {
+  const fallbackIndex = ((step.step_index ?? 0) + FALLBACK_STEP_ORDER.length) % FALLBACK_STEP_ORDER.length
+  const fallback = STEP_COPY[step.step_id] ?? STEP_COPY[FALLBACK_STEP_ORDER[fallbackIndex]]
 
   return {
     id: step.step_id,
+    stepIndex: step.step_index,
     title: fallback.title,
+    attemptCount: step.attempt_count,
     durationSec: step.duration_sec ?? undefined,
     status: mapStepStatus(step.status, session.current_step, step.step_index),
     instruction: fallback.instruction,
-    evidenceHint: '建议上传本步骤关键动作截图、工具状态照片或设备局部特写。',
+    evidenceHint: fallback.evidenceHint ?? '建议上传本步骤关键动作截图、工具状态照片或设备局部特写。',
+    modelTargets: fallback.modelTargets ?? ['torso_link'],
     tools: fallback.tools,
+    toolsConfirmed: (step.tools_confirmed ?? []).map((tool) => ({
+      toolId: tool.tool_id,
+      status: tool.status,
+    })),
+    evidenceBundleId: step.evidence?.bundle_id ?? null,
+    evidenceNote: step.evidence?.note ?? null,
+    verdict: step.verdict_result
+      ? {
+          result: step.verdict_result.result,
+          summary: step.verdict_result.summary,
+          details: step.verdict_result.details,
+        }
+      : null,
   }
+}
+
+function mapSnapshotStep(snapshotStep: NonNullable<NonNullable<SessionResponse['project_snapshot']>['steps']>[number], record: SessionDetailResponse['steps'][number], session: SessionResponse): WorkbenchStep {
+  return {
+    id: String(snapshotStep.id),
+    stepIndex: Number(snapshotStep.step_index ?? record.step_index ?? 0),
+    title: String(snapshotStep.title),
+    attemptCount: record.attempt_count,
+    durationSec: record.duration_sec ?? undefined,
+    status: mapStepStatus(record.status, session.current_step, Number(snapshotStep.step_index ?? record.step_index ?? 0)),
+    instruction: String(snapshotStep.instruction),
+    evidenceHint:
+      typeof snapshotStep.evidence_hint === 'string'
+        ? snapshotStep.evidence_hint
+        : '建议上传本步骤关键动作截图、工具状态照片或设备局部特写。',
+    modelTargets: Array.isArray(snapshotStep.model_targets)
+      ? snapshotStep.model_targets.filter((value): value is string => typeof value === 'string')
+      : ['torso_link'],
+    tools: Array.isArray(snapshotStep.tools)
+      ? snapshotStep.tools.map((tool) => ({
+          id: String(tool.id),
+          name: String(tool.name),
+          spec: typeof tool.spec === 'string' ? tool.spec : undefined,
+          isCritical: Boolean(tool.is_critical),
+          recommendation:
+            typeof tool.recommendation === 'string' ? tool.recommendation : undefined,
+        }))
+      : [],
+    toolsConfirmed: (record.tools_confirmed ?? []).map((tool) => ({
+      toolId: tool.tool_id,
+      status: tool.status,
+    })),
+    evidenceBundleId: record.evidence?.bundle_id ?? null,
+    evidenceNote: record.evidence?.note ?? null,
+    verdict: record.verdict_result
+      ? {
+          result: record.verdict_result.result,
+          summary: record.verdict_result.summary,
+          details: record.verdict_result.details,
+        }
+      : null,
+  }
+}
+
+function buildToolStatusMap(steps: WorkbenchStep[]) {
+  return steps.reduce<Record<string, WorkbenchToolStatus>>((acc, step) => {
+    step.toolsConfirmed?.forEach((tool) => {
+      acc[tool.toolId] = tool.status
+    })
+    return acc
+  }, {})
+}
+
+function createDefaultMessages(detail?: SessionDetailResponse): WorkbenchChatMessage[] {
+  const seedMessages = detail?.session.project_snapshot?.seed_messages
+  if (Array.isArray(seedMessages) && seedMessages.length > 0) {
+    return seedMessages.map((message, index) => ({
+      id: String(message.id ?? `seed-${index}`),
+      role:
+        message.role === 'teacher' || message.role === 'user'
+          ? message.role
+          : 'assistant',
+      content: String(message.content ?? ''),
+      createdAt: typeof message.created_at === 'string' ? message.created_at : new Date().toISOString(),
+    }))
+  }
+
+  return [
+    {
+      id: 'teacher-tip',
+      role: 'teacher',
+      content: '教师提示：先确认所有关键工具，再上传本步骤证据，避免在裁决环节被退回。',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'assistant-tip',
+      role: 'assistant',
+      content: 'AI 助手：若发现工具异常，请标记为 ANOMALY，我会在右栏给出补充建议。',
+      createdAt: new Date().toISOString(),
+    },
+  ]
+}
+
+function buildProjectFromDetail(detail: SessionDetailResponse, mappedSteps: WorkbenchStep[]): WorkbenchProject {
+  const title = detail.session.project_snapshot?.title || `${detail.session.project_id} 训练任务`
+  const progressPercent =
+    mappedSteps.length === 0
+      ? 0
+      : Math.round((mappedSteps.filter((step) => step.status === 'passed').length / mappedSteps.length) * 100)
+
+  return {
+    sessionId: detail.session.session_id,
+    projectId: detail.session.project_id,
+    title,
+    progressPercent,
+  }
+}
+
+function buildStepsFromDetail(detail: SessionDetailResponse): WorkbenchStep[] {
+  const snapshotSteps = detail.session.project_snapshot?.steps ?? []
+  const snapshotMap = new Map(snapshotSteps.map((step) => [String(step.id), step]))
+
+  return [...detail.steps]
+    .sort((a, b) => a.step_index - b.step_index)
+    .map((step) => {
+      const snapshotStep = snapshotMap.get(step.step_id)
+      return snapshotStep
+        ? mapSnapshotStep(snapshotStep, step, detail.session)
+        : buildFallbackStep(step, detail.session)
+    })
+}
+
+function normalizeStepStatus(status: 'pass' | 'fail'): WorkbenchStep['status'] {
+  return status === 'pass' ? 'passed' : 'failed'
+}
+
+function updateStepsAfterSubmission(
+  steps: WorkbenchStep[],
+  stepId: string,
+  status: 'pass' | 'fail',
+  nextStepId: string | null,
+  note: string,
+  evidenceBundleId: string | null,
+  toolsConfirmed: WorkbenchToolConfirmation[],
+  verdict: WorkbenchStep['verdict'],
+): WorkbenchStep[] {
+  return steps.map((step) => {
+    if (step.id === stepId) {
+      return {
+        ...step,
+        status: normalizeStepStatus(status),
+        attemptCount: (step.attemptCount ?? 0) + 1,
+        evidenceBundleId,
+        evidenceNote: note,
+        toolsConfirmed,
+        verdict,
+      }
+    }
+    if (status === 'pass' && nextStepId && step.id === nextStepId && step.status === 'pending') {
+      return {
+        ...step,
+        status: 'active',
+      }
+    }
+    if (status === 'pass' && step.status === 'active' && step.id !== nextStepId) {
+      return {
+        ...step,
+        status: 'pending',
+      }
+    }
+    return step
+  })
+}
+
+function buildToolActionLabel(toolName: string, targetStatus: WorkbenchToolStatus) {
+  if (targetStatus === 'CONFIRMED') {
+    return `将${toolName}标记为已确认`
+  }
+  if (targetStatus === 'ANOMALY') {
+    return `将${toolName}标记为异常`
+  }
+  return `将${toolName}标记为待确认`
 }
 
 function getStepStatusIcon(status: WorkbenchStep['status']) {
@@ -141,12 +343,14 @@ function getStepStatusIcon(status: WorkbenchStep['status']) {
 
 function ToolStatusButton({
   toolId,
+  label,
   activeStatus,
   targetStatus,
   children,
   onClick,
 }: {
   toolId: string
+  label: string
   activeStatus?: WorkbenchToolStatus
   targetStatus: WorkbenchToolStatus
   children: React.ReactNode
@@ -156,6 +360,7 @@ function ToolStatusButton({
 
   return (
     <Button
+      aria-label={label}
       className={cn(isActive && 'border-primary/40')}
       size="icon"
       type="button"
@@ -190,6 +395,8 @@ function TrainingWorkbenchPage() {
   const setEvidenceName = useStore(workbenchStore, (state) => state.setEvidenceName)
   const addMessage = useStore(workbenchStore, (state) => state.addMessage)
   const setViewerFullscreen = useStore(workbenchStore, (state) => state.setViewerFullscreen)
+  const setSteps = useStore(workbenchStore, (state) => state.setSteps)
+  const setProject = useStore(workbenchStore, (state) => state.setProject)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -199,6 +406,11 @@ function TrainingWorkbenchPage() {
   const [draftFocusPrompt, setDraftFocusPrompt] = useState('强调工具确认、证据留存与 AI 提示')
   const [draftLoading, setDraftLoading] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
+  const [submitLoading, setSubmitLoading] = useState(false)
+  const [askLoading, setAskLoading] = useState(false)
+  const [assistantDraft, setAssistantDraft] = useState('')
+  const [selectedEvidenceFile, setSelectedEvidenceFile] = useState<File | null>(null)
+  const [evidenceInputKey, setEvidenceInputKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -220,42 +432,14 @@ function TrainingWorkbenchPage() {
           return
         }
 
-        const mappedSteps = detail.steps
-          .sort((a, b) => a.step_index - b.step_index)
-          .map((step) => buildStep(step, detail.session))
-
-        const progressPercent =
-          mappedSteps.length === 0
-            ? 0
-            : Math.round(
-                (mappedSteps.filter((step) => step.status === 'passed').length / mappedSteps.length) * 100,
-              )
-
-        const seedMessages: WorkbenchChatMessage[] = [
-          {
-            id: 'teacher-tip',
-            role: 'teacher',
-            content: '教师提示：先确认所有关键工具，再上传本步骤证据，避免在裁决环节被退回。',
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'assistant-tip',
-            role: 'assistant',
-            content: 'AI 助手：若发现工具异常，请标记为 ANOMALY，我会在右栏给出补充建议。',
-            createdAt: new Date().toISOString(),
-          },
-        ]
+        const mappedSteps = buildStepsFromDetail(detail)
 
         hydrateTrainingProject({
-          project: {
-            sessionId: detail.session.session_id,
-            projectId: detail.session.project_id,
-            title: `${detail.session.project_id} 训练任务`,
-            progressPercent,
-          },
+          project: buildProjectFromDetail(detail, mappedSteps),
           steps: mappedSteps,
           currentStepId: mappedSteps.find((step) => step.status === 'active')?.id ?? mappedSteps[0]?.id ?? null,
-          messages: seedMessages,
+          messages: createDefaultMessages(detail),
+          toolStatusMap: buildToolStatusMap(mappedSteps),
         })
       } catch (requestError) {
         if (!alive) {
@@ -282,10 +466,16 @@ function TrainingWorkbenchPage() {
     }
   }, [hydrateTrainingProject, resetTrainingProject, userId])
 
-  const currentStep = useMemo(() => getCurrentStep(workbenchStore.getState()), [
-    currentStepId,
-    steps,
-  ])
+  useEffect(() => {
+    const activeStep = steps.find((step) => step.id === currentStepId) ?? null
+    setVerdict(activeStep?.verdict ?? null)
+    setEvidenceName(null)
+    setSelectedEvidenceFile(null)
+    setEvidenceInputKey((prev) => prev + 1)
+    setShowVerdictDetail(false)
+  }, [currentStepId, setEvidenceName, setVerdict, steps])
+
+  const currentStep = useMemo(() => getCurrentStep(workbenchStore.getState()), [currentStepId, steps])
   const criticalCounter = useMemo(
     () => getConfirmedCriticalToolCount(workbenchStore.getState()),
     [currentStepId, steps, toolStatusMap],
@@ -300,30 +490,87 @@ function TrainingWorkbenchPage() {
 
   const handleEvidenceChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    setSelectedEvidenceFile(file ?? null)
     setEvidenceName(file?.name ?? null)
   }
 
-  const handleSubmitStep = () => {
-    if (!currentStep) {
+  const handleSubmitStep = async () => {
+    if (!currentStep || !project) {
       return
     }
 
-    const summary = noteDraft.trim() || '操作记录完整，满足提交条件。'
+    const note = noteDraft.trim()
+    const toolsConfirmed: WorkbenchToolConfirmation[] = currentTools
+      .map((tool) => ({
+        toolId: tool.id,
+        status: toolStatusMap[tool.id] ?? 'PENDING',
+      }))
+      .filter((tool) => tool.status !== 'PENDING')
 
-    setVerdict({
-      result: canSubmit ? 'PASS' : 'FAIL',
-      summary,
-      details: canSubmit ? '关键工具已全部确认，可进入下一步。' : '仍有关键工具未确认，建议先补齐确认记录。',
-    })
+    setSubmitLoading(true)
+    setError(null)
 
-    addMessage({
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content: canSubmit
-        ? `步骤「${currentStep.title}」已提交。建议继续执行下一步骤，并同步上传现场证据。`
-        : `步骤「${currentStep.title}」暂未满足提交条件，请先确认关键工具或标记异常。`,
-      createdAt: new Date().toISOString(),
-    })
+    try {
+      let evidenceBundleId = currentStep.evidenceBundleId ?? null
+      if (selectedEvidenceFile) {
+        const uploadResponse = await uploadTrainingWorkbenchEvidence(
+          project.sessionId,
+          currentStep.id,
+          note || currentStep.evidenceHint || `${currentStep.title} 证据`,
+          selectedEvidenceFile,
+        )
+        evidenceBundleId = uploadResponse.evidenceBundleId
+        setEvidenceName(uploadResponse.filename)
+      }
+
+      const response = await submitTrainingWorkbenchStep(project.sessionId, currentStep.id, {
+        stepIndex: currentStep.stepIndex,
+        note,
+        evidenceBundleId,
+        toolsConfirmed,
+      })
+
+      const nextSteps = updateStepsAfterSubmission(
+        steps,
+        currentStep.id,
+        response.status,
+        response.nextStepId ?? null,
+        note,
+        evidenceBundleId,
+        toolsConfirmed,
+        response.verdict,
+      )
+
+      setSteps(nextSteps)
+      setProject({
+        ...project,
+        progressPercent:
+          nextSteps.length === 0
+            ? 0
+            : Math.round((nextSteps.filter((step) => step.status === 'passed').length / nextSteps.length) * 100),
+      })
+      setCurrentStep(
+        response.status === 'pass' && response.nextStepId ? response.nextStepId : currentStep.id,
+      )
+      setVerdict(response.verdict)
+      setShowVerdictDetail(true)
+      addMessage({
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: response.verdict.details || response.verdict.summary,
+        createdAt: new Date().toISOString(),
+      })
+      setSelectedEvidenceFile(null)
+      setEvidenceInputKey((prev) => prev + 1)
+      if (response.status === 'pass' && response.nextStepId) {
+        setNoteDraft('')
+        setEvidenceName(null)
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '步骤提交失败')
+    } finally {
+      setSubmitLoading(false)
+    }
   }
 
   const handleGenerateDraft = async (event: FormEvent<HTMLFormElement>) => {
@@ -337,12 +584,59 @@ function TrainingWorkbenchPage() {
         taskSummary: draftTaskSummary.trim() || '关节电机盖拆装',
         focusPrompt: draftFocusPrompt.trim() || '强调工具确认、证据留存与 AI 提示',
       })
-      hydrateTrainingProject(draft)
+      hydrateTrainingProject(draft as TrainingWorkbenchDraftResponse)
       setError(null)
+      setSelectedEvidenceFile(null)
+      setAssistantDraft('')
+      setEvidenceInputKey((prev) => prev + 1)
     } catch (requestError) {
       setDraftError(requestError instanceof Error ? requestError.message : '训练草案生成失败')
     } finally {
       setDraftLoading(false)
+    }
+  }
+
+  const handleAskAssistant = async () => {
+    if (!project || !currentStep) {
+      return
+    }
+
+    const question = assistantDraft.trim()
+    if (!question) {
+      return
+    }
+
+    const userMessage: WorkbenchChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: question,
+      createdAt: new Date().toISOString(),
+    }
+
+    const messagePayload = [...messages, userMessage]
+      .slice(-6)
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+      }))
+
+    addMessage(userMessage)
+    setAssistantDraft('')
+    setAskLoading(true)
+    setError(null)
+
+    try {
+      const assistantMessage = await askTrainingWorkbenchAssistant({
+        sessionId: project.sessionId,
+        stepId: currentStep.id,
+        question,
+        messages: messagePayload,
+      })
+      addMessage(assistantMessage as TrainingWorkbenchAssistantMessage)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'AI 助手追问失败')
+    } finally {
+      setAskLoading(false)
     }
   }
 
@@ -542,6 +836,7 @@ function TrainingWorkbenchPage() {
               <Atom01Viewer
                 backgroundColor="#07111f"
                 height="100%"
+                highlightLinks={currentStep?.modelTargets ?? ['torso_link']}
                 showGrid={false}
                 width="100%"
               />
@@ -555,6 +850,12 @@ function TrainingWorkbenchPage() {
                     <p className="text-sm leading-7 text-text-primary">{currentStep.instruction}</p>
                   </div>
 
+                  {error ? (
+                    <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+                      {error}
+                    </div>
+                  ) : null}
+
                   <Input
                     placeholder="记录当前步骤执行说明或异常备注"
                     value={noteDraft}
@@ -562,13 +863,23 @@ function TrainingWorkbenchPage() {
                   />
 
                   <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border-default bg-bg-elevated px-4 py-6 text-center">
-                    <input className="hidden" type="file" onChange={handleEvidenceChange} />
+                    <input
+                      key={evidenceInputKey}
+                      className="hidden"
+                      type="file"
+                      onChange={handleEvidenceChange}
+                    />
                     <div className="text-sm text-text-primary">
                       {evidenceName ? `已选择证据：${evidenceName}` : '拖拽或点击上传证据'}
                     </div>
                     <div className="mt-1 text-xs text-text-muted">
                       {currentStep.evidenceHint ?? '建议上传步骤照片或关键操作截图'}
                     </div>
+                    {currentStep.evidenceBundleId ? (
+                      <div className="mt-2 text-xs text-success">
+                        当前步骤已有证据包：{currentStep.evidenceBundleId}
+                      </div>
+                    ) : null}
                   </label>
 
                   <Tooltip>
@@ -576,11 +887,11 @@ function TrainingWorkbenchPage() {
                       <div>
                         <Button
                           className="w-full"
-                          disabled={!canSubmit}
+                          disabled={!canSubmit || submitLoading}
                           type="button"
-                          onClick={handleSubmitStep}
+                          onClick={() => void handleSubmitStep()}
                         >
-                          提交当前步骤
+                          {submitLoading ? '提交中…' : '提交当前步骤'}
                         </Button>
                       </div>
                     </TooltipTrigger>
@@ -672,6 +983,7 @@ function TrainingWorkbenchPage() {
                           <div className="flex gap-1">
                             <ToolStatusButton
                               activeStatus={status}
+                              label={buildToolActionLabel(tool.name, 'CONFIRMED')}
                               targetStatus="CONFIRMED"
                               toolId={tool.id}
                               onClick={setToolStatus}
@@ -680,6 +992,7 @@ function TrainingWorkbenchPage() {
                             </ToolStatusButton>
                             <ToolStatusButton
                               activeStatus={status}
+                              label={buildToolActionLabel(tool.name, 'ANOMALY')}
                               targetStatus="ANOMALY"
                               toolId={tool.id}
                               onClick={setToolStatus}
@@ -688,6 +1001,7 @@ function TrainingWorkbenchPage() {
                             </ToolStatusButton>
                             <ToolStatusButton
                               activeStatus={status}
+                              label={buildToolActionLabel(tool.name, 'PENDING')}
                               targetStatus="PENDING"
                               toolId={tool.id}
                               onClick={setToolStatus}
@@ -751,25 +1065,16 @@ function TrainingWorkbenchPage() {
                 <div className="flex gap-2">
                   <Input
                     placeholder="向 AI 助手补充现场说明"
-                    value={noteDraft}
-                    onChange={(event) => setNoteDraft(event.target.value)}
+                    value={assistantDraft}
+                    onChange={(event) => setAssistantDraft(event.target.value)}
                   />
                   <Button
+                    aria-label="发送给 AI 助手"
                     size="icon"
                     type="button"
                     variant="secondary"
-                    onClick={() => {
-                      if (!noteDraft.trim()) {
-                        return
-                      }
-                      addMessage({
-                        id: `user-${Date.now()}`,
-                        role: 'user',
-                        content: noteDraft.trim(),
-                        createdAt: new Date().toISOString(),
-                      })
-                      setNoteDraft('')
-                    }}
+                    disabled={askLoading}
+                    onClick={() => void handleAskAssistant()}
                   >
                     <Send className="h-4 w-4" />
                   </Button>

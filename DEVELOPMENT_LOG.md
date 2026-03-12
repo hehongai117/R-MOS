@@ -5588,3 +5588,48 @@
   - 当前空态仍会向 `/training/users/{id}/active-session` 发起一次 404 请求，只是前端不再把它直接暴露给用户；如果后续要继续优化，可把“无活跃会话”改成后端语义化 200/empty 响应。
 - Next Step:
   - 继续处理训练工作台内的正式提交链路和步骤级交互细化。
+
+- DateTime: 2026-03-12 13:24:49 CST
+- Task: 将训练工作台补成可执行页面，打通正式步骤提交、证据入库、裁决、AI 追问与步骤联动 3D 高亮
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/.gitignore
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-12-training-workbench-execution.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/training.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/session_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/workbench_draft_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/workbench_execution_service.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_workbench_draft_api.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_workbench_execution_api.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/training.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Model.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/TrainingWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/TrainingWorkbenchPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/store/__tests__/WorkbenchStore.test.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/store/workbenchStore.ts
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_training_workbench_draft_api.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_training_workbench_execution_api.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/TrainingWorkbenchPage.test.tsx src/store/__tests__/WorkbenchStore.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - kill 63545
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 8000
+  - 浏览器联调 `/workbench/training`：生成训练草案 -> 上传 `/tmp/rmos-training-evidence.txt` -> 确认工具 -> 提交步骤 -> AI 追问
+  - rm -rf r-mos-backend/storage
+  - git diff --name-only
+  - git status --short
+- Tests:
+  - 后端草案与执行接口：`cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_training_workbench_draft_api.py tests/unit/test_training_workbench_execution_api.py -q` -> PASS（`4 passed`，伴随既有 Pydantic/utcnow deprecation warnings）
+  - 前端训练工作台与 store：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/TrainingWorkbenchPage.test.tsx src/store/__tests__/WorkbenchStore.test.ts` -> PASS（`2 files, 6 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器联调：学生账号在 `/workbench/training` 成功生成真实训练会话、上传证据生成 `evidence_bundle_id`、正式提交步骤后进入下一步、AI 助手追问返回 MiniMax 实时回答；截图 `/tmp/training-workbench-validation.png` 可见 3D 视图按步骤高亮
+- Result: PASS
+- Risks/Notes:
+  - 训练草案生成和 AI 追问均依赖学生账号在设置页保存的个人 LLM 配置；MiniMax 实测响应耗时约 14s 到 62s，前端继续保留 90s 超时。
+  - 浏览器联调会生成本地证据文件；本次已将 `/r-mos-backend/storage/` 加入 `.gitignore` 并清理运行产物，避免误入版本库。
+  - 后端测试仍会打印既有 Pydantic/`datetime.utcnow()` 弃用警告，本次未扩展处理范围。
+- Next Step:
+  - 继续逐页处理其余工作台页面问题，若继续深挖训练工作台，可补步骤历史回显、证据预览和最终整会话提交反馈展示。

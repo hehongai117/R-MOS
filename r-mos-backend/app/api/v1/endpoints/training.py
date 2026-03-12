@@ -2,7 +2,7 @@
 UF-04, UF-06: Training API Endpoints
 训练项目与会话管理接口
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +50,7 @@ class SessionResponse(BaseModel):
     started_at: datetime
     paused_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None
+    project_snapshot: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -64,6 +65,9 @@ class StepRecordResponse(BaseModel):
     status: str
     attempt_count: int
     duration_sec: Optional[int] = None
+    tools_confirmed: Optional[list[dict]] = None
+    evidence: Optional[dict] = None
+    verdict_result: Optional[dict] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -122,10 +126,12 @@ class WorkbenchDraftToolResponse(BaseModel):
 
 class WorkbenchDraftStepResponse(BaseModel):
     id: str
+    step_index: int
     title: str
     status: str
     instruction: str
     evidence_hint: str
+    model_targets: list[str] = Field(default_factory=list)
     tools: list[WorkbenchDraftToolResponse] = Field(default_factory=list)
 
 
@@ -148,6 +154,58 @@ class WorkbenchDraftResponse(BaseModel):
     project: WorkbenchDraftProjectResponse
     steps: list[WorkbenchDraftStepResponse] = Field(default_factory=list)
     messages: list[WorkbenchDraftMessageResponse] = Field(default_factory=list)
+
+
+class WorkbenchToolConfirmRequest(BaseModel):
+    tool_id: str
+    status: str
+
+
+class WorkbenchEvidenceUploadResponse(BaseModel):
+    evidence_bundle_id: str
+    filename: str
+    content_uri: str
+    human_summary: Optional[str] = None
+
+
+class WorkbenchStepSubmitRequest(BaseModel):
+    step_index: int
+    note: str = ""
+    evidence_bundle_id: Optional[str] = None
+    tools_confirmed: list[WorkbenchToolConfirmRequest] = Field(default_factory=list)
+
+
+class WorkbenchStepVerdictResponse(BaseModel):
+    result: str
+    summary: str
+    details: str
+    missing_critical_tools: list[str] = Field(default_factory=list)
+    anomaly_tools: list[str] = Field(default_factory=list)
+    evidence_bundle_id: Optional[str] = None
+
+
+class WorkbenchStepSubmitResponse(BaseModel):
+    record_id: str
+    status: str
+    verdict: WorkbenchStepVerdictResponse
+    next_step_id: Optional[str] = None
+    session_submitted: bool = False
+    feedback: Optional[dict] = None
+    evidence_bundle_id: Optional[str] = None
+
+
+class WorkbenchAskRequest(BaseModel):
+    session_id: str
+    step_id: str
+    question: str = Field(min_length=1)
+    messages: list[dict] = Field(default_factory=list)
+
+
+class WorkbenchAssistantMessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: str
 
 
 class SubmitSessionRequest(BaseModel):
@@ -209,6 +267,33 @@ class FeedbackResponse(BaseModel):
     teaching_diagnosis: Optional[str] = None
     ranking_percentile: Optional[float] = None
     hint_level_suggestion: Optional[int] = None
+
+
+def _build_workbench_project_snapshot(payload: dict) -> dict:
+    project = payload.get("project") or {}
+    steps = payload.get("steps") or []
+    return {
+        "title": project.get("title", "训练工作台"),
+        "summary": project.get("summary", ""),
+        "estimated_time": max(len(steps) * 10, 15),
+        "steps": [
+            {
+                "id": step.get("id"),
+                "step_index": step.get("step_index", index),
+                "title": step.get("title"),
+                "instruction": step.get("instruction"),
+                "evidence_hint": step.get("evidence_hint"),
+                "model_targets": step.get("model_targets", []),
+                "tools": step.get("tools", []),
+            }
+            for index, step in enumerate(steps)
+        ],
+        "seed_messages": payload.get("messages", []),
+        "viewer_manifest": {
+            "highlight_mode": "step_targets",
+        },
+        "verdict_config": {"time_limit": max(len(steps) * 10, 15)},
+    }
 
 
 # ============ UF-04: Training Project Routes ============
@@ -293,6 +378,14 @@ async def generate_training_workbench_draft(
             task_summary=request.task_summary,
             focus_prompt=request.focus_prompt,
         )
+        session_service = SessionService(db)
+        session_id = await session_service.create_session(
+            user_id=actor.user_id,
+            project_id=payload["project"]["project_id"],
+            project_snapshot=_build_workbench_project_snapshot(payload),
+        )
+        await session_service.initialize_steps(session_id, payload["steps"])
+        payload["project"]["session_id"] = session_id
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except json.JSONDecodeError as exc:
@@ -302,6 +395,80 @@ async def generate_training_workbench_draft(
         raise HTTPException(status_code=502, detail="训练草案生成失败，请稍后重试") from exc
 
     return WorkbenchDraftResponse(**payload)
+
+
+@router.post(
+    "/training/workbench/evidence",
+    response_model=WorkbenchEvidenceUploadResponse,
+    status_code=201,
+    tags=["Training"],
+)
+async def upload_training_workbench_evidence(
+    session_id: str = Form(...),
+    step_id: str = Form(...),
+    note: str = Form(default=""),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    from app.services.training.workbench_execution_service import TrainingWorkbenchExecutionService
+
+    payload = await TrainingWorkbenchExecutionService(db).upload_evidence(
+        user_id=actor.user_id,
+        session_id=session_id,
+        step_id=step_id,
+        note=note,
+        file=file,
+    )
+    return WorkbenchEvidenceUploadResponse(**payload)
+
+
+@router.post(
+    "/training/workbench/sessions/{session_id}/steps/{step_id}/submit",
+    response_model=WorkbenchStepSubmitResponse,
+    tags=["Training"],
+)
+async def submit_training_workbench_step(
+    session_id: str,
+    step_id: str,
+    request: WorkbenchStepSubmitRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    from app.services.training.workbench_execution_service import TrainingWorkbenchExecutionService
+
+    payload = await TrainingWorkbenchExecutionService(db).submit_step(
+        user_id=actor.user_id,
+        session_id=session_id,
+        step_id=step_id,
+        step_index=request.step_index,
+        note=request.note,
+        evidence_bundle_id=request.evidence_bundle_id,
+        tools_confirmed=[tool.model_dump() for tool in request.tools_confirmed],
+    )
+    return WorkbenchStepSubmitResponse(**payload)
+
+
+@router.post(
+    "/training/workbench/ask",
+    response_model=WorkbenchAssistantMessageResponse,
+    tags=["Training"],
+)
+async def ask_training_workbench_assistant(
+    request: WorkbenchAskRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    from app.services.training.workbench_execution_service import TrainingWorkbenchExecutionService
+
+    payload = await TrainingWorkbenchExecutionService(db).ask_follow_up(
+        user_id=actor.user_id,
+        session_id=request.session_id,
+        step_id=request.step_id,
+        question=request.question,
+        messages=request.messages,
+    )
+    return WorkbenchAssistantMessageResponse(**payload)
 
 
 # ============ UF-06: Session Routes ============
@@ -342,6 +509,7 @@ async def create_session(
             started_at=session.started_at,
             paused_at=session.paused_at,
             submitted_at=session.submitted_at,
+            project_snapshot=session.project_snapshot,
         )
     except HTTPException:
         raise
@@ -377,6 +545,7 @@ async def get_session(
         started_at=session.started_at,
         paused_at=session.paused_at,
         submitted_at=session.submitted_at,
+        project_snapshot=session.project_snapshot,
     )
 
 
@@ -412,6 +581,7 @@ async def get_session_detail(
             started_at=session.started_at,
             paused_at=session.paused_at,
             submitted_at=session.submitted_at,
+            project_snapshot=session.project_snapshot,
         ),
         steps=[
             StepRecordResponse(
@@ -422,6 +592,9 @@ async def get_session_detail(
                 status=s.status,
                 attempt_count=s.attempt_count,
                 duration_sec=s.duration_sec,
+                tools_confirmed=s.tools_confirmed,
+                evidence=s.evidence,
+                verdict_result=s.verdict_result,
                 started_at=s.started_at,
                 completed_at=s.completed_at,
             )
@@ -458,6 +631,7 @@ async def pause_session(
         started_at=session.started_at,
         paused_at=session.paused_at,
         submitted_at=session.submitted_at,
+        project_snapshot=session.project_snapshot,
     )
 
 
@@ -489,6 +663,7 @@ async def resume_session(
         started_at=session.started_at,
         paused_at=session.paused_at,
         submitted_at=session.submitted_at,
+        project_snapshot=session.project_snapshot,
     )
 
 
@@ -667,6 +842,9 @@ async def get_step_records(
             status=s.status,
             attempt_count=s.attempt_count,
             duration_sec=s.duration_sec,
+            tools_confirmed=s.tools_confirmed,
+            evidence=s.evidence,
+            verdict_result=s.verdict_result,
             started_at=s.started_at,
             completed_at=s.completed_at,
         )
@@ -702,6 +880,7 @@ async def get_user_sessions(
             started_at=s.started_at,
             paused_at=s.paused_at,
             submitted_at=s.submitted_at,
+            project_snapshot=s.project_snapshot,
         )
         for s in sessions
     ]
@@ -735,6 +914,7 @@ async def get_active_session(
         started_at=session.started_at,
         paused_at=session.paused_at,
         submitted_at=session.submitted_at,
+        project_snapshot=session.project_snapshot,
     )
 
 

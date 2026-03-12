@@ -97,16 +97,17 @@ JSON 结构必须满足：
     "title": "训练标题",
     "summary": "一句话摘要"
   }},
-  "steps": [
-    {{
-      "id": "step_prepare",
-      "title": "步骤标题",
-      "instruction": "该步骤操作说明",
-      "evidence_hint": "本步骤建议上传什么证据",
-      "tools": [
+      "steps": [
         {{
-          "name": "工具名称",
-          "spec": "规格或确认点",
+          "id": "step_prepare",
+          "title": "步骤标题",
+          "instruction": "该步骤操作说明",
+          "evidence_hint": "本步骤建议上传什么证据",
+          "model_targets": ["需要高亮的模型 link 名称"],
+          "tools": [
+            {{
+              "name": "工具名称",
+              "spec": "规格或确认点",
           "is_critical": true,
           "recommendation": "若异常时 AI 给出的补充建议，可为空"
         }}
@@ -130,6 +131,7 @@ JSON 结构必须满足：
 2. 每个步骤至少 2 个工具，其中至少 1 个关键工具。
 3. 文案使用中文，适合训练场景。
 4. 重点体现步骤编排、工具确认、证据上传、AI 提示。
+5. 如果是 ATOM01，请优先使用这些 link 名称作为 model_targets：torso_link、left_knee_link、right_knee_link、left_ankle_pitch_link、right_ankle_pitch_link、left_arm_pitch_link、right_arm_pitch_link。
         """.strip()
 
     @staticmethod
@@ -144,8 +146,8 @@ JSON 结构必须满足：
         sanitized = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE)
         return sanitized.strip()
 
-    @staticmethod
     def _build_fallback_payload(
+        self,
         *,
         robot_model: str,
         task_summary: str,
@@ -164,6 +166,7 @@ JSON 结构必须满足：
                     "title": "步骤 1: 准备工位",
                     "instruction": "确认断电挂牌、PPE 穿戴和工位清洁，建立本次训练的安全基线。",
                     "evidence_hint": "上传工位全景和断电挂牌照片。",
+                    "model_targets": ["torso_link"],
                     "tools": [
                         {"name": "绝缘手套", "spec": "A级绝缘", "is_critical": True},
                         {"name": "扭矩扳手", "spec": "5-25Nm", "is_critical": True},
@@ -174,6 +177,7 @@ JSON 结构必须满足：
                     "title": "步骤 2: 执行拆装",
                     "instruction": f"围绕“{task_summary}”执行核心操作，逐项确认工具和零件状态。",
                     "evidence_hint": "上传关键拆装动作照片与零件摆位截图。",
+                    "model_targets": [self._default_focus_target(task_summary)],
                     "tools": [
                         {"name": "六角扳手", "spec": "4mm", "is_critical": True},
                         {"name": "零件托盘", "spec": "分区托盘", "is_critical": False},
@@ -184,6 +188,7 @@ JSON 结构必须满足：
                     "title": "步骤 3: 复核与提交",
                     "instruction": "复核扭矩、部件复位和风险点，整理证据后准备提交裁决。",
                     "evidence_hint": "上传复位结果、工具回收和最终状态截图。",
+                    "model_targets": [self._default_focus_target(task_summary)],
                     "tools": [
                         {"name": "检查记录卡", "spec": "电子/纸质", "is_critical": False},
                         {"name": "检修灯", "spec": "无频闪", "is_critical": False},
@@ -222,10 +227,17 @@ JSON 结构必须满足：
             steps.append(
                 {
                     "id": step_id,
+                    "step_index": index,
                     "title": str(raw_step.get("title") or f"步骤 {index + 1}"),
                     "status": "active" if index == 0 else "pending",
                     "instruction": str(raw_step.get("instruction") or ""),
                     "evidence_hint": str(raw_step.get("evidence_hint") or "上传本步骤关键操作照片或截图。"),
+                    "model_targets": self._normalize_model_targets(
+                        raw_step.get("model_targets"),
+                        title=str(raw_step.get("title") or ""),
+                        instruction=str(raw_step.get("instruction") or ""),
+                        task_summary=task_summary,
+                    ),
                     "tools": tools,
                 }
             )
@@ -255,3 +267,39 @@ JSON 结构必须满足：
             "steps": steps,
             "messages": messages,
         }
+
+    @staticmethod
+    def _default_focus_target(task_summary: str) -> str:
+        mapping = {
+            "髋": "left_thigh_pitch_link",
+            "膝": "left_knee_link",
+            "踝": "left_ankle_pitch_link",
+            "肩": "left_arm_pitch_link",
+            "肘": "left_elbow_pitch_link",
+            "腕": "left_elbow_yaw_link",
+            "关节电机盖": "left_knee_link",
+        }
+        for keyword, target in mapping.items():
+            if keyword in task_summary:
+                return target
+        return "torso_link"
+
+    def _normalize_model_targets(
+        self,
+        raw_targets: object,
+        *,
+        title: str,
+        instruction: str,
+        task_summary: str,
+    ) -> list[str]:
+        if isinstance(raw_targets, list):
+            targets = [str(item).strip() for item in raw_targets if str(item).strip()]
+            if targets:
+                return targets
+
+        combined = f"{title} {instruction} {task_summary}"
+        if any(keyword in combined for keyword in ("准备", "工位", "断电", "安全")):
+            return ["torso_link"]
+        if any(keyword in combined for keyword in ("线缆", "接头", "连接")):
+            return ["torso_link", self._default_focus_target(task_summary)]
+        return [self._default_focus_target(task_summary)]

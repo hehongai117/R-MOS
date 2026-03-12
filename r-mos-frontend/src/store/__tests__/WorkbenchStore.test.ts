@@ -28,6 +28,7 @@ describe('WorkbenchStore', () => {
       steps: [
         {
           id: 'step-1',
+          stepIndex: 0,
           title: '准备工装',
           status: 'passed',
           instruction: '检查工具和安全防护。',
@@ -35,6 +36,7 @@ describe('WorkbenchStore', () => {
         },
         {
           id: 'step-2',
+          stepIndex: 1,
           title: '拆解电机盖',
           status: 'active',
           instruction: '按顺序松开固定螺钉。',

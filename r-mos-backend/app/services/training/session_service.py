@@ -67,6 +67,32 @@ class SessionService:
         logger.info(f"[UF-06] Created session {session_id} for user {user_id}")
         return session_id
 
+    async def initialize_steps(self, session_id: str, steps: list[dict]) -> None:
+        """为真实训练工作台初始化步骤记录。"""
+        existing_result = await self.db.execute(
+            select(SessionStepRecord).where(SessionStepRecord.session_id == session_id)
+        )
+        if existing_result.scalars().first() is not None:
+            return
+
+        for index, step in enumerate(steps):
+            self.db.add(
+                SessionStepRecord(
+                    record_id=str(uuid.uuid4()),
+                    session_id=session_id,
+                    step_id=str(step.get("id") or f"step-{index + 1}"),
+                    step_index=int(step.get("step_index", index)),
+                    status="pending",
+                    attempt_count=0,
+                    tools_confirmed=[],
+                    evidence=None,
+                    verdict_result=None,
+                )
+            )
+
+        await self.db.commit()
+        logger.info(f"[UF-06] Initialized {len(steps)} steps for session {session_id}")
+
     async def update_step(
         self,
         session_id: str,

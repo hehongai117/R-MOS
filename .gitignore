@@ -40,6 +40,7 @@ Thumbs.db
 # Logs
 logs/
 *.log
+/r-mos-backend/storage/
 
 
 # local tooling & macos
