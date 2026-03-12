@@ -5924,3 +5924,32 @@
   - 这轮只改前端布局，没有对应需要删除的后端接口或数据结构。
 - Next Step:
   - 如果继续收页，可以评估是否把 3D 卡片标题区的悬停/选中标签也进一步压缩。
+
+- DateTime: 2026-03-12 16:52:00 CST
+- Task: 联调验证 SOP 项目草案页、检视页与执行页之间的打开/返回链路，以及草案页 AI 生成与跳转
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - curl --noproxy 127.0.0.1,localhost -sS http://127.0.0.1:55173/login | head -n 5
+  - curl --noproxy 127.0.0.1,localhost -sS http://127.0.0.1:8000/api/v1/health
+  - 浏览器联调（学生账号 `student_a@rmos.test`）：
+    - 打开 `http://127.0.0.1:55173/maintenance`
+    - 点击 `项目草案页`
+    - 在 `http://127.0.0.1:55173/maintenance/project-draft` 点击 `生成 AI 草案`
+    - 点击 `在 SOP 工作台打开`
+    - 在 `http://127.0.0.1:55173/maintenance` 点击 `打开检视页`
+    - 在 `http://127.0.0.1:55173/maintenance/inspector` 点击 `返回执行页`
+- Tests:
+  - 前端服务可达：`curl --noproxy 127.0.0.1,localhost -sS http://127.0.0.1:55173/login | head -n 5` -> PASS
+  - 后端健康检查：`curl --noproxy 127.0.0.1,localhost -sS http://127.0.0.1:8000/api/v1/health` -> PASS（`status=healthy`）
+  - 浏览器人工验证：
+    - `执行页 -> 项目草案页` -> PASS
+    - `项目草案页 -> AI 草案生成` -> PASS（生成 `Fourier N1 执行器弯曲维护`，显示 3 条草案步骤和引用）
+    - `项目草案页 -> 在 SOP 工作台打开 -> 执行页` -> PASS
+    - `执行页 -> 检视页 -> 返回执行页` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 项目草案页在“未生成草案”状态下没有单独的 `返回执行页` 按钮；当前只能通过侧边导航返回，或在生成后使用 `在 SOP 工作台打开` 回到执行页。这是体验缺口，不影响本次链路验证结论。
+  - 本次 AI 草案生成命中了明显不够干净的引用与复核警告，例如 `.gitignore`、`README`、`LICENSE` 等仓库文件被列入“需人工复核”；这说明草案生成链路可用，但知识源筛选质量仍需后续治理。
+- Next Step:
+  - 如果继续打磨项目草案页，优先补一个显式 `返回执行页` 按钮，并收紧 AI 草案的知识引用过滤范围。
