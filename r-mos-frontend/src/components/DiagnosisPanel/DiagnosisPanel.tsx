@@ -96,31 +96,109 @@ function buildEvidenceChips(hypothesis: FaultHypothesis): string[] {
   return [...chips, ...hypothesis.possible_causes]
 }
 
-function formatVerificationLabel(key: string): string {
-  const labelMap: Record<string, string> = {
-    fault_count: '故障数量',
-    error_code: '故障码',
-    joint_status: '关节状态',
-    joint_position: '关节位置',
-    temperature: '温度',
-    torque: '扭矩',
-    current: '电流',
-    voltage: '电压',
-    pressure: '压力',
-  }
+const verificationMetricLabelMap: Record<string, string> = {
+  fault_count: '故障数量',
+  error_code: '故障码',
+  joint_status: '关节状态',
+  joint_position: '关节位置',
+  temperature: '温度',
+  torque: '扭矩',
+  current: '电流',
+  voltage: '电压',
+  pressure: '压力',
+}
 
-  if (labelMap[key]) {
-    return labelMap[key]
-  }
+const verificationBodyTokenMap: Record<string, string> = {
+  ankle: '踝',
+  arm: '手臂',
+  elbow: '肘',
+  hip: '髋',
+  knee: '膝',
+  shoulder: '肩',
+  waist: '腰',
+  wrist: '腕',
+}
 
+const verificationSideTokenMap: Record<string, string> = {
+  left: '左',
+  right: '右',
+  front: '前',
+  rear: '后',
+}
+
+function normalizeVerificationKey(key: string): string[] {
   return key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .replace(/[._]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+function formatVerificationNumber(value: number): string {
+  if (Number.isInteger(value)) {
+    return String(value)
+  }
+
+  return value.toFixed(2).replace(/\.?0+$/, '')
+}
+
+function formatBusinessTerm(term: string): string {
+  const normalized = term.toLowerCase()
+  if (verificationMetricLabelMap[normalized]) {
+    return verificationMetricLabelMap[normalized]
+  }
+
+  const parts = normalizeVerificationKey(term)
+  if (parts.length === 0) {
+    return term
+  }
+
+  const metricToken = parts[parts.length - 1]?.toLowerCase()
+  const metricLabel = verificationMetricLabelMap[metricToken]
+  if (metricLabel) {
+    const prefixTokens = parts.slice(0, -1)
+    const side = prefixTokens
+      .map((token) => verificationSideTokenMap[token.toLowerCase()] ?? '')
+      .join('')
+    const body = prefixTokens
+      .map((token) => verificationBodyTokenMap[token.toLowerCase()] ?? '')
+      .join('')
+
+    if (side || body) {
+      return `${side}${body}${metricLabel}`
+    }
+  }
+
+  return parts
+    .map((token) => verificationBodyTokenMap[token.toLowerCase()] ?? verificationSideTokenMap[token.toLowerCase()] ?? token)
+    .join('')
+}
+
+function formatVerificationLabel(key: string): string {
+  return formatBusinessTerm(key)
 }
 
 function formatVerificationValue(value: unknown): string {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (typeof value === 'number') {
+    return formatVerificationNumber(value)
+  }
+
+  if (typeof value === 'boolean') {
     return String(value)
+  }
+
+  if (typeof value === 'string') {
+    const arrowMatch = value.match(/^\s*(-?\d+(?:\.\d+)?)\s*->\s*(-?\d+(?:\.\d+)?)\s*$/)
+    if (arrowMatch) {
+      const before = formatVerificationNumber(Number(arrowMatch[1]))
+      const after = formatVerificationNumber(Number(arrowMatch[2]))
+      return `${before} -> ${after}`
+    }
+    const asNumber = Number(value)
+    if (!Number.isNaN(asNumber) && value.trim() !== '') {
+      return formatVerificationNumber(asNumber)
+    }
+    return value
   }
 
   if (Array.isArray(value)) {

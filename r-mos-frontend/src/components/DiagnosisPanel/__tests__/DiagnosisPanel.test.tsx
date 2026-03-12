@@ -97,4 +97,47 @@ describe('DiagnosisPanel', () => {
     expect(screen.getByRole('button', { name: '确认执行方案' }).getAttribute('disabled')).not.toBeNull()
     expect(screen.getByRole('button', { name: '上报教师审核' }).getAttribute('disabled')).toBeNull()
   })
+
+  it('translates simulation highlight keys into business-friendly chinese labels', () => {
+    render(
+      <DiagnosisPanel
+        diagnosisResult={{
+          success: true,
+          primary_hypothesis: {
+            fault_code: 'NORMAL',
+            fault_name: '正常',
+            confidence: 1,
+            affected_parts: [],
+            possible_causes: [],
+            evidence: {},
+          },
+          alternative_hypotheses: [],
+          requires_supervisor: false,
+          reasoning: '未检测到异常。',
+          recommended_actions: [],
+          error_message: null,
+        }}
+        maintenancePlan={null}
+        verificationResult={{
+          success: false,
+          plan_id: 'plan-002',
+          before_state: {},
+          after_state: {},
+          delta_summary: {
+            'Knee Right.Temperature': '39.47013653444351 -> 40.683005214056934',
+          },
+          verdict: '验证未通过',
+          failed_steps: [],
+        }}
+        isLoading={false}
+        onConfirmExecution={() => {}}
+        onEscalateToTeacher={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('右膝温度')).toBeTruthy()
+    expect(screen.getByText('39.47 -> 40.68')).toBeTruthy()
+    expect(screen.queryByText('Knee Right.Temperature')).toBeNull()
+    expect(screen.queryByText('39.47013653444351 -> 40.683005214056934')).toBeNull()
+  })
 })

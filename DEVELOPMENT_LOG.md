@@ -5702,3 +5702,30 @@
   - 仿真验证已去掉原始 JSON 展示，但故障假设中的证据 chip 仍保留技术字段，后续如需进一步弱化可继续调整。
 - Next Step:
   - 继续观察 AI 工作台实机使用反馈；如果诊断区仍显得偏技术化，可进一步把证据 chip 和部件字段改成更业务化的话术。
+
+- DateTime: 2026-03-12 15:23:00 CST
+- Task: 将诊断面板仿真验证中的英文部位键名和长小数进一步翻译为业务化中文摘要
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：刷新工作台后重新查看最近诊断结果，确认 `Knee Right.Temperature` 等键名显示为 `右膝温度`，数值显示为两位小数摘要
+  - git diff --name-only
+- Tests:
+  - 组件测试红灯验证：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` -> FAIL（预期失败，原因为诊断面板仍原样展示 `Knee Right.Temperature` 和长小数）
+  - 组件测试绿灯验证：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` -> PASS（`3 tests passed`）
+  - AI 工作台相关前端测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` -> PASS（`9 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 本次翻译逻辑仅作用于诊断面板仿真验证摘要，不改后端响应结构。
+  - 已覆盖方向词、常见关节名和常见指标名；若后续仿真返回新的命名模式，可能还需要继续补映射表。
+  - 数值展示统一压缩为最多两位小数，以提升可读性。
+- Next Step:
+  - 如果继续弱化技术感，可把故障假设区的 `joint_id` 等证据 chip 也做成中文描述。
