@@ -27,6 +27,7 @@ import {
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
+import { type DiagnosisActionType, runDiagnosisAction } from '@/api/agent-v2';
 import { DiagnosisPanel, readLatestDiagnosisResult } from '@/components/DiagnosisPanel/DiagnosisPanel';
 import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
 import { CameraController } from '@/components/Viewer3D/CameraController';
@@ -286,6 +287,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const [examRemainingMs, setExamRemainingMs] = useState(EXAM_DURATION_MS);
     const [scoreState, setScoreState] = useState(scoringEngine.getState());
     const [scoreFlash, setScoreFlash] = useState(false);
+    const [diagnosisActionLoading, setDiagnosisActionLoading] = useState(false);
     const [examSummaryReport, setExamSummaryReport] = useState<AdjudicationReport | null>(null);
     const [sopExecutor, setSopExecutor] = useState<SOPExecutor | null>(null);
     const examEndAtRef = useRef<number | null>(null);
@@ -414,6 +416,31 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         },
     ]), []);
     const diagnosisSnapshot = useMemo(() => readLatestDiagnosisResult(), []);
+    const latestDiagnosisTraceId = diagnosisSnapshot?.traceId;
+
+    const handleDiagnosisAction = useCallback(async (action: DiagnosisActionType) => {
+        if (!latestDiagnosisTraceId || diagnosisActionLoading) {
+            if (!latestDiagnosisTraceId) {
+                message.error('当前没有可操作的诊断轨迹');
+            }
+            return;
+        }
+
+        setDiagnosisActionLoading(true);
+        try {
+            const response = await runDiagnosisAction(latestDiagnosisTraceId, action);
+            if (action === 'escalate_to_teacher') {
+                message.info(response.message);
+            } else {
+                message.success(response.message);
+            }
+        } catch (error: unknown) {
+            const err = error as Error;
+            message.error(err.message || '诊断动作执行失败');
+        } finally {
+            setDiagnosisActionLoading(false);
+        }
+    }, [diagnosisActionLoading, latestDiagnosisTraceId]);
     const viewerModelScale = viewState === 'ISOLATED'
         ? (selectedOverviewNode ? (ISOLATION_MODEL_SCALE_OVERRIDES[selectedOverviewNode] ?? 1.15) : 1.15)
         : 2;
@@ -976,8 +1003,13 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             maintenancePlan={diagnosisSnapshot?.maintenancePlan ?? null}
             verificationResult={diagnosisSnapshot?.verificationResult ?? null}
             isLoading={false}
-            onConfirmExecution={() => message.success('已确认执行方案，请按 SOP 步骤继续操作')}
-            onEscalateToTeacher={() => message.info('已上报教师审核')}
+            isActionSubmitting={diagnosisActionLoading}
+            onConfirmExecution={() => {
+                void handleDiagnosisAction('confirm_execution');
+            }}
+            onEscalateToTeacher={() => {
+                void handleDiagnosisAction('escalate_to_teacher');
+            }}
         />
     );
 

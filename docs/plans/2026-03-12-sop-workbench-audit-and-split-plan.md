@@ -209,17 +209,31 @@ flowchart LR
 
 ### Phase 3: 补真后端动作
 
+状态：已完成（2026-03-12 第二批实现）
+
 1. 把诊断卡片里的：
    - `确认执行方案`
    - `上报教师审核`
    接成真实接口
 2. 把 inspector 页变成真实分析页，而不是只读壳
 
+结果：
+- inspector 页已复用 AI 工作台的 `runDiagnosisAction` 接口
+- 最近诊断快照已补充 `traceId`，SOP 页可基于最近一次诊断轨迹提交动作
+- 诊断动作提交时增加前端门禁，避免无 `traceId` 或重复提交时误触发
+
 ### Phase 4: 收尾优化
+
+状态：已完成（2026-03-12 第二批实现）
 
 1. 把 `ToolSelector`、`ScrewInfo` 的 clickable `div` 改成语义按钮
 2. 补 `/maintenance/inspector` 页面测试
 3. 补执行页和检视页之间的跳转入口
+
+结果：
+- `ToolSelector` 与 `ScrewInfo` 的主要可点击项已改为语义化 `button`
+- 新增工具/螺丝面板测试，覆盖按钮语义与点击回调
+- inspector 页测试已补到“诊断动作真实调用后端 API”
 
 ## 9. 我建议的实施顺序
 

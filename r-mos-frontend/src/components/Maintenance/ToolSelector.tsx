@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { Card, Space, Tag, Typography, Tooltip, Alert } from 'antd';
+import { Alert, Card, Space, Tag, Tooltip, Typography } from 'antd';
 import { ToolOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { TOOLS, Tool, getRecommendedTool } from '@/data/toolData';
 
@@ -38,8 +38,12 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({
 
         return (
             <Tooltip title={tool.description}>
-                <div
+                <button
+                    type="button"
+                    aria-label={tool.name}
+                    aria-pressed={isSelected}
                     style={{
+                        width: '100%',
                         padding: compact ? '8px 12px' : '12px 16px',
                         borderRadius: 8,
                         cursor: 'pointer',
@@ -54,6 +58,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({
                                 ? 'rgba(82, 196, 26, 0.1)'
                                 : 'transparent',
                         transition: 'all 0.2s',
+                        textAlign: 'left',
                     }}
                     onClick={() => onToolSelect(isSelected ? null : tool.id)}
                 >
@@ -73,7 +78,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({
                             <CheckCircleOutlined style={{ color: '#1890ff', marginLeft: 8 }} />
                         )}
                     </Space>
-                </div>
+                </button>
             </Tooltip>
         );
     };
@@ -127,8 +132,11 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({
 
             {/* 取消选择 */}
             {selectedToolId && (
-                <div
+                <button
+                    type="button"
+                    aria-label="放下工具"
                     style={{
+                        width: '100%',
                         marginTop: 12,
                         textAlign: 'center',
                         padding: '8px',
@@ -140,7 +148,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({
                     onClick={() => onToolSelect(null)}
                 >
                     <Text type="danger">放下工具</Text>
-                </div>
+                </button>
             )}
         </Card>
     );

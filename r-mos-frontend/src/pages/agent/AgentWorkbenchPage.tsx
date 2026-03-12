@@ -288,6 +288,7 @@ function AgentWorkbenchPage() {
           diagnosisResult: response.result.diagnosis ?? null,
           maintenancePlan: response.result.maintenance_plan ?? null,
           verificationResult: response.result.verification ?? null,
+          traceId: response.trace_id,
           timestamp: Date.now(),
         })
       }
@@ -591,6 +592,7 @@ function AgentWorkbenchPage() {
             maintenancePlan={latestDiagnosisBundle?.maintenance_plan ?? null}
             verificationResult={latestDiagnosisBundle?.verification ?? null}
             isLoading={loading && intent === 'delegate-diagnoser'}
+            isActionSubmitting={diagnosisActionLoading}
             onConfirmExecution={handleConfirmDiagnosisExecution}
             onEscalateToTeacher={handleEscalateDiagnosis}
           />

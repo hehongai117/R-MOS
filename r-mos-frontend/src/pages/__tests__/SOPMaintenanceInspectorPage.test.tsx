@@ -9,6 +9,7 @@ const {
   clientGetMock,
   clientPostMock,
   navigateMock,
+  runDiagnosisActionMock,
 } = vi.hoisted(() => ({
   setOperationModeMock: vi.fn(),
   setCurrentToolMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
   clientGetMock: vi.fn(),
   clientPostMock: vi.fn(),
   navigateMock: vi.fn(),
+  runDiagnosisActionMock: vi.fn(),
 }))
 
 class ResizeObserverMock {
@@ -54,6 +56,10 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
+vi.mock('@/api/agent-v2', () => ({
+  runDiagnosisAction: runDiagnosisActionMock,
+}))
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return {
@@ -71,11 +77,28 @@ vi.mock('@react-three/drei', () => ({
 }))
 
 vi.mock('@/components/DiagnosisPanel/DiagnosisPanel', () => ({
-  DiagnosisPanel: () => <div>DiagnosisPanelStub</div>,
+  DiagnosisPanel: ({
+    onConfirmExecution,
+    onEscalateToTeacher,
+  }: {
+    onConfirmExecution: () => void
+    onEscalateToTeacher: () => void
+  }) => (
+    <div>
+      <div>DiagnosisPanelStub</div>
+      <button type="button" onClick={onConfirmExecution}>
+        确认执行方案
+      </button>
+      <button type="button" onClick={onEscalateToTeacher}>
+        上报教师审核
+      </button>
+    </div>
+  ),
   readLatestDiagnosisResult: () => ({
     diagnosisResult: null,
     maintenancePlan: null,
     verificationResult: null,
+    traceId: 'trace-inspector-1',
   }),
 }))
 
@@ -241,6 +264,7 @@ describe('SOPMaintenanceInspectorPage', () => {
     preloadAllPartsMock.mockReset()
     clientGetMock.mockReset()
     clientPostMock.mockReset()
+    runDiagnosisActionMock.mockReset()
     clientGetMock.mockResolvedValue({ data: { projects: [] } })
     clientPostMock.mockResolvedValue({ data: {} })
   })
@@ -262,6 +286,44 @@ describe('SOPMaintenanceInspectorPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('ScrewInfoStub')).toBeTruthy()
+    })
+  })
+
+  it('submits confirm diagnosis action through backend api', async () => {
+    runDiagnosisActionMock.mockResolvedValue({
+      trace_id: 'trace-inspector-1',
+      action: 'confirm_execution',
+      message: '已确认执行方案，请转入 SOP 工作台执行。',
+      recorded: true,
+    })
+
+    const user = userEvent.setup()
+
+    render(<SOPMaintenanceInspectorPage />)
+
+    await user.click(screen.getByRole('button', { name: '确认执行方案' }))
+
+    await waitFor(() => {
+      expect(runDiagnosisActionMock).toHaveBeenCalledWith('trace-inspector-1', 'confirm_execution')
+    })
+  })
+
+  it('submits escalate diagnosis action through backend api', async () => {
+    runDiagnosisActionMock.mockResolvedValue({
+      trace_id: 'trace-inspector-1',
+      action: 'escalate_to_teacher',
+      message: '已上报教师审核，请等待处理。',
+      recorded: true,
+    })
+
+    const user = userEvent.setup()
+
+    render(<SOPMaintenanceInspectorPage />)
+
+    await user.click(screen.getByRole('button', { name: '上报教师审核' }))
+
+    await waitFor(() => {
+      expect(runDiagnosisActionMock).toHaveBeenCalledWith('trace-inspector-1', 'escalate_to_teacher')
     })
   })
 })

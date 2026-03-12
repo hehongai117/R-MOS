@@ -5797,3 +5797,42 @@
   - 执行页顶部的大卡片已缩成轻量切换卡，但运行时草案信息和模型资源按钮仍保留。
 - Next Step:
   - 继续第二批：把 inspector 页里的诊断区动作接成真实后端，随后补 `ToolSelector` / `ScrewInfo` 的语义化按钮改造。
+
+- DateTime: 2026-03-12 16:03:00 CST
+- Task: 按 SOP 工作台拆页方案完成第二批实现，接通 inspector 页诊断动作并补工具/螺丝语义化按钮
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ToolSelector.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ScrewInfo.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/__tests__/ToolingPanels.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-12-sop-workbench-audit-and-split-plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:verification-before-completion
+  - sed -n '1,420p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/agent-v2.ts
+  - sed -n '240,360p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - sed -n '1,140p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - sed -n '1,420p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx -> FAIL（预期红灯；失败原因为 SOP inspector 页仍在使用前端 toast 假动作，未调用 `runDiagnosisAction`）
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ToolSelector.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ScrewInfo.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Maintenance/__tests__/ToolingPanels.test.tsx -> FAIL（预期红灯；失败原因为工具卡片和螺丝卡片仍为 `div + onClick`，无法以按钮语义获取）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/ToolingPanels.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - SOP inspector / 工具与螺丝组件 / AI 工作台 / 诊断面板：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/ToolingPanels.test.tsx src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` -> PASS（`4 passed, 14 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - inspector 页当前基于最近一次诊断快照里的 `traceId` 调后端动作；如果用户没有先在 AI 工作台生成诊断，SOP 页会明确提示“当前没有可操作的诊断轨迹”。
+  - 这次只补了诊断动作提交与可达性语义，没有继续扩展 inspector 页的新业务模块。
+  - `ToolingPanels.test.tsx` 运行时会打印 `Multiple instances of Three.js being imported.` 警告，但不影响本轮测试结论。
+- Next Step:
+  - 继续第三批时，可优先考虑把 inspector 页诊断动作结果持久化到更正式的维保上下文，而不只依赖最近会话快照。

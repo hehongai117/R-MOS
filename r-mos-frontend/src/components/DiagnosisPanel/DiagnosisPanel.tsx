@@ -12,6 +12,7 @@ export interface DiagnosisPanelProps {
   maintenancePlan: MaintenancePlan | null
   verificationResult: VerificationResult | null
   isLoading: boolean
+  isActionSubmitting?: boolean
   onConfirmExecution: () => void
   onEscalateToTeacher: () => void
 }
@@ -20,6 +21,7 @@ export interface DiagnosisSnapshot {
   diagnosisResult: DiagnosisResult | null
   maintenancePlan: MaintenancePlan | null
   verificationResult: VerificationResult | null
+  traceId?: string
   timestamp: number
 }
 
@@ -249,6 +251,7 @@ export function DiagnosisPanel({
   maintenancePlan,
   verificationResult,
   isLoading,
+  isActionSubmitting = false,
   onConfirmExecution,
   onEscalateToTeacher,
 }: DiagnosisPanelProps) {
@@ -464,10 +467,13 @@ export function DiagnosisPanel({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button disabled={requiresSupervisor || !maintenancePlan} onClick={onConfirmExecution}>
+        <Button
+          disabled={isActionSubmitting || requiresSupervisor || !maintenancePlan}
+          onClick={onConfirmExecution}
+        >
           确认执行方案
         </Button>
-        <Button variant="outline" onClick={onEscalateToTeacher}>
+        <Button disabled={isActionSubmitting} variant="outline" onClick={onEscalateToTeacher}>
           上报教师审核
         </Button>
       </div>

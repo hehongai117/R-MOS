@@ -67,9 +67,13 @@ export const ScrewInfo: React.FC<ScrewInfoProps> = ({
         >
             <Space direction="vertical" style={{ width: '100%' }} size="small">
                 {screwData.map((item, index) => (
-                    <div
+                    <button
                         key={`${item.screwId}-${index}`}
+                        type="button"
+                        aria-label={`${item.spec} ${item.position}`}
+                        aria-pressed={selectedScrewId === item.screwId}
                         style={{
+                            width: '100%',
                             padding: '8px 12px',
                             borderRadius: 6,
                             border: selectedScrewId === item.screwId
@@ -80,6 +84,7 @@ export const ScrewInfo: React.FC<ScrewInfoProps> = ({
                                 : 'transparent',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
+                            textAlign: 'left',
                         }}
                         onClick={() => onScrewSelect?.(item.screwId)}
                     >
@@ -104,7 +109,7 @@ export const ScrewInfo: React.FC<ScrewInfoProps> = ({
                                 </Text>
                             </div>
                         )}
-                    </div>
+                    </button>
                 ))}
             </Space>
 
