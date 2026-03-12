@@ -7,18 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
-type OperationMode = 'teaching' | 'exam' | 'maintenance'
-
 interface SOPMaintenanceHeaderProps {
-  operationMode: OperationMode
-  examTimeText?: string
-  currentScore?: number
-  scoreFlash?: boolean
-  totalPartCount: number
-  selectedToolIndicator?: ReactNode
   viewModeControl: ReactNode
-  detailToggleControl: ReactNode
-  modeSelectControl: ReactNode
   title?: string
   subtitle?: string
   breadcrumb?: string[]
@@ -60,59 +50,12 @@ interface SOPMaintenanceExamOverlayProps {
   onReset: () => void
 }
 
-function MetricChip({
-  label,
-  value,
-  tone = 'neutral',
-  flash = false,
-}: {
-  label: string
-  value: string
-  tone?: 'neutral' | 'warning' | 'danger'
-  flash?: boolean
-}) {
-  const toneClassName =
-    tone === 'danger'
-      ? 'border-danger/40 bg-danger/10 text-danger'
-      : tone === 'warning'
-        ? 'border-amber/40 bg-amber/10 text-amber'
-        : 'border-border-default bg-bg-elevated text-text-secondary'
-
-  return (
-    <div
-      className={cn(
-        'rounded-lg border px-3 py-2 text-center transition duration-base ease-base',
-        toneClassName,
-        flash && 'scale-[1.03] shadow-[0_0_18px_rgba(245,158,11,0.2)]',
-      )}
-    >
-      <div className="text-[11px] uppercase tracking-[0.18em] text-text-muted">{label}</div>
-      <div className="mt-1 text-sm font-semibold">{value}</div>
-    </div>
-  )
-}
-
 export function SOPMaintenanceHeader({
-  operationMode,
-  examTimeText,
-  currentScore,
-  scoreFlash = false,
-  totalPartCount,
-  selectedToolIndicator,
   viewModeControl,
-  detailToggleControl,
-  modeSelectControl,
   title = 'SOP 维保系统',
   subtitle = '步骤导航、3D 操作区和工具要求统一在同一工作台内处理',
   breadcrumb = ['维保端', 'SOP 工作台'],
 }: SOPMaintenanceHeaderProps) {
-  const modeLabel =
-    operationMode === 'exam'
-      ? '考试模式'
-      : operationMode === 'maintenance'
-        ? '维保模式'
-        : '教学模式'
-
   return (
     <PageHeader
       title={title}
@@ -120,34 +63,7 @@ export function SOPMaintenanceHeader({
       breadcrumb={breadcrumb}
       actions={(
         <div className="flex max-w-4xl flex-wrap items-center justify-end gap-2">
-          <StatusBadge
-            label={modeLabel}
-            status={operationMode === 'exam' ? 'warning' : 'active'}
-          />
-          {operationMode === 'exam' && examTimeText ? (
-            <MetricChip
-              label="倒计时"
-              value={`倒计时 ${examTimeText}`}
-              tone="danger"
-            />
-          ) : null}
-          {operationMode === 'exam' && typeof currentScore === 'number' ? (
-            <MetricChip
-              label="得分"
-              value={`得分 ${currentScore}`}
-              tone="warning"
-              flash={scoreFlash}
-            />
-          ) : null}
           <div className="min-w-[180px]">{viewModeControl}</div>
-          {selectedToolIndicator ? (
-            <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm font-medium text-success">
-              {selectedToolIndicator}
-            </div>
-          ) : null}
-          <MetricChip label="零件总数" value={`${totalPartCount} 个零件`} />
-          <div className="min-w-[88px]">{detailToggleControl}</div>
-          <div className="min-w-[120px]">{modeSelectControl}</div>
         </div>
       )}
     />

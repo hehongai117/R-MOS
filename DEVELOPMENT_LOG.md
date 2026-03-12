@@ -5836,3 +5836,30 @@
   - `ToolingPanels.test.tsx` 运行时会打印 `Multiple instances of Three.js being imported.` 警告，但不影响本轮测试结论。
 - Next Step:
   - 继续第三批时，可优先考虑把 inspector 页诊断动作结果持久化到更正式的维保上下文，而不只依赖最近会话快照。
+
+- DateTime: 2026-03-12 16:16:00 CST
+- Task: 精简 SOP 工作台顶部控制区，仅保留正常 / 爆炸图视图切换
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - rg -n "维保模式|零件总数|细节|教学模式|考试模式|正常|爆炸图" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx -> FAIL（预期红灯；失败原因为 header 仍保留模式状态、细节开关和模式下拉，且视图切换缺少明确 aria 名称）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx -> FAIL（预期红灯；失败原因为 shell 单测仍在验证已删除的考试模式/得分/零件总数控件）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - SOP 页面相关测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` -> PASS（`4 passed, 10 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 顶部控制区现在只保留视图切换；原先的模式状态、倒计时、得分、零件总数、细节开关和模式切换入口都已移出。
+  - `DetailParts` 仍保留组件接线，但执行页已固定不展示；如后续需要恢复，应放回 inspector 页而不是执行页头部。
+- Next Step:
+  - 如果继续精简 SOP 页，可以再看左侧执行栏是否还存在非执行必需的信息块。

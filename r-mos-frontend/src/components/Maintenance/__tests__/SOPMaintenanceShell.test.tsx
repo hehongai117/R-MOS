@@ -9,28 +9,19 @@ import {
 } from '@/components/Maintenance/SOPMaintenanceShell'
 
 describe('SOPMaintenanceShell', () => {
-  it('renders exam header metrics and control slots', () => {
+  it('renders minimal header with only the view mode control slot', () => {
     render(
       <SOPMaintenanceHeader
-        operationMode="exam"
-        examTimeText="09:58"
-        currentScore={86}
-        totalPartCount={42}
-        selectedToolIndicator={<span>工具已选择</span>}
         viewModeControl={<button type="button">视图切换</button>}
-        detailToggleControl={<button type="button">细节开关</button>}
-        modeSelectControl={<button type="button">模式选择</button>}
       />,
     )
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
-    expect(screen.getByText('考试模式')).toBeTruthy()
-    expect(screen.getByText('倒计时 09:58')).toBeTruthy()
-    expect(screen.getByText('得分 86')).toBeTruthy()
-    expect(screen.getByText('42 个零件')).toBeTruthy()
     expect(screen.getByRole('button', { name: '视图切换' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '细节开关' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '模式选择' })).toBeTruthy()
+    expect(screen.queryByText('考试模式')).toBeNull()
+    expect(screen.queryByText('倒计时 09:58')).toBeNull()
+    expect(screen.queryByText('得分 86')).toBeNull()
+    expect(screen.queryByText('42 个零件')).toBeNull()
   })
 
   it('renders right rail quick locate, diagnosis area, and tab content', () => {

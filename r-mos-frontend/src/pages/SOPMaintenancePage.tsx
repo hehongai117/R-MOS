@@ -12,9 +12,8 @@
  */
 
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
-import { Alert, Card, Row, Col, Slider, Typography, Space, Tag, Empty, Descriptions, Button, Segmented, Select, Modal, message, Switch } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Empty, Row, Segmented, Select, Slider, Space, Tag, Typography, message } from 'antd';
 import {
-    ToolOutlined,
     PartitionOutlined,
     InfoCircleOutlined,
     EyeOutlined,
@@ -35,7 +34,6 @@ import DisassemblyDemoAdjudicated from '@/components/Viewer3D/DisassemblyDemoAdj
 import { DisassemblyAnimation } from '@/components/Viewer3D/DisassemblyAnimation';
 import PartInspector from '@/components/Viewer3D/PartInspector';
 import {
-    ALL_EXPLODE_PART_URLS,
     ISOLATION_DENSITY_CONFIG,
     L0_OVERVIEW_PRESET,
     UI_CAPABILITIES,
@@ -81,7 +79,6 @@ import {
 } from '@/adjudication';
 import { useSOPSceneSync } from '@/adjudication/ui/useSOPSceneSync';
 import { scoringEngine } from '@/adjudication/core/scoringEngine';
-import { formatCountdown, isCountdownUrgent } from '@/adjudication/ui/examHeader';
 
 const { Title, Text } = Typography;
 const EXAM_DURATION_MS = 60 * 60 * 1000;
@@ -278,7 +275,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const [focusTarget, setFocusTarget] = useState<string | null>(null);
     const [disassemblyPlaying, setDisassemblyPlaying] = useState(false);
     const [disassemblyStep, setDisassemblyStep] = useState<string>('');
-    const [showDetailParts, setShowDetailParts] = useState(false);
+    const showDetailParts = false;
     const [runtimeWorkspaceSession, setRuntimeWorkspaceSession] = useState<MaintenanceWorkspaceSession | null>(null);
     const [runtimeDraft, setRuntimeDraft] = useState<MaintenanceDraftResponse | null>(null);
     const [runtimeManifest, setRuntimeManifest] = useState<RuntimeManifestAdapter | null>(null);
@@ -286,7 +283,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const [runtimeSelectedAssetPath, setRuntimeSelectedAssetPath] = useState<string | null>(null);
     const [examRemainingMs, setExamRemainingMs] = useState(EXAM_DURATION_MS);
     const [scoreState, setScoreState] = useState(scoringEngine.getState());
-    const [scoreFlash, setScoreFlash] = useState(false);
     const [diagnosisActionLoading, setDiagnosisActionLoading] = useState(false);
     const [examSummaryReport, setExamSummaryReport] = useState<AdjudicationReport | null>(null);
     const [sopExecutor, setSopExecutor] = useState<SOPExecutor | null>(null);
@@ -296,7 +292,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const sopActionSeqRef = useRef(0);
     const lastAutoCameraSignatureRef = useRef('');
     const operationMode = useAdjudicationStore((state) => state.operationMode);
-    const setOperationMode = useAdjudicationStore((state) => state.setOperationMode);
     const setCurrentTool = useAdjudicationStore((state) => state.setCurrentTool);
     const sopSceneSync = useSOPSceneSync();
 
@@ -489,12 +484,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     }, [isFullscreen, viewState, viewMode]);
 
     useEffect(() => {
-        setScoreFlash(true);
-        const timer = setTimeout(() => setScoreFlash(false), 300);
-        return () => clearTimeout(timer);
-    }, [scoreState.currentScore]);
-
-    useEffect(() => {
         if (operationMode !== 'exam' || examSummaryReport) {
             examEndAtRef.current = null;
             return;
@@ -509,9 +498,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         }, 1000);
         return () => clearInterval(timer);
     }, [operationMode, examSummaryReport, examRemainingMs]);
-
-    const examTimeText = useMemo(() => formatCountdown(examRemainingMs), [examRemainingMs]);
-    const examUrgent = useMemo(() => isCountdownUrgent(examRemainingMs), [examRemainingMs]);
     const runtimeSopScript = useMemo(() => {
         if (workspaceVariant === 'atom01' || !runtimeDraft) {
             return null;
@@ -538,22 +524,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         const targetSopId = linkedSOPId ?? sopSceneSync.state.selectedSopId;
         return availableSopScripts.find((sop) => sop.sopId === targetSopId) ?? availableSopScripts[0];
     }, [availableSopScripts, linkedSOPId, sopSceneSync.state.selectedSopId]);
-
-    const handleModeChange = useCallback((mode: 'teaching' | 'exam' | 'maintenance') => {
-        Modal.confirm({
-            title: '切换模式将重置当前进度，确定吗？',
-            okText: '确定',
-            cancelText: '取消',
-            onOk: () => {
-                setOperationMode(mode);
-                sopExecutor?.reset();
-                scoringEngine.reset(100);
-                setExamSummaryReport(null);
-                setExamRemainingMs(EXAM_DURATION_MS);
-                examEndAtRef.current = mode === 'exam' ? Date.now() + EXAM_DURATION_MS : null;
-            },
-        });
-    }, [sopExecutor, setOperationMode]);
 
     const handleSummarize = useCallback((report: AdjudicationReport) => {
         setExamSummaryReport(report);
@@ -933,6 +903,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
 
     const headerViewModeControl = (
         <Segmented
+            aria-label="视图模式切换"
             value={viewMode}
             onChange={v => {
                 const nextMode = v as typeof viewMode;
@@ -952,30 +923,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             options={[
                 { label: <><EyeOutlined /> 正常</>, value: 'normal' },
                 { label: <><ExpandOutlined /> 爆炸图</>, value: 'explode' },
-            ]}
-        />
-    );
-
-    const detailToggleControl = (
-        <Switch
-            size="small"
-            checked={showDetailParts}
-            onChange={setShowDetailParts}
-            checkedChildren="细节"
-            unCheckedChildren="细节"
-        />
-    );
-
-    const modeSelectControl = (
-        <Select
-            size="small"
-            value={operationMode}
-            style={{ width: 120 }}
-            onChange={(value) => handleModeChange(value)}
-            options={[
-                { value: 'teaching', label: '教学模式' },
-                { value: 'exam', label: '考试模式' },
-                { value: 'maintenance', label: '维保模式' },
             ]}
         />
     );
@@ -1447,15 +1394,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     return (
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
             <SOPMaintenanceHeader
-                operationMode={operationMode}
-                examTimeText={examUrgent ? examTimeText : examTimeText}
-                currentScore={scoreState.currentScore}
-                scoreFlash={scoreFlash}
-                totalPartCount={runtimeManifest?.parts.length ?? ALL_EXPLODE_PART_URLS.length}
-                selectedToolIndicator={selectedToolId ? <><ToolOutlined /> 工具已选择</> : null}
                 viewModeControl={headerViewModeControl}
-                detailToggleControl={detailToggleControl}
-                modeSelectControl={modeSelectControl}
                 title={workspaceChrome.title}
                 subtitle={workspaceChrome.subtitle}
                 breadcrumb={workspaceChrome.breadcrumb}

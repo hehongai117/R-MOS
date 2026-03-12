@@ -275,12 +275,20 @@ describe('SOPMaintenanceInspectorPage', () => {
     render(<SOPMaintenanceInspectorPage />)
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: '视图模式切换' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /正常/i })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /爆炸图/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: '返回执行页' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '项目草案页' })).toBeTruthy()
     expect(screen.getByText('核心件快速定位')).toBeTruthy()
     expect(screen.getByText('DiagnosisPanelStub')).toBeTruthy()
     expect(screen.getByLabelText('SOP 3D 视图区')).toBeTruthy()
     expect(screen.queryByText('ToolSelectorStub')).toBeNull()
+    expect(screen.queryByText('维保模式')).toBeNull()
+    expect(screen.queryByText('零件总数')).toBeNull()
+    expect(screen.queryByText('细节')).toBeNull()
+    expect(screen.queryByText('教学模式')).toBeNull()
+    expect(screen.queryByText('考试模式')).toBeNull()
 
     await user.click(screen.getByRole('tab', { name: '螺丝' }))
 

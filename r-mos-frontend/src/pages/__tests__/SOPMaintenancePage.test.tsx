@@ -248,6 +248,9 @@ describe('SOPMaintenancePage', () => {
     render(<SOPMaintenancePage />)
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: '视图模式切换' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /正常/i })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /爆炸图/i })).toBeTruthy()
     expect(screen.queryByText('项目草案入口')).toBeNull()
     expect(screen.getByRole('button', { name: '项目草案页' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '打开检视页' })).toBeTruthy()
@@ -257,6 +260,11 @@ describe('SOPMaintenancePage', () => {
     expect(screen.queryByText('ScrewInfoStub')).toBeFalsy()
     expect(screen.queryByText('核心件快速定位')).toBeNull()
     expect(screen.queryByText('DiagnosisPanelStub')).toBeNull()
+    expect(screen.queryByText('维保模式')).toBeNull()
+    expect(screen.queryByText('零件总数')).toBeNull()
+    expect(screen.queryByText('细节')).toBeNull()
+    expect(screen.queryByText('教学模式')).toBeNull()
+    expect(screen.queryByText('考试模式')).toBeNull()
   })
 
   it('keeps atom01 maintenance workbench as a dedicated full page without the project draft entry', () => {
