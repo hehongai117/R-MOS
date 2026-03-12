@@ -5729,3 +5729,37 @@
   - 数值展示统一压缩为最多两位小数，以提升可读性。
 - Next Step:
   - 如果继续弱化技术感，可把故障假设区的 `joint_id` 等证据 chip 也做成中文描述。
+
+- DateTime: 2026-03-12 15:38:00 CST
+- Task: 审查 SOP 工作台按钮与功能可用性，并输出拆页后的结构图与迁移方案
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-12-sop-workbench-audit-and-split-plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill ui-ux-pro-max
+  - rg -n "SOPMaintenancePage|SOPMaintenanceShell|SOPMaintenanceHeader|ToolSelector|DiagnosisPanel" r-mos-frontend/src -g '!**/dist/**'
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx
+  - sed -n '1,280p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ToolSelector.tsx
+  - sed -n '1180,1425p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/ScrewInfo.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
+  - 浏览器联调：打开 `http://127.0.0.1:55173/maintenance`，逐项验证项目草案入口、视图切换、快速定位、SOP 切换、工具选择、播放器、全屏、诊断按钮、零件/螺丝页签、取消选中等交互
+  - git status --short
+  - tail -n 40 /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - git diff --name-only
+- Tests:
+  - SOP 工作台相关前端测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` -> PASS（`3 passed, 7 tests passed`）
+  - 手工核查：`/maintenance` 页面代表性交互已逐项验证，形成《2026-03-12 SOP 工作台核查与拆页方案》
+- Result: PASS
+- Risks/Notes:
+  - 本次未改业务代码，只补了页面核查结论和拆页方案。
+  - `教学/考试/维保` 模式切换本轮仅验证到下拉与确认弹窗，未稳定复现非维保模式最终落态，后续实现前需要补一轮单独核查。
+  - `确认执行方案` 与 `上报教师审核` 在 SOP 页内仍是假动作，仅弹前端提示。
+  - `runtimeManifest` 相关的运行时模型资源按钮仅在带入项目草案后出现，本轮未触发该条件分支。
+- Next Step:
+  - 依据文档先拆出 `/maintenance/inspector`，再精简 `/maintenance`，并把诊断区假动作接成真实后端提交。
