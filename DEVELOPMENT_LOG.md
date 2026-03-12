@@ -5569,3 +5569,22 @@
   - MiniMax 可能返回带 `<think>` 包裹的非结构化文本；后端已增加清洗与安全回退模板，避免原始思维链直接展示到页面。
 - Next Step:
   - 继续逐页排查剩余工作台问题，优先处理训练工作台后续的提交、证据上传和步骤切换交互。
+
+- DateTime: 2026-03-12 12:22:00 CST
+- Task: 修正训练工作台空态时暴露原始 404 文案的问题，并复核 AI 草案生成链路
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/TrainingWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/TrainingWorkbenchPage.test.tsx src/pages/__tests__/UserSettingsPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器刷新 `/workbench/training` 并再次点击“生成训练草案”
+- Tests:
+  - 前端页面测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/TrainingWorkbenchPage.test.tsx src/pages/__tests__/UserSettingsPage.test.tsx` -> PASS（`2 files, 4 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器实测：空态已改为“当前没有可恢复的训练项目”而不再展示原始 `404`；再次触发 MiniMax 真实调用后返回 `200 OK`，约 `36.5s` 后生成 3 步训练草案，并显示回退提示而非原始 `<think>` 文本
+- Result: PASS
+- Risks/Notes:
+  - 当前空态仍会向 `/training/users/{id}/active-session` 发起一次 404 请求，只是前端不再把它直接暴露给用户；如果后续要继续优化，可把“无活跃会话”改成后端语义化 200/empty 响应。
+- Next Step:
+  - 继续处理训练工作台内的正式提交链路和步骤级交互细化。

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Spin } from 'antd'
+import { AxiosError } from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from 'zustand'
 
@@ -262,6 +263,10 @@ function TrainingWorkbenchPage() {
         }
 
         resetTrainingProject()
+        if (requestError instanceof AxiosError && requestError.response?.status === 404) {
+          setError(null)
+          return
+        }
         setError(requestError instanceof Error ? requestError.message : '训练项目加载失败')
       } finally {
         if (alive) {
