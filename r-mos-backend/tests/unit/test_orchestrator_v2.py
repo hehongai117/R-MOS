@@ -36,6 +36,60 @@ async def test_orchestrator_v2_process_request_and_idempotency_cache():
 
 
 @pytest.mark.asyncio
+async def test_orchestrator_v2_general_workbench_summary_returns_real_message():
+    orchestrator = OrchestratorV2()
+
+    response = await orchestrator.process_request(
+        user_id="u-1",
+        message="查看我当前进行中的任务和状态。",
+        intent_classification="general",
+    )
+
+    assert response["success"] is True
+    assert response["result"]["status"] == "ok"
+    assert "当前任务" in response["message"]
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_v2_execution_returns_structured_dispatch_steps():
+    orchestrator = OrchestratorV2()
+
+    response = await orchestrator.process_request(
+        user_id="u-1",
+        message="请为我创建一个维保派单，并给出执行步骤。",
+        intent_classification="execute-task",
+    )
+
+    assert response["success"] is True
+    assert response["result"]["status"] == "ok"
+    assert response["result"]["action"]["type"] == "maintenance_dispatch"
+    assert len(response["result"]["action"]["steps"]) >= 3
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_v2_knowledge_and_coach_intents_return_actionable_guidance():
+    orchestrator = OrchestratorV2()
+
+    knowledge_response = await orchestrator.process_request(
+        user_id="u-1",
+        message="查询减速器相关 SOP 和注意事项。",
+        intent_classification="read-kb",
+    )
+    coach_response = await orchestrator.process_request(
+        user_id="u-1",
+        message="请给我一份训练指导建议。",
+        intent_classification="delegate-coach",
+    )
+
+    assert knowledge_response["success"] is True
+    assert knowledge_response["result"]["status"] == "ok"
+    assert knowledge_response["result"]["action"]["type"] == "knowledge_summary"
+    assert coach_response["success"] is True
+    assert coach_response["result"]["status"] == "ok"
+    assert coach_response["result"]["action"]["type"] == "training_guidance"
+
+
+@pytest.mark.asyncio
 async def test_orchestrator_v2_diagnoser_dispatches_real_result(monkeypatch):
     @dataclass
     class _Verification:

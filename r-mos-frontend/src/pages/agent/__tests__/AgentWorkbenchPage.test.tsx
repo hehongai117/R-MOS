@@ -3,9 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentWorkbenchPage from '@/pages/agent/AgentWorkbenchPage';
 
-const { sendAgentRequestV2Mock, getTraceEventsMock, setWorkbenchCapsuleMock } = vi.hoisted(() => ({
+const { sendAgentRequestV2Mock, getTraceEventsMock, runDiagnosisActionMock, setWorkbenchCapsuleMock } = vi.hoisted(() => ({
   sendAgentRequestV2Mock: vi.fn(),
   getTraceEventsMock: vi.fn(),
+  runDiagnosisActionMock: vi.fn(),
   setWorkbenchCapsuleMock: vi.fn(),
 }));
 const mockTelemetryPayload = {
@@ -41,6 +42,7 @@ vi.stubGlobal('getComputedStyle', () => ({
 vi.mock('@/api/agent-v2', () => ({
   sendAgentRequestV2: sendAgentRequestV2Mock,
   getTraceEvents: getTraceEventsMock,
+  runDiagnosisAction: runDiagnosisActionMock,
 }));
 
 vi.mock('@/components/Agent/AgentStatusCapsule', () => ({
@@ -64,6 +66,7 @@ describe('AgentWorkbenchPage', () => {
   beforeEach(() => {
     sendAgentRequestV2Mock.mockReset();
     getTraceEventsMock.mockReset();
+    runDiagnosisActionMock.mockReset();
     setWorkbenchCapsuleMock.mockReset();
     window.sessionStorage.clear();
   });
@@ -264,5 +267,185 @@ describe('AgentWorkbenchPage', () => {
       })
     );
     expect(window.sessionStorage.getItem('latest-diagnosis-result')).toContain('E002_STALL');
+  });
+
+  it('confirms diagnosis execution through backend action api', async () => {
+    sendAgentRequestV2Mock.mockResolvedValue({
+      success: true,
+      trace_id: 'trace-confirm',
+      message: '诊断完成',
+      confidence: 'high',
+      evidence_refs: [],
+      from_cache: false,
+      timestamp: Date.now(),
+      policy_decision: {
+        allowed: true,
+        risk_level: 'R1',
+        requires_approval: false,
+        evidence_required: [],
+      },
+      result: {
+        diagnosis: {
+          success: true,
+          primary_hypothesis: {
+            fault_code: 'E002_STALL',
+            fault_name: '电机堵转',
+            confidence: 0.91,
+            affected_parts: ['waist'],
+            possible_causes: ['机械卡滞'],
+            evidence: { joint_id: 'waist' },
+          },
+          alternative_hypotheses: [],
+          requires_supervisor: false,
+          reasoning: '关节速度接近 0，符合堵转特征。',
+          recommended_actions: ['检查减速器'],
+          error_message: null,
+        },
+        maintenance_plan: {
+          success: true,
+          plan_id: 'plan-002',
+          fault_code: 'E002_STALL',
+          fault_name: '电机堵转',
+          actions: [
+            {
+              action_id: 'A-1',
+              action_type: 'CHECK',
+              target_part: 'waist',
+              description: '检查机械卡滞',
+              estimated_duration_minutes: 10,
+              required_tools: ['扭矩扳手'],
+              safety_warnings: ['先断电'],
+            },
+          ],
+          total_duration_minutes: 10,
+          requires_supervisor: false,
+          validation_required: true,
+          error_message: null,
+        },
+        verification: {
+          success: true,
+          plan_id: 'plan-002',
+          before_state: { fault_count: 1 },
+          after_state: { fault_count: 0 },
+          delta_summary: { fault_count: '1 -> 0' },
+          verdict: '验证通过',
+          failed_steps: [],
+        },
+      },
+    });
+    runDiagnosisActionMock.mockResolvedValue({
+      trace_id: 'trace-confirm',
+      action: 'confirm_execution',
+      message: '已确认执行方案，请转入 SOP 工作台执行。',
+      recorded: true,
+    });
+
+    const user = userEvent.setup();
+    render(<AgentWorkbenchPage />);
+
+    await user.click(screen.getAllByRole('button', { name: /诊断问题/ })[0]);
+    await user.click(screen.getByRole('button', { name: /发送/ }));
+
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: '确认执行方案' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    await user.click(screen.getByRole('button', { name: '确认执行方案' }));
+
+    await waitFor(() => {
+      expect(runDiagnosisActionMock).toHaveBeenCalledWith('trace-confirm', 'confirm_execution');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('已确认执行方案，请转入 SOP 工作台执行。')).toBeTruthy();
+    });
+  });
+
+  it('escalates diagnosis result through backend action api', async () => {
+    sendAgentRequestV2Mock.mockResolvedValue({
+      success: true,
+      trace_id: 'trace-escalate',
+      message: '诊断完成',
+      confidence: 'high',
+      evidence_refs: [],
+      from_cache: false,
+      timestamp: Date.now(),
+      policy_decision: {
+        allowed: true,
+        risk_level: 'R1',
+        requires_approval: false,
+        evidence_required: [],
+      },
+      result: {
+        diagnosis: {
+          success: true,
+          primary_hypothesis: {
+            fault_code: 'E002_STALL',
+            fault_name: '电机堵转',
+            confidence: 0.91,
+            affected_parts: ['waist'],
+            possible_causes: ['机械卡滞'],
+            evidence: { joint_id: 'waist' },
+          },
+          alternative_hypotheses: [],
+          requires_supervisor: true,
+          reasoning: '关节速度接近 0，符合堵转特征。',
+          recommended_actions: ['检查减速器'],
+          error_message: null,
+        },
+        maintenance_plan: {
+          success: true,
+          plan_id: 'plan-003',
+          fault_code: 'E002_STALL',
+          fault_name: '电机堵转',
+          actions: [
+            {
+              action_id: 'A-1',
+              action_type: 'CHECK',
+              target_part: 'waist',
+              description: '检查机械卡滞',
+              estimated_duration_minutes: 10,
+              required_tools: ['扭矩扳手'],
+              safety_warnings: ['先断电'],
+            },
+          ],
+          total_duration_minutes: 10,
+          requires_supervisor: true,
+          validation_required: true,
+          error_message: null,
+        },
+        verification: {
+          success: true,
+          plan_id: 'plan-003',
+          before_state: { fault_count: 1 },
+          after_state: { fault_count: 0 },
+          delta_summary: { fault_count: '1 -> 0' },
+          verdict: '验证通过',
+          failed_steps: [],
+        },
+      },
+    });
+    runDiagnosisActionMock.mockResolvedValue({
+      trace_id: 'trace-escalate',
+      action: 'escalate_to_teacher',
+      message: '已上报教师审核，请等待处理。',
+      recorded: true,
+    });
+
+    const user = userEvent.setup();
+    render(<AgentWorkbenchPage />);
+
+    await user.click(screen.getAllByRole('button', { name: /诊断问题/ })[0]);
+    await user.click(screen.getByRole('button', { name: /发送/ }));
+
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: '上报教师审核' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    await user.click(screen.getByRole('button', { name: '上报教师审核' }));
+
+    await waitFor(() => {
+      expect(runDiagnosisActionMock).toHaveBeenCalledWith('trace-escalate', 'escalate_to_teacher');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('已上报教师审核，请等待处理。')).toBeTruthy();
+    });
   });
 });

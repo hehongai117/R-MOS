@@ -15,9 +15,11 @@ import {
 
 import {
   type AgentExecutionResult,
+  type DiagnosisActionType,
   type AgentRequestV2,
   type PolicyDecision,
   getTraceEvents,
+  runDiagnosisAction,
   sendAgentRequestV2,
 } from '@/api/agent-v2'
 import { setWorkbenchCapsule } from '@/components/Agent/AgentStatusCapsule'
@@ -154,6 +156,7 @@ function AgentWorkbenchPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [traceEvents, setTraceEvents] = useState<Record<string, unknown>[]>([])
   const [traceOpen, setTraceOpen] = useState(false)
+  const [diagnosisActionLoading, setDiagnosisActionLoading] = useState(false)
   const listRef = useRef<HTMLDivElement | null>(null)
 
   const latestTraceId = useMemo(
@@ -298,12 +301,41 @@ function AgentWorkbenchPage() {
     }
   }
 
+  const handleDiagnosisAction = async (action: DiagnosisActionType) => {
+    if (!latestTraceId || diagnosisActionLoading) {
+      if (!latestTraceId) {
+        message.error('当前没有可操作的诊断轨迹')
+      }
+      return
+    }
+
+    setDiagnosisActionLoading(true)
+    try {
+      const response = await runDiagnosisAction(latestTraceId, action)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-action-${Date.now()}`,
+          role: 'assistant',
+          content: response.message,
+          timestamp: Date.now(),
+          traceId: response.trace_id,
+        },
+      ])
+    } catch (error: unknown) {
+      const err = error as Error
+      message.error(err.message || '诊断动作执行失败')
+    } finally {
+      setDiagnosisActionLoading(false)
+    }
+  }
+
   const handleConfirmDiagnosisExecution = () => {
-    message.success('已确认执行方案，请转入 SOP 工作台执行')
+    void handleDiagnosisAction('confirm_execution')
   }
 
   const handleEscalateDiagnosis = () => {
-    message.info('已上报教师审核')
+    void handleDiagnosisAction('escalate_to_teacher')
   }
 
   const openTrace = async (traceId: string) => {

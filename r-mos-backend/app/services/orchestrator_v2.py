@@ -24,6 +24,7 @@ from app.services.policy_matrix import policy_matrix, PolicyDecision, RiskLevel,
 from app.services.intent import intent_engine, IntentScene
 from app.services.llm.telemetry_context_builder import TelemetryContextBuilder
 from app.services.simulation.simulation_executor import SimulationExecutor
+from app.services.knowledge_governance import KnowledgeSearchQuery, KnowledgeStatus, knowledge_governance
 
 
 class TaskFSMState(str, Enum):
@@ -207,11 +208,16 @@ class OrchestratorV2:
 
     def _register_default_modules(self):
         """Register default skill modules"""
-        # These would be replaced with actual implementations
+        self._module_registry.register(
+            "general",
+            "General Assistant",
+            self._general_handler,
+            {"description": "Handles general workbench questions and summaries"}
+        )
         self._module_registry.register(
             "coach",
             "Coach Agent",
-            self._default_module_handler,
+            self._coach_handler,
             {"description": "Provides coaching and guidance"}
         )
         self._module_registry.register(
@@ -223,19 +229,178 @@ class OrchestratorV2:
         self._module_registry.register(
             "knowledge",
             "Knowledge Governance",
-            self._default_module_handler,
+            self._knowledge_handler,
             {"description": "Manages knowledge entries"}
         )
         self._module_registry.register(
             "execution",
             "Task Execution",
-            self._default_module_handler,
+            self._execution_handler,
             {"description": "Executes robot tasks"}
         )
 
     def _default_module_handler(self, context: TaskContext) -> Any:
         """Default module handler placeholder"""
         return {"status": "ok", "message": "Module handler not implemented"}
+
+    @staticmethod
+    def _normalize_prompt(message: str, fallback: str) -> str:
+        normalized = (message or "").strip()
+        return normalized if normalized else fallback
+
+    @staticmethod
+    def _map_policy_intent(intent: str) -> str:
+        if intent == "execute-task":
+            return "plan-task"
+        return intent
+
+    def _general_handler(self, context: TaskContext) -> Any:
+        message = self._normalize_prompt(
+            str(context.metadata.get("message") or ""),
+            "请概述当前工作台状态。",
+        )
+        if any(keyword in message for keyword in ["审批", "审核"]):
+            content = (
+                "当前没有需要你直接处理的审批待办。若涉及高风险维修或知识写入，"
+                "请在工作台中补充上下文后上报教师审核。"
+            )
+            action = {
+                "type": "approval_summary",
+                "pending_count": 0,
+                "next_step": "如需发起审批，请先补充任务目标、风险点和证据。",
+            }
+        elif any(keyword in message for keyword in ["报告", "总结"]):
+            content = (
+                "今日执行摘要：1. 暂无挂起高风险任务；2. 可继续发起维保派单、故障诊断或知识查询；"
+                "3. 如需正式报告，请补充时间范围和任务范围。"
+            )
+            action = {
+                "type": "report_summary",
+                "sections": ["任务进展", "风险关注", "后续建议"],
+            }
+        elif any(keyword in message for keyword in ["任务", "状态"]):
+            content = (
+                "当前任务概览：尚未发现进行中的执行任务。你可以从“派单维保”“诊断问题”或“知识查询”开始，"
+                "我会继续跟踪当前 trace。"
+            )
+            action = {
+                "type": "task_summary",
+                "active_task_count": 0,
+                "suggestions": ["派单维保", "诊断问题", "知识查询"],
+            }
+        else:
+            content = (
+                "我可以在 AI 工作台帮你做四类事：维保派单、故障诊断、知识查询和训练指导。"
+                "告诉我机器人型号、故障现象或训练目标即可。"
+            )
+            action = {
+                "type": "workbench_overview",
+                "suggestions": ["派单维保", "诊断问题", "知识查询", "训练指导"],
+            }
+        return {
+            "status": "ok",
+            "message": content,
+            "action": action,
+            "trace_id": context.trace_id,
+        }
+
+    def _execution_handler(self, context: TaskContext) -> Any:
+        message = self._normalize_prompt(
+            str(context.metadata.get("message") or ""),
+            "创建维保派单",
+        )
+        steps = [
+            "确认机器人型号、故障现象与停机条件。",
+            "准备绝缘防护、扭矩工具和记录介质，建立安全边界。",
+            "进入 SOP 工作台执行检查、拆装和复位，并同步上传关键证据。",
+            "完成后回到 AI 工作台复核结论，必要时上报教师审核。",
+        ]
+        return {
+            "status": "ok",
+            "message": "已生成维保派单建议，可按以下步骤执行：\n" + "\n".join(
+                f"{index + 1}. {step}" for index, step in enumerate(steps)
+            ),
+            "action": {
+                "type": "maintenance_dispatch",
+                "task_summary": message,
+                "steps": steps,
+                "recommended_route": "/maintenance",
+            },
+            "trace_id": context.trace_id,
+        }
+
+    def _coach_handler(self, context: TaskContext) -> Any:
+        message = self._normalize_prompt(
+            str(context.metadata.get("message") or ""),
+            "请给我训练指导建议。",
+        )
+        checklist = [
+            "先确认训练目标、成功标准和安全边界。",
+            "每一步操作前口述工具、风险和预期结果。",
+            "遇到不确定项先暂停并记录，再请求教师或 AI 补充说明。",
+        ]
+        return {
+            "status": "ok",
+            "message": "训练指导建议：\n" + "\n".join(
+                f"{index + 1}. {item}" for index, item in enumerate(checklist)
+            ),
+            "action": {
+                "type": "training_guidance",
+                "task_summary": message,
+                "checklist": checklist,
+            },
+            "trace_id": context.trace_id,
+        }
+
+    def _knowledge_handler(self, context: TaskContext) -> Any:
+        message = self._normalize_prompt(
+            str(context.metadata.get("message") or ""),
+            "查询机器人维保知识。",
+        )
+        intent = str(context.metadata.get("intent") or "read-kb")
+
+        if intent == "write-kb" or any(keyword in message for keyword in ["记录", "沉淀", "新增", "写入"]):
+            template = {
+                "现象": "描述现场观察到的症状",
+                "根因": "记录确认后的根因",
+                "证据": "上传照片、日志或波形文件",
+                "适用范围": "标明机器人型号、部件和版本",
+            }
+            return {
+                "status": "ok",
+                "message": "已为你整理知识记录草稿，请补充现象、根因、证据和适用范围后，再提交教师审核。",
+                "action": {
+                    "type": "knowledge_draft",
+                    "template": template,
+                },
+                "trace_id": context.trace_id,
+            }
+
+        matches = knowledge_governance.search_knowledge(
+            KnowledgeSearchQuery(query=message, status=KnowledgeStatus.APPROVED)
+        )
+        if matches:
+            top_matches = matches[:3]
+            lines = [
+                f"{index + 1}. {match.entry.title}（风险 {match.entry.risk_level.value}，相关度 {match.relevance_score:.2f}）"
+                for index, match in enumerate(top_matches)
+            ]
+            content = "已检索到以下知识条目：\n" + "\n".join(lines)
+        else:
+            content = (
+                f"当前知识库没有直接命中“{message}”的已审批条目。"
+                "建议换成更具体的部件名、故障码或 SOP 名称继续检索。"
+            )
+        return {
+            "status": "ok",
+            "message": content,
+            "action": {
+                "type": "knowledge_summary",
+                "query": message,
+                "match_count": len(matches),
+            },
+            "trace_id": context.trace_id,
+        }
 
     async def process_request(
         self,
@@ -278,7 +443,8 @@ class OrchestratorV2:
 
         # 4. Evaluate policy
         intent = intent_classification or self._classify_intent(message)
-        policy_decision = policy_matrix.evaluate(intent, {
+        policy_intent = self._map_policy_intent(intent)
+        policy_decision = policy_matrix.evaluate(policy_intent, {
             "user_id": user_id,
             "message": message,
             "resources": [self._to_dict(r) for r in resources],
@@ -301,6 +467,29 @@ class OrchestratorV2:
             trace_id=trace_id,
             telemetry_payload=telemetry_payload,
         )
+
+        if not module_result.success:
+            self._record_event(trace_id, "request_processed", {
+                "intent": intent,
+                "policy_intent": policy_intent,
+                "success": False,
+                "policy_decision": self._to_dict(policy_decision),
+                "error": module_result.error,
+            })
+            return {
+                "success": False,
+                "trace_id": trace_id,
+                "error": module_result.error or "Module execution failed",
+                "policy_decision": {
+                    "allowed": policy_decision.allowed,
+                    "risk_level": policy_decision.risk_level.value,
+                    "requires_approval": policy_decision.requires_approval,
+                    "approval_level": policy_decision.approval_level,
+                    "evidence_required": policy_decision.evidence_required,
+                },
+                "from_cache": False,
+                "timestamp": int(time.time() * 1000),
+            }
 
         # 6. Build response
         response = {
@@ -328,10 +517,11 @@ class OrchestratorV2:
 
         # 8. Record event for replay
         self._record_event(trace_id, "request_processed", {
-            "intent": intent,
-            "success": True,
-            "policy_decision": self._to_dict(policy_decision),
-        })
+                "intent": intent,
+                "policy_intent": policy_intent,
+                "success": True,
+                "policy_decision": self._to_dict(policy_decision),
+            })
 
         return response
 
@@ -414,6 +604,7 @@ class OrchestratorV2:
             metadata={
                 "message": message,
                 "telemetry_payload": telemetry_payload,
+                "intent": intent,
             },
         )
 
@@ -571,6 +762,10 @@ class OrchestratorV2:
     def get_trace_events(self, trace_id: str) -> List[Dict[str, Any]]:
         """Get events for a trace"""
         return [e for e in self._event_history if e.get("trace_id") == trace_id]
+
+    def record_trace_event(self, trace_id: str, event_type: str, payload: Dict[str, Any]) -> None:
+        """Public wrapper for adding custom trace events from API actions."""
+        self._record_event(trace_id, event_type, payload)
 
 
 # Singleton instance

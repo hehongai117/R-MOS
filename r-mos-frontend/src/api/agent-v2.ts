@@ -175,6 +175,8 @@ export interface ModuleInfo {
   };
 }
 
+export type DiagnosisActionType = 'confirm_execution' | 'escalate_to_teacher';
+
 // ============ V2 API Endpoints ============
 
 /**
@@ -286,6 +288,24 @@ export const getTraceEvents = async (traceId: string): Promise<{
     trace_id: string;
     events: Record<string, unknown>[];
   }>(`/agent/v2/trace/${traceId}/events`);
+  return response.data;
+};
+
+export const runDiagnosisAction = async (
+  traceId: string,
+  action: DiagnosisActionType,
+): Promise<{
+  trace_id: string;
+  action: DiagnosisActionType;
+  message: string;
+  recorded: boolean;
+}> => {
+  const response = await client.post<{
+    trace_id: string;
+    action: DiagnosisActionType;
+    message: string;
+    recorded: boolean;
+  }>(`/agent/v2/trace/${traceId}/diagnosis-action`, { action });
   return response.data;
 };
 

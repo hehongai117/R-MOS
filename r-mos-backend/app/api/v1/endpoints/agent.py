@@ -15,6 +15,7 @@ import enum
 
 from app.core.database import get_db
 from app.core.database import AsyncSessionLocal
+from app.core.exceptions import PermissionDeniedError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.command_runtime import Command, AIToolCall
 from app.models.approval import Approval
@@ -481,7 +482,47 @@ class AgentExecuteResponse(BaseModel):
     approval_id: Optional[int] = Field(default=None, description="Approval ID if pending")
     mode_used: str = Field(description="Actual mode used: command|message")
 
+
+class DiagnosisTraceActionRequest(BaseModel):
+    action: str = Field(..., description="Action name: confirm_execution | escalate_to_teacher")
+
+
+class DiagnosisTraceActionResponse(BaseModel):
+    trace_id: str
+    action: str
+    message: str
+    recorded: bool = True
+
 # ============ P2-1: Unified Agent Execute Endpoint ============
+
+
+async def _require_agent_permission(
+    http_request: Request,
+    db: AsyncSession,
+    actor: ActorContext,
+    *,
+    permission_key: str,
+) -> None:
+    if permission_key in actor.permissions:
+        return
+
+    reason = f"missing_permission:{permission_key}"
+    await log_deny_event(
+        db,
+        http_request,
+        action="permission_denied",
+        resource_type="Route",
+        resource_id=http_request.url.path,
+        reason=reason,
+        actor_user_id=str(actor.user_id),
+    )
+    raise PermissionDeniedError(
+        action="permission_denied",
+        resource_type="Route",
+        resource_id=http_request.url.path,
+        reason=reason,
+        message="权限不足",
+    )
 
 def _detect_mode(request: AgentExecuteRequest) -> str:
     """Auto-detect execution mode based on request fields"""
@@ -504,7 +545,6 @@ async def execute_agent(
     http_request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
-    _: None = Depends(require_permission("agent:execute")),
 ):
     """Unified Agent Execute Endpoint - P2-1 Convergence
 
@@ -516,6 +556,13 @@ async def execute_agent(
 
     # Detect execution mode
     mode = _detect_mode(request)
+    required_permission = "agent:execute" if mode == AgentExecuteMode.COMMAND else "agent:read"
+    await _require_agent_permission(
+        http_request,
+        db,
+        actor,
+        permission_key=required_permission,
+    )
     logger.info(f"[P2-1] Agent execute: mode={mode}, user_id={request.user_id}, trace_id={trace_id}")
 
     if mode == AgentExecuteMode.COMMAND:
@@ -686,6 +733,46 @@ async def execute_agent(
 
 
 # V2: Task FSM Endpoints
+@router.post("/v2/trace/{trace_id}/diagnosis-action", response_model=DiagnosisTraceActionResponse)
+async def record_diagnosis_trace_action(
+    trace_id: str,
+    request: DiagnosisTraceActionRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    await _require_agent_permission(
+        http_request,
+        db,
+        actor,
+        permission_key="agent:read",
+    )
+
+    action_messages = {
+        "confirm_execution": "已确认执行方案，请转入 SOP 工作台执行。",
+        "escalate_to_teacher": "已上报教师审核，请等待处理。",
+    }
+    message = action_messages.get(request.action)
+    if message is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported diagnosis action: {request.action}")
+
+    orchestrator_v2.record_trace_event(
+        trace_id,
+        "diagnosis_action",
+        {
+            "action": request.action,
+            "actor_user_id": str(actor.user_id),
+            "message": message,
+        },
+    )
+    return DiagnosisTraceActionResponse(
+        trace_id=trace_id,
+        action=request.action,
+        message=message,
+        recorded=True,
+    )
+
+
 @router.post("/v2/task/create")
 async def create_task_v2(
     user_id: str,

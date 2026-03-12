@@ -110,6 +110,14 @@ class PolicyMatrix:
                 requires_approval=False,
                 evidence_required=["task_id", "user_id"],
             ),
+            PolicyRule(
+                rule_id="plan-task",
+                name="Task Planning",
+                description="Generate a maintenance dispatch plan without executing robot actions",
+                action_category=ActionCategory.READ,
+                risk_level=RiskLevel.R1,
+                requires_approval=False,
+            ),
 
             # Execute operations - high risk
             PolicyRule(

@@ -5633,3 +5633,43 @@
   - 后端测试仍会打印既有 Pydantic/`datetime.utcnow()` 弃用警告，本次未扩展处理范围。
 - Next Step:
   - 继续逐页处理其余工作台页面问题，若继续深挖训练工作台，可补步骤历史回显、证据预览和最终整会话提交反馈展示。
+
+- DateTime: 2026-03-12 14:47:00 CST
+- Task: 修复 AI 工作台学生主链路，拆分消息模式权限、补齐消息型 handler，并把诊断动作接成真实后端接口
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-12-ai-workbench-repair.md
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/agent.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/orchestrator_v2.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/policy_matrix.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_agent_workbench_api.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_orchestrator_v2.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/agent-v2.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_agent_workbench_api.py tests/unit/test_orchestrator_v2.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - /bin/zsh -lc "lsof -tiTCP:8000 -sTCP:LISTEN | xargs -r kill -9 || true"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 8000
+  - curl --noproxy 127.0.0.1,localhost -s http://127.0.0.1:8000/api/v1/health
+  - 浏览器联调 `/agent/workbench`：学生账号点击“派单维保”-> 查看 trace -> 点击“诊断问题”-> 点击“确认执行方案”
+  - git diff --name-only
+- Tests:
+  - 后端 AI 工作台回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_agent_workbench_api.py tests/unit/test_orchestrator_v2.py -q` -> PASS（`8 passed`，伴随既有 Pydantic/utcnow deprecation warnings）
+  - 前端 AI 工作台页面测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx` -> PASS（`6 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器联调：学生账号在 `/agent/workbench` 成功得到“派单维保”建议响应，trace 抽屉显示 `request_processed` 和 `policy_intent=plan-task`；随后“诊断问题”返回诊断结果，点击“确认执行方案”后页面追加真实 assistant 消息“已确认执行方案，请转入 SOP 工作台执行。”
+- Result: PASS
+- Risks/Notes:
+  - 本次仅放开 AI 工作台使用的 `message` 模式到 `agent:read`；`command` 模式仍要求 `agent:execute`，避免把学生权限提升到真实命令执行。
+  - `execute-task` 在消息模式下被映射到新的 `plan-task` 策略，以免“派单建议”被误判为真实机器人执行；真正执行路径仍受高风险策略约束。
+  - `general / execution / coach / knowledge` 目前已不再是 placeholder，但仍属于规则/模板型回复，不包含新的外部依赖或复杂状态持久化。
+- Next Step:
+  - 继续逐页处理剩余工作台页面问题；如果继续深挖 AI 工作台，可再补“上报教师审核”后的教师侧可见待办和更细的知识查询结果卡片。
