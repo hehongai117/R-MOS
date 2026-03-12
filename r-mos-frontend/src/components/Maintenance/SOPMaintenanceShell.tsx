@@ -51,8 +51,8 @@ interface SOPMaintenanceExamOverlayProps {
 export function SOPMaintenanceHeader({
   viewModeControl,
   title = 'SOP 维保系统',
-  subtitle = '步骤导航、3D 操作区和工具要求统一在同一工作台内处理',
   breadcrumb = ['维保端', 'SOP 工作台'],
+  subtitle,
 }: SOPMaintenanceHeaderProps) {
   return (
     <PageHeader

@@ -1,5 +1,5 @@
 import { Children, isValidElement } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -346,15 +346,11 @@ describe('SOPMaintenancePage runtime draft flow', () => {
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '项目草案页' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '打开检视页' })).toBeTruthy()
     expect(screen.queryByText('机器人项目与 AI 草案')).toBeNull()
-
-    await waitFor(() => {
-      expect(screen.getByText('Fourier N1 runtime')).toBeTruthy()
-    })
+    expect(screen.queryByText('执行页仅保留步骤、工具、播放器与 3D 操作区')).toBeNull()
 
     expect((await screen.findAllByText('Fourier N1 肘关节维保')).length).toBeGreaterThan(0)
-    expect(await screen.findByText('part mapping requires review: elbow_joint')).toBeTruthy()
-    expect(await screen.findByText('viewer/elbow.glb')).toBeTruthy()
     expect(screen.getByText('RuntimeAssetPreviewStub')).toBeTruthy()
   })
 })

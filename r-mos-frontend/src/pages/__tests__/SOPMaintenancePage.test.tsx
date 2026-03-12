@@ -254,6 +254,9 @@ describe('SOPMaintenancePage', () => {
     expect(screen.getByRole('radiogroup', { name: '视图模式切换' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /正常/i })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /爆炸图/i })).toBeTruthy()
+    expect(screen.queryByText('步骤导航、3D 操作区和工具要求统一在同一工作台内处理')).toBeNull()
+    expect(screen.queryByText('执行页仅保留步骤、工具、播放器与 3D 操作区')).toBeNull()
+    expect(screen.queryByText('分析信息已迁移到独立检视页，减少执行中断。')).toBeNull()
     expect(screen.queryByText('项目草案入口')).toBeNull()
     expect(screen.getByRole('button', { name: '项目草案页' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '打开检视页' })).toBeTruthy()
@@ -283,6 +286,7 @@ describe('SOPMaintenancePage', () => {
     render(<SOPMaintenancePage workspaceVariant="atom01" />)
 
     expect(screen.getByRole('heading', { name: 'ATOM01 维保工作台' })).toBeTruthy()
+    expect(screen.queryByText('步骤导航、3D 操作区和工具要求统一在同一工作台内处理')).toBeNull()
     expect(screen.queryByText('项目草案入口')).toBeNull()
     expect(screen.queryByRole('button', { name: '进入项目草案页' })).toBeNull()
     expect(screen.getByLabelText('SOP 3D 视图区')).toBeTruthy()

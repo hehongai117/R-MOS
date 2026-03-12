@@ -12,7 +12,7 @@
  */
 
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
-import { Alert, Button, Card, Col, Descriptions, Empty, Row, Segmented, Select, Space, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Descriptions, Empty, Row, Segmented, Select, Space, Tag, Typography, message } from 'antd';
 import {
     InfoCircleOutlined,
     EyeOutlined,
@@ -64,7 +64,7 @@ import {
 } from '@/data/maintenanceKnowledge';
 import { RuntimeAssetPreview } from '@/components/Viewer3D/RuntimeAssetPreview';
 import { buildRobotProjectAssetUrl, buildRuntimeSopScript, createRuntimeManifestAdapter, resolveRuntimeAssetPaths, type RuntimeManifestAdapter } from '@/components/Viewer3D/runtimeManifest';
-import { readMaintenanceWorkspaceSession, type MaintenanceWorkspaceSession } from '@/features/maintenance/runtimeWorkspaceSession';
+import { readMaintenanceWorkspaceSession } from '@/features/maintenance/runtimeWorkspaceSession';
 import type { MaintenanceDraftResponse } from '@/types/maintenance';
 import {
     AdjudicationReport,
@@ -204,7 +204,6 @@ type MaintenanceLayoutMode = 'execution' | 'inspector' | 'full';
 
 interface WorkspaceChrome {
     title: string;
-    subtitle: string;
     breadcrumb: string[];
     showDraftEntry: boolean;
 }
@@ -212,13 +211,11 @@ interface WorkspaceChrome {
 const WORKSPACE_CHROME: Record<WorkspaceVariant, WorkspaceChrome> = {
     runtime: {
         title: 'SOP 维保系统',
-        subtitle: '步骤导航、3D 操作区和工具要求统一在同一工作台内处理',
         breadcrumb: ['维保端', 'SOP 工作台'],
         showDraftEntry: true,
     },
     atom01: {
         title: 'ATOM01 维保工作台',
-        subtitle: '保留原有 ATOM01 专用维保体验，直接进入隔离爆炸、裁决和 3D 交互执行。',
         breadcrumb: ['工作台', 'ATOM01 维保工作台'],
         showDraftEntry: false,
     },
@@ -265,7 +262,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const [disassemblyPlaying, setDisassemblyPlaying] = useState(false);
     const [, setDisassemblyStep] = useState<string>('');
     const showDetailParts = false;
-    const [runtimeWorkspaceSession, setRuntimeWorkspaceSession] = useState<MaintenanceWorkspaceSession | null>(null);
     const [runtimeDraft, setRuntimeDraft] = useState<MaintenanceDraftResponse | null>(null);
     const [runtimeManifest, setRuntimeManifest] = useState<RuntimeManifestAdapter | null>(null);
     const [runtimeTargetIds, setRuntimeTargetIds] = useState<string[]>([]);
@@ -534,7 +530,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
 
     useEffect(() => {
         if (workspaceVariant === 'atom01') {
-            setRuntimeWorkspaceSession(null);
             setRuntimeDraft(null);
             setRuntimeManifest(null);
             setRuntimeTargetIds([]);
@@ -547,7 +542,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             return;
         }
 
-        setRuntimeWorkspaceSession(session);
         if (session.draft) {
             applyRuntimeDraft(session.draft);
         }
@@ -885,29 +879,44 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     };
 
     const headerViewModeControl = (
-        <Segmented
-            aria-label="视图模式切换"
-            value={viewMode}
-            onChange={v => {
-                const nextMode = v as typeof viewMode;
-                if (nextMode === 'explode' && viewState !== 'ISOLATED') {
-                    message.info('请先在总览中点击一个大部件，再进入爆炸图。');
-                    setViewMode('normal');
-                    setExplodeAmount(0);
-                    return;
-                }
-                setViewMode(nextMode);
-                if (nextMode === 'explode') {
-                    setExplodeAmount(prev => Math.max(prev, EXPLODE_DEFAULT_ON_ENTER));
-                } else if (nextMode === 'normal') {
-                    resetToOverview();
-                }
-            }}
-            options={[
-                { label: <><EyeOutlined /> 正常</>, value: 'normal' },
-                { label: <><ExpandOutlined /> 爆炸图</>, value: 'explode' },
-            ]}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+            {workspaceChrome.showDraftEntry ? (
+                <Space wrap>
+                    <Button onClick={() => navigate('/maintenance/project-draft')}>
+                        项目草案页
+                    </Button>
+                    <Button
+                        type={effectiveLayoutMode === 'execution' ? 'primary' : 'default'}
+                        onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance/inspector' : '/maintenance')}
+                    >
+                        {effectiveLayoutMode === 'execution' ? '打开检视页' : '返回执行页'}
+                    </Button>
+                </Space>
+            ) : null}
+            <Segmented
+                aria-label="视图模式切换"
+                value={viewMode}
+                onChange={v => {
+                    const nextMode = v as typeof viewMode;
+                    if (nextMode === 'explode' && viewState !== 'ISOLATED') {
+                        message.info('请先在总览中点击一个大部件，再进入爆炸图。');
+                        setViewMode('normal');
+                        setExplodeAmount(0);
+                        return;
+                    }
+                    setViewMode(nextMode);
+                    if (nextMode === 'explode') {
+                        setExplodeAmount(prev => Math.max(prev, EXPLODE_DEFAULT_ON_ENTER));
+                    } else if (nextMode === 'normal') {
+                        resetToOverview();
+                    }
+                }}
+                options={[
+                    { label: <><EyeOutlined /> 正常</>, value: 'normal' },
+                    { label: <><ExpandOutlined /> 爆炸图</>, value: 'explode' },
+                ]}
+            />
+        </div>
     );
 
     const quickSelectControl = (
@@ -1212,91 +1221,13 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         />
     );
 
-    const workspaceSwitcherCard = workspaceVariant === 'runtime' ? (
-        <Card size="small">
-            <div style={{ display: 'grid', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ display: 'grid', gap: 4 }}>
-                        <Text strong>
-                            {effectiveLayoutMode === 'execution'
-                                ? '执行页仅保留步骤、工具、播放器与 3D 操作区'
-                                : '检视页聚焦诊断、部件定位与维保详情'}
-                        </Text>
-                        <Text type="secondary">
-                            {effectiveLayoutMode === 'execution'
-                                ? '分析信息已迁移到独立检视页，减少执行中断。'
-                                : '执行步骤与工具操作保留在独立执行页，便于专注完成 SOP。'}
-                        </Text>
-                    </div>
-                    <Space wrap>
-                        <Button onClick={() => navigate('/maintenance/project-draft')}>
-                            项目草案页
-                        </Button>
-                        <Button
-                            type={effectiveLayoutMode === 'execution' ? 'primary' : 'default'}
-                            onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance/inspector' : '/maintenance')}
-                        >
-                            {effectiveLayoutMode === 'execution' ? '打开检视页' : '返回执行页'}
-                        </Button>
-                    </Space>
-                </div>
-
-                {runtimeWorkspaceSession ? (
-                    <Descriptions size="small" column={4} bordered>
-                        <Descriptions.Item label="当前项目">
-                            {runtimeWorkspaceSession.projectLabel ?? runtimeWorkspaceSession.projectId ?? '未选择'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="维保目标">
-                            {runtimeWorkspaceSession.maintenanceGoal || '执行器弯曲维护'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="关注部位">
-                            {runtimeWorkspaceSession.focusArea || '肘关节'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="当前草案">
-                            {runtimeDraft?.draft.title ?? '尚未加载'}
-                        </Descriptions.Item>
-                    </Descriptions>
-                ) : null}
-
-                {runtimeDraft && runtimeManifest?.parts.length ? (
-                    <div style={{ display: 'grid', gap: 8 }}>
-                        <Text strong>当前运行时模型资源</Text>
-                        <Space wrap>
-                            {(runtimeManifest.parts ?? []).map((assetPath) => (
-                                <Button
-                                    key={assetPath}
-                                    size="small"
-                                    type={runtimeSelectedAssetPath === assetPath ? 'primary' : 'default'}
-                                    onClick={() => setRuntimeSelectedAssetPath(assetPath)}
-                                >
-                                    {assetPath}
-                                </Button>
-                            ))}
-                        </Space>
-                    </div>
-                ) : null}
-
-                {runtimeManifest?.reviewWarnings.length ? (
-                    <Alert
-                        type="warning"
-                        showIcon
-                        message={runtimeManifest.reviewWarnings.join('；')}
-                    />
-                ) : null}
-            </div>
-        </Card>
-    ) : null;
-
     return (
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
             <SOPMaintenanceHeader
                 viewModeControl={headerViewModeControl}
                 title={workspaceChrome.title}
-                subtitle={workspaceChrome.subtitle}
                 breadcrumb={workspaceChrome.breadcrumb}
             />
-
-            {workspaceChrome.showDraftEntry ? workspaceSwitcherCard : null}
 
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
                 {showExecutionRail ? (

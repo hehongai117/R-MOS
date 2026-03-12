@@ -5891,3 +5891,36 @@
   - 执行页仍保留工具选择，未改成选择框；这是有意保留，避免把当前步骤的工具操作塞进低效下拉框。
 - Next Step:
   - 如果继续精简，可再评估执行页中的说明文案和播放器空态是否还要收短。
+
+- DateTime: 2026-03-12 16:44:00 CST
+- Task: 删除 SOP 页头部冗余说明文案，并把项目草案/检视页按钮移到头部右侧
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - sed -n '1180,1460p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx -> FAIL（预期红灯；失败原因为 header 仍渲染旧 subtitle）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx -> FAIL（动态测试仍依赖已删除的运行时说明卡内容）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+- Tests:
+  - SOP 页面相关测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` -> PASS（`4 passed, 10 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 运行时工作区横向说明卡已整体移除，连带其中的项目摘要和 review warning 不再在页头展示；当前运行态仍通过 SOP 标题和 `RuntimeAssetPreview` 反映草案已加载。
+  - 这轮只改前端布局，没有对应需要删除的后端接口或数据结构。
+- Next Step:
+  - 如果继续收页，可以评估是否把 3D 卡片标题区的悬停/选中标签也进一步压缩。
