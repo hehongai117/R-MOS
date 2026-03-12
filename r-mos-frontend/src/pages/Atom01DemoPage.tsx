@@ -103,6 +103,8 @@ function Atom01DemoPage() {
 
     // 重置所有关节
     const resetJoints = useCallback(() => {
+        setIsAnimating(false);
+        setAnimationTime(0);
         setJointAngles({ ...NEUTRAL_POSE });
         setFaultJoints([]);
     }, []);

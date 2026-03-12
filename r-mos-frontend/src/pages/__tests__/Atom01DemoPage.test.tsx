@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const viewerState = vi.hoisted(() => ({
   Atom01ViewerMock: ({
@@ -49,6 +49,10 @@ describe('Atom01DemoPage', () => {
     })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('applies an explicit neutral pose when returning to stand', async () => {
     const user = userEvent.setup()
     render(<Atom01DemoPage />)
@@ -82,5 +86,30 @@ describe('Atom01DemoPage', () => {
     expect(viewer.getAttribute('data-left-thigh-pitch')).toBe('0.00')
     expect(viewer.getAttribute('data-right-thigh-pitch')).toBe('0.00')
     expect(viewer.getAttribute('data-fault-count')).toBe('0')
+  })
+
+  it('stops the animation when resetting pose mid-playback', async () => {
+    vi.useFakeTimers()
+    render(<Atom01DemoPage />)
+
+    const viewer = screen.getByTestId('atom01-viewer')
+    const playButton = screen.getByRole('button', { name: 'play-circle 播放行走动画' })
+
+    fireEvent.click(playButton)
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+
+    expect(screen.getByRole('button', { name: 'pause-circle 暂停动画' })).toBeTruthy()
+    expect(viewer.getAttribute('data-left-thigh-pitch')).not.toBe('0.00')
+
+    fireEvent.click(screen.getByRole('button', { name: /重置姿态/i }))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+
+    expect(screen.getByRole('button', { name: 'play-circle 播放行走动画' })).toBeTruthy()
+    expect(viewer.getAttribute('data-left-thigh-pitch')).toBe('0.00')
+    expect(viewer.getAttribute('data-right-thigh-pitch')).toBe('0.00')
   })
 })

@@ -6055,3 +6055,29 @@
   - `antd` `Card.bodyStyle` 仍会在测试中输出废弃告警，这不是本轮回归原因，后续可以单独清理。
 - Next Step:
   - 如果继续精简 3D 展示页，可考虑去掉开发态标签（如 `23 自由度`、`高精度模型`）并评估是否需要把 `关节控制` 拆成更聚焦的演示模式。
+
+- DateTime: 2026-03-12 17:24:00 CST
+- Task: 修复 3D 展示页中“播放动画时重置姿态无效”的剩余回归
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/Atom01DemoPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/Atom01DemoPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx -> FAIL（预期红灯；动画中重置后按钮仍为 `暂停动画`）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：`/atom01` 执行 `播放行走动画 -> 重置姿态`
+- Tests:
+  - 页面回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx` -> PASS（`1 passed, 3 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器人工验证：动画播放中点击 `重置姿态` 后，按钮恢复为 `播放行走动画`，关节显示回到 `0.00`
+- Result: PASS
+- Risks/Notes:
+  - 根因是 `resetJoints` 只重置了姿态数据，没有停掉 `isAnimating` 和 `animationTime`，导致定时动画 effect 紧接着又覆盖了零位姿态。
+  - 本轮仅在 `resetJoints` 中追加 `setIsAnimating(false)` 与 `setAnimationTime(0)`，没有扩大到其他预设按钮。
+- Next Step:
+  - 如果后续用户也要求“动画中点击 `站立` 同样应停止动画”，可以复用这次模式把“预设姿态”切换是否中断动画做成统一策略。
