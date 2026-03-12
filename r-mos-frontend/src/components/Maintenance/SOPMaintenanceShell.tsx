@@ -36,12 +36,10 @@ interface SOPMaintenanceLeftRailProps {
   difficultyLabel: string
   currentStepTitle?: string | null
   steps: SOPMaintenanceLeftRailStep[]
-  explodeControls: ReactNode
   isolationControls?: ReactNode
   sopListContent: ReactNode
   toolSelectorContent: ReactNode
   sopPlayerContent: ReactNode
-  hoverContent: ReactNode
 }
 
 interface SOPMaintenanceExamOverlayProps {
@@ -134,12 +132,10 @@ export function SOPMaintenanceLeftRail({
   difficultyLabel,
   currentStepTitle,
   steps,
-  explodeControls,
   isolationControls,
   sopListContent,
   toolSelectorContent,
   sopPlayerContent,
-  hoverContent,
 }: SOPMaintenanceLeftRailProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -191,12 +187,10 @@ export function SOPMaintenanceLeftRail({
         </div>
       </SectionCard>
 
-      {explodeControls}
       {isolationControls}
       {sopListContent}
       {toolSelectorContent}
       {sopPlayerContent}
-      {hoverContent}
     </div>
   )
 }

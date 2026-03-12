@@ -5863,3 +5863,31 @@
   - `DetailParts` 仍保留组件接线，但执行页已固定不展示；如后续需要恢复，应放回 inspector 页而不是执行页头部。
 - Next Step:
   - 如果继续精简 SOP 页，可以再看左侧执行栏是否还存在非执行必需的信息块。
+
+- DateTime: 2026-03-12 16:34:00 CST
+- Task: 继续精简 SOP 执行页，删除爆炸图控制与当前悬停，并将 SOP 列表改为默认折叠
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/SOPMaintenanceShell.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/SOPMaintenancePage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - rg -n "当前悬停|爆炸图控制|SOP 列表|工具选择|hoverContent|explodeControls" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src /Users/xuhehong/Desktop/r-mos/r-mos-backend/app /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx -> FAIL（预期红灯；失败原因为执行页仍渲染“爆炸图控制”卡片）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：学生账号登录 `student_a@rmos.test / Student@123`，检查 `http://127.0.0.1:55173/maintenance`
+- Tests:
+  - SOP 页面相关测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx src/components/Maintenance/__tests__/SOPMaintenanceShell.test.tsx` -> PASS（`4 passed, 10 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器目检：`/maintenance` 页确认已移除“爆炸图控制”“当前悬停”，`SOP 列表` 默认为“展开 SOP 列表”
+- Result: PASS
+- Risks/Notes:
+  - 本轮已核查后端代码与测试，没有发现专门服务“爆炸图控制”“当前悬停”或左侧收纳状态的独立 API/数据库逻辑，因此没有对应后端文件可删。
+  - 后端保留的 `maintenance draft`、`SOP` 数据接口仍是执行页所需能力，不属于这轮 UI 控件删除范围。
+  - 执行页仍保留工具选择，未改成选择框；这是有意保留，避免把当前步骤的工具操作塞进低效下拉框。
+- Next Step:
+  - 如果继续精简，可再评估执行页中的说明文案和播放器空态是否还要收短。

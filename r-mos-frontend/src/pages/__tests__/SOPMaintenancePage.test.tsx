@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -244,7 +245,9 @@ describe('SOPMaintenancePage', () => {
     clientPostMock.mockResolvedValue({ data: {} })
   })
 
-  it('renders shell layout with accessible 3d region and supports right rail tab switching', async () => {
+  it('renders shell layout with collapsed sop list and without explode or hover helper panels', async () => {
+    const user = userEvent.setup()
+
     render(<SOPMaintenancePage />)
 
     expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
@@ -260,11 +263,20 @@ describe('SOPMaintenancePage', () => {
     expect(screen.queryByText('ScrewInfoStub')).toBeFalsy()
     expect(screen.queryByText('核心件快速定位')).toBeNull()
     expect(screen.queryByText('DiagnosisPanelStub')).toBeNull()
+    expect(screen.queryByText('爆炸图控制')).toBeNull()
+    expect(screen.queryByText('当前悬停')).toBeNull()
+    expect(screen.queryByRole('button', { name: '更换肘关节模组' })).toBeNull()
+    expect(screen.getByRole('button', { name: '展开 SOP 列表' })).toBeTruthy()
     expect(screen.queryByText('维保模式')).toBeNull()
     expect(screen.queryByText('零件总数')).toBeNull()
     expect(screen.queryByText('细节')).toBeNull()
     expect(screen.queryByText('教学模式')).toBeNull()
     expect(screen.queryByText('考试模式')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '展开 SOP 列表' }))
+
+    expect(screen.getByRole('button', { name: '收起 SOP 列表' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '更换肘关节模组' })).toBeTruthy()
   })
 
   it('keeps atom01 maintenance workbench as a dedicated full page without the project draft entry', () => {

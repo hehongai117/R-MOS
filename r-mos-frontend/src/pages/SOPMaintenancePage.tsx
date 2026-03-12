@@ -12,9 +12,8 @@
  */
 
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
-import { Alert, Button, Card, Col, Descriptions, Empty, Row, Segmented, Select, Slider, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Empty, Row, Segmented, Select, Space, Tag, Typography, message } from 'antd';
 import {
-    PartitionOutlined,
     InfoCircleOutlined,
     EyeOutlined,
     ExpandOutlined,
@@ -34,7 +33,6 @@ import DisassemblyDemoAdjudicated from '@/components/Viewer3D/DisassemblyDemoAdj
 import { DisassemblyAnimation } from '@/components/Viewer3D/DisassemblyAnimation';
 import PartInspector from '@/components/Viewer3D/PartInspector';
 import {
-    ISOLATION_DENSITY_CONFIG,
     L0_OVERVIEW_PRESET,
     UI_CAPABILITIES,
     type DetailPart,
@@ -140,16 +138,6 @@ interface BreadcrumbItem {
     nodeId: string | null; // null = 总览
     displayName: string;
 }
-
-// 分组颜色
-const GROUP_COLORS: Record<string, string> = {
-    'base': '#722ed1',
-    'torso': '#13c2c2',
-    'left_arm': '#52c41a',
-    'right_arm': '#faad14',
-    'left_leg': '#1890ff',
-    'right_leg': '#eb2f96',
-};
 
 // 分组中文名
 const GROUP_NAMES: Record<string, string> = {
@@ -269,12 +257,13 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const [hoveredDetailSelection, setHoveredDetailSelection] = useState<DetailPartSelection | null>(null);
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
     const [linkedSOPId, setLinkedSOPId] = useState<string | null>(null);
+    const [isSopListExpanded, setIsSopListExpanded] = useState(false);
     const [sopActionEvent, setSopActionEvent] = useState<SOPActionEvent | null>(null);
     const [selectedScrewId, setSelectedScrewId] = useState<string | null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<string>('part');
     const [focusTarget, setFocusTarget] = useState<string | null>(null);
     const [disassemblyPlaying, setDisassemblyPlaying] = useState(false);
-    const [disassemblyStep, setDisassemblyStep] = useState<string>('');
+    const [, setDisassemblyStep] = useState<string>('');
     const showDetailParts = false;
     const [runtimeWorkspaceSession, setRuntimeWorkspaceSession] = useState<MaintenanceWorkspaceSession | null>(null);
     const [runtimeDraft, setRuntimeDraft] = useState<MaintenanceDraftResponse | null>(null);
@@ -439,12 +428,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const viewerModelScale = viewState === 'ISOLATED'
         ? (selectedOverviewNode ? (ISOLATION_MODEL_SCALE_OVERRIDES[selectedOverviewNode] ?? 1.15) : 1.15)
         : 2;
-
-    const directPickableLimit = isFullscreen ? ISOLATION_DENSITY_CONFIG.N_fullscreen : ISOLATION_DENSITY_CONFIG.N_embed;
-    const directPickableCount = clickableLinks.length;
-    const hitProxyCount = (isolationLevel >= 2 && l2TargetLink) ? l2DetailParts.length : 0;
-    const listEntryCount = (isolationLevel >= 2 && l2TargetLink) ? l2DetailParts.length : 0;
-    const proxies = hitProxyCount + listEntryCount;
 
     useEffect(() => {
         const unsubscribe = scoringEngine.subscribe((state) => {
@@ -1101,79 +1084,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         </Space>
     );
 
-    const leftRailExplodeControls = (
-        <Card size="small" title={<><PartitionOutlined /> 爆炸图控制</>}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-                <div>
-                    <Text>展开程度: {Math.round(explodeAmount * 100)}%</Text>
-                    <Slider
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        value={explodeAmount}
-                        onChange={setExplodeAmount}
-                        disabled={!canAdjustExplode}
-                    />
-                </div>
-                <Space wrap>
-                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0)}>收起</Button>
-                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(0.4)}>40%</Button>
-                    <Button size="small" disabled={!canAdjustExplode} onClick={() => setExplodeAmount(1)}>完全展开</Button>
-                </Space>
-                <Space wrap>
-                    <Tag color={directPickableCount <= directPickableLimit ? 'green' : 'red'}>
-                        可直接点击 {directPickableCount}/{directPickableLimit}
-                    </Tag>
-                    <Tag color={proxies <= ISOLATION_DENSITY_CONFIG.P_max ? 'blue' : 'red'}>
-                        代理入口 {proxies}/{ISOLATION_DENSITY_CONFIG.P_max}
-                    </Tag>
-                    <Tag color={adjudicatedDisassemblyReady ? 'gold' : 'default'}>
-                        {adjudicatedDisassemblyReady ? '裁决级拆卸已就绪' : '当前为普通演示模式'}
-                    </Tag>
-                </Space>
-                <div style={{ marginTop: 12 }}>
-                    <Button
-                        type={disassemblyPlaying ? 'primary' : 'default'}
-                        danger={disassemblyPlaying}
-                        size="small"
-                        block
-                        onClick={() => {
-                            setDisassemblyPlaying(!disassemblyPlaying);
-                            if (disassemblyPlaying) {
-                                setDisassemblyStep('');
-                                setExplodeAmount(0);
-                            }
-                        }}
-                    >
-                        {disassemblyPlaying
-                            ? '⏹ 停止拆卸动画'
-                            : adjudicatedDisassemblyReady
-                                ? '▶ 播放裁决级拆卸'
-                                : '▶ 播放拆卸动画'}
-                    </Button>
-                    <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
-                        {adjudicatedDisassemblyReady
-                            ? '已选择螺丝和工具，播放后将进入裁决校验；失败时显示阻断并回滚。'
-                            : '当前仅播放序列演示。选中螺丝并选择工具后可切换为裁决级拆卸。'}
-                    </Text>
-                    {disassemblyStep && (
-                        <div style={{
-                            marginTop: 6,
-                            padding: '4px 8px',
-                            background: 'rgba(24,144,255,0.12)',
-                            borderRadius: 4,
-                            fontSize: 12,
-                            color: '#69c0ff',
-                            textAlign: 'center',
-                        }}>
-                            {disassemblyStep}
-                        </div>
-                    )}
-                </div>
-            </Space>
-        </Card>
-    );
-
     const leftRailIsolationControls = viewState === 'ISOLATED' && isolationSets ? (
         <Card size="small" title="🧩 当前部位子组件">
             <Space direction="vertical" style={{ width: '100%' }} size="small">
@@ -1208,12 +1118,24 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     ) : null;
 
     const leftRailSopListContent = (
-        <Card size="small" title="📚 SOP 列表（联动）">
+        <Card
+            size="small"
+            title="📚 SOP 列表"
+            extra={(
+                <Button
+                    size="small"
+                    type="text"
+                    onClick={() => setIsSopListExpanded((prev) => !prev)}
+                >
+                    {isSopListExpanded ? '收起 SOP 列表' : '展开 SOP 列表'}
+                </Button>
+            )}
+        >
             <Space direction="vertical" style={{ width: '100%' }} size="small">
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    点击列表项会同步播放器和中间 3D 视图。
+                    默认收起，避免打断执行；展开后可切换到其他 SOP。
                 </Text>
-                {availableSopScripts.map((sop) => {
+                {isSopListExpanded ? availableSopScripts.map((sop) => {
                     const isActive = sop.sopId === linkedSOPId;
                     return (
                         <Button
@@ -1226,7 +1148,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                             {sop.title}
                         </Button>
                     );
-                })}
+                }) : null}
                 {sopSceneSync.state.selectedSopId && (
                     <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
                         <Space wrap>
@@ -1288,32 +1210,6 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             onSummarize={handleSummarize}
             onExecutorReady={setSopExecutor}
         />
-    );
-
-    const leftRailHoverContent = (
-        <Card size="small" title={<><InfoCircleOutlined /> 当前悬停</>}>
-            {hoveredDetailRecord ? (
-                <Space direction="vertical" size="small">
-                    <Text strong>{hoveredDetailRecord.displayName}</Text>
-                    <Tag color="geekblue">{hoveredDetailRecord.categoryLabel}</Tag>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        所属总成：{hoveredDetailRecord.parentDisplayName}
-                    </Text>
-                </Space>
-            ) : hoveredPart ? (
-                <Space direction="vertical" size="small">
-                    <Text strong>{hoveredPart.displayName}</Text>
-                    <Tag color={GROUP_COLORS[hoveredPart.group]}>
-                        {GROUP_NAMES[hoveredPart.group]}
-                    </Tag>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {hoveredPart.name}
-                    </Text>
-                </Space>
-            ) : (
-                <Text type="secondary">移动鼠标到零件上查看信息</Text>
-            )}
-        </Card>
     );
 
     const workspaceSwitcherCard = workspaceVariant === 'runtime' ? (
@@ -1416,12 +1312,10 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                                 onFailureAction: step.onFailure?.action,
                                 hasCriticalFailureReason: step.failureReasons?.some((reason) => reason.severity === 'critical') ?? false,
                             }))}
-                            explodeControls={leftRailExplodeControls}
                             isolationControls={leftRailIsolationControls}
                             sopListContent={leftRailSopListContent}
                             toolSelectorContent={leftRailToolSelectorContent}
                             sopPlayerContent={leftRailSopPlayerContent}
-                            hoverContent={leftRailHoverContent}
                         />
                     </Col>
                 ) : null}
