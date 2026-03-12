@@ -91,8 +91,11 @@ describe('AgentWorkbenchPage', () => {
     const user = userEvent.setup();
     render(<AgentWorkbenchPage />);
 
-    await user.click(screen.getAllByRole('button', { name: /派单维保/ })[0]);
-    await user.click(screen.getByRole('button', { name: /发送/ }));
+    expect(screen.queryByText('快捷操作')).toBeNull();
+    expect(screen.getAllByRole('button', { name: /派单维保/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /查看任务/ })).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: '派单维保' }));
 
     await waitFor(() => {
       expect(sendAgentRequestV2Mock).toHaveBeenCalledTimes(1);
@@ -250,8 +253,7 @@ describe('AgentWorkbenchPage', () => {
     const user = userEvent.setup();
     render(<AgentWorkbenchPage />);
 
-    await user.click(screen.getAllByRole('button', { name: /诊断问题/ })[0]);
-    await user.click(screen.getByRole('button', { name: /发送/ }));
+    await user.click(screen.getByRole('button', { name: '诊断问题' }));
 
     await waitFor(() => {
       expect(screen.getByText('诊断完成')).toBeTruthy();
@@ -260,6 +262,9 @@ describe('AgentWorkbenchPage', () => {
       expect(screen.getByText('电机堵转')).toBeTruthy();
     });
     expect(screen.getByText('仿真验证')).toBeTruthy();
+    expect(screen.getByText('关键变化')).toBeTruthy();
+    expect(screen.getByText('故障数量')).toBeTruthy();
+    expect(screen.queryByText('fault_count')).toBeNull();
     expect(sendAgentRequestV2Mock).toHaveBeenCalledWith(
       expect.objectContaining({
         intent_classification: 'delegate-diagnoser',
@@ -343,8 +348,7 @@ describe('AgentWorkbenchPage', () => {
     const user = userEvent.setup();
     render(<AgentWorkbenchPage />);
 
-    await user.click(screen.getAllByRole('button', { name: /诊断问题/ })[0]);
-    await user.click(screen.getByRole('button', { name: /发送/ }));
+    await user.click(screen.getByRole('button', { name: '诊断问题' }));
 
     await waitFor(() => {
       expect((screen.getByRole('button', { name: '确认执行方案' }) as HTMLButtonElement).disabled).toBe(false);
@@ -433,8 +437,7 @@ describe('AgentWorkbenchPage', () => {
     const user = userEvent.setup();
     render(<AgentWorkbenchPage />);
 
-    await user.click(screen.getAllByRole('button', { name: /诊断问题/ })[0]);
-    await user.click(screen.getByRole('button', { name: /发送/ }));
+    await user.click(screen.getByRole('button', { name: '诊断问题' }));
 
     await waitFor(() => {
       expect((screen.getByRole('button', { name: '上报教师审核' }) as HTMLButtonElement).disabled).toBe(false);

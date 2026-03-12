@@ -96,6 +96,76 @@ function buildEvidenceChips(hypothesis: FaultHypothesis): string[] {
   return [...chips, ...hypothesis.possible_causes]
 }
 
+function formatVerificationLabel(key: string): string {
+  const labelMap: Record<string, string> = {
+    fault_count: '故障数量',
+    error_code: '故障码',
+    joint_status: '关节状态',
+    joint_position: '关节位置',
+    temperature: '温度',
+    torque: '扭矩',
+    current: '电流',
+    voltage: '电压',
+    pressure: '压力',
+  }
+
+  if (labelMap[key]) {
+    return labelMap[key]
+  }
+
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatVerificationValue(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(formatVerificationValue).join('、')
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+    if ('before' in (value as Record<string, unknown>) || 'after' in (value as Record<string, unknown>)) {
+      const before = formatVerificationValue((value as Record<string, unknown>).before)
+      const after = formatVerificationValue((value as Record<string, unknown>).after)
+      return `${before} -> ${after}`
+    }
+    return entries
+      .map(([entryKey, entryValue]) => `${formatVerificationLabel(entryKey)}: ${formatVerificationValue(entryValue)}`)
+      .join('；')
+  }
+
+  return '未返回'
+}
+
+function buildVerificationHighlights(
+  verificationResult: VerificationResult | null,
+): Array<{ label: string; value: string }> {
+  if (!verificationResult) {
+    return []
+  }
+
+  const highlights = Object.entries(verificationResult.delta_summary || {}).map(([key, value]) => ({
+    label: formatVerificationLabel(key),
+    value: formatVerificationValue(value),
+  }))
+
+  if (highlights.length > 0) {
+    return highlights
+  }
+
+  const beforeState = verificationResult.before_state || {}
+  const afterState = verificationResult.after_state || {}
+  return Object.keys({ ...beforeState, ...afterState }).map((key) => ({
+    label: formatVerificationLabel(key),
+    value: `${formatVerificationValue(beforeState[key])} -> ${formatVerificationValue(afterState[key])}`,
+  }))
+}
+
 export function DiagnosisPanel({
   diagnosisResult,
   maintenancePlan,
@@ -107,6 +177,10 @@ export function DiagnosisPanel({
   const [animateBars, setAnimateBars] = useState(false)
 
   const hypotheses = useMemo(() => buildSortedHypotheses(diagnosisResult), [diagnosisResult])
+  const verificationHighlights = useMemo(
+    () => buildVerificationHighlights(verificationResult),
+    [verificationResult],
+  )
   const requiresSupervisor = diagnosisResult?.requires_supervisor || maintenancePlan?.requires_supervisor || false
 
   useEffect(() => {
@@ -286,11 +360,22 @@ export function DiagnosisPanel({
               status={verificationResult.success ? 'success' : 'error'}
               label={verificationResult.verdict || (verificationResult.success ? '验证通过' : '验证未通过')}
             />
-            {Object.keys(verificationResult.delta_summary || {}).length > 0 ? (
-              <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-bg-overlay p-3 text-xs text-text-secondary">
-                {JSON.stringify(verificationResult.delta_summary, null, 2)}
-              </pre>
-            ) : null}
+            {verificationHighlights.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">关键变化</div>
+                {verificationHighlights.map((highlight) => (
+                  <div
+                    key={`${highlight.label}-${highlight.value}`}
+                    className="rounded-lg border border-border-subtle bg-bg-surface p-3"
+                  >
+                    <div className="text-xs text-text-muted">{highlight.label}</div>
+                    <div className="mt-1 text-sm text-text-primary">{highlight.value}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-text-secondary">仿真已执行，但没有返回可展示的变化摘要。</div>
+            )}
             {verificationResult.failed_steps.length ? (
               <div className="text-xs text-danger">失败步骤：{verificationResult.failed_steps.join('、')}</div>
             ) : null}

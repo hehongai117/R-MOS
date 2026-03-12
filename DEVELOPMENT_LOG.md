@@ -5673,3 +5673,32 @@
   - `general / execution / coach / knowledge` 目前已不再是 placeholder，但仍属于规则/模板型回复，不包含新的外部依赖或复杂状态持久化。
 - Next Step:
   - 继续逐页处理剩余工作台页面问题；如果继续深挖 AI 工作台，可再补“上报教师审核”后的教师侧可见待办和更细的知识查询结果卡片。
+
+- DateTime: 2026-03-12 15:16:00 CST
+- Task: 收敛 AI 工作台入口按钮，并把诊断结果中的仿真验证输出改成用户可读摘要
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/DiagnosisPanel.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill ui-ux-pro-max
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - git diff --name-only
+- Tests:
+  - 前端测试红灯验证：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` -> FAIL（预期失败，原因为页面仍保留“快捷操作”区且诊断面板仍渲染原始 `delta_summary`）
+  - 前端测试绿灯验证：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/agent/__tests__/AgentWorkbenchPage.test.tsx src/components/DiagnosisPanel/__tests__/DiagnosisPanel.test.tsx` -> PASS（`8 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 本次只调整 AI 工作台前端交互，没有变更后端接口和权限模型。
+  - 六个快捷动作目前统一为“直接发送”行为，不再保留右侧预填充入口。
+  - 仿真验证已去掉原始 JSON 展示，但故障假设中的证据 chip 仍保留技术字段，后续如需进一步弱化可继续调整。
+- Next Step:
+  - 继续观察 AI 工作台实机使用反馈；如果诊断区仍显得偏技术化，可进一步把证据 chip 和部件字段改成更业务化的话术。

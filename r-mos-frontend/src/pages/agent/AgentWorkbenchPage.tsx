@@ -423,7 +423,7 @@ function AgentWorkbenchPage() {
             <EmptyState
               icon={Sparkles}
               title="R-MOS 维保智能体"
-              description="告诉我你需要什么，我会基于当前工作台上下文生成响应。也可以先从右侧快捷操作开始。"
+              description="告诉我你需要什么，我会基于当前工作台上下文生成响应。也可以先从下方快捷动作直接开始。"
             />
           ) : (
             <ScrollArea className="min-h-0 flex-1">
@@ -528,7 +528,7 @@ function AgentWorkbenchPage() {
               />
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2">
-                  {quickActions.slice(0, 3).map((action) => (
+                  {quickActions.map((action) => (
                     <Button
                       key={action.id}
                       size="sm"
@@ -550,38 +550,6 @@ function AgentWorkbenchPage() {
       </div>
 
       <div className="w-80 shrink-0 space-y-4">
-        <SectionCard
-          title="快捷操作"
-          description="将常用场景收敛为可直接触发的动作"
-        >
-          <div className="space-y-2">
-            {quickActions.map((action) => {
-              const Icon = action.icon
-              return (
-                <button
-                  key={action.id}
-                  type="button"
-                  className="flex w-full items-start gap-3 rounded-xl border border-border-subtle bg-bg-surface px-3 py-3 text-left transition-colors hover:bg-bg-elevated"
-                  onClick={() => {
-                    setIntent(action.intent)
-                    setInput(action.prompt)
-                  }}
-                >
-                  <span className="mt-1 rounded-lg border border-primary/20 bg-primary-muted p-2 text-primary">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm text-primary">{action.title}</span>
-                    <span className="mt-1 block text-xs leading-5 text-text-muted">
-                      {action.desc}
-                    </span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </SectionCard>
-
         <SectionCard title="当前任务信息" description="基于最近一条响应推导当前上下文">
           <div className="space-y-4">
             <div className="rounded-lg border border-border-subtle bg-bg-elevated p-3">
@@ -607,7 +575,7 @@ function AgentWorkbenchPage() {
                 <span>
                   {latestTraceId
                     ? '查看轨迹、补充证据，或继续发送下一条任务指令。'
-                    : '先从快捷操作选择意图，再在输入区补充更具体的上下文。'}
+                    : '先用下方快捷动作发起请求，或在输入区补充更具体的上下文。'}
                 </span>
               </div>
             </div>
