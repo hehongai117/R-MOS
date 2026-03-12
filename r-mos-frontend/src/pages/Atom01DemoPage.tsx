@@ -56,9 +56,16 @@ const JOINT_GROUPS = {
     ],
 };
 
+const NEUTRAL_POSE = Object.values(JOINT_GROUPS)
+    .flat()
+    .reduce<Record<string, number>>((pose, joint) => {
+        pose[joint.name] = 0;
+        return pose;
+    }, {});
+
 // 预设动作
 const PRESET_POSES = {
-    stand: {},  // 零位站立
+    stand: NEUTRAL_POSE,  // 零位站立
     walk: {
         left_thigh_pitch_joint: 0.5,
         left_knee_joint: 1.0,
@@ -96,13 +103,13 @@ function Atom01DemoPage() {
 
     // 重置所有关节
     const resetJoints = useCallback(() => {
-        setJointAngles({});
+        setJointAngles({ ...NEUTRAL_POSE });
         setFaultJoints([]);
     }, []);
 
     // 应用预设姿态
     const applyPreset = useCallback((preset: keyof typeof PRESET_POSES) => {
-        setJointAngles(PRESET_POSES[preset]);
+        setJointAngles({ ...PRESET_POSES[preset] });
     }, []);
 
     // 模拟故障

@@ -6019,3 +6019,39 @@
   - 路由兼容采用前端重定向到 `/maintenance`，可以避免旧书签/旧链接直接失效。
 - Next Step:
   - 如果继续收敛 SOP 页面，可评估是否删除 `workspaceVariant=\"atom01\"` 分支和相关测试，只保留统一的 `SOP 工作台`。
+
+- DateTime: 2026-03-12 17:15:00 CST
+- Task: 修复 3D 展示页中 `重置姿态` 与 `站立` 按钮失效，并核查页面主要交互
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/Atom01DemoPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - rg -n "export default function Atom01Viewer|function Atom01Viewer|const Atom01Viewer|jointAngles" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Viewer.tsx
+  - sed -n '120,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Model.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx -> FAIL（先因 `window.matchMedia` 缺失报错；补齐测试环境后再次执行）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx -> FAIL（预期红灯；`站立/重置` 返回 `unset` 而非显式 `0.00`）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：打开 `http://127.0.0.1:55173/atom01`，验证 `行走 -> 站立 -> 重置姿态`、`播放/暂停动画`、分组切换、故障开关、`下蹲`、`举手`
+- Tests:
+  - 页面回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx` -> PASS（`1 passed, 2 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器人工验证：
+    - `行走` 会更新关节数值，`站立` 会把代表关节回到 `0.00`
+    - `重置姿态` 会清除故障标记并把当前分组的关节恢复到 `0.00`
+    - `播放行走动画` 与 `暂停动画` 切换正常，动画期间滑块会禁用
+    - 分组切换可切到 `右臂`，故障开关会显示 `1 个故障`
+    - `下蹲`、`举手` 预设仍可更新对应关节
+- Result: PASS
+- Risks/Notes:
+  - 根因不是按钮没有触发，而是 `stand/reset` 传了空姿态对象，`Atom01Model` 只会更新“有值的关节”，导致模型保留上一次旋转。
+  - 本次采用最小修复：在页面层定义显式零位姿态，并仅用于 `站立` 与 `重置姿态`；没有改动 3D 组件的局部关节更新语义。
+  - `antd` `Card.bodyStyle` 仍会在测试中输出废弃告警，这不是本轮回归原因，后续可以单独清理。
+- Next Step:
+  - 如果继续精简 3D 展示页，可考虑去掉开发态标签（如 `23 自由度`、`高精度模型`）并评估是否需要把 `关节控制` 拆成更聚焦的演示模式。
