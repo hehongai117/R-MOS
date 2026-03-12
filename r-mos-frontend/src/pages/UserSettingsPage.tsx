@@ -22,7 +22,7 @@ export default function UserSettingsPage() {
 
         const loadPreference = async () => {
             try {
-                const response = await apiClient.get('/api/v1/agent/preference')
+                const response = await apiClient.get('/agent/preference')
                 if (cancelled) {
                     return
                 }
@@ -51,7 +51,7 @@ export default function UserSettingsPage() {
         setSaving(true)
         setMessage(null)
         try {
-            await apiClient.patch('/api/v1/auth/profile', { full_name: fullName })
+            await apiClient.patch('/auth/profile', { full_name: fullName })
             setMessage({ type: 'success', text: '个人信息已更新' })
         } catch {
             setMessage({ type: 'error', text: '更新失败，请重试' })
@@ -73,7 +73,7 @@ export default function UserSettingsPage() {
         setSaving(true)
         setMessage(null)
         try {
-            await apiClient.post('/api/v1/auth/change-password', {
+            await apiClient.post('/auth/change-password', {
                 current_password: currentPassword,
                 new_password: newPassword,
             })
@@ -98,7 +98,7 @@ export default function UserSettingsPage() {
         setSaving(true)
         setMessage(null)
         try {
-            const response = await apiClient.put('/api/v1/agent/preference/llm', {
+            const response = await apiClient.put('/agent/preference/llm', {
                 provider: provider.trim(),
                 model: model.trim(),
                 base_url: baseUrl.trim(),

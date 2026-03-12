@@ -1,21 +1,27 @@
 import {
   AlertTriangle,
+  Bot,
   CheckCircle2,
   ChevronDown,
   Circle,
   Dumbbell,
   Expand,
+  FileUp,
+  ListChecks,
   Maximize2,
   RefreshCw,
   Send,
+  Sparkles,
+  Wrench,
   XCircle,
 } from 'lucide-react'
-import { type ChangeEvent, useEffect, useMemo, useState } from 'react'
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Spin } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from 'zustand'
 
 import {
+  generateTrainingWorkbenchDraft,
   getActiveTrainingSession,
   getTrainingSessionDetail,
   type SessionDetailResponse,
@@ -117,6 +123,7 @@ function buildStep(step: SessionDetailResponse['steps'][number], session: Sessio
     durationSec: step.duration_sec ?? undefined,
     status: mapStepStatus(step.status, session.current_step, step.step_index),
     instruction: fallback.instruction,
+    evidenceHint: '建议上传本步骤关键动作截图、工具状态照片或设备局部特写。',
     tools: fallback.tools,
   }
 }
@@ -186,6 +193,11 @@ function TrainingWorkbenchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showVerdictDetail, setShowVerdictDetail] = useState(false)
+  const [draftRobotModel, setDraftRobotModel] = useState('ATOM01')
+  const [draftTaskSummary, setDraftTaskSummary] = useState('关节电机盖拆装')
+  const [draftFocusPrompt, setDraftFocusPrompt] = useState('强调工具确认、证据留存与 AI 提示')
+  const [draftLoading, setDraftLoading] = useState(false)
+  const [draftError, setDraftError] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -309,6 +321,26 @@ function TrainingWorkbenchPage() {
     })
   }
 
+  const handleGenerateDraft = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setDraftLoading(true)
+    setDraftError(null)
+
+    try {
+      const draft = await generateTrainingWorkbenchDraft({
+        robotModel: draftRobotModel.trim() || 'ATOM01',
+        taskSummary: draftTaskSummary.trim() || '关节电机盖拆装',
+        focusPrompt: draftFocusPrompt.trim() || '强调工具确认、证据留存与 AI 提示',
+      })
+      hydrateTrainingProject(draft)
+      setError(null)
+    } catch (requestError) {
+      setDraftError(requestError instanceof Error ? requestError.message : '训练草案生成失败')
+    } finally {
+      setDraftLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
@@ -325,12 +357,104 @@ function TrainingWorkbenchPage() {
           subtitle="步骤编排、工具确认、证据上传与 AI 提示统一在此处理"
           breadcrumb={['学生端', '训练工作台']}
         />
-        <EmptyState
-          action={{ label: '去 AI 工作台创建训练', onClick: () => navigate('/ai-chat') }}
-          description={error ?? '当前没有可恢复的训练项目，可先到 AI 工作台创建训练任务。'}
-          icon={Dumbbell}
-          title="还没有训练项目"
-        />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+          <SectionCard
+            className="overflow-hidden"
+            description="使用当前账号在设置页保存的大模型配置，生成可直接展示的训练工作台草案。"
+            title="AI 生成训练草案"
+          >
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <form className="space-y-4" onSubmit={(event) => void handleGenerateDraft(event)}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    <span>机器人型号</span>
+                    <Input
+                      aria-label="机器人型号"
+                      value={draftRobotModel}
+                      onChange={(event) => setDraftRobotModel(event.target.value)}
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    <span>训练任务</span>
+                    <Input
+                      aria-label="训练任务"
+                      value={draftTaskSummary}
+                      onChange={(event) => setDraftTaskSummary(event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <label className="space-y-2 text-sm text-text-secondary">
+                  <span>AI 生成重点</span>
+                  <Input
+                    aria-label="AI 生成重点"
+                    value={draftFocusPrompt}
+                    onChange={(event) => setDraftFocusPrompt(event.target.value)}
+                  />
+                </label>
+
+                {(draftError || error) ? (
+                  <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+                    {draftError ?? error}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap gap-3">
+                  <Button disabled={draftLoading} type="submit">
+                    <Sparkles className="h-4 w-4" />
+                    {draftLoading ? '生成中…' : '生成训练草案'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => navigate('/settings')}>
+                    去设置页检查模型配置
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => navigate('/ai-chat')}>
+                    去 AI 工作台
+                  </Button>
+                </div>
+              </form>
+
+              <div className="rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top,_rgba(0,153,255,0.18),_transparent_58%),linear-gradient(180deg,rgba(12,21,40,0.96),rgba(6,12,24,0.92))] p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-primary/70">Preview</div>
+                <div className="mt-3 text-lg font-semibold text-text-primary">
+                  生成后会直接铺开完整训练画布
+                </div>
+                <div className="mt-2 text-sm leading-6 text-text-secondary">
+                  包括步骤编排、工具确认、证据上传提示和 AI 助手首轮建议，方便先看页面结构，再决定是否正式建训练项目。
+                </div>
+                <div className="mt-5 space-y-3">
+                  {[
+                    { icon: ListChecks, title: '步骤编排', detail: '3 到 5 个训练步骤，首步自动激活' },
+                    { icon: Wrench, title: '工具确认', detail: '关键工具带确认状态与异常建议' },
+                    { icon: FileUp, title: '证据上传', detail: '每步附带证据留存提示' },
+                    { icon: Bot, title: 'AI 提示', detail: '生成教师提示与 AI 助手开场建议' },
+                  ].map((item) => (
+                    <div key={item.title} className="flex items-start gap-3 rounded-xl bg-white/5 px-3 py-3">
+                      <item.icon className="mt-0.5 h-4 w-4 text-primary" />
+                      <div>
+                        <div className="text-sm font-medium text-text-primary">{item.title}</div>
+                        <div className="text-xs leading-5 text-text-muted">{item.detail}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            description="如果暂时不需要 AI 生成，也可以从现有入口继续使用。"
+            title="当前状态"
+          >
+            <div className="space-y-4">
+              <EmptyState
+                action={{ label: '去 AI 工作台创建训练', onClick: () => navigate('/ai-chat') }}
+                description={error ?? '当前没有可恢复的训练项目，可先生成一份草案，或继续从 AI 工作台创建正式训练任务。'}
+                icon={Dumbbell}
+                title="还没有训练项目"
+              />
+            </div>
+          </SectionCard>
+        </div>
       </div>
     )
   }
@@ -437,7 +561,9 @@ function TrainingWorkbenchPage() {
                     <div className="text-sm text-text-primary">
                       {evidenceName ? `已选择证据：${evidenceName}` : '拖拽或点击上传证据'}
                     </div>
-                    <div className="mt-1 text-xs text-text-muted">建议上传步骤照片或关键操作截图</div>
+                    <div className="mt-1 text-xs text-text-muted">
+                      {currentStep.evidenceHint ?? '建议上传步骤照片或关键操作截图'}
+                    </div>
                   </label>
 
                   <Tooltip>

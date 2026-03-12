@@ -5533,3 +5533,39 @@
   - 工作区仍存在无关未跟踪文件 `add_rmos_to_ppt.py`、`reorder_pptx.py`、`reorder_slides.py`，本次未处理。
 - Next Step:
   - 在浏览器里用学生账号进入 `/settings`，手工验证保存后提示、掩码展示以及重新打开页面后的回填表现。
+
+- DateTime: 2026-03-12 12:20:00 CST
+- Task: 为训练工作台补齐 AI 训练草案生成页，并验证学生个人大模型配置可驱动真实页面生成
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/api/v1/endpoints/training.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/llm/router.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/app/services/training/workbench_draft_generator.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_training_workbench_draft_api.py
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/api/training.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/TrainingWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/UserSettingsPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/TrainingWorkbenchPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/UserSettingsPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/store/workbenchStore.ts
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:verification-before-completion
+  - sed -n '1,280p' r-mos-frontend/src/pages/TrainingWorkbenchPage.tsx
+  - sed -n '1,260p' r-mos-frontend/src/store/workbenchStore.ts
+  - /bin/zsh -lc "cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && uvicorn main:app --host 127.0.0.1 --port 8000"
+  - /bin/zsh -lc "cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_training_workbench_draft_api.py tests/unit/test_user_preference_api.py -q"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/UserSettingsPage.test.tsx src/pages/__tests__/TrainingWorkbenchPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - git diff --name-only
+- Tests:
+  - 后端接口回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-backend && source .venv/bin/activate && export DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/postgres && pytest tests/unit/test_training_workbench_draft_api.py tests/unit/test_user_preference_api.py -q` -> PASS（`3 passed`）
+  - 前端页面测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/UserSettingsPage.test.tsx src/pages/__tests__/TrainingWorkbenchPage.test.tsx` -> PASS（`2 files, 4 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器实测：学生账号在 `/workbench/training` 点击“生成训练草案”后，后端实际向 MiniMax 发起 `POST https://api.minimaxi.com/v1/chat/completions`，返回 `200 OK`，整页在约 `28.5s` 内生成了步骤编排、工具确认、证据提示和 AI/教师提示内容
+- Result: PASS
+- Risks/Notes:
+  - 训练草案接口依赖用户在设置页保存的个人 `provider/model/api_key/base_url`；若未配置完整，页面会在空态直接报错并停留在草案生成卡片。
+  - MiniMax 实测响应时间接近 30 秒，因此前端草案生成请求超时已放宽到 90 秒；若后续切换更慢模型，可能还需要异步任务化。
+  - MiniMax 可能返回带 `<think>` 包裹的非结构化文本；后端已增加清洗与安全回退模板，避免原始思维链直接展示到页面。
+- Next Step:
+  - 继续逐页排查剩余工作台问题，优先处理训练工作台后续的提交、证据上传和步骤切换交互。

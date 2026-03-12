@@ -52,6 +52,41 @@ export interface SessionDetailResponse {
   }>
 }
 
+export interface TrainingWorkbenchDraftPayload {
+  robotModel: string
+  taskSummary: string
+  focusPrompt: string
+}
+
+export interface TrainingWorkbenchDraftResponse {
+  project: {
+    sessionId: string
+    projectId: string
+    title: string
+    progressPercent: number
+  }
+  steps: Array<{
+    id: string
+    title: string
+    status: 'pending' | 'active' | 'passed' | 'failed'
+    instruction: string
+    evidenceHint?: string
+    tools: Array<{
+      id: string
+      name: string
+      spec?: string
+      isCritical?: boolean
+      recommendation?: string
+    }>
+  }>
+  messages: Array<{
+    id: string
+    role: 'assistant' | 'teacher' | 'user'
+    content: string
+    createdAt: string
+  }>
+}
+
 export async function getStudentProfile(userId: number) {
   const response = await apiClient.get<SkillProfileResponse>(`/students/${userId}/profile`)
   return response.data
@@ -75,4 +110,51 @@ export async function getActiveTrainingSession(userId: number) {
 export async function getTrainingSessionDetail(sessionId: string) {
   const response = await apiClient.get<SessionDetailResponse>(`/training/sessions/${sessionId}/detail`)
   return response.data
+}
+
+export async function generateTrainingWorkbenchDraft(
+  payload: TrainingWorkbenchDraftPayload,
+): Promise<TrainingWorkbenchDraftResponse> {
+  const response = await apiClient.post('/training/workbench/draft', {
+    robot_model: payload.robotModel,
+    task_summary: payload.taskSummary,
+    focus_prompt: payload.focusPrompt,
+  }, {
+    timeout: 90000,
+  })
+
+  return {
+    project: {
+      sessionId: response.data.project.session_id,
+      projectId: response.data.project.project_id,
+      title: response.data.project.title,
+      progressPercent: response.data.project.progress_percent,
+    },
+    steps: response.data.steps.map((step: Record<string, unknown>) => ({
+      id: String(step.id),
+      title: String(step.title),
+      status: step.status as 'pending' | 'active' | 'passed' | 'failed',
+      instruction: String(step.instruction),
+      evidenceHint: typeof step.evidence_hint === 'string' ? step.evidence_hint : undefined,
+      tools: Array.isArray(step.tools)
+        ? step.tools.map((tool) => {
+            const toolRecord = tool as Record<string, unknown>
+            return {
+              id: String(toolRecord.id),
+              name: String(toolRecord.name),
+              spec: typeof toolRecord.spec === 'string' ? toolRecord.spec : undefined,
+              isCritical: Boolean(toolRecord.is_critical),
+              recommendation:
+                typeof toolRecord.recommendation === 'string' ? toolRecord.recommendation : undefined,
+            }
+          })
+        : [],
+    })),
+    messages: response.data.messages.map((message: Record<string, unknown>) => ({
+      id: String(message.id),
+      role: message.role as 'assistant' | 'teacher' | 'user',
+      content: String(message.content),
+      createdAt: String(message.created_at),
+    })),
+  }
 }

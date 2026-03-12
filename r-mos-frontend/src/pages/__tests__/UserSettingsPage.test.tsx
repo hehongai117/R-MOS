@@ -106,7 +106,7 @@ describe('UserSettingsPage', () => {
     await user.click(screen.getByRole('button', { name: '保存大模型配置' }))
 
     await waitFor(() => {
-      expect(putMock).toHaveBeenCalledWith('/api/v1/agent/preference/llm', {
+      expect(putMock).toHaveBeenCalledWith('/agent/preference/llm', {
         provider: 'anthropic',
         model: 'claude-3-7-sonnet-latest',
         base_url: 'https://api.anthropic.com',

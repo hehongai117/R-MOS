@@ -19,6 +19,7 @@ from app.services.training.submission_service import SubmissionService
 from app.services.training.feedback_generator import FeedbackGenerator, FeedbackRole
 from app.services.identity.class_membership import ClassMembershipService
 from app.services.memory.skill_profile_service import SkillProfileService
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.models.training_submission import TrainingSubmission
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,52 @@ class ProjectGenerateResponse(BaseModel):
     project_id: str
     project: dict
     estimated_duration_minutes: int
+
+
+class WorkbenchDraftRequest(BaseModel):
+    """训练工作台空态草案生成请求。"""
+
+    robot_model: str = Field(default="ATOM01", min_length=1)
+    task_summary: str = Field(default="关节电机盖拆装", min_length=1)
+    focus_prompt: str = Field(default="强调工具确认、证据留存与 AI 提示", min_length=1)
+
+
+class WorkbenchDraftToolResponse(BaseModel):
+    id: str
+    name: str
+    spec: str
+    is_critical: bool = False
+    recommendation: Optional[str] = None
+
+
+class WorkbenchDraftStepResponse(BaseModel):
+    id: str
+    title: str
+    status: str
+    instruction: str
+    evidence_hint: str
+    tools: list[WorkbenchDraftToolResponse] = Field(default_factory=list)
+
+
+class WorkbenchDraftMessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: datetime
+
+
+class WorkbenchDraftProjectResponse(BaseModel):
+    session_id: str
+    project_id: str
+    title: str
+    summary: str
+    progress_percent: int
+
+
+class WorkbenchDraftResponse(BaseModel):
+    project: WorkbenchDraftProjectResponse
+    steps: list[WorkbenchDraftStepResponse] = Field(default_factory=list)
+    messages: list[WorkbenchDraftMessageResponse] = Field(default_factory=list)
 
 
 class SubmitSessionRequest(BaseModel):
@@ -224,6 +271,37 @@ async def generate_training_project(
             yield f"data: {json.dumps({'status': 'error', 'error': str(e)})}\n\n"
 
     return StreamingResponse(sse_stream(), media_type="text/event-stream")
+
+
+@router.post(
+    "/training/workbench/draft",
+    response_model=WorkbenchDraftResponse,
+    tags=["Training"],
+)
+async def generate_training_workbench_draft(
+    request: WorkbenchDraftRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """为训练工作台空态生成 AI 草案。"""
+    try:
+        from app.services.training.workbench_draft_generator import TrainingWorkbenchDraftGenerator
+
+        payload = await TrainingWorkbenchDraftGenerator(db).generate(
+            user_id=actor.user_id,
+            robot_model=request.robot_model,
+            task_summary=request.task_summary,
+            focus_prompt=request.focus_prompt,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=502, detail="AI 返回结果无法解析为训练草案") from exc
+    except Exception as exc:
+        logger.error(f"[training-workbench] draft generation failed: {exc}")
+        raise HTTPException(status_code=502, detail="训练草案生成失败，请稍后重试") from exc
+
+    return WorkbenchDraftResponse(**payload)
 
 
 # ============ UF-06: Session Routes ============

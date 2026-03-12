@@ -24,6 +24,7 @@ export interface WorkbenchStep {
   durationSec?: number
   status: WorkbenchStepStatus
   instruction: string
+  evidenceHint?: string
   tools: WorkbenchTool[]
 }
 

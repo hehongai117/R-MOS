@@ -209,15 +209,33 @@ class LLMRouter:
         self._clients: dict[LLMProvider, BaseLLMClient] = {}
         self._fallback_enabled = True
 
-    def _get_client(self, provider: LLMProvider) -> BaseLLMClient:
+    def _build_client(
+        self,
+        provider: LLMProvider,
+        *,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ) -> BaseLLMClient:
+        """根据 provider 与可选覆盖配置创建 client。"""
+        if provider == LLMProvider.OPENAI:
+            return OpenAIClient(api_key=api_key, base_url=base_url)
+        if provider == LLMProvider.ANTHROPIC:
+            return AnthropicClient(api_key=api_key)
+        return OllamaClient(base_url=base_url)
+
+    def _get_client(
+        self,
+        provider: LLMProvider,
+        *,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ) -> BaseLLMClient:
         """获取或创建指定 Provider 的 Client"""
+        if api_key is not None or base_url is not None:
+            return self._build_client(provider, api_key=api_key, base_url=base_url)
+
         if provider not in self._clients:
-            if provider == LLMProvider.OPENAI:
-                self._clients[provider] = OpenAIClient()
-            elif provider == LLMProvider.ANTHROPIC:
-                self._clients[provider] = AnthropicClient()
-            elif provider == LLMProvider.OLLAMA:
-                self._clients[provider] = OllamaClient()
+            self._clients[provider] = self._build_client(provider)
         return self._clients[provider]
 
     @staticmethod
@@ -233,6 +251,8 @@ class LLMRouter:
         tools: Optional[list[dict]] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
     ) -> LLMResponse:
         """
         统一 LLM 调用接口
@@ -254,7 +274,7 @@ class LLMRouter:
 
         # 尝试调用 LLM
         try:
-            client = self._get_client(provider)
+            client = self._get_client(provider, api_key=api_key, base_url=base_url)
             content, tokens_in, tokens_out, raw = await client.chat(
                 messages=messages,
                 model=model,
