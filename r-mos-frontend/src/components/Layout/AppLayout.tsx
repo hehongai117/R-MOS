@@ -67,7 +67,6 @@ const STUDENT_NAV: NavGroup[] = [
     items: [
       { label: '训练工作台', to: '/workbench/training', icon: Dumbbell },
       { label: 'AI 工作台', to: '/agent/workbench', icon: Bot },
-      { label: 'ATOM01 维保工作台', to: '/workbench/atom01-maintenance', icon: Boxes },
       { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
     ],
   },
@@ -95,7 +94,6 @@ const TEACHER_NAV: NavGroup[] = [
     label: '工作台',
     items: [
       { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-      { label: 'ATOM01 维保工作台', to: '/workbench/atom01-maintenance', icon: Boxes },
       { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
     ],
   },
@@ -144,7 +142,6 @@ const ADMIN_NAV: NavGroup[] = [
     label: '工作台',
     items: [
       { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-      { label: 'ATOM01 维保工作台', to: '/workbench/atom01-maintenance', icon: Boxes },
       { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
     ],
   },

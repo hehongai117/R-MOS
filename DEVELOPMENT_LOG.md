@@ -5987,3 +5987,35 @@
   - 目前 `SOPMaintenancePage` 的概览态也会根据可见 bounds 自动更新相机，目的是让内置模型和运行时模型都落在视口中心。
 - Next Step:
   - 如果继续跟进，应优先定位运行时 viewer asset 的 `500` 根因，补一轮真实运行时模型的人工居中验证。
+
+- DateTime: 2026-03-12 17:08:00 CST
+- Task: 下线 ATOM01 维保工作台正式入口，统一收敛到 SOP 工作台
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/__tests__/AppLayout.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/AppRoutes.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01MaintenanceWorkbenchPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - rg -n "atom01-maintenance|Atom01MaintenanceWorkbenchPage|ATOM01 维保工作台" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/AppLayout.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/App.tsx
+  - sed -n '1,120p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01MaintenanceWorkbenchPage.tsx
+  - sed -n '1,140p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Layout/__tests__/AppLayout.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/pages/__tests__/AppRoutes.test.tsx -> FAIL（预期红灯；失败原因为导航中仍存在 `ATOM01 维保工作台`）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/pages/__tests__/AppRoutes.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器联调：打开 `http://127.0.0.1:55173/workbench/atom01-maintenance`
+- Tests:
+  - 导航与旧路由回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Layout/__tests__/AppLayout.test.tsx src/pages/__tests__/AppRoutes.test.tsx` -> PASS（`2 passed, 4 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器人工验证：旧地址 `/workbench/atom01-maintenance` 直接重定向到 `/maintenance`；学生导航中不再显示 `ATOM01 维保工作台`
+- Result: PASS
+- Risks/Notes:
+  - 这轮下线的是“正式入口”和旧专用路由，不是删除 `SOPMaintenancePage workspaceVariant=\"atom01\"` 这套内部能力；后续如果确认再无内部用途，可以继续删除该 variant 相关分支。
+  - 路由兼容采用前端重定向到 `/maintenance`，可以避免旧书签/旧链接直接失效。
+- Next Step:
+  - 如果继续收敛 SOP 页面，可评估是否删除 `workspaceVariant=\"atom01\"` 分支和相关测试，只保留统一的 `SOP 工作台`。

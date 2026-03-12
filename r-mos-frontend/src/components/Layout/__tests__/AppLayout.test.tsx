@@ -49,7 +49,7 @@ describe('AppLayout', () => {
 
     expect(screen.getByRole('link', { name: '训练工作台' }).getAttribute('href')).toBe('/workbench/training')
     expect(screen.getByRole('link', { name: 'AI 工作台' }).getAttribute('href')).toBe('/agent/workbench')
-    expect(screen.getByRole('link', { name: 'ATOM01 维保工作台' }).getAttribute('href')).toBe('/workbench/atom01-maintenance')
+    expect(screen.queryByRole('link', { name: 'ATOM01 维保工作台' })).toBeNull()
     expect(screen.getByRole('link', { name: 'SOP 工作台' }).getAttribute('href')).toBe('/maintenance')
     expect(screen.getByRole('link', { name: '3D 展示' }).getAttribute('href')).toBe('/atom01')
     expect(screen.getByRole('link', { name: '执行回放' }).getAttribute('href')).toBe('/agent/replay')
@@ -59,7 +59,7 @@ describe('AppLayout', () => {
     renderLayoutForRole('teacher')
 
     expect(screen.getByRole('link', { name: '班级监控台' }).getAttribute('href')).toBe('/workbench/teaching')
-    expect(screen.getByRole('link', { name: 'ATOM01 维保工作台' }).getAttribute('href')).toBe('/workbench/atom01-maintenance')
+    expect(screen.queryByRole('link', { name: 'ATOM01 维保工作台' })).toBeNull()
     expect(screen.getByRole('link', { name: '作业管理' }).getAttribute('href')).toBe('/teaching/assignments')
     expect(screen.getByRole('link', { name: 'SOP 工作台' }).getAttribute('href')).toBe('/maintenance')
     expect(screen.getByRole('link', { name: '实时监控' }).getAttribute('href')).toBe('/monitor')
@@ -69,7 +69,7 @@ describe('AppLayout', () => {
     renderLayoutForRole('admin')
 
     expect(screen.getByRole('link', { name: '系统概览' }).getAttribute('href')).toBe('/admin/console')
-    expect(screen.getByRole('link', { name: 'ATOM01 维保工作台' }).getAttribute('href')).toBe('/workbench/atom01-maintenance')
+    expect(screen.queryByRole('link', { name: 'ATOM01 维保工作台' })).toBeNull()
     expect(screen.getByRole('link', { name: 'SOP 工作台' }).getAttribute('href')).toBe('/maintenance')
     expect(screen.getByRole('link', { name: '审批队列' }).getAttribute('href')).toBe('/admin/approvals')
     expect(screen.getByRole('link', { name: '知识库' }).getAttribute('href')).toBe('/knowledge')

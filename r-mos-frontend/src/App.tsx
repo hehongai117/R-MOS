@@ -23,7 +23,6 @@ const BeliefTrackerPage = lazy(() => import('@/pages/BeliefTrackerPage'))
 const UserSettingsPage = lazy(() => import('@/pages/UserSettingsPage'))
 const AIChatPage = lazy(() => import('@/pages/AIChatPage'))
 const AssessmentStatusPage = lazy(() => import('@/pages/AssessmentStatusPage'))
-const Atom01MaintenanceWorkbenchPage = lazy(() => import('@/pages/Atom01MaintenanceWorkbenchPage'))
 const Atom01DemoPage = lazy(() => import('@/pages/Atom01DemoPage'))
 const DiagnosisPage = lazy(() => import('@/pages/DiagnosisPage'))
 const EvidencePage = lazy(() => import('@/pages/EvidencePage'))
@@ -117,7 +116,7 @@ function App() {
                 <Route path="knowledge" element={withSuspense(<KnowledgePage />)} />
                 <Route path="ai-chat" element={withSuspense(<AIChatPage />)} />
                 <Route path="monitor" element={withSuspense(<MonitorPage />)} />
-                <Route path="workbench/atom01-maintenance" element={withSuspense(<Atom01MaintenanceWorkbenchPage />)} />
+                <Route path="workbench/atom01-maintenance" element={<Navigate replace to="/maintenance" />} />
                 <Route path="maintenance/project-draft" element={withSuspense(<MaintenanceProjectDraftPage />)} />
                 <Route path="maintenance/inspector" element={withSuspense(<SOPMaintenanceInspectorPage />)} />
                 <Route path="maintenance" element={withSuspense(<SOPMaintenancePage />)} />
