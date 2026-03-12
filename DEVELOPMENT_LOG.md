@@ -5953,3 +5953,37 @@
   - 本次 AI 草案生成命中了明显不够干净的引用与复核警告，例如 `.gitignore`、`README`、`LICENSE` 等仓库文件被列入“需人工复核”；这说明草案生成链路可用，但知识源筛选质量仍需后续治理。
 - Next Step:
   - 如果继续打磨项目草案页，优先补一个显式 `返回执行页` 按钮，并收紧 AI 草案的知识引用过滤范围。
+
+- DateTime: 2026-03-12 17:02:00 CST
+- Task: 让 SOP 工作台 3D 展示区中的模型自动居中，包括运行时后续加载的模型
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/RuntimeAssetPreview.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/viewerBounds.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/viewerBounds.test.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/RuntimeAssetPreview.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - rg -n "RuntimeAssetPreview|Atom01Interactive|position=\\[|onVisibleBoundsChange|Box3|bounding|center" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/SOPMaintenancePage.tsx /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D -g '!**/*.test.*'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/viewerBounds.test.ts -> FAIL（预期红灯；失败原因为 `viewerBounds` 纯工具尚不存在）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/viewerBounds.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/viewerBounds.test.ts src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - 浏览器目检：
+    - 刷新 `http://127.0.0.1:55173/maintenance`
+    - 打开 `http://127.0.0.1:55173/workbench/atom01-maintenance`
+- Tests:
+  - 3D 居中纯逻辑：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/viewerBounds.test.ts` -> PASS（`2 tests passed`）
+  - 相关前端回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/viewerBounds.test.ts src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/pages/__tests__/SOPMaintenancePage.test.tsx src/pages/__tests__/SOPMaintenancePage.dynamic.test.tsx src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx` -> PASS（`5 passed, 10 tests passed`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器目检：`/workbench/atom01-maintenance` 中的内置 ATOM01 模型已位于 3D 区域中心附近；`/maintenance` 的运行时模型走到了新居中逻辑，但刷新后资产接口返回 `500`，页面退回 fallback 线框，未能完成真实模型的最终人工目检
+- Result: PASS
+- Risks/Notes:
+  - 本轮把运行时模型的居中从 Drei `Center` 黑盒换成了我们自己的边界盒计算与原点平移，并把同一套 bounds 驱动接到了页面相机自适应上。
+  - 运行时模型刷新后的 `500` 属于现有资产接口问题，不是这次前端居中逻辑的类型/构建回归；但它确实阻断了“真实运行时模型最终落位”的人工验证。
+  - 目前 `SOPMaintenancePage` 的概览态也会根据可见 bounds 自动更新相机，目的是让内置模型和运行时模型都落在视口中心。
+- Next Step:
+  - 如果继续跟进，应优先定位运行时 viewer asset 的 `500` 根因，补一轮真实运行时模型的人工居中验证。

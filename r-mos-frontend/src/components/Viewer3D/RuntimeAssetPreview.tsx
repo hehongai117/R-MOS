@@ -1,4 +1,4 @@
-import { Center, Clone, useGLTF } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import { useEffect, useMemo, useState } from 'react'
 import { Mesh, MeshStandardMaterial, type Object3D } from 'three'
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js'
@@ -8,18 +8,33 @@ import { VRMLLoader } from 'three/examples/jsm/loaders/VRMLLoader.js'
 
 import apiClient from '@/api/client'
 import { detectRuntimeAssetFormat } from '@/components/Viewer3D/runtimeManifest'
+import {
+  centerObjectAtOrigin,
+  type VisibleBounds,
+} from '@/components/Viewer3D/viewerBounds'
 
 interface RuntimeAssetPreviewProps {
   assetUrl: string | null
   assetPath?: string | null
+  onVisibleBoundsChange?: (bounds: VisibleBounds) => void
 }
 
-export function RuntimeAssetPreview({ assetUrl, assetPath }: RuntimeAssetPreviewProps) {
+export function RuntimeAssetPreview({
+  assetUrl,
+  assetPath,
+  onVisibleBoundsChange,
+}: RuntimeAssetPreviewProps) {
   if (!assetUrl) {
     return <RuntimeAssetFallback />
   }
 
-  return <RuntimeAssetModel assetUrl={assetUrl} assetPath={assetPath ?? assetUrl} />
+  return (
+    <RuntimeAssetModel
+      assetUrl={assetUrl}
+      assetPath={assetPath ?? assetUrl}
+      onVisibleBoundsChange={onVisibleBoundsChange}
+    />
+  )
 }
 
 function RuntimeAssetFallback() {
@@ -31,7 +46,15 @@ function RuntimeAssetFallback() {
   )
 }
 
-function RuntimeAssetModel({ assetUrl, assetPath }: { assetUrl: string; assetPath: string }) {
+function RuntimeAssetModel({
+  assetUrl,
+  assetPath,
+  onVisibleBoundsChange,
+}: {
+  assetUrl: string
+  assetPath: string
+  onVisibleBoundsChange?: (bounds: VisibleBounds) => void
+}) {
   const assetFormat = detectRuntimeAssetFormat(assetPath)
   const [resolvedAssetUrl, setResolvedAssetUrl] = useState<string | null>(null)
   const [assetBlob, setAssetBlob] = useState<Blob | null>(null)
@@ -76,33 +99,62 @@ function RuntimeAssetModel({ assetUrl, assetPath }: { assetUrl: string; assetPat
     if (!resolvedAssetUrl) {
       return <RuntimeAssetFallback />
     }
-    return <LoadedRuntimeGltfAsset assetUrl={resolvedAssetUrl} />
+    return (
+      <LoadedRuntimeGltfAsset
+        assetUrl={resolvedAssetUrl}
+        onVisibleBoundsChange={onVisibleBoundsChange}
+      />
+    )
   }
   if (!assetBlob) {
     return <RuntimeAssetFallback />
   }
-  return <LoadedRuntimeMeshAsset assetBlob={assetBlob} assetFormat={assetFormat} />
-}
-
-function LoadedRuntimeGltfAsset({ assetUrl }: { assetUrl: string }) {
-  const gltf = useGLTF(assetUrl)
-  const scene = useMemo(() => gltf.scene.clone(), [gltf.scene])
-
   return (
-    <Center>
-      <Clone object={scene} />
-    </Center>
+    <LoadedRuntimeMeshAsset
+      assetBlob={assetBlob}
+      assetFormat={assetFormat}
+      onVisibleBoundsChange={onVisibleBoundsChange}
+    />
   )
 }
 
-function LoadedRuntimeMeshAsset({ assetBlob, assetFormat }: { assetBlob: Blob; assetFormat: Exclude<ReturnType<typeof detectRuntimeAssetFormat>, 'gltf' | 'unsupported'> }) {
-  const [parsedObject, setParsedObject] = useState<Object3D | null>(null)
+function LoadedRuntimeGltfAsset({
+  assetUrl,
+  onVisibleBoundsChange,
+}: {
+  assetUrl: string
+  onVisibleBoundsChange?: (bounds: VisibleBounds) => void
+}) {
+  const gltf = useGLTF(assetUrl)
+  const centeredAsset = useMemo(() => centerObjectAtOrigin(gltf.scene.clone()), [gltf.scene])
+
+  useEffect(() => {
+    if (!centeredAsset.bounds) return
+    onVisibleBoundsChange?.(centeredAsset.bounds)
+  }, [centeredAsset.bounds, onVisibleBoundsChange])
+
+  return <primitive object={centeredAsset.object} />
+}
+
+function LoadedRuntimeMeshAsset({
+  assetBlob,
+  assetFormat,
+  onVisibleBoundsChange,
+}: {
+  assetBlob: Blob
+  assetFormat: Exclude<ReturnType<typeof detectRuntimeAssetFormat>, 'gltf' | 'unsupported'>
+  onVisibleBoundsChange?: (bounds: VisibleBounds) => void
+}) {
+  const [parsedObject, setParsedObject] = useState<{
+    object: Object3D
+    bounds: VisibleBounds | null
+  } | null>(null)
 
   useEffect(() => {
     let ignore = false
 
     const parseAsset = async () => {
-      const nextObject = await parseRuntimeAssetBlob(assetBlob, assetFormat)
+      const nextObject = centerObjectAtOrigin(await parseRuntimeAssetBlob(assetBlob, assetFormat))
       if (!ignore) {
         setParsedObject(nextObject)
       }
@@ -123,11 +175,24 @@ function LoadedRuntimeMeshAsset({ assetBlob, assetFormat }: { assetBlob: Blob; a
     return <RuntimeAssetFallback />
   }
 
-  return (
-    <Center>
-      <primitive object={parsedObject} />
-    </Center>
-  )
+  return <LoadedParsedRuntimeMesh parsedObject={parsedObject.object} bounds={parsedObject.bounds} onVisibleBoundsChange={onVisibleBoundsChange} />
+}
+
+function LoadedParsedRuntimeMesh({
+  parsedObject,
+  bounds,
+  onVisibleBoundsChange,
+}: {
+  parsedObject: Object3D
+  bounds: VisibleBounds | null
+  onVisibleBoundsChange?: (bounds: VisibleBounds) => void
+}) {
+  useEffect(() => {
+    if (!bounds) return
+    onVisibleBoundsChange?.(bounds)
+  }, [bounds, onVisibleBoundsChange])
+
+  return <primitive object={parsedObject} />
 }
 
 async function parseRuntimeAssetBlob(

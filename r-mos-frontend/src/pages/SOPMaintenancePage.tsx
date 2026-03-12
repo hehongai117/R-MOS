@@ -64,6 +64,7 @@ import {
 } from '@/data/maintenanceKnowledge';
 import { RuntimeAssetPreview } from '@/components/Viewer3D/RuntimeAssetPreview';
 import { buildRobotProjectAssetUrl, buildRuntimeSopScript, createRuntimeManifestAdapter, resolveRuntimeAssetPaths, type RuntimeManifestAdapter } from '@/components/Viewer3D/runtimeManifest';
+import { buildAutoCameraPreset, type VisibleBounds } from '@/components/Viewer3D/viewerBounds';
 import { readMaintenanceWorkspaceSession } from '@/features/maintenance/runtimeWorkspaceSession';
 import type { MaintenanceDraftResponse } from '@/types/maintenance';
 import {
@@ -844,34 +845,50 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         setTimeout(() => setFocusTarget(null), 100);
     }, []);
 
-    const handleVisibleBoundsChange = useCallback((bounds: { center: [number, number, number]; radius: number }) => {
-        if (viewState !== 'ISOLATED') return;
+    const handleVisibleBoundsChange = useCallback((bounds: VisibleBounds) => {
         const [cx, cy, cz] = bounds.center;
         if (![cx, cy, cz].every(Number.isFinite)) return;
 
-        const radius = Math.min(Math.max(bounds.radius, 0.08), 1.15);
+        let nextPreset: CameraPreset;
+
+        if (runtimeManifest) {
+            nextPreset = buildAutoCameraPreset(bounds, {
+                mode: 'runtime',
+                fullscreen: isFullscreen,
+            });
+        } else if (viewState !== 'ISOLATED') {
+            nextPreset = buildAutoCameraPreset(bounds, {
+                mode: 'overview',
+                fullscreen: isFullscreen,
+            });
+        } else {
+            const radius = Math.min(Math.max(bounds.radius, 0.08), 1.15);
         const isTorso = selectedOverviewNode === 'torso_link';
         const isUpperLimb = selectedOverviewNode ? /(arm|elbow)/.test(selectedOverviewNode) : false;
-        const levelFactor = isTorso
-            ? (isolationLevel >= 2 ? 1.85 : 2.05)
-            : isUpperLimb
-                ? (isolationLevel >= 2 ? 1.65 : 1.85)
-                : (isolationLevel >= 2 ? 1.35 : 1.55);
-        const fullscreenFactor = isFullscreen ? 0.9 : 1;
-        const torsoFactor = isTorso ? 1.2 : 1;
-        const maxDistance = isTorso ? 2.5 : (isUpperLimb ? 2.0 : 1.8);
-        const distance = Math.min(Math.max(radius * levelFactor * fullscreenFactor * torsoFactor, 0.42), maxDistance);
-        const nextPreset: CameraPreset = {
-            position: [cx + distance, cy + distance * 0.45, cz + distance * 0.88],
-            target: [cx, cy, cz],
-            fov: selectedOverviewNode === 'torso_link' ? 52 : (isolationLevel >= 2 ? 44 : 48),
-        };
+            nextPreset = buildAutoCameraPreset(
+                {
+                    center: [cx, cy, cz],
+                    radius,
+                },
+                {
+                    mode: 'isolated',
+                    fullscreen: isFullscreen,
+                    emphasis: isTorso ? 'torso' : isUpperLimb ? 'upper-limb' : 'default',
+                },
+            );
+            if (isolationLevel >= 2) {
+                nextPreset = {
+                    ...nextPreset,
+                    fov: isTorso ? 52 : 44,
+                };
+            }
+        }
 
         const signature = `${nextPreset.position.map(v => v.toFixed(3)).join(',')}|${nextPreset.target.map(v => v.toFixed(3)).join(',')}|${nextPreset.fov}`;
         if (signature === lastAutoCameraSignatureRef.current) return;
         lastAutoCameraSignatureRef.current = signature;
         setCameraPreset(nextPreset);
-    }, [viewState, isolationLevel, isFullscreen, selectedOverviewNode]);
+    }, [runtimeManifest, viewState, isolationLevel, isFullscreen, selectedOverviewNode]);
 
     // 获取当前零件的所有同组零件
     const getGroupParts = (group: string) => {
@@ -1361,7 +1378,11 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
 
                                 <Suspense fallback={<LoadingFallback />}>
                                     {runtimeManifest ? (
-                                        <RuntimeAssetPreview assetUrl={runtimePreviewAssetUrl} assetPath={runtimePreviewAssetPath} />
+                                        <RuntimeAssetPreview
+                                            assetUrl={runtimePreviewAssetUrl}
+                                            assetPath={runtimePreviewAssetPath}
+                                            onVisibleBoundsChange={handleVisibleBoundsChange}
+                                        />
                                     ) : (
                                         <>
                                             <Atom01Interactive
