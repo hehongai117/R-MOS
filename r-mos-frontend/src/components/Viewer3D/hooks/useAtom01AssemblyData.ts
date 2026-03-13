@@ -32,7 +32,7 @@ export interface UseAtom01AssemblyDataResult {
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url)
+  const response = await fetch(url, { cache: 'no-store' })
   if (!response.ok) {
     throw new Error(`failed to load ${url}: ${response.status}`)
   }
@@ -124,7 +124,7 @@ export function useAtom01AssemblyData(enabled = true): UseAtom01AssemblyDataResu
     return () => {
       disposed = true
     }
-  }, [])
+  }, [enabled])
 
   return {
     adapter,

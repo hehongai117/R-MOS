@@ -31,7 +31,31 @@ describe('assemblyManifest', () => {
     const index = buildAssemblyIndex(manifest)
     expect(index.byId.torso_link.display_name).toBe('躯干总成')
     expect(index.childrenByParent.torso_link).toEqual(
-      expect.arrayContaining(['torso_shell_front', 'torso_shell_rear', 'left_arm_pitch_link', 'right_arm_pitch_link']),
+      expect.arrayContaining([
+        'torso_shell_front',
+        'torso_shell_rear',
+        'torso_shell_lower',
+        'torso_shell_back_lower',
+        'frame_torso_chest',
+        'torso_motor',
+        'torso_pcb_main',
+        'left_arm_pitch_link',
+        'right_arm_pitch_link',
+      ]),
+    )
+
+    const torsoFastenerIds = manifest.fastener_instances
+      .filter((instance) => instance.id.startsWith('screw_torso_'))
+      .map((instance) => instance.id)
+
+    expect(torsoFastenerIds.length).toBeGreaterThanOrEqual(14)
+    expect(torsoFastenerIds).toEqual(
+      expect.arrayContaining([
+        'screw_torso_m3x10_001',
+        'screw_torso_m3x10_008',
+        'screw_torso_m4x12_001',
+        'screw_torso_m4x12_006',
+      ]),
     )
   })
 

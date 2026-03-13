@@ -44,22 +44,9 @@
       "category": "link",
       "link_name": "base_link",
       "transform": {
-        "translation": [
-          0,
-          0,
-          0
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, 0, 0],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -82,22 +69,9 @@
       "category": "link",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          -0.028,
-          0,
-          0.067
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.028, 0, 0.067],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -109,22 +83,9 @@
       "category": "frame",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          0.012,
-          0,
-          0.018
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.012, 0, 0.018],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -136,22 +97,9 @@
       "category": "frame",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          -0.012,
-          0,
-          -0.018
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.012, 0, -0.018],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -163,22 +111,9 @@
       "category": "frame",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          0.006,
-          0,
-          -0.074
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.006, 0, -0.074],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -190,22 +125,9 @@
       "category": "frame",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          -0.006,
-          0,
-          -0.082
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.006, 0, -0.082],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -217,22 +139,9 @@
       "category": "frame",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          0,
-          0,
-          0.104
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, 0, 0.104],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -244,22 +153,9 @@
       "category": "frame",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          0,
-          0.012,
-          0.022
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, 0.012, 0.022],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -271,22 +167,9 @@
       "category": "motor",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          0.014,
-          0.008,
-          0.028
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.014, 0.008, 0.028],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -298,22 +181,9 @@
       "category": "pcb",
       "link_name": "torso_link",
       "transform": {
-        "translation": [
-          -0.024,
-          0.026,
-          -0.012
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.024, 0.026, -0.012],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -328,22 +198,9 @@
       "category": "link",
       "link_name": "left_arm_pitch_link",
       "transform": {
-        "translation": [
-          0,
-          0.122,
-          0.206
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, 0.122, 0.206],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -355,22 +212,9 @@
       "category": "frame",
       "link_name": "left_arm_pitch_link",
       "transform": {
-        "translation": [
-          0.012,
-          0.008,
-          0
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.012, 0.008, 0],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -382,22 +226,9 @@
       "category": "frame",
       "link_name": "left_arm_pitch_link",
       "transform": {
-        "translation": [
-          0.016,
-          0.024,
-          -0.004
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.016, 0.024, -0.004],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -412,22 +243,9 @@
       "category": "link",
       "link_name": "right_arm_pitch_link",
       "transform": {
-        "translation": [
-          0,
-          -0.122,
-          0.206
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, -0.122, 0.206],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -439,22 +257,9 @@
       "category": "frame",
       "link_name": "right_arm_pitch_link",
       "transform": {
-        "translation": [
-          0.012,
-          -0.008,
-          0
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.012, -0.008, 0],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -466,22 +271,9 @@
       "category": "frame",
       "link_name": "right_arm_pitch_link",
       "transform": {
-        "translation": [
-          0.016,
-          -0.024,
-          -0.004
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.016, -0.024, -0.004],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -496,22 +288,9 @@
       "category": "link",
       "link_name": "left_knee_link",
       "transform": {
-        "translation": [
-          -0.089,
-          0.0725,
-          -0.33
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.089, 0.0725, -0.33],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -523,22 +302,9 @@
       "category": "frame",
       "link_name": "left_knee_link",
       "transform": {
-        "translation": [
-          0,
-          0.01,
-          -0.034
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, 0.01, -0.034],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -550,22 +316,9 @@
       "category": "calibration",
       "link_name": "left_knee_link",
       "transform": {
-        "translation": [
-          0.006,
-          -0.012,
-          0.014
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.006, -0.012, 0.014],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -580,22 +333,9 @@
       "category": "link",
       "link_name": "right_knee_link",
       "transform": {
-        "translation": [
-          -0.089,
-          -0.0725,
-          -0.33
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.089, -0.0725, -0.33],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -607,22 +347,9 @@
       "category": "frame",
       "link_name": "right_knee_link",
       "transform": {
-        "translation": [
-          0,
-          -0.01,
-          -0.034
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0, -0.01, -0.034],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     },
     {
@@ -634,22 +361,9 @@
       "category": "calibration",
       "link_name": "right_knee_link",
       "transform": {
-        "translation": [
-          0.006,
-          0.012,
-          0.014
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.006, 0.012, 0.014],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       }
     }
   ],
@@ -660,22 +374,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          0.03,
-          0.02,
-          0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.03, 0.02, 0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -686,22 +387,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          -0.03,
-          0.02,
-          0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.03, 0.02, 0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -712,22 +400,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          0.03,
-          0.02,
-          -0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.03, 0.02, -0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -738,22 +413,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          -0.03,
-          0.02,
-          -0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.03, 0.02, -0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -764,22 +426,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          0.03,
-          -0.02,
-          0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.03, -0.02, 0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -790,22 +439,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          -0.03,
-          -0.02,
-          0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.03, -0.02, 0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -816,22 +452,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          0.03,
-          -0.02,
-          -0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.03, -0.02, -0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -842,22 +465,9 @@
       "parent_id": "frame_torso_chest",
       "mesh_id": "fastener_m3x10_mesh",
       "transform": {
-        "translation": [
-          -0.03,
-          -0.02,
-          -0.02
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.03, -0.02, -0.02],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_2.5",
       "torque_nm": 0.8
@@ -868,22 +478,9 @@
       "parent_id": "torso_link",
       "mesh_id": "fastener_m4x12_mesh",
       "transform": {
-        "translation": [
-          0.04,
-          0.03,
-          0.03
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.04, 0.03, 0.03],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -894,22 +491,9 @@
       "parent_id": "torso_link",
       "mesh_id": "fastener_m4x12_mesh",
       "transform": {
-        "translation": [
-          -0.04,
-          0.03,
-          0.03
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.04, 0.03, 0.03],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -920,22 +504,9 @@
       "parent_id": "torso_link",
       "mesh_id": "fastener_m4x12_mesh",
       "transform": {
-        "translation": [
-          0.04,
-          0.03,
-          -0.03
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.04, 0.03, -0.03],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -946,22 +517,9 @@
       "parent_id": "torso_link",
       "mesh_id": "fastener_m4x12_mesh",
       "transform": {
-        "translation": [
-          -0.04,
-          0.03,
-          -0.03
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.04, 0.03, -0.03],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -972,22 +530,9 @@
       "parent_id": "torso_link",
       "mesh_id": "fastener_m4x12_mesh",
       "transform": {
-        "translation": [
-          0.04,
-          -0.01,
-          0
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.04, -0.01, 0],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -998,22 +543,9 @@
       "parent_id": "torso_link",
       "mesh_id": "fastener_m4x12_mesh",
       "transform": {
-        "translation": [
-          -0.04,
-          -0.01,
-          0
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [-0.04, -0.01, 0],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -1024,22 +556,9 @@
       "parent_id": "left_arm_pitch_shell",
       "mesh_id": "fastener_m4x8_mesh",
       "transform": {
-        "translation": [
-          0.018,
-          0.016,
-          0.008
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.018, 0.016, 0.008],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -1050,22 +569,9 @@
       "parent_id": "right_arm_pitch_shell",
       "mesh_id": "fastener_m4x8_mesh",
       "transform": {
-        "translation": [
-          0.018,
-          -0.016,
-          0.008
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.018, -0.016, 0.008],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_3",
       "torque_nm": 1.2
@@ -1076,22 +582,9 @@
       "parent_id": "left_knee_frame",
       "mesh_id": "fastener_m5x10_mesh",
       "transform": {
-        "translation": [
-          0.014,
-          0.012,
-          -0.008
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.014, 0.012, -0.008],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_4",
       "torque_nm": 2.5
@@ -1102,22 +595,9 @@
       "parent_id": "right_knee_frame",
       "mesh_id": "fastener_m5x10_mesh",
       "transform": {
-        "translation": [
-          0.014,
-          -0.012,
-          -0.008
-        ],
-        "rotation_quat": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
+        "translation": [0.014, -0.012, -0.008],
+        "rotation_quat": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
       },
       "tool": "hex_4",
       "torque_nm": 2.5

@@ -225,18 +225,22 @@ export const Atom01AssemblyRenderer: React.FC<Atom01AssemblyRendererProps> = ({
   explodeAmount = 0,
   explodeStepIndex = null,
 }) => {
-  const itemsByParent = useMemo(() => {
+  const renderItems = useMemo(() => {
     return collectAssemblyRenderItems(
       adapter,
       rootLinkName,
       explodeManifest,
       explodeAmount,
       explodeStepIndex,
-    ).reduce<Record<string, AssemblyRenderItem[]>>((acc, item) => {
+    )
+  }, [adapter, explodeAmount, explodeManifest, explodeStepIndex, rootLinkName])
+
+  const itemsByParent = useMemo(() => {
+    return renderItems.reduce<Record<string, AssemblyRenderItem[]>>((acc, item) => {
       acc[item.parentId] = acc[item.parentId] ? [...acc[item.parentId], item] : [item]
       return acc
     }, {})
-  }, [adapter, explodeAmount, explodeManifest, explodeStepIndex, rootLinkName])
+  }, [renderItems])
 
   if (!adapter.tree.nodes[rootLinkName]) {
     return null

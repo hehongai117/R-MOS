@@ -550,6 +550,7 @@ const InteractiveLinkMesh: React.FC<{
     isFaded?: boolean;            // Gate-1: fade 模式
     fadeOpacity?: number;         // Gate-1: fade 透明度
     suppressExplodeOffset?: boolean; // 单节点隔离态下抑制 link 级偏移，避免核心件跑离视野中心
+    preferAssemblyView?: boolean; // 装配树已覆盖时，降低旧主模型的遮挡感
 }> = ({
     name,
     isFault = false,
@@ -566,6 +567,7 @@ const InteractiveLinkMesh: React.FC<{
     isFaded = false,
     fadeOpacity: fadedOpacityProp = 0.15,
     suppressExplodeOffset = false,
+    preferAssemblyView = false,
 }) => {
         const meshRef = useRef<THREE.Group>(null);
         const { scene } = useGLTF(`${MODEL_BASE_PATH}/${name}.glb`);
@@ -665,7 +667,9 @@ const InteractiveLinkMesh: React.FC<{
 
                                 // reference_set 在爆炸态下保留最低可见度，防止主参照丢失
                                 if (isReferencePart && preserveReferenceInExplode) {
-                                    const referenceFloor = name === 'torso_link' ? 0.2 : 0.35;
+                                    const referenceFloor = preferAssemblyView
+                                        ? (name === 'torso_link' ? 0.05 : 0.08)
+                                        : (name === 'torso_link' ? 0.2 : 0.35);
                                     // 单节点研究态：核心本体保持“半隐藏”可辨识
                                     currentOpacity = Math.max(currentOpacity, referenceFloor);
                                 }
@@ -966,6 +970,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
                     isFaded={isFaded}
                     fadeOpacity={fadeOpacity}
                     suppressExplodeOffset={suppressMainLinkOffset}
+                    preferAssemblyView={Boolean(assemblyAdapter?.tree.nodes[name])}
                     onPointerOver={isClickable ? handlePointerOver(name) : undefined}
                     onPointerOut={isClickable ? handlePointerOut : undefined}
                     onClick={isClickable ? handleClick(name) : undefined}

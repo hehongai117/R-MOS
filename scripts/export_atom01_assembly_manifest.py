@@ -1,439 +1,134 @@
 #!/usr/bin/env python3
-"""Write the current ATOM01 static assembly/explode manifests to the public model directory."""
+"""Export ATOM01 assembly/explode manifests from validated blueprint files."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 
 PROJECT_ROOT = Path("/Users/xuhehong/Desktop/r-mos")
 ATOM01_DIR = PROJECT_ROOT / "r-mos-frontend" / "public" / "models" / "robots" / "atom01"
+DATA_DIR = PROJECT_ROOT / "scripts" / "data" / "atom01"
+
+ASSEMBLY_BLUEPRINT_PATH = DATA_DIR / "assembly_blueprint.json"
+EXPLODE_BLUEPRINT_PATH = DATA_DIR / "explode_blueprint.json"
 ASSEMBLY_PATH = ATOM01_DIR / "assembly_manifest.json"
 EXPLODE_PATH = ATOM01_DIR / "explode_manifest.json"
 
 
-ASSEMBLY_MANIFEST = {
-    "version": "2026-03-13",
-    "robotId": "atom01",
-    "rootNodeId": "base_link",
-    "mesh_catalog": {
-        "base_link_mesh": "/models/robots/atom01/base_link.glb",
-        "torso_link_mesh": "/models/robots/atom01/torso_link.glb",
-        "left_arm_pitch_link_mesh": "/models/robots/atom01/left_arm_pitch_link.glb",
-        "right_arm_pitch_link_mesh": "/models/robots/atom01/right_arm_pitch_link.glb",
-        "left_knee_link_mesh": "/models/robots/atom01/left_knee_link.glb",
-        "right_knee_link_mesh": "/models/robots/atom01/right_knee_link.glb",
-        "torso_shell_front_mesh": "/models/parts/frames/胸腔胸部.glb",
-        "torso_shell_rear_mesh": "/models/parts/frames/胸腔夹板后.glb",
-        "torso_bracket_mesh": "/models/parts/frames/胸腔前后夹板.glb",
-        "left_arm_pitch_shell_mesh": "/models/parts/frames/肩膀.glb",
-        "left_arm_pitch_bracket_mesh": "/models/parts/frames/肩部固定件数量2.glb",
-        "right_arm_pitch_shell_mesh": "/models/parts/frames/肩膀_2.glb",
-        "right_arm_pitch_bracket_mesh": "/models/parts/frames/肩部固定件数量2_2.glb",
-        "left_knee_frame_mesh": "/models/parts/frames/小腿.glb",
-        "left_knee_calibration_mesh": "/models/parts/calibration/膝盖标定数量2.glb",
-        "right_knee_frame_mesh": "/models/parts/frames/小腿_1.glb",
-        "right_knee_calibration_mesh": "/models/parts/calibration/膝盖标定数量2_1.glb",
-        "fastener_m4x12_mesh": "/models/parts/screws/内六角圆柱头螺钉M4x12.glb",
-        "fastener_m4x8_mesh": "/models/parts/screws/内六角圆柱头螺钉M4x8.glb",
-        "fastener_m5x10_mesh": "/models/parts/screws/内六角圆柱头螺钉M5x10.glb",
-    },
-    "nodes": [
-        {
-            "id": "base_link",
-            "parent_id": None,
-            "children": ["torso_link", "left_knee_link", "right_knee_link"],
-            "mesh_id": "base_link_mesh",
-            "display_name": "底座总成",
-            "category": "link",
-            "link_name": "base_link",
-            "transform": {
-                "translation": [0, 0, 0],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "torso_link",
-            "parent_id": "base_link",
-            "children": ["torso_shell_front", "torso_shell_rear", "torso_bracket", "left_arm_pitch_link", "right_arm_pitch_link"],
-            "mesh_id": "torso_link_mesh",
-            "display_name": "躯干总成",
-            "category": "link",
-            "link_name": "torso_link",
-            "transform": {
-                "translation": [-0.028, 0, 0.067],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "torso_shell_front",
-            "parent_id": "torso_link",
-            "children": [],
-            "mesh_id": "torso_shell_front_mesh",
-            "display_name": "躯干前盖",
-            "category": "frame",
-            "link_name": "torso_link",
-            "transform": {
-                "translation": [0.008, 0, 0.014],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "torso_shell_rear",
-            "parent_id": "torso_link",
-            "children": [],
-            "mesh_id": "torso_shell_rear_mesh",
-            "display_name": "躯干后盖",
-            "category": "frame",
-            "link_name": "torso_link",
-            "transform": {
-                "translation": [-0.01, 0, -0.012],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "torso_bracket",
-            "parent_id": "torso_link",
-            "children": [],
-            "mesh_id": "torso_bracket_mesh",
-            "display_name": "躯干连接夹板",
-            "category": "frame",
-            "link_name": "torso_link",
-            "transform": {
-                "translation": [0, 0, 0.004],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "left_arm_pitch_link",
-            "parent_id": "torso_link",
-            "children": ["left_arm_pitch_shell", "left_arm_pitch_bracket"],
-            "mesh_id": "left_arm_pitch_link_mesh",
-            "display_name": "左肩俯仰总成",
-            "category": "link",
-            "link_name": "left_arm_pitch_link",
-            "transform": {
-                "translation": [0, 0.122, 0.206],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "left_arm_pitch_shell",
-            "parent_id": "left_arm_pitch_link",
-            "children": [],
-            "mesh_id": "left_arm_pitch_shell_mesh",
-            "display_name": "左肩壳体",
-            "category": "frame",
-            "link_name": "left_arm_pitch_link",
-            "transform": {
-                "translation": [0.012, 0.008, 0],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "left_arm_pitch_bracket",
-            "parent_id": "left_arm_pitch_link",
-            "children": [],
-            "mesh_id": "left_arm_pitch_bracket_mesh",
-            "display_name": "左肩固定件",
-            "category": "frame",
-            "link_name": "left_arm_pitch_link",
-            "transform": {
-                "translation": [0.016, 0.024, -0.004],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "right_arm_pitch_link",
-            "parent_id": "torso_link",
-            "children": ["right_arm_pitch_shell", "right_arm_pitch_bracket"],
-            "mesh_id": "right_arm_pitch_link_mesh",
-            "display_name": "右肩俯仰总成",
-            "category": "link",
-            "link_name": "right_arm_pitch_link",
-            "transform": {
-                "translation": [0, -0.122, 0.206],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "right_arm_pitch_shell",
-            "parent_id": "right_arm_pitch_link",
-            "children": [],
-            "mesh_id": "right_arm_pitch_shell_mesh",
-            "display_name": "右肩壳体",
-            "category": "frame",
-            "link_name": "right_arm_pitch_link",
-            "transform": {
-                "translation": [0.012, -0.008, 0],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "right_arm_pitch_bracket",
-            "parent_id": "right_arm_pitch_link",
-            "children": [],
-            "mesh_id": "right_arm_pitch_bracket_mesh",
-            "display_name": "右肩固定件",
-            "category": "frame",
-            "link_name": "right_arm_pitch_link",
-            "transform": {
-                "translation": [0.016, -0.024, -0.004],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "left_knee_link",
-            "parent_id": "base_link",
-            "children": ["left_knee_frame", "left_knee_calibration"],
-            "mesh_id": "left_knee_link_mesh",
-            "display_name": "左膝总成",
-            "category": "link",
-            "link_name": "left_knee_link",
-            "transform": {
-                "translation": [-0.089, 0.0725, -0.33],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "left_knee_frame",
-            "parent_id": "left_knee_link",
-            "children": [],
-            "mesh_id": "left_knee_frame_mesh",
-            "display_name": "左膝小腿结构件",
-            "category": "frame",
-            "link_name": "left_knee_link",
-            "transform": {
-                "translation": [0, 0.01, -0.034],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "left_knee_calibration",
-            "parent_id": "left_knee_link",
-            "children": [],
-            "mesh_id": "left_knee_calibration_mesh",
-            "display_name": "左膝标定件",
-            "category": "calibration",
-            "link_name": "left_knee_link",
-            "transform": {
-                "translation": [0.006, -0.012, 0.014],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "right_knee_link",
-            "parent_id": "base_link",
-            "children": ["right_knee_frame", "right_knee_calibration"],
-            "mesh_id": "right_knee_link_mesh",
-            "display_name": "右膝总成",
-            "category": "link",
-            "link_name": "right_knee_link",
-            "transform": {
-                "translation": [-0.089, -0.0725, -0.33],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "right_knee_frame",
-            "parent_id": "right_knee_link",
-            "children": [],
-            "mesh_id": "right_knee_frame_mesh",
-            "display_name": "右膝小腿结构件",
-            "category": "frame",
-            "link_name": "right_knee_link",
-            "transform": {
-                "translation": [0, -0.01, -0.034],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-        {
-            "id": "right_knee_calibration",
-            "parent_id": "right_knee_link",
-            "children": [],
-            "mesh_id": "right_knee_calibration_mesh",
-            "display_name": "右膝标定件",
-            "category": "calibration",
-            "link_name": "right_knee_link",
-            "transform": {
-                "translation": [0.006, 0.012, 0.014],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-        },
-    ],
-    "fastener_instances": [
-        {
-            "id": "torso_shell_front_m4x12_01",
-            "type": "M4x12",
-            "parent_id": "torso_shell_front",
-            "mesh_id": "fastener_m4x12_mesh",
-            "transform": {
-                "translation": [0.032, 0.046, 0.02],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-            "tool": "hex_3",
-            "torque_nm": 1.2,
-        },
-        {
-            "id": "torso_shell_rear_m4x12_01",
-            "type": "M4x12",
-            "parent_id": "torso_shell_rear",
-            "mesh_id": "fastener_m4x12_mesh",
-            "transform": {
-                "translation": [-0.028, -0.042, -0.02],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-            "tool": "hex_3",
-            "torque_nm": 1.2,
-        },
-        {
-            "id": "left_arm_pitch_shell_m4x8_01",
-            "type": "M4x8",
-            "parent_id": "left_arm_pitch_shell",
-            "mesh_id": "fastener_m4x8_mesh",
-            "transform": {
-                "translation": [0.018, 0.016, 0.008],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-            "tool": "hex_3",
-            "torque_nm": 1.2,
-        },
-        {
-            "id": "right_arm_pitch_shell_m4x8_01",
-            "type": "M4x8",
-            "parent_id": "right_arm_pitch_shell",
-            "mesh_id": "fastener_m4x8_mesh",
-            "transform": {
-                "translation": [0.018, -0.016, 0.008],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-            "tool": "hex_3",
-            "torque_nm": 1.2,
-        },
-        {
-            "id": "left_knee_frame_m5x10_01",
-            "type": "M5x10",
-            "parent_id": "left_knee_frame",
-            "mesh_id": "fastener_m5x10_mesh",
-            "transform": {
-                "translation": [0.014, 0.012, -0.008],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-            "tool": "hex_4",
-            "torque_nm": 2.5,
-        },
-        {
-            "id": "right_knee_frame_m5x10_01",
-            "type": "M5x10",
-            "parent_id": "right_knee_frame",
-            "mesh_id": "fastener_m5x10_mesh",
-            "transform": {
-                "translation": [0.014, -0.012, -0.008],
-                "rotation_quat": [0, 0, 0, 1],
-                "scale": [1, 1, 1],
-            },
-            "tool": "hex_4",
-            "torque_nm": 2.5,
-        },
-    ],
-}
-
-EXPLODE_MANIFEST = {
-    "version": "2026-03-13",
-    "robotId": "atom01",
-    "views": [
-        {
-            "id": "torso_service_view",
-            "focus_node_id": "torso_link",
-            "camera": {
-                "projection": "orthographic",
-                "position": [1.15, 0.58, 0.72],
-                "target": [0.04, 0, 0.28],
-            },
-        },
-        {
-            "id": "left_knee_service_view",
-            "focus_node_id": "left_knee_link",
-            "camera": {
-                "projection": "orthographic",
-                "position": [0.84, 0.62, -0.22],
-                "target": [-0.08, 0.08, -0.32],
-            },
-        },
-    ],
-    "sequences": [
-        {
-            "id": "torso_cover_removal",
-            "step_index": 1,
-            "node_ids": ["torso_shell_front", "torso_shell_rear"],
-            "direction": [0, 0, 1],
-            "distance": 0.18,
-            "anchor_node_id": "torso_link",
-        },
-        {
-            "id": "torso_bracket_release",
-            "step_index": 2,
-            "node_ids": ["torso_bracket"],
-            "direction": [0, 0.2, 1],
-            "distance": 0.14,
-            "anchor_node_id": "torso_link",
-        },
-        {
-            "id": "left_arm_pitch_exposure",
-            "step_index": 3,
-            "node_ids": ["left_arm_pitch_shell", "left_arm_pitch_bracket"],
-            "direction": [0, 1, 0.2],
-            "distance": 0.12,
-            "anchor_node_id": "left_arm_pitch_link",
-        },
-        {
-            "id": "left_knee_cover_release",
-            "step_index": 4,
-            "node_ids": ["left_knee_frame", "left_knee_calibration"],
-            "direction": [0.1, 1, 0],
-            "distance": 0.11,
-            "anchor_node_id": "left_knee_link",
-        },
-        {
-            "id": "right_knee_cover_release",
-            "step_index": 5,
-            "node_ids": ["right_knee_frame", "right_knee_calibration"],
-            "direction": [0.1, -1, 0],
-            "distance": 0.11,
-            "anchor_node_id": "right_knee_link",
-        },
-    ],
-}
+def load_blueprint(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_json(path: Path, payload: dict) -> None:
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise ValueError(message)
+
+
+def expect_transform(transform: Any, label: str) -> None:
+    expect(isinstance(transform, dict), f"{label} transform must be an object")
+    for field, size in (("translation", 3), ("rotation_quat", 4), ("scale", 3)):
+        value = transform.get(field)
+        expect(isinstance(value, list) and len(value) == size, f"{label} transform.{field} must be length {size}")
+        expect(all(isinstance(entry, (int, float)) for entry in value), f"{label} transform.{field} must be numeric")
+
+
+def validate_assembly_manifest(manifest: dict[str, Any]) -> None:
+    expect(isinstance(manifest.get("robotId"), str), "assembly robotId must be a string")
+    expect(isinstance(manifest.get("rootNodeId"), str), "assembly rootNodeId must be a string")
+    mesh_catalog = manifest.get("mesh_catalog")
+    expect(isinstance(mesh_catalog, dict) and mesh_catalog, "assembly mesh_catalog must be a non-empty object")
+
+    nodes = manifest.get("nodes")
+    expect(isinstance(nodes, list) and nodes, "assembly nodes must be a non-empty array")
+    node_ids = {node.get("id") for node in nodes if isinstance(node, dict)}
+    expect(manifest["rootNodeId"] in node_ids, "assembly rootNodeId must exist in nodes")
+
+    for node in nodes:
+        expect(isinstance(node, dict), "assembly node must be an object")
+        node_id = node.get("id")
+        expect(isinstance(node_id, str) and node_id, "assembly node id must be a non-empty string")
+        parent_id = node.get("parent_id")
+        expect(parent_id is None or parent_id in node_ids, f"assembly node {node_id} parent_id must reference a node")
+        mesh_id = node.get("mesh_id")
+        expect(mesh_id is None or mesh_id in mesh_catalog, f"assembly node {node_id} mesh_id must exist in mesh_catalog")
+        children = node.get("children", [])
+        expect(isinstance(children, list), f"assembly node {node_id} children must be an array")
+        expect(all(isinstance(child, str) and child in node_ids for child in children), f"assembly node {node_id} children must reference nodes")
+        expect_transform(node.get("transform"), f"assembly node {node_id}")
+
+    fasteners = manifest.get("fastener_instances")
+    expect(isinstance(fasteners, list), "assembly fastener_instances must be an array")
+    for fastener in fasteners:
+        expect(isinstance(fastener, dict), "assembly fastener must be an object")
+        fastener_id = fastener.get("id")
+        expect(isinstance(fastener_id, str) and fastener_id, "assembly fastener id must be a non-empty string")
+        expect(fastener.get("parent_id") in node_ids, f"assembly fastener {fastener_id} parent_id must reference a node")
+        expect(fastener.get("mesh_id") in mesh_catalog, f"assembly fastener {fastener_id} mesh_id must exist in mesh_catalog")
+        expect_transform(fastener.get("transform"), f"assembly fastener {fastener_id}")
+
+    torso_fasteners = [item for item in fasteners if isinstance(item, dict) and str(item.get("id", "")).startswith("screw_torso_")]
+    expect(len(torso_fasteners) >= 14, "assembly manifest must include at least 14 torso screw instances")
+
+    for mesh_id, mesh_path in mesh_catalog.items():
+        expect(isinstance(mesh_path, str) and mesh_path.startswith("/models/"), f"mesh_catalog.{mesh_id} must be a public /models path")
+        relative_path = mesh_path.removeprefix("/")
+        expect((PROJECT_ROOT / "r-mos-frontend" / "public" / relative_path).exists(), f"mesh asset missing for {mesh_id}: {mesh_path}")
+
+
+def validate_explode_manifest(manifest: dict[str, Any], assembly_manifest: dict[str, Any]) -> None:
+    expect(isinstance(manifest.get("robotId"), str), "explode robotId must be a string")
+    node_ids = {
+        node["id"]
+        for node in assembly_manifest.get("nodes", [])
+        if isinstance(node, dict) and isinstance(node.get("id"), str)
+    }
+
+    views = manifest.get("views")
+    expect(isinstance(views, list) and views, "explode views must be a non-empty array")
+    for view in views:
+        expect(isinstance(view, dict), "explode view must be an object")
+        view_id = view.get("id")
+        expect(isinstance(view_id, str) and view_id, "explode view id must be a non-empty string")
+        expect(view.get("focus_node_id") in node_ids, f"explode view {view_id} focus_node_id must reference a node")
+        camera = view.get("camera")
+        expect(isinstance(camera, dict), f"explode view {view_id} camera must be an object")
+        expect(camera.get("projection") in {"orthographic", "perspective"}, f"explode view {view_id} projection is invalid")
+        for field in ("position", "target"):
+            value = camera.get(field)
+            expect(isinstance(value, list) and len(value) == 3, f"explode view {view_id} camera.{field} must be length 3")
+            expect(all(isinstance(entry, (int, float)) for entry in value), f"explode view {view_id} camera.{field} must be numeric")
+
+    sequences = manifest.get("sequences")
+    expect(isinstance(sequences, list) and sequences, "explode sequences must be a non-empty array")
+    for sequence in sequences:
+        expect(isinstance(sequence, dict), "explode sequence must be an object")
+        sequence_id = sequence.get("id")
+        expect(isinstance(sequence_id, str) and sequence_id, "explode sequence id must be a non-empty string")
+        expect(isinstance(sequence.get("step_index"), int), f"explode sequence {sequence_id} step_index must be an int")
+        node_refs = sequence.get("node_ids")
+        expect(isinstance(node_refs, list) and node_refs, f"explode sequence {sequence_id} node_ids must be a non-empty array")
+        expect(all(isinstance(node_id, str) and node_id in node_ids for node_id in node_refs), f"explode sequence {sequence_id} node_ids must reference nodes")
+        expect(sequence.get("anchor_node_id") in node_ids, f"explode sequence {sequence_id} anchor_node_id must reference a node")
+        direction = sequence.get("direction")
+        expect(isinstance(direction, list) and len(direction) == 3, f"explode sequence {sequence_id} direction must be length 3")
+        expect(all(isinstance(entry, (int, float)) for entry in direction), f"explode sequence {sequence_id} direction must be numeric")
+        expect(isinstance(sequence.get("distance"), (int, float)), f"explode sequence {sequence_id} distance must be numeric")
+
+
+ASSEMBLY_MANIFEST = load_blueprint(ASSEMBLY_BLUEPRINT_PATH)
+EXPLODE_MANIFEST = load_blueprint(EXPLODE_BLUEPRINT_PATH)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> None:
+    validate_assembly_manifest(ASSEMBLY_MANIFEST)
+    validate_explode_manifest(EXPLODE_MANIFEST, ASSEMBLY_MANIFEST)
     ATOM01_DIR.mkdir(parents=True, exist_ok=True)
     write_json(ASSEMBLY_PATH, ASSEMBLY_MANIFEST)
     write_json(EXPLODE_PATH, EXPLODE_MANIFEST)

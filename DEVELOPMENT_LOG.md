@@ -6336,3 +6336,58 @@
   - 当前 viewer 通过 `Canvas key` 切换投影和相机参数，视角切换会重建画布；这对 demo 页可接受，但如果后续要做更平滑的工程相机过渡，建议补显式 camera controller。
 - Next Step:
   - 若继续推进 Task 4，建议把 authored view 标签和步骤说明从 manifest 元数据中结构化出来，并把 `PartInspector` / BOM 高亮一起接入，完成更接近 CAD 的服务视图体验。
+
+- DateTime: 2026-03-13 15:54:28 CST
+- Task: 将 ATOM01 torso 试点升级到螺丝级装配，并把 assembly/explode manifest 改为 blueprint 驱动导出
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/robots/atom01/assembly_manifest.json
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/robots/atom01/explode_manifest.json
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/useAtom01AssemblyData.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-backend/tests/unit/test_atom01_assembly_export.py
+  - /Users/xuhehong/Desktop/r-mos/scripts/data/atom01/assembly_blueprint.json
+  - /Users/xuhehong/Desktop/r-mos/scripts/data/atom01/explode_blueprint.json
+  - /Users/xuhehong/Desktop/r-mos/scripts/export_atom01_assembly_manifest.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts -> FAIL（预期红灯；torso 仍是旧试点子件）
+  - cd /Users/xuhehong/Desktop/r-mos && source r-mos-backend/.venv/bin/activate && pytest r-mos-backend/tests/unit/test_atom01_assembly_export.py -q -> FAIL（预期红灯；导出器尚未暴露 blueprint 加载能力）
+  - cd /Users/xuhehong/Desktop/r-mos && source r-mos-backend/.venv/bin/activate && pytest r-mos-backend/tests/unit/test_atom01_assembly_export.py -q
+  - cd /Users/xuhehong/Desktop/r-mos && source r-mos-backend/.venv/bin/activate && python scripts/export_atom01_assembly_manifest.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx -> FAIL（预期红灯；StrictMode 下 304 响应导致 manifest 加载失败）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx -> FAIL（预期红灯；enabled=false -> true 时 effect 未重跑）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/assemblyManifest.test.ts src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/pages/__tests__/Atom01DemoPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos && source r-mos-backend/.venv/bin/activate && pytest r-mos-backend/tests/unit/test_atom01_assembly_export.py -q
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173 --strictPort
+  - curl --noproxy 127.0.0.1,localhost -I http://127.0.0.1:55173/atom01
+  - Chrome DevTools: reload http://127.0.0.1:55173/atom01
+  - Chrome DevTools: click `准CAD拆解` -> `躯干维护视角` -> `下一步`
+  - Chrome DevTools: evaluate `performance.getEntriesByType('resource')` for torso motor / pcb / screw glb requests
+  - git diff --name-only
+  - git status --short
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 装配 manifest 结构与 torso 螺丝覆盖：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts` -> PASS（`3 tests`）
+  - Hook 严格模式与启停切换：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx` -> PASS（`2 tests`）
+  - 前端相关回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/assemblyManifest.test.ts src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/pages/__tests__/Atom01DemoPage.test.tsx` -> PASS（`17 tests`，`Atom01AssemblyRenderer` jsdom 下仍有 `group/primitive` warning）
+  - 导出器 blueprint 单测：`cd /Users/xuhehong/Desktop/r-mos && source r-mos-backend/.venv/bin/activate && pytest r-mos-backend/tests/unit/test_atom01_assembly_export.py -q` -> PASS（`1 passed`，带既有 Pydantic deprecation warnings）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器验证：`http://127.0.0.1:55173/atom01` -> PASS（开启 `准CAD拆解`、点击 `躯干维护视角`、执行 `下一步` 后，浏览器资源项出现 `/models/parts/misc/LB22SA2M1_M10.glb`、`/models/parts/misc/OPI_5PLUS_PCBA.glb`、`/models/parts/screws/内六角圆柱头螺钉M3x10.glb`、`/models/parts/screws/内六角圆柱头螺钉M4x12.glb`）
+- Result: PASS
+- Risks/Notes:
+  - 这轮把 `assembly_manifest` 从 Python 常量改成了 blueprint JSON 驱动，但 blueprint 目前仍是人工维护的装配源，不是 CAD/PDM 自动导出；问题从“写死在代码里”降到“数据源分离且可校验”，不是终局。
+  - `Atom01Interactive` 只对已有 assembly 覆盖的 link 降低旧主模型透明度，当前主要改善 torso 试点；全机其它 link 仍以回退路径为主。
+  - 浏览器截图仍会受 WebGL capture 限制出现黑屏，当前浏览器证据以资源加载结果为准。
+- Next Step:
+  - 若继续推进，优先把 shoulder/knee 也扩成实例级紧固件，并把 blueprint 数据继续替换为 CAD 导出的中间装配源。
