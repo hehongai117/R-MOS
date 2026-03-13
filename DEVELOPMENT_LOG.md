@@ -6294,3 +6294,45 @@
   - `resolveExplodeView` 目前只提供 manifest 内查找和首视图回退，工程相机切换还没有接到页面控件。
 - Next Step:
   - 继续 Task 4，把 `explode_manifest.views` 和 `explodeStepIndex` 接到 `Atom01Interactive` / `Atom01DemoPage`，形成最小的工程视图切换和分步骤爆炸控制。
+
+- DateTime: 2026-03-13 15:18:37 CST
+- Task: 接入 ATOM01 Demo 页的 authored 视图/步骤控制并完成浏览器验证（Task 4 第二段）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Viewer.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/Atom01DemoPage.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - sed -n '1,400p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/Atom01DemoPage.test.tsx
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Viewer.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx -> FAIL（预期红灯；页面还没有 authored explode/view 控件）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx -> FAIL（第一次实现后 `Switch` 缺少显式可访问名称）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run dev -- --host 127.0.0.1 --port 55173 --strictPort
+  - Chrome DevTools: navigate http://127.0.0.1:55173/atom01
+  - Chrome DevTools: click `准CAD拆解` -> `躯干维护视角` -> `下一步`
+  - Chrome DevTools: evaluate `[data-viewer-mode]` attributes
+  - Chrome DevTools: capture screenshot `/tmp/atom01-browser-check.png`
+  - Chrome DevTools: inspect console/network for page errors
+  - git diff --name-only
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - Demo 页控件联动：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx` -> PASS（`4 tests`）
+  - 相关装配链路回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/pages/__tests__/Atom01DemoPage.test.tsx src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts` -> PASS（`16 tests`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器验证：`http://127.0.0.1:55173/atom01` -> PASS（控件存在；点击 `准CAD拆解`、`躯干维护视角`、`下一步` 后，viewer 容器状态为 `interactive + orthographic + position=1.15,0.58,0.72 + target=0.04,0,0.28`）
+- Result: PASS
+- Risks/Notes:
+  - 真实 manifest 目前包含额外 authored view（例如 `Left Knee Service`），页面标签除了 `torso_service_view` 的中文映射外，其余仍回退为英文标题化文本。
+  - 浏览器控制台里有两个与本轮功能无关的请求错误：`/api/v1/agent/preference` 返回 `500`；不影响 `/atom01` 的 authored explode/view 交互，但属于现存页面噪音。
+  - 当前 viewer 通过 `Canvas key` 切换投影和相机参数，视角切换会重建画布；这对 demo 页可接受，但如果后续要做更平滑的工程相机过渡，建议补显式 camera controller。
+- Next Step:
+  - 若继续推进 Task 4，建议把 authored view 标签和步骤说明从 manifest 元数据中结构化出来，并把 `PartInspector` / BOM 高亮一起接入，完成更接近 CAD 的服务视图体验。

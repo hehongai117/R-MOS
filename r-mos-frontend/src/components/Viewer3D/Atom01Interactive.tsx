@@ -131,6 +131,7 @@ export interface Atom01InteractiveProps {
     jointAngles?: Record<string, number>;
     faultJoints?: string[];
     explodeAmount?: number;  // 爆炸程度 0~1
+    explodeStepIndex?: number | null; // 作者定义爆炸步骤
     showSubParts?: boolean;  // 爆炸时显示子零件
     scale?: number;
     position?: [number, number, number];
@@ -764,6 +765,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
     jointAngles = {},
     faultJoints = [],
     explodeAmount = 0,
+    explodeStepIndex = null,
     showSubParts = false,
     scale = 1,
     position = [0, 0, 0],
@@ -977,6 +979,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
                             baseOpacity={subPartBaseOpacity}
                             explodeManifest={assemblyExplodeManifest}
                             explodeAmount={explodeAmount}
+                            explodeStepIndex={explodeStepIndex}
                         />
                     ) : (
                         <SubPartsGroup

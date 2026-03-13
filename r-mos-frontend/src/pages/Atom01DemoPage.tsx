@@ -8,7 +8,7 @@
  * - 故障模拟
  * - 演示模式
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, Row, Col, Slider, Switch, Button, Typography, Space, Tag, Segmented } from 'antd';
 import {
     RobotOutlined,
@@ -20,8 +20,13 @@ import {
     SettingOutlined,
 } from '@ant-design/icons';
 import { Atom01Viewer } from '@/components/Viewer3D';
+import { useAtom01AssemblyData } from '@/components/Viewer3D/hooks/useAtom01AssemblyData';
+import { resolveExplodeView } from '@/components/Viewer3D/assemblyManifest';
 
 const { Title, Text } = Typography;
+const DEFAULT_VIEW_ID = 'default_view';
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [1.5, 1, 1.5];
+const DEFAULT_CAMERA_TARGET: [number, number, number] = [0, 0.3, 0];
 
 // 关节配置（简化版，用于 UI 控制）
 const JOINT_GROUPS = {
@@ -86,12 +91,28 @@ const PRESET_POSES = {
     },
 };
 
+function formatExplodeViewLabel(viewId: string): string {
+    if (viewId === 'torso_service_view') {
+        return '躯干维护视角';
+    }
+
+    return viewId
+        .replace(/_view$/u, '')
+        .split('_')
+        .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
+        .join(' ');
+}
+
 function Atom01DemoPage() {
     const [jointAngles, setJointAngles] = useState<Record<string, number>>({});
     const [faultJoints, setFaultJoints] = useState<string[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<string>('leftLeg');
     const [isAnimating, setIsAnimating] = useState(false);
     const [animationTime, setAnimationTime] = useState(0);
+    const [cadExplodeEnabled, setCadExplodeEnabled] = useState(false);
+    const [explodeStepIndex, setExplodeStepIndex] = useState(0);
+    const [selectedExplodeViewId, setSelectedExplodeViewId] = useState<string>(DEFAULT_VIEW_ID);
+    const { explodeManifest, isLoading: isAssemblyLoading, error: assemblyError } = useAtom01AssemblyData(true);
 
     // 更新单个关节角度
     const updateJoint = useCallback((jointName: string, value: number) => {
@@ -156,6 +177,58 @@ function Atom01DemoPage() {
 
     // 获取当前选中的关节组
     const currentJoints = JOINT_GROUPS[selectedGroup as keyof typeof JOINT_GROUPS] || [];
+    const maxExplodeStep = useMemo(
+        () => explodeManifest?.sequences.reduce((maxStep, sequence) => Math.max(maxStep, sequence.step_index), 0) ?? 0,
+        [explodeManifest],
+    );
+    const explodeViewOptions = useMemo(() => {
+        const authoredViews = explodeManifest?.views ?? [];
+        return [
+            { id: DEFAULT_VIEW_ID, label: '默认视角', focusNodeId: null as string | null },
+            ...authoredViews.map((view) => ({
+                id: view.id,
+                label: formatExplodeViewLabel(view.id),
+                focusNodeId: view.focus_node_id,
+            })),
+        ];
+    }, [explodeManifest]);
+    const activeExplodeView = useMemo(() => {
+        if (!explodeManifest || selectedExplodeViewId === DEFAULT_VIEW_ID) {
+            return null;
+        }
+
+        return resolveExplodeView(explodeManifest, selectedExplodeViewId);
+    }, [explodeManifest, selectedExplodeViewId]);
+    const focusedAssemblyNode = cadExplodeEnabled
+        ? activeExplodeView?.focus_node_id ?? explodeManifest?.views[0]?.focus_node_id ?? null
+        : null;
+    const viewerProjection = cadExplodeEnabled && activeExplodeView
+        ? activeExplodeView.camera.projection
+        : 'perspective';
+    const viewerPosition = cadExplodeEnabled && activeExplodeView
+        ? activeExplodeView.camera.position
+        : DEFAULT_CAMERA_POSITION;
+    const viewerTarget = cadExplodeEnabled && activeExplodeView
+        ? activeExplodeView.camera.target
+        : DEFAULT_CAMERA_TARGET;
+    const authoredExplodeActive = cadExplodeEnabled && explodeStepIndex > 0;
+
+    useEffect(() => {
+        if (!cadExplodeEnabled && explodeStepIndex !== 0) {
+            setExplodeStepIndex(0);
+        }
+    }, [cadExplodeEnabled, explodeStepIndex]);
+
+    useEffect(() => {
+        if (!explodeManifest || selectedExplodeViewId === DEFAULT_VIEW_ID) {
+            return;
+        }
+
+        const exists = explodeManifest.views.some((view) => view.id === selectedExplodeViewId);
+        if (!exists) {
+            setSelectedExplodeViewId(DEFAULT_VIEW_ID);
+        }
+    }, [explodeManifest, selectedExplodeViewId]);
 
     return (
         <div style={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
@@ -210,6 +283,76 @@ function Atom01DemoPage() {
                                 <Button size="small" onClick={() => applyPreset('walk')}>行走</Button>
                                 <Button size="small" onClick={() => applyPreset('squat')}>下蹲</Button>
                                 <Button size="small" onClick={() => applyPreset('arms_up')}>举手</Button>
+                            </Space>
+                        </Card>
+
+                        <Card size="small" title="准 CAD 装配视图">
+                            <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text>准CAD拆解</Text>
+                                    <Switch
+                                        aria-label="准CAD拆解"
+                                        checked={cadExplodeEnabled}
+                                        onChange={setCadExplodeEnabled}
+                                        checkedChildren="开"
+                                        unCheckedChildren="关"
+                                    />
+                                </div>
+
+                                {isAssemblyLoading && (
+                                    <Text type="secondary">装配视图加载中...</Text>
+                                )}
+                                {assemblyError && !isAssemblyLoading && (
+                                    <Text type="danger">装配数据加载失败，已回退默认视图</Text>
+                                )}
+
+                                {!isAssemblyLoading && !assemblyError && (
+                                    <>
+                                        <Text type="secondary">工程视角</Text>
+                                        <Space wrap>
+                                            {explodeViewOptions.map(option => (
+                                                <Button
+                                                    key={option.id}
+                                                    size="small"
+                                                    type={selectedExplodeViewId === option.id ? 'primary' : 'default'}
+                                                    onClick={() => setSelectedExplodeViewId(option.id)}
+                                                >
+                                                    {option.label}
+                                                </Button>
+                                            ))}
+                                        </Space>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text type="secondary">爆炸步骤</Text>
+                                            <Tag color={authoredExplodeActive ? 'blue' : 'default'}>
+                                                {explodeStepIndex}/{maxExplodeStep}
+                                            </Tag>
+                                        </div>
+
+                                        <Space>
+                                            <Button
+                                                size="small"
+                                                onClick={() => setExplodeStepIndex(step => Math.max(0, step - 1))}
+                                                disabled={!cadExplodeEnabled || explodeStepIndex === 0}
+                                            >
+                                                上一步
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                onClick={() => setExplodeStepIndex(step => Math.min(maxExplodeStep, step + 1))}
+                                                disabled={!cadExplodeEnabled || explodeStepIndex >= maxExplodeStep}
+                                            >
+                                                下一步
+                                            </Button>
+                                        </Space>
+
+                                        <Text type="secondary">
+                                            {focusedAssemblyNode
+                                                ? `当前聚焦总成：${focusedAssemblyNode}`
+                                                : '当前使用默认总览视角'}
+                                        </Text>
+                                    </>
+                                )}
                             </Space>
                         </Card>
 
@@ -270,7 +413,7 @@ function Atom01DemoPage() {
                     <Card
                         size="small"
                         style={{ height: '100%' }}
-                        bodyStyle={{ height: 'calc(100% - 40px)', padding: 0 }}
+                        styles={{ body: { height: 'calc(100% - 40px)', padding: 0 } }}
                         title="3D 机器人视图"
                         extra={
                             <Space>
@@ -281,10 +424,18 @@ function Atom01DemoPage() {
                         <Atom01Viewer
                             width="100%"
                             height="100%"
+                            cameraPosition={viewerPosition}
+                            cameraProjection={viewerProjection}
+                            cameraTarget={viewerTarget}
+                            explodeAmount={authoredExplodeActive ? 1 : 0}
+                            explodeStepIndex={authoredExplodeActive ? explodeStepIndex : null}
+                            interactiveMode={true}
                             jointAngles={jointAngles}
                             faultJoints={faultJoints}
                             scale={2}
                             showGrid={true}
+                            showSubParts={authoredExplodeActive}
+                            subPartEnabledNames={focusedAssemblyNode ? [focusedAssemblyNode] : undefined}
                         />
                     </Card>
                 </Col>

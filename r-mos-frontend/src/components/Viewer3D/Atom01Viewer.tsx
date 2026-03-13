@@ -9,6 +9,7 @@ import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Atom01Model, Atom01ModelProps } from './Atom01Model';
+import Atom01Interactive, { type Atom01InteractiveProps } from './Atom01Interactive';
 
 // 加载指示器
 const LoadingFallback = () => (
@@ -23,19 +24,54 @@ export interface Atom01ViewerProps extends Atom01ModelProps {
     height?: string | number;
     backgroundColor?: string;
     showGrid?: boolean;
+    interactiveMode?: boolean;
+    showSubParts?: Atom01InteractiveProps['showSubParts'];
+    explodeAmount?: Atom01InteractiveProps['explodeAmount'];
+    explodeStepIndex?: Atom01InteractiveProps['explodeStepIndex'];
+    subPartEnabledNames?: Atom01InteractiveProps['subPartEnabledNames'];
+    cameraProjection?: 'orthographic' | 'perspective';
+    cameraPosition?: [number, number, number];
+    cameraTarget?: [number, number, number];
 }
+
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [1.5, 1, 1.5];
+const DEFAULT_CAMERA_TARGET: [number, number, number] = [0, 0.3, 0];
 
 export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
     width = '100%',
     height = '600px',
     backgroundColor = '#0a1929',
     showGrid = true,
-    ...modelProps
+    interactiveMode = false,
+    showSubParts = false,
+    explodeAmount = 0,
+    explodeStepIndex = null,
+    subPartEnabledNames,
+    cameraProjection = 'perspective',
+    cameraPosition = DEFAULT_CAMERA_POSITION,
+    cameraTarget = DEFAULT_CAMERA_TARGET,
+    jointAngles,
+    faultJoints,
+    highlightLinks,
+    scale,
+    position,
 }) => {
+    const canvasCamera = cameraProjection === 'orthographic'
+        ? { position: cameraPosition, zoom: 170, near: 0.01, far: 100 }
+        : { position: cameraPosition, fov: 45, near: 0.01, far: 100 };
+
     return (
-        <div style={{ width, height, background: backgroundColor, borderRadius: '8px' }}>
+        <div
+            data-camera-position={cameraPosition.join(',')}
+            data-camera-projection={cameraProjection}
+            data-camera-target={cameraTarget.join(',')}
+            data-viewer-mode={interactiveMode ? 'interactive' : 'static'}
+            style={{ width, height, background: backgroundColor, borderRadius: '8px' }}
+        >
             <Canvas
-                camera={{ position: [1.5, 1, 1.5], fov: 45 }}
+                key={`${cameraProjection}:${cameraPosition.join(',')}:${cameraTarget.join(',')}`}
+                orthographic={cameraProjection === 'orthographic'}
+                camera={canvasCamera}
                 shadows
                 dpr={[1, 2]}
             >
@@ -54,7 +90,26 @@ export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
 
                 {/* 机器人模型 */}
                 <Suspense fallback={<LoadingFallback />}>
-                    <Atom01Model {...modelProps} position={[0, 0.5, 0]} />
+                    {interactiveMode ? (
+                        <Atom01Interactive
+                            faultJoints={faultJoints}
+                            jointAngles={jointAngles}
+                            explodeAmount={explodeAmount}
+                            explodeStepIndex={explodeStepIndex}
+                            position={position ?? [0, 0.5, 0]}
+                            scale={scale}
+                            showSubParts={showSubParts}
+                            subPartEnabledNames={subPartEnabledNames}
+                        />
+                    ) : (
+                        <Atom01Model
+                            faultJoints={faultJoints}
+                            highlightLinks={highlightLinks}
+                            jointAngles={jointAngles}
+                            position={position ?? [0, 0.5, 0]}
+                            scale={scale}
+                        />
+                    )}
                 </Suspense>
 
                 {/* 控制器 */}
@@ -64,7 +119,7 @@ export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
                     enableRotate={true}
                     minDistance={0.5}
                     maxDistance={5}
-                    target={[0, 0.3, 0]}
+                    target={cameraTarget}
                 />
             </Canvas>
         </div>
