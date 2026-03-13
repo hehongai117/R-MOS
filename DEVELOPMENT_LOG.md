@@ -6144,3 +6144,35 @@
   - 计划默认采用“静态 manifest 先落地，再逐步自动化导出”的路线；如果后续必须直接从 CAD 装配自动导出，实施复杂度会进一步上升。
 - Next Step:
   - 由你选择执行方式：先做 5 个高价值总成的试点实现，或直接进入全机装配树导出。
+
+- DateTime: 2026-03-13 11:15:21 CST
+- Task: 实现 ATOM01 装配清单最小闭环（Task 1 初版）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/assemblyManifest.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/robots/atom01/assembly_manifest.json
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/robots/atom01/explode_manifest.json
+  - /Users/xuhehong/Desktop/r-mos/scripts/export_atom01_assembly_manifest.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:subagent-driven-development
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - ls /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/parts/frames | rg "^(胸腔前后夹板|胸腔夹板后|胸腔胸部|小腿|小腿_1|肩膀|肩膀_2|肩部固定件数量2|肩部固定件数量2_2|脚踝横滚连接件|脚踝横滚连接件_1|髋关节固定|髋关节固定_2|大腿内侧|大腿内侧_2|长连杆|长连杆_2|短连杆_1|短连杆_3)\\.glb$"
+  - ls /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/parts/calibration | rg "^(膝盖标定数量2|膝盖标定数量2_1|肘部标定件数量2|肘部标定件数量2_1)\\.glb$"
+  - ls /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/parts/screws | rg "^(内六角圆柱头螺钉M3x8|内六角圆柱头螺钉M3x10|内六角圆柱头螺钉M4x8|内六角圆柱头螺钉M4x12|内六角圆柱头螺钉M5x10)\\.glb$"
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts -> FAIL（预期红灯；缺少 `@/components/Viewer3D/assemblyManifest`）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts -> FAIL（测试路径和坏样例断言问题）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - source /Users/xuhehong/Desktop/r-mos/r-mos-backend/.venv/bin/activate && python /Users/xuhehong/Desktop/r-mos/scripts/export_atom01_assembly_manifest.py
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 前端契约测试：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/assemblyManifest.test.ts` -> PASS（`3 tests`）
+  - 导出脚本：`source /Users/xuhehong/Desktop/r-mos/r-mos-backend/.venv/bin/activate && python /Users/xuhehong/Desktop/r-mos/scripts/export_atom01_assembly_manifest.py` -> PASS
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 当前 `assembly_manifest.json` 仍是“静态试点清单”，覆盖了 `torso_link / left_arm_pitch_link / right_arm_pitch_link / left_knee_link / right_knee_link` 五个高价值总成，还没有接上自动 CAD 装配导出。
+  - 新增的 `assemblyManifest.ts` 目前只负责契约解析和索引构建，尚未接入 `Atom01Interactive` 的真实渲染路径。
+- Next Step:
+  - 进入 Task 2，把 `assemblyManifest.ts` 接到前端加载链路，并统一静态 ATOM01 与运行时 manifest 的消费接口。
