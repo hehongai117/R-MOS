@@ -14,6 +14,8 @@ import { useGLTF, Line } from '@react-three/drei';
 import { getRobotModelBase } from '../../config/robots';
 import * as THREE from 'three';
 import { getExplodePartsForLink, CATEGORY_COLORS, REFERENCE_NODE_IDS, type DetailPart } from './partsManifest';
+import { useAtom01AssemblyData } from './hooks/useAtom01AssemblyData';
+import { Atom01AssemblyRenderer } from './Atom01AssemblyRenderer';
 
 // GLB 模型路径
 const MODEL_BASE_PATH = getRobotModelBase('atom01');
@@ -861,6 +863,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
 
     // 是否启用子零件替换（explode > 0 且 showSubParts 开启）
     const subPartsActive = showSubParts && explodeAmount > 0;
+    const { adapter: assemblyAdapter } = useAtom01AssemblyData(subPartsActive);
     const subPartBaseOpacity = smoothstep(0.12, 0.42, explodeAmount);
     const singleLinkIsolation = visibleSet.size === 1 && isolationLevel <= 1;
     const suppressMainLinkOffset = visibleSet.size === 1 && subPartsActive;
@@ -967,17 +970,25 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
                     onDoubleClick={isClickable ? handleDoubleClick(name) : undefined}
                 />
                 {subPartsActive && subPartBaseOpacity > 0 && !isFaded && subPartEnabledSet.has(name) && (
-                    <SubPartsGroup
-                        linkName={name}
-                        explodeAmount={explodeAmount}
-                        baseOpacity={subPartBaseOpacity}
-                        isL2Mode={isolationLevel >= 2 && l2TargetLink === name}
-                        showAllInL1={singleLinkIsolation}
-                        selectedIdx={l2TargetLink === name ? l2SelectedPartIdx : null}
-                        onSubPartSelect={onSubPartSelect}
-                        onSubPartHover={onSubPartHover}
-                        fullscreenMode={fullscreenMode}
-                    />
+                    assemblyAdapter?.tree.nodes[name] ? (
+                        <Atom01AssemblyRenderer
+                            adapter={assemblyAdapter}
+                            rootLinkName={name}
+                            baseOpacity={subPartBaseOpacity}
+                        />
+                    ) : (
+                        <SubPartsGroup
+                            linkName={name}
+                            explodeAmount={explodeAmount}
+                            baseOpacity={subPartBaseOpacity}
+                            isL2Mode={isolationLevel >= 2 && l2TargetLink === name}
+                            showAllInL1={singleLinkIsolation}
+                            selectedIdx={l2TargetLink === name ? l2SelectedPartIdx : null}
+                            onSubPartSelect={onSubPartSelect}
+                            onSubPartHover={onSubPartHover}
+                            fullscreenMode={fullscreenMode}
+                        />
+                    )
                 )}
             </React.Fragment>
         );

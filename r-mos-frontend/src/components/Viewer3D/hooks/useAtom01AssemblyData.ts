@@ -7,6 +7,7 @@ import {
   parseExplodeManifest,
   type AssemblyFastenerInstance,
   type AssemblyManifest,
+  type AssemblyTransform,
   type ExplodeManifest,
 } from '@/components/Viewer3D/assemblyManifest'
 import type { ViewerTreeAdapter } from '@/components/Viewer3D/runtimeManifest'
@@ -18,6 +19,7 @@ export interface Atom01AssemblyAdapter {
   label: string
   tree: ViewerTreeAdapter
   meshCatalog: Record<string, string>
+  transforms: Record<string, AssemblyTransform>
   fastenerInstances: AssemblyFastenerInstance[]
   assetUrls: string[]
 }
@@ -39,6 +41,10 @@ async function fetchJson(url: string): Promise<unknown> {
 
 export function createStaticAssemblyAdapter(manifest: AssemblyManifest): Atom01AssemblyAdapter {
   const index = buildAssemblyIndex(manifest)
+  const transforms = Object.fromEntries([
+    ...manifest.nodes.map((node) => [node.id, node.transform] as const),
+    ...manifest.fastener_instances.map((instance) => [instance.id, instance.transform] as const),
+  ])
   return {
     robotId: manifest.robotId,
     label: manifest.robotId.toUpperCase(),
@@ -60,19 +66,30 @@ export function createStaticAssemblyAdapter(manifest: AssemblyManifest): Atom01A
       ),
     },
     meshCatalog: manifest.mesh_catalog,
+    transforms,
     fastenerInstances: manifest.fastener_instances,
     assetUrls: Object.values(manifest.mesh_catalog),
   }
 }
 
-export function useAtom01AssemblyData(): UseAtom01AssemblyDataResult {
+export function useAtom01AssemblyData(enabled = true): UseAtom01AssemblyDataResult {
   const [adapter, setAdapter] = useState<Atom01AssemblyAdapter | null>(null)
   const [explodeManifest, setExplodeManifest] = useState<ExplodeManifest | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(enabled)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     let disposed = false
+
+    if (!enabled) {
+      setAdapter(null)
+      setExplodeManifest(null)
+      setError(null)
+      setIsLoading(false)
+      return () => {
+        disposed = true
+      }
+    }
 
     async function load() {
       setIsLoading(true)

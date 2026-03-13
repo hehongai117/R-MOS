@@ -6204,3 +6204,32 @@
   - `runtimeManifest.ts` 只是新增了共享 `tree` 结构，旧 `treeNodes` / `mapping` 仍然保留，避免一次性打断现有 SOP 工作台路径。
 - Next Step:
   - 进入 Task 3，把静态装配树真正接入 `Atom01Interactive` 或新的装配渲染器，逐步替换启发式子件挂接。
+
+- DateTime: 2026-03-13 14:05:57 CST
+- Task: 新增装配树渲染器并接入 Atom01Interactive（Task 3 第一段）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/useAtom01AssemblyData.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - sed -n '1,1320p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - sed -n '1,200p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/__tests__/Atom01DemoPage.test.tsx
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/pages/Atom01DemoPage.tsx
+  - rg -n "Atom01Interactive|Atom01Viewer" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src -g '*test.ts' -g '*test.tsx'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx -> FAIL（预期红灯；缺少 `Atom01AssemblyRenderer`）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 装配渲染器：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx` -> PASS（`2 tests`，有 DOM 对 `group/primitive` 的 warning，但不影响结果）
+  - 装配数据回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts` -> PASS（`7 tests`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 当前 `Atom01AssemblyRenderer` 先实现的是“真实局部位姿挂接”，还没有接入作者定义爆炸序列；因此启用装配树后，试点总成会先以装配位展示，不会像旧 `SubPartsGroup` 那样自动散开。
+  - `Atom01Interactive` 现在采用“装配树优先、旧启发式回退”的策略，只覆盖已有静态 manifest 的试点总成，其他 link 仍走原有 `partsManifest` 路径。
+- Next Step:
+  - 继续扩展 Task 3，把更多 link 接到 `Atom01AssemblyRenderer`，并评估是否在装配树模式下增加最小的 L1 隔离/显隐控制，减少与旧爆炸图体验差异。
