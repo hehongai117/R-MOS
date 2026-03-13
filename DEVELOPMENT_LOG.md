@@ -6116,3 +6116,31 @@
   - 若后续接入更多机器人型号，应把这层映射提炼为按型号切换的监控映射表，而不是继续写死在页面里。
 - Next Step:
   - 如果继续打磨监控页，下一步建议补“真实在线时的 3D 高亮动效复查”，并评估是否要给告警卡片增加一键跳转到 AI 工作台诊断。
+
+- DateTime: 2026-03-13 10:41:58 CST
+- Task: 制定 ATOM01 准 CAD 装配查看器实施计划
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-13-atom01-cad-assembly-viewer-plan.md
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:writing-plans
+  - rg -n "ATOM 01|ATOM_01|ATOM01|atom 01|atom01" /Users/xuhehong/Desktop/r-mos
+  - rg --files /Users/xuhehong/Desktop/r-mos | rg "ATOM|atom|cad|urdf|mesh|stl|step|iges|obj|glb|gltf|usd|usdz|sdf|mjcf"
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/robots/atom01/manifest.json
+  - sed -n '1,520p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/partsManifest.ts
+  - source /Users/xuhehong/Desktop/r-mos/r-mos-backend/.venv/bin/activate && python -c "from pathlib import Path; import json; base=Path('/Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/robots/atom01'); parts=Path('/Users/xuhehong/Desktop/r-mos/r-mos-frontend/public/models/parts'); robot=list(base.glob('*.glb')); step=list(parts.rglob('*.step'))+list(parts.rglob('*.STEP')); glb=list(parts.rglob('*.glb')); stl=list(parts.rglob('*.stl'))+list(parts.rglob('*.STL')); print(json.dumps({'robot_link_glb_count':len(robot),'robot_link_glb_mb':round(sum(p.stat().st_size for p in robot)/1024/1024,2),'parts_glb_count':len(glb),'parts_glb_mb':round(sum(p.stat().st_size for p in glb)/1024/1024,2),'parts_step_count':len(step),'parts_stl_count':len(stl)}, ensure_ascii=False))"
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/data/toolData.ts
+  - sed -n '1,520p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - sed -n '1,240p' /Users/xuhehong/Desktop/r-mos/scripts/convert_step_to_glb.py
+  - sed -n '1,280p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/runtimeManifest.ts
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 文档自检：核对计划中的文件路径、脚本入口、前端测试命令与现有仓库结构一致 -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 本次仅新增实施计划文档，没有修改生产代码，也没有启动前后端服务。
+  - 计划默认采用“静态 manifest 先落地，再逐步自动化导出”的路线；如果后续必须直接从 CAD 装配自动导出，实施复杂度会进一步上升。
+- Next Step:
+  - 由你选择执行方式：先做 5 个高价值总成的试点实现，或直接进入全机装配树导出。
