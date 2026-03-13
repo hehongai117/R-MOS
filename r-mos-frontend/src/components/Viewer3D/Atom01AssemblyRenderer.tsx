@@ -22,6 +22,7 @@ export interface Atom01AssemblyRendererProps {
   baseOpacity?: number
   explodeManifest?: ExplodeManifest | null
   explodeAmount?: number
+  explodeStepIndex?: number | null
 }
 
 function formatVector(value: [number, number, number]) {
@@ -39,13 +40,24 @@ function buildExplodeOffsetMap(
   explodeManifest: ExplodeManifest | null | undefined,
   rootLinkName: string,
   explodeAmount: number,
+  explodeStepIndex: number | null,
 ): Record<string, [number, number, number]> {
   if (!explodeManifest || explodeAmount <= 0) {
     return {}
   }
 
-  return explodeManifest.sequences.reduce<Record<string, [number, number, number]>>((acc, sequence) => {
-    if (sequence.anchor_node_id !== rootLinkName) {
+  const anchoredSequences = explodeManifest.sequences.filter(
+    (sequence) => sequence.anchor_node_id === rootLinkName,
+  )
+  const activeStepIndex = explodeStepIndex ?? anchoredSequences.reduce<number | null>((lowest, sequence) => {
+    if (lowest == null || sequence.step_index < lowest) {
+      return sequence.step_index
+    }
+    return lowest
+  }, null)
+
+  return anchoredSequences.reduce<Record<string, [number, number, number]>>((acc, sequence) => {
+    if (activeStepIndex != null && sequence.step_index > activeStepIndex) {
       return acc
     }
 
@@ -73,10 +85,16 @@ export function collectAssemblyRenderItems(
   rootLinkName: string,
   explodeManifest?: ExplodeManifest | null,
   explodeAmount = 0,
+  explodeStepIndex: number | null = null,
 ): AssemblyRenderItem[] {
   const items: AssemblyRenderItem[] = []
   const queue = [...(adapter.tree.nodes[rootLinkName]?.children ?? [])]
-  const explodeOffsetMap = buildExplodeOffsetMap(explodeManifest, rootLinkName, explodeAmount)
+  const explodeOffsetMap = buildExplodeOffsetMap(
+    explodeManifest,
+    rootLinkName,
+    explodeAmount,
+    explodeStepIndex,
+  )
 
   while (queue.length > 0) {
     const currentId = queue.shift()
@@ -205,13 +223,20 @@ export const Atom01AssemblyRenderer: React.FC<Atom01AssemblyRendererProps> = ({
   baseOpacity = 0.85,
   explodeManifest = null,
   explodeAmount = 0,
+  explodeStepIndex = null,
 }) => {
   const itemsByParent = useMemo(() => {
-    return collectAssemblyRenderItems(adapter, rootLinkName, explodeManifest, explodeAmount).reduce<Record<string, AssemblyRenderItem[]>>((acc, item) => {
+    return collectAssemblyRenderItems(
+      adapter,
+      rootLinkName,
+      explodeManifest,
+      explodeAmount,
+      explodeStepIndex,
+    ).reduce<Record<string, AssemblyRenderItem[]>>((acc, item) => {
       acc[item.parentId] = acc[item.parentId] ? [...acc[item.parentId], item] : [item]
       return acc
     }, {})
-  }, [adapter, explodeAmount, explodeManifest, rootLinkName])
+  }, [adapter, explodeAmount, explodeManifest, explodeStepIndex, rootLinkName])
 
   if (!adapter.tree.nodes[rootLinkName]) {
     return null

@@ -6260,3 +6260,37 @@
   - 紧固件目前通过父节点层级自然跟随，不额外吃作者定义偏移；这符合“盖板移出时螺钉随盖板走”的最小需求，但还不是完整的工程拆解编排。
 - Next Step:
   - 如果继续推进 Task 4，下一步建议给装配树模式补“分步骤爆炸控制”和“工程视图开关”，把 `explode_manifest.views` 真正用起来。
+
+- DateTime: 2026-03-13 14:49:38 CST
+- Task: 补齐 explode_manifest 的 step/view 解析缺口（Task 4 第一段续）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/assemblyManifest.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:executing-plans
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:brainstorming
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/assemblyManifest.ts
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/docs/plans/2026-03-13-atom01-cad-assembly-viewer-plan.md
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx -> FAIL（预期红灯；`resolveExplodeView` 缺失，且默认叠加了所有 sequence）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx -> FAIL（第一次实现后仍默认叠加多步 sequence）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - git diff --name-only
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 爆炸序列渲染器：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx` -> PASS（`5 tests`，jsdom 下仍有 `group/primitive` warning）
+  - 相关装配链路回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts` -> PASS（`12 tests`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 当前默认 step 语义被收敛为“锚点总成的首个 authored step”，避免未接 UI 前一次性叠加全部 sequence；真正的多步导航仍需在 viewer 状态层显式传入 `explodeStepIndex`。
+  - `resolveExplodeView` 目前只提供 manifest 内查找和首视图回退，工程相机切换还没有接到页面控件。
+- Next Step:
+  - 继续 Task 4，把 `explode_manifest.views` 和 `explodeStepIndex` 接到 `Atom01Interactive` / `Atom01DemoPage`，形成最小的工程视图切换和分步骤爆炸控制。

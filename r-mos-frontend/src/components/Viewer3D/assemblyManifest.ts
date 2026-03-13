@@ -218,6 +218,17 @@ export function parseExplodeManifest(rawValue: unknown): ExplodeManifest {
   }
 }
 
+export function resolveExplodeView(
+  manifest: ExplodeManifest,
+  viewId: string | null | undefined,
+): ExplodeView | null {
+  if (!viewId) {
+    return manifest.views[0] ?? null
+  }
+
+  return manifest.views.find((view) => view.id === viewId) ?? null
+}
+
 export function buildAssemblyIndex(manifest: AssemblyManifest): AssemblyIndex {
   const byId = Object.fromEntries(manifest.nodes.map((node) => [node.id, node]))
   const childrenByParent = manifest.nodes.reduce<Record<string, string[]>>((acc, node) => {

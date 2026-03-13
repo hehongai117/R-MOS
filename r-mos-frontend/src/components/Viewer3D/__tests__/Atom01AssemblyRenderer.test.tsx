@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 
+import { resolveExplodeView } from '@/components/Viewer3D/assemblyManifest'
 import type { ExplodeManifest } from '@/components/Viewer3D/assemblyManifest'
 import type { Atom01AssemblyAdapter } from '@/components/Viewer3D/hooks/useAtom01AssemblyData'
 import { Atom01AssemblyRenderer, collectAssemblyRenderItems } from '@/components/Viewer3D/Atom01AssemblyRenderer'
@@ -101,7 +102,17 @@ function buildExplodeManifest(): ExplodeManifest {
   return {
     version: '2026-03-13',
     robotId: 'atom01',
-    views: [],
+    views: [
+      {
+        id: 'torso_service_view',
+        focus_node_id: 'torso_link',
+        camera: {
+          projection: 'orthographic',
+          position: [1.15, 0.58, 0.72],
+          target: [0.04, 0, 0.28],
+        },
+      },
+    ],
     sequences: [
       {
         id: 'torso_cover_removal',
@@ -109,6 +120,14 @@ function buildExplodeManifest(): ExplodeManifest {
         node_ids: ['torso_shell_front'],
         direction: [0, 0, 1],
         distance: 0.18,
+        anchor_node_id: 'torso_link',
+      },
+      {
+        id: 'torso_secondary_release',
+        step_index: 2,
+        node_ids: ['torso_shell_front'],
+        direction: [0, 1, 0],
+        distance: 0.1,
         anchor_node_id: 'torso_link',
       },
     ],
@@ -155,5 +174,27 @@ describe('Atom01AssemblyRenderer', () => {
       id: 'torso_shell_front_m4x12_01',
       renderTranslation: [0.032, 0.046, 0.02],
     }))
+  })
+
+  it('limits authored explode offsets to the active step index', () => {
+    const items = collectAssemblyRenderItems(buildAdapter(), 'torso_link', buildExplodeManifest(), 1, 1)
+
+    expect(items[0]).toEqual(expect.objectContaining({
+      id: 'torso_shell_front',
+      renderTranslation: [0.008, 0, 0.194],
+    }))
+  })
+
+  it('resolves authored explode views into camera presets', () => {
+    expect(resolveExplodeView(buildExplodeManifest(), 'torso_service_view')).toEqual(
+      expect.objectContaining({
+        id: 'torso_service_view',
+        camera: expect.objectContaining({
+          projection: 'orthographic',
+          position: [1.15, 0.58, 0.72],
+          target: [0.04, 0, 0.28],
+        }),
+      }),
+    )
   })
 })
