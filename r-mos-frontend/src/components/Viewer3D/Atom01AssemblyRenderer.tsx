@@ -2,7 +2,7 @@ import React, { Suspense, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 
-import type { AssemblyTransform } from '@/components/Viewer3D/assemblyManifest'
+import type { AssemblyTransform, ExplodeManifest } from '@/components/Viewer3D/assemblyManifest'
 import type { Atom01AssemblyAdapter } from '@/components/Viewer3D/hooks/useAtom01AssemblyData'
 
 export interface AssemblyRenderItem {
@@ -11,6 +11,7 @@ export interface AssemblyRenderItem {
   kind: 'node' | 'fastener'
   meshUrl: string
   translation: [number, number, number]
+  renderTranslation: [number, number, number]
   rotationQuat: [number, number, number, number]
   scale: [number, number, number]
 }
@@ -19,6 +20,8 @@ export interface Atom01AssemblyRendererProps {
   adapter: Atom01AssemblyAdapter
   rootLinkName: string
   baseOpacity?: number
+  explodeManifest?: ExplodeManifest | null
+  explodeAmount?: number
 }
 
 function formatVector(value: [number, number, number]) {
@@ -32,12 +35,48 @@ function getTransform(
   return adapter.transforms[id] ?? null
 }
 
+function buildExplodeOffsetMap(
+  explodeManifest: ExplodeManifest | null | undefined,
+  rootLinkName: string,
+  explodeAmount: number,
+): Record<string, [number, number, number]> {
+  if (!explodeManifest || explodeAmount <= 0) {
+    return {}
+  }
+
+  return explodeManifest.sequences.reduce<Record<string, [number, number, number]>>((acc, sequence) => {
+    if (sequence.anchor_node_id !== rootLinkName) {
+      return acc
+    }
+
+    const offset: [number, number, number] = [
+      sequence.direction[0] * sequence.distance * explodeAmount,
+      sequence.direction[1] * sequence.distance * explodeAmount,
+      sequence.direction[2] * sequence.distance * explodeAmount,
+    ]
+
+    sequence.node_ids.forEach((nodeId) => {
+      const current = acc[nodeId] ?? [0, 0, 0]
+      acc[nodeId] = [
+        current[0] + offset[0],
+        current[1] + offset[1],
+        current[2] + offset[2],
+      ]
+    })
+
+    return acc
+  }, {})
+}
+
 export function collectAssemblyRenderItems(
   adapter: Atom01AssemblyAdapter,
   rootLinkName: string,
+  explodeManifest?: ExplodeManifest | null,
+  explodeAmount = 0,
 ): AssemblyRenderItem[] {
   const items: AssemblyRenderItem[] = []
   const queue = [...(adapter.tree.nodes[rootLinkName]?.children ?? [])]
+  const explodeOffsetMap = buildExplodeOffsetMap(explodeManifest, rootLinkName, explodeAmount)
 
   while (queue.length > 0) {
     const currentId = queue.shift()
@@ -48,12 +87,18 @@ export function collectAssemblyRenderItems(
     const meshUrl = node?.runtimeAssetPaths[0]
 
     if (node && transform && meshUrl) {
+      const explodeOffset = explodeOffsetMap[currentId] ?? [0, 0, 0]
       items.push({
         id: currentId,
         parentId: node.parentId ?? rootLinkName,
         kind: 'node',
         meshUrl,
         translation: transform.translation,
+        renderTranslation: [
+          transform.translation[0] + explodeOffset[0],
+          transform.translation[1] + explodeOffset[1],
+          transform.translation[2] + explodeOffset[2],
+        ],
         rotationQuat: transform.rotation_quat,
         scale: transform.scale,
       })
@@ -84,6 +129,7 @@ export function collectAssemblyRenderItems(
       kind: 'fastener',
       meshUrl,
       translation: transform.translation,
+      renderTranslation: transform.translation,
       rotationQuat: transform.rotation_quat,
       scale: transform.scale,
     })
@@ -131,8 +177,8 @@ const AssemblyBranch: React.FC<{
           data-kind={item.kind}
           data-parent-id={item.parentId}
           data-testid={item.kind === 'fastener' ? `assembly-fastener-${item.id}` : `assembly-node-${item.id}`}
-          data-translation={formatVector(item.translation)}
-          position={item.translation}
+          data-translation={formatVector(item.renderTranslation)}
+          position={item.renderTranslation}
           quaternion={item.rotationQuat}
           scale={item.scale}
         >
@@ -157,13 +203,15 @@ export const Atom01AssemblyRenderer: React.FC<Atom01AssemblyRendererProps> = ({
   adapter,
   rootLinkName,
   baseOpacity = 0.85,
+  explodeManifest = null,
+  explodeAmount = 0,
 }) => {
   const itemsByParent = useMemo(() => {
-    return collectAssemblyRenderItems(adapter, rootLinkName).reduce<Record<string, AssemblyRenderItem[]>>((acc, item) => {
+    return collectAssemblyRenderItems(adapter, rootLinkName, explodeManifest, explodeAmount).reduce<Record<string, AssemblyRenderItem[]>>((acc, item) => {
       acc[item.parentId] = acc[item.parentId] ? [...acc[item.parentId], item] : [item]
       return acc
     }, {})
-  }, [adapter, rootLinkName])
+  }, [adapter, explodeAmount, explodeManifest, rootLinkName])
 
   if (!adapter.tree.nodes[rootLinkName]) {
     return null

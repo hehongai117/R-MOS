@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 
+import type { ExplodeManifest } from '@/components/Viewer3D/assemblyManifest'
 import type { Atom01AssemblyAdapter } from '@/components/Viewer3D/hooks/useAtom01AssemblyData'
 import { Atom01AssemblyRenderer, collectAssemblyRenderItems } from '@/components/Viewer3D/Atom01AssemblyRenderer'
 
@@ -96,6 +97,24 @@ function buildAdapter(): Atom01AssemblyAdapter {
   }
 }
 
+function buildExplodeManifest(): ExplodeManifest {
+  return {
+    version: '2026-03-13',
+    robotId: 'atom01',
+    views: [],
+    sequences: [
+      {
+        id: 'torso_cover_removal',
+        step_index: 1,
+        node_ids: ['torso_shell_front'],
+        direction: [0, 0, 1],
+        distance: 0.18,
+        anchor_node_id: 'torso_link',
+      },
+    ],
+  }
+}
+
 describe('Atom01AssemblyRenderer', () => {
   it('collects child nodes and fasteners for a focused link', () => {
     const items = collectAssemblyRenderItems(buildAdapter(), 'torso_link')
@@ -123,5 +142,18 @@ describe('Atom01AssemblyRenderer', () => {
     expect(node.getAttribute('data-translation')).toBe('0.008,0,0.014')
     expect(fastener.getAttribute('data-parent-id')).toBe('torso_shell_front')
     expect(fastener.closest('[data-testid="assembly-node-torso_shell_front"]')).toBe(node)
+  })
+
+  it('applies authored explode offsets to targeted assembly nodes', () => {
+    const items = collectAssemblyRenderItems(buildAdapter(), 'torso_link', buildExplodeManifest(), 1)
+
+    expect(items[0]).toEqual(expect.objectContaining({
+      id: 'torso_shell_front',
+      renderTranslation: [0.008, 0, 0.194],
+    }))
+    expect(items[1]).toEqual(expect.objectContaining({
+      id: 'torso_shell_front_m4x12_01',
+      renderTranslation: [0.032, 0.046, 0.02],
+    }))
   })
 })

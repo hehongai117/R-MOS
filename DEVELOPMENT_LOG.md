@@ -6233,3 +6233,30 @@
   - `Atom01Interactive` 现在采用“装配树优先、旧启发式回退”的策略，只覆盖已有静态 manifest 的试点总成，其他 link 仍走原有 `partsManifest` 路径。
 - Next Step:
   - 继续扩展 Task 3，把更多 link 接到 `Atom01AssemblyRenderer`，并评估是否在装配树模式下增加最小的 L1 隔离/显隐控制，减少与旧爆炸图体验差异。
+
+- DateTime: 2026-03-13 14:18:57 CST
+- Task: 接入 explode_manifest 驱动试点总成偏移（Task 4 第一段）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01Interactive.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx -> FAIL（预期红灯；渲染器尚未消费 `explode_manifest`）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 爆炸序列渲染器：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx` -> PASS（`3 tests`，jsdom 下仍有 `group/primitive` warning）
+  - 相关装配链路回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts src/components/Viewer3D/__tests__/assemblyManifest.test.ts` -> PASS（`10 tests`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 当前偏移逻辑只对 `anchor_node_id === 当前 rootLinkName` 的序列生效，属于试点实现，还没有做多步骤动画编排或按 `step_index` 渐进播放。
+  - 紧固件目前通过父节点层级自然跟随，不额外吃作者定义偏移；这符合“盖板移出时螺钉随盖板走”的最小需求，但还不是完整的工程拆解编排。
+- Next Step:
+  - 如果继续推进 Task 4，下一步建议给装配树模式补“分步骤爆炸控制”和“工程视图开关”，把 `explode_manifest.views` 真正用起来。

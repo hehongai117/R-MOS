@@ -863,7 +863,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
 
     // 是否启用子零件替换（explode > 0 且 showSubParts 开启）
     const subPartsActive = showSubParts && explodeAmount > 0;
-    const { adapter: assemblyAdapter } = useAtom01AssemblyData(subPartsActive);
+    const { adapter: assemblyAdapter, explodeManifest: assemblyExplodeManifest } = useAtom01AssemblyData(subPartsActive);
     const subPartBaseOpacity = smoothstep(0.12, 0.42, explodeAmount);
     const singleLinkIsolation = visibleSet.size === 1 && isolationLevel <= 1;
     const suppressMainLinkOffset = visibleSet.size === 1 && subPartsActive;
@@ -975,6 +975,8 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
                             adapter={assemblyAdapter}
                             rootLinkName={name}
                             baseOpacity={subPartBaseOpacity}
+                            explodeManifest={assemblyExplodeManifest}
+                            explodeAmount={explodeAmount}
                         />
                     ) : (
                         <SubPartsGroup
