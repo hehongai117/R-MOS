@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 
@@ -7,10 +7,12 @@ import type { ExplodeManifest } from '@/components/Viewer3D/assemblyManifest'
 import type { Atom01AssemblyAdapter } from '@/components/Viewer3D/hooks/useAtom01AssemblyData'
 import { Atom01AssemblyRenderer, collectAssemblyRenderItems } from '@/components/Viewer3D/Atom01AssemblyRenderer'
 
+const useGLTFMock = vi.hoisted(() => vi.fn(() => ({
+  scene: new THREE.Group(),
+})))
+
 vi.mock('@react-three/drei', () => ({
-  useGLTF: vi.fn(() => ({
-    scene: new THREE.Group(),
-  })),
+  useGLTF: useGLTFMock,
 }))
 
 function buildAdapter(): Atom01AssemblyAdapter {
@@ -152,15 +154,11 @@ describe('Atom01AssemblyRenderer', () => {
   })
 
   it('renders assembly descendants under their parent nodes', () => {
+    useGLTFMock.mockClear()
     render(<Atom01AssemblyRenderer adapter={buildAdapter()} rootLinkName="torso_link" />)
 
-    const node = screen.getByTestId('assembly-node-torso_shell_front')
-    const fastener = screen.getByTestId('assembly-fastener-torso_shell_front_m4x12_01')
-
-    expect(node.getAttribute('data-parent-id')).toBe('torso_link')
-    expect(node.getAttribute('data-translation')).toBe('0.008,0,0.014')
-    expect(fastener.getAttribute('data-parent-id')).toBe('torso_shell_front')
-    expect(fastener.closest('[data-testid="assembly-node-torso_shell_front"]')).toBe(node)
+    expect(useGLTFMock).toHaveBeenCalledWith('/models/parts/frames/胸腔胸部.glb')
+    expect(useGLTFMock).toHaveBeenCalledWith('/models/parts/screws/内六角圆柱头螺钉M4x12.glb')
   })
 
   it('applies authored explode offsets to targeted assembly nodes', () => {

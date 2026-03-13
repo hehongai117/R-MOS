@@ -6391,3 +6391,38 @@
   - 浏览器截图仍会受 WebGL capture 限制出现黑屏，当前浏览器证据以资源加载结果为准。
 - Next Step:
   - 若继续推进，优先把 shoulder/knee 也扩成实例级紧固件，并把 blueprint 数据继续替换为 CAD 导出的中间装配源。
+
+- DateTime: 2026-03-13 21:34:58 CST
+- Task: 修复 ATOM01 authored assembly 渲染器在浏览器中的 `undefined.kind` 崩溃，并重新完成真实浏览器验证
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:systematic-debugging
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - git status --short
+  - git diff --name-only
+  - git diff -- r-mos-frontend/src/components/Viewer3D/Atom01AssemblyRenderer.tsx r-mos-frontend/src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/assemblyManifest.test.ts src/pages/__tests__/Atom01DemoPage.test.tsx
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - Chrome DevTools: reload http://127.0.0.1:55173/atom01
+  - Chrome DevTools: click `准CAD拆解` -> `躯干维护视角` -> `下一步`
+  - Chrome DevTools: inspect console messages and resource entries
+  - Chrome DevTools: evaluate `document.body.innerText.includes('Cannot read properties of undefined')`
+  - Chrome DevTools: evaluate `document.querySelectorAll('canvas').length`
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 装配渲染器回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/__tests__/Atom01AssemblyRenderer.test.tsx` -> PASS（`5 tests`，jsdom 下仍有 `group/primitive` warning）
+  - 相关加载链路回归：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/assemblyManifest.test.ts src/pages/__tests__/Atom01DemoPage.test.tsx` -> PASS（`9 tests`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+  - 浏览器验证：`http://127.0.0.1:55173/atom01` -> PASS（此前 `undefined.kind` 异常消失；页面保留 `1` 个 canvas；真实资源项包含 `LB22SA2M1_M10.glb`、`OPI_5PLUS_PCBA.glb`、`内六角圆柱头螺钉M3x10.glb`、`内六角圆柱头螺钉M4x12.glb`）
+- Result: PASS
+- Risks/Notes:
+  - 根因是将 `data-kind`、`data-parent-id`、`data-testid`、`data-translation` 这类 DOM 属性传进了 R3F `<group>`；浏览器真实运行时会触发内部对象解析异常，而 jsdom 测试无法直接暴露这个问题。
+  - 本次修复移除了这些 DOM 风格属性，测试改为断言 `useGLTF` 的真实资源加载调用，避免继续依赖浏览器不可用的 DOM 属性。
+  - 浏览器控制台仍有两个与本轮无关的 `/api/v1/agent/preference` `500`，以及工具交互时出现的 `THREE.WebGLRenderer: Context Lost.`；它们不再导致 authored assembly 渲染路径崩溃。
+- Next Step:
+  - 若继续推进浏览器观感验证，建议下一步补 torso 螺丝级装配的显式隐藏壳体策略或局部剖切，否则虽然资源已加载，视觉上仍容易被主壳体遮挡。

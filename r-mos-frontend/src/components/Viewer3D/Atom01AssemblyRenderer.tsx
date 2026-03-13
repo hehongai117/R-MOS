@@ -25,10 +25,6 @@ export interface Atom01AssemblyRendererProps {
   explodeStepIndex?: number | null
 }
 
-function formatVector(value: [number, number, number]) {
-  return value.join(',')
-}
-
 function getTransform(
   adapter: Atom01AssemblyAdapter,
   id: string,
@@ -192,10 +188,6 @@ const AssemblyBranch: React.FC<{
       {items.map((item) => (
         <group
           key={item.id}
-          data-kind={item.kind}
-          data-parent-id={item.parentId}
-          data-testid={item.kind === 'fastener' ? `assembly-fastener-${item.id}` : `assembly-node-${item.id}`}
-          data-translation={formatVector(item.renderTranslation)}
           position={item.renderTranslation}
           quaternion={item.rotationQuat}
           scale={item.scale}
@@ -247,7 +239,7 @@ export const Atom01AssemblyRenderer: React.FC<Atom01AssemblyRendererProps> = ({
   }
 
   return (
-    <group data-testid={`assembly-root-${rootLinkName}`}>
+    <group>
       <AssemblyBranch
         adapter={adapter}
         parentId={rootLinkName}
