@@ -6176,3 +6176,31 @@
   - 新增的 `assemblyManifest.ts` 目前只负责契约解析和索引构建，尚未接入 `Atom01Interactive` 的真实渲染路径。
 - Next Step:
   - 进入 Task 2，把 `assemblyManifest.ts` 接到前端加载链路，并统一静态 ATOM01 与运行时 manifest 的消费接口。
+
+- DateTime: 2026-03-13 13:52:25 CST
+- Task: 接入 ATOM01 静态装配加载 hook，并统一运行时树适配接口（Task 2 初版）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/useAtom01AssemblyData.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/__tests__/runtimeManifest.test.ts
+  - /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/runtimeManifest.ts
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:test-driven-development
+  - sed -n '1,220p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/hooks/__tests__/useRobotData.test.ts
+  - sed -n '1,260p' /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src/components/Viewer3D/runtimeManifest.ts
+  - rg -n "renderHook|@testing-library/react" /Users/xuhehong/Desktop/r-mos/r-mos-frontend/src -g '*test.ts' -g '*test.tsx'
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts -> FAIL（预期红灯；缺少 `useAtom01AssemblyData`，且 `adapter.tree` 不存在）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts -> FAIL（测试期望节点数写成 16）
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts
+  - cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build
+  - date '+%Y-%m-%d %H:%M:%S %Z'
+- Tests:
+  - 静态 hook + 运行时归一化：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm test -- src/components/Viewer3D/hooks/__tests__/useAtom01AssemblyData.test.tsx src/components/Viewer3D/__tests__/runtimeManifest.test.ts` -> PASS（`4 tests`）
+  - 前端构建：`cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npm run build` -> PASS
+- Result: PASS
+- Risks/Notes:
+  - 当前 `useAtom01AssemblyData` 只完成静态 manifest 载入和归一化适配，还没有被页面或 viewer 组件实际消费。
+  - `runtimeManifest.ts` 只是新增了共享 `tree` 结构，旧 `treeNodes` / `mapping` 仍然保留，避免一次性打断现有 SOP 工作台路径。
+- Next Step:
+  - 进入 Task 3，把静态装配树真正接入 `Atom01Interactive` 或新的装配渲染器，逐步替换启发式子件挂接。

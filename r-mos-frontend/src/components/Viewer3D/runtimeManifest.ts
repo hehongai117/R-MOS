@@ -44,6 +44,21 @@ export interface RuntimeManifestTreeNode {
   file_kinds?: string[]
 }
 
+export interface ViewerTreeNodeAdapter {
+  id: string
+  displayName: string
+  parentId: string | null
+  children: string[]
+  runtimeAssetPaths: string[]
+  sourcePaths: string[]
+  fileKinds: string[]
+}
+
+export interface ViewerTreeAdapter {
+  rootNodeIds: string[]
+  nodes: Record<string, ViewerTreeNodeAdapter>
+}
+
 export interface RuntimeManifestAdapter {
   projectId: string
   robotId: string
@@ -53,6 +68,7 @@ export interface RuntimeManifestAdapter {
   reviewWarnings: string[]
   mapping: Record<string, { source_paths?: string[]; file_kinds?: string[]; runtime_asset_paths?: string[] }>
   treeNodes: Record<string, RuntimeManifestTreeNode>
+  tree: ViewerTreeAdapter
   assetUrls: string[]
 }
 
@@ -121,6 +137,32 @@ function sortRuntimePaths(paths: Iterable<string>): string[] {
     })
 }
 
+function normalizeViewerTreeNode(node: RuntimeManifestTreeNode): ViewerTreeNodeAdapter {
+  return {
+    id: node.id,
+    displayName: node.display_name || node.id,
+    parentId: node.parent_id ?? null,
+    children: node.children ?? [],
+    runtimeAssetPaths: sortRuntimePaths(node.runtime_asset_paths ?? []),
+    sourcePaths: Array.isArray(node.source_paths) ? node.source_paths.filter((value): value is string => typeof value === 'string') : [],
+    fileKinds: Array.isArray(node.file_kinds) ? node.file_kinds.filter((value): value is string => typeof value === 'string') : [],
+  }
+}
+
+function createViewerTreeAdapter(
+  rootNodeIds: string[] | undefined,
+  treeNodes: Record<string, RuntimeManifestTreeNode>,
+): ViewerTreeAdapter {
+  return {
+    rootNodeIds: rootNodeIds && rootNodeIds.length > 0 ? rootNodeIds : Object.values(treeNodes)
+      .filter((node) => (node.parent_id ?? null) === null)
+      .map((node) => node.id),
+    nodes: Object.fromEntries(
+      Object.values(treeNodes).map((node) => [node.id, normalizeViewerTreeNode(node)]),
+    ),
+  }
+}
+
 export function createRuntimeManifestAdapter(draft: MaintenanceDraftResponse): RuntimeManifestAdapter {
   const treeNodes = Object.fromEntries(
     (draft.manifest_tree.nodes ?? []).map((node) => [node.id, node]),
@@ -145,6 +187,7 @@ export function createRuntimeManifestAdapter(draft: MaintenanceDraftResponse): R
       [],
     mapping: draft.manifest_mapping ?? {},
     treeNodes,
+    tree: createViewerTreeAdapter(draft.manifest_tree.root_nodes, treeNodes),
     assetUrls: parts.map((part) => buildRobotProjectAssetUrl(draft.project_id, part)),
   }
 }

@@ -119,4 +119,18 @@ describe('runtimeManifest', () => {
     expect(detectRuntimeAssetFormat('cad/elbow_link.STEP')).toBe('unsupported')
     expect(detectRuntimeAssetFormat('viewer/elbow.glb')).toBe('gltf')
   })
+
+  it('normalizes runtime tree nodes into the shared viewer tree adapter', () => {
+    const adapter = createRuntimeManifestAdapter(buildDraft())
+
+    expect(adapter.tree.rootNodeIds).toEqual(['base_link'])
+    expect(adapter.tree.nodes.arm_assembly).toEqual(
+      expect.objectContaining({
+        id: 'arm_assembly',
+        parentId: 'base_link',
+        children: ['elbow_link'],
+        displayName: 'arm_assembly',
+      }),
+    )
+  })
 })
