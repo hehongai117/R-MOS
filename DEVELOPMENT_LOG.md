@@ -6426,3 +6426,39 @@
   - 浏览器控制台仍有两个与本轮无关的 `/api/v1/agent/preference` `500`，以及工具交互时出现的 `THREE.WebGLRenderer: Context Lost.`；它们不再导致 authored assembly 渲染路径崩溃。
 - Next Step:
   - 若继续推进浏览器观感验证，建议下一步补 torso 螺丝级装配的显式隐藏壳体策略或局部剖切，否则虽然资源已加载，视觉上仍容易被主壳体遮挡。
+
+- DateTime: 2026-03-16 22:00:08 +0800
+- Task: 推送当前分支现状到 GitHub 仓库（补齐未跟踪 PPT 脚本并记录推送证据）
+- Scope (files changed):
+  - /Users/xuhehong/Desktop/r-mos/add_rmos_to_ppt.py
+  - /Users/xuhehong/Desktop/r-mos/reorder_pptx.py
+  - /Users/xuhehong/Desktop/r-mos/reorder_slides.py
+  - /Users/xuhehong/Desktop/r-mos/DEVELOPMENT_LOG.md
+- Commands Run:
+  - ~/.codex/superpowers/.codex/superpowers-codex bootstrap
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:finishing-a-development-branch
+  - ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:verification-before-completion
+  - pwd
+  - test -d .venv && echo .venv-present || echo .venv-missing
+  - git status --short --branch
+  - git remote -v
+  - git branch --show-current
+  - ls -1
+  - git branch -vv
+  - sed -n '1,220p' add_rmos_to_ppt.py
+  - sed -n '1,220p' reorder_pptx.py
+  - sed -n '1,220p' reorder_slides.py
+  - find . -maxdepth 3 -type d -name .venv
+  - git rev-parse --abbrev-ref --symbolic-full-name @{upstream}
+  - git diff --name-only
+  - git diff --cached --name-only
+  - date '+%Y-%m-%d %H:%M:%S %z'
+  - ./r-mos-backend/.venv/bin/python -m py_compile add_rmos_to_ppt.py reorder_pptx.py reorder_slides.py
+- Tests:
+  - 语法校验：`./r-mos-backend/.venv/bin/python -m py_compile add_rmos_to_ppt.py reorder_pptx.py reorder_slides.py` -> PASS（3 个脚本均成功编译为 `.pyc`，无语法错误）
+- Result: PASS
+- Risks/Notes:
+  - 当前分支 `feat/phase1-2-fsm-evidence` 此前未配置 upstream，推送时需要显式建立远端跟踪。
+  - 3 个脚本引用了桌面目录下的本地 PPT 文件路径，并依赖 `python-pptx`/`lxml` 等环境；本次验证只覆盖语法有效性，不覆盖运行时外部文件存在性。
+- Next Step:
+  - 将当前分支提交并推送到 `origin/feat/phase1-2-fsm-evidence`
