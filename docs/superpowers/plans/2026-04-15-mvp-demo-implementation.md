@@ -143,7 +143,7 @@ git commit -m "feat: add DEMO_MODE navigation filtering for investor demo"
 - Modify: `r-mos-frontend/src/pages/MonitorPage.tsx:169-199` (MonitorJointRow)
 - Modify: `r-mos-frontend/src/pages/MonitorPage.tsx:336-342` (battery display)
 
-- [ ] **Step 1: Fix formatMetric floating point precision**
+- [x] **Step 1: Fix formatMetric floating point precision**
 
 In `src/pages/MonitorPage.tsx`, replace the `formatMetric` function (lines 69-74):
 
@@ -158,7 +158,7 @@ function formatMetric(value: number | null | undefined, digits = 1) {
 }
 ```
 
-- [ ] **Step 2: Fix battery display to use formatMetric**
+- [x] **Step 2: Fix battery display to use formatMetric**
 
 Find the battery MetricCard (around line 336). Change `value={batteryLevel ?? '--'}` to:
 
@@ -166,7 +166,7 @@ Find the battery MetricCard (around line 336). Change `value={batteryLevel ?? '-
 value={batteryLevel !== null && batteryLevel !== undefined ? formatMetric(batteryLevel, 1) : '--'}
 ```
 
-- [ ] **Step 3: Add temperature threshold alert styling to MonitorJointRow**
+- [x] **Step 3: Add temperature threshold alert styling to MonitorJointRow** (偏离：DataRow 保留原有样式，仅新增 `className` prop，避免视觉回归)
 
 In the `MonitorJointRow` component (around lines 169-199), add temperature-based alert styling. Find the temperature `DataRow` (around line 196) and replace it:
 
@@ -203,7 +203,7 @@ function DataRow({ label, value, unit, className }: { label: string; value: stri
 }
 ```
 
-- [ ] **Step 4: Add card-level alert border for overheating joints**
+- [x] **Step 4: Add card-level alert border for overheating joints**
 
 In `MonitorJointRow`, update the card border logic (around line 175) to also highlight temperature alerts:
 
@@ -222,7 +222,7 @@ const isTempAlert = (joint.temperature ?? 0) >= TEMP_DANGER
 )}>
 ```
 
-- [ ] **Step 5: Verify fixes**
+- [x] **Step 5: Verify fixes** (TypeScript 通过；运行时验证延后到 Task 3 的故障注入完成后联调，因为 MockRobotAdapter 目前不产生 >=50°C 温度)
 
 Run: `cd r-mos-frontend && npm run dev`
 
@@ -231,7 +231,7 @@ Check MonitorPage:
 2. Joint temperature values should be properly rounded
 3. If any joint temperature >= 55°C, its card should have amber pulsing border
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/MonitorPage.tsx

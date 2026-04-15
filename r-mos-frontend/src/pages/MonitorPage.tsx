@@ -70,7 +70,9 @@ function formatMetric(value: number | null | undefined, digits = 1) {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return '--'
   }
-  return value.toFixed(digits)
+  const multiplier = 10 ** digits
+  const rounded = Math.round(value * multiplier) / multiplier
+  return rounded.toFixed(digits)
 }
 
 function formatFreshness(lastUpdateTime: Date | null) {
@@ -130,15 +132,17 @@ function DataRow({
   label,
   value,
   unit,
+  className,
 }: {
   label: string
   value: string
   unit?: string
+  className?: string
 }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle bg-bg-elevated/40 px-3 py-2">
       <span className="text-xs uppercase tracking-[0.16em] text-text-muted">{label}</span>
-      <span className="text-data text-sm text-text-primary">
+      <span className={cn('text-data text-sm text-text-primary', className)}>
         {value}
         {unit ? <span className="ml-1 text-text-muted">{unit}</span> : null}
       </span>
@@ -166,14 +170,25 @@ function SectionCard({
   )
 }
 
+const TEMP_WARN = 50
+const TEMP_DANGER = 55
+
 function MonitorJointRow({ joint }: { joint: JointState }) {
   const meta = resolveJointMeta(joint.joint_id)
+  const tempValue = joint.temperature ?? 0
+  const isError = !!joint.error_code
+  const isTempAlert = tempValue >= TEMP_DANGER
+  const tempTone = tempValue >= TEMP_DANGER ? 'text-red-400' : tempValue >= TEMP_WARN ? 'text-amber-400' : ''
 
   return (
     <div
       className={cn(
         'rounded-xl border p-3',
-        joint.error_code ? 'border-danger/30 bg-danger/5' : 'border-border-subtle bg-bg-elevated/40',
+        isError
+          ? 'border-danger/30 bg-danger/5'
+          : isTempAlert
+            ? 'border-amber-500/30 bg-amber-500/5 animate-pulse'
+            : 'border-border-subtle bg-bg-elevated/40',
       )}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -193,7 +208,7 @@ function MonitorJointRow({ joint }: { joint: JointState }) {
         <DataRow label="速度" value={formatMetric(joint.velocity, 3)} unit="rad/s" />
         <DataRow label="扭矩" value={formatMetric(joint.torque, 2)} unit="Nm" />
         <DataRow label="电流" value={formatMetric(joint.current, 2)} unit="A" />
-        <DataRow label="温度" value={formatMetric(joint.temperature, 1)} unit="°C" />
+        <DataRow label="温度" value={formatMetric(joint.temperature, 1)} unit="°C" className={tempTone} />
       </div>
     </div>
   )
@@ -335,7 +350,7 @@ function MonitorPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <MetricCard
                 label="BATTERY"
-                value={batteryLevel ?? '--'}
+                value={batteryLevel !== null && batteryLevel !== undefined ? formatMetric(batteryLevel, 1) : '--'}
                 suffix={batteryLevel === null ? undefined : '%'}
                 tone={(batteryLevel ?? 100) <= 20 ? 'danger' : batteryLevel && batteryLevel <= 50 ? 'warning' : 'success'}
                 icon={<Battery className="h-4 w-4 text-text-muted" />}
