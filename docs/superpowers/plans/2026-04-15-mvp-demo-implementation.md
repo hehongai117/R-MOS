@@ -381,7 +381,7 @@ git commit -m "feat: add gradual fault simulation for demo temperature ramp"
 - Create: `r-mos-backend/app/services/llm/mock_provider.py`
 - Modify: `r-mos-backend/main.py` (register demo router)
 
-- [ ] **Step 1: Create mock LLM provider with pre-written responses**
+- [x] **Step 1: Create mock LLM provider with pre-written responses**
 
 Create `app/services/llm/mock_provider.py`:
 
@@ -544,7 +544,7 @@ async def stream_text(text: str, chunk_size: int = 3, delay: float = 0.03):
         await asyncio.sleep(delay)
 ```
 
-- [ ] **Step 2: Create demo API endpoints**
+- [x] **Step 2: Create demo API endpoints** (偏离：用 `AdapterFactory.get_adapter()` 替代 plan 中不存在的模块级 `get_adapter`)
 
 Create `app/api/v1/endpoints/demo.py`:
 
@@ -637,7 +637,7 @@ async def reset_demo_fault(request: Request):
     return result
 ```
 
-- [ ] **Step 3: Register demo router in main.py**
+- [x] **Step 3: Register demo router in main.py** (偏离：注册到 `app/api/v1/__init__.py` 的 `api_router`，与项目惯例一致，不是 main.py 直接注册)
 
 In `r-mos-backend/main.py`, find where API routers are registered (the line with `app.include_router`). Add:
 
@@ -646,7 +646,7 @@ from app.api.v1.endpoints.demo import router as demo_router
 app.include_router(demo_router, prefix="/api/v1")
 ```
 
-- [ ] **Step 4: Verify SSE streaming**
+- [x] **Step 4: Verify SSE streaming** (FastAPI TestClient 验证：200 / text/event-stream / meta→text→done 序列完整)
 
 Restart backend and test:
 
@@ -658,7 +658,7 @@ curl -N http://localhost:8000/api/v1/demo/chat/stream \
 
 Expected: SSE events streaming with `data: {"type": "meta", ...}` then many `data: {"type": "text", ...}` then `data: {"type": "done"}`.
 
-- [ ] **Step 5: Verify fault trigger**
+- [x] **Step 5: Verify fault trigger** (unknown scenario 路径验证通过；valid scenario 留待 Task 11 端到端联调时验证)
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/demo/fault/start \
@@ -668,10 +668,10 @@ curl -X POST http://localhost:8000/api/v1/demo/fault/start \
 
 Expected: `{"status": "started", "fault_type": "knee_overheat", "joint_id": "knee_left"}`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
-git add r-mos-backend/app/services/llm/mock_provider.py r-mos-backend/app/api/v1/endpoints/demo.py r-mos-backend/main.py
+git add r-mos-backend/app/services/llm/mock_provider.py r-mos-backend/app/api/v1/endpoints/demo.py r-mos-backend/app/api/v1/__init__.py
 git commit -m "feat: add demo SSE chat endpoint and fault trigger API"
 ```
 
