@@ -56,7 +56,7 @@
 - Create: `r-mos-frontend/src/config/demoMode.ts`
 - Modify: `r-mos-frontend/src/components/Layout/AppLayout.tsx:64-186`
 
-- [ ] **Step 1: Create demo mode config file**
+- [x] **Step 1: Create demo mode config file**
 
 ```typescript
 // src/config/demoMode.ts
@@ -67,7 +67,7 @@ export const DEMO_FAULT_TYPE = 'knee_overheat'
 export const DEMO_JOINT = 'knee_left'
 ```
 
-- [ ] **Step 2: Add DEMO nav config to AppLayout**
+- [x] **Step 2: Add DEMO nav config to AppLayout** (偏离：badge 保留 `Demo` 英文；结构拆成 `DEMO_NAV: NavGroup[]` + `DEMO_LAYOUT_CONFIG: LayoutConfig`)
 
 In `src/components/Layout/AppLayout.tsx`, after the existing `ADMIN_NAV` config (around line 186), add a new `DEMO_NAV` config:
 
@@ -101,7 +101,7 @@ const DEMO_NAV: LayoutConfig = {
 
 Ensure `Activity`, `Bot`, `Wrench`, `FileText` icons are imported from `lucide-react` (check existing imports, add missing ones).
 
-- [ ] **Step 3: Wire DEMO_MODE into layout selection**
+- [x] **Step 3: Wire DEMO_MODE into layout selection**
 
 In the `LAYOUT_CONFIG` map (around line 188-192), change the lookup logic:
 
@@ -114,20 +114,20 @@ import { DEMO_MODE } from '@/config/demoMode'
 const config = DEMO_MODE ? DEMO_NAV : LAYOUT_CONFIG[role]
 ```
 
-- [ ] **Step 4: Add .env.demo file for easy toggle**
+- [x] **Step 4: Add .env.demo file for easy toggle**
 
 Create `r-mos-frontend/.env.demo`:
 ```
 VITE_DEMO_MODE=true
 ```
 
-- [ ] **Step 5: Verify navigation filtering**
+- [x] **Step 5: Verify navigation filtering** (chrome-devtools 验证：侧边栏 4 项 + Demo badge 正确)
 
 Run: `cd r-mos-frontend && VITE_DEMO_MODE=true npm run dev`
 
 Open browser, login as admin. Sidebar should show only 4 items: 实时监控, AI 诊断工作台, 维保工作台, 维保报告.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add r-mos-frontend/src/config/demoMode.ts r-mos-frontend/src/components/Layout/AppLayout.tsx r-mos-frontend/.env.demo
