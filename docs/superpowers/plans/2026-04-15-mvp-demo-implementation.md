@@ -246,7 +246,7 @@ git commit -m "fix: floating point precision in monitor metrics + temperature al
 - Create: `r-mos-backend/app/services/simulation/fault_scenarios.py`
 - Modify: `r-mos-backend/app/adapters/mock.py`
 
-- [ ] **Step 1: Create fault scenarios module**
+- [x] **Step 1: Create fault scenarios module** (`__init__.py` 已存在，未新建)
 
 Create `app/services/simulation/__init__.py` (empty) and `app/services/simulation/fault_scenarios.py`:
 
@@ -293,7 +293,7 @@ DEMO_SCENARIOS = {
 }
 ```
 
-- [ ] **Step 2: Add gradual fault support to MockRobotAdapter**
+- [x] **Step 2: Add gradual fault support to MockRobotAdapter** (偏离：改用惰性导入 + `TYPE_CHECKING` 规避 `app.services.simulation.__init__` 引发的循环依赖)
 
 In `app/adapters/mock.py`, add an import at the top:
 
@@ -330,7 +330,7 @@ async def reset_gradual_faults(self) -> dict:
     return {"status": "reset"}
 ```
 
-- [ ] **Step 3: Apply gradual fault effects in telemetry generation**
+- [x] **Step 3: Apply gradual fault effects in telemetry generation**
 
 In `get_joint_states()` (around lines 179-247), after the existing fault effects application, add gradual fault effects. Find the loop that iterates over joints and add after the existing fault effect block:
 
@@ -350,7 +350,7 @@ for gf in self._gradual_faults:
                 self._active_faults.append("E001_OVERHEAT")
 ```
 
-- [ ] **Step 4: Verify gradual fault works**
+- [x] **Step 4: Verify gradual fault works** (改用单元级集成测试：t=0 36°C → t=0.6 56°C → t=1.4 71°C + E001_OVERHEAT；knee_right 控制组保持基线；reset 成功)
 
 Run backend: `cd r-mos-backend && bash -c 'source .venv/bin/activate && python main.py'`
 
@@ -365,10 +365,10 @@ curl -X POST http://localhost:8000/api/v1/adapter/inject-fault \
 curl http://localhost:8000/api/v1/adapter/faults
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
-git add r-mos-backend/app/services/simulation/__init__.py r-mos-backend/app/services/simulation/fault_scenarios.py r-mos-backend/app/adapters/mock.py
+git add r-mos-backend/app/services/simulation/fault_scenarios.py r-mos-backend/app/adapters/mock.py
 git commit -m "feat: add gradual fault simulation for demo temperature ramp"
 ```
 

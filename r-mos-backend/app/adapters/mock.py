@@ -5,9 +5,12 @@ Mock机器人适配器（V2.2完整版）
 import math
 import random
 import asyncio
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, TYPE_CHECKING
 from datetime import datetime
 from .base import BaseRobotAdapter
+
+if TYPE_CHECKING:
+    from app.services.simulation.fault_scenarios import GradualFault
 from .schemas import (
     RobotInfo,
     RobotStructure,
@@ -48,6 +51,9 @@ class MockRobotAdapter(BaseRobotAdapter):
         
         # 活动故障列表
         self._active_faults: List[str] = []
+
+        # Demo 模式：渐进式故障（随时间 ramp up，惰性导入避免循环引用）
+        self._gradual_faults: List["GradualFault"] = []
         
         # 故障影响配置（V2.2完整定义）
         self._fault_effects = {
@@ -233,7 +239,22 @@ class MockRobotAdapter(BaseRobotAdapter):
                     error_code = "E001_OVERHEAT"
                 elif velocity == 0.0 and fault_code == "E002_STALL":
                     error_code = "E002_STALL"
-            
+
+            # 应用 Demo 渐进故障效果（独立于 _active_faults 的即时故障）
+            for gf in self._gradual_faults:
+                if gf.joint_id != joint_id:
+                    continue
+                temp_increase = gf.current_temp_increase()
+                torque_noise = gf.current_torque_noise()
+                temperature += temp_increase
+                torque += random.gauss(0, torque_noise)
+                current += temp_increase * 0.05  # 温升伴随电流增大
+                # ramp 完成后标记 error_code 以触发前端告警
+                if gf.is_complete and not error_code:
+                    error_code = "E001_OVERHEAT"
+                    if "E001_OVERHEAT" not in self._active_faults:
+                        self._active_faults.append("E001_OVERHEAT")
+
             joint_states.append(JointState(
                 joint_id=joint_id,
                 position=position,
@@ -320,15 +341,40 @@ class MockRobotAdapter(BaseRobotAdapter):
         """清除故障"""
         if not self._connected:
             raise ConnectionError("Adapter not connected")
-        
+
         if fault_code in self._active_faults:
             self._active_faults.remove(fault_code)
             # 清除冻结的关节位置
             if fault_code == "E002_STALL":
                 self._frozen_joint_positions.clear()
             return True
-        
+
         return False
+
+    async def start_gradual_fault(
+        self,
+        fault_type: str,
+        joint_id: str,
+        ramp_duration: float = 30.0,
+        target_temp_increase: float = 30.0,
+    ) -> dict:
+        """启动一个随时间 ramp up 的渐进式故障（Demo 模式专用）。"""
+        from app.services.simulation.fault_scenarios import GradualFault  # noqa: PLC0415 — 惰性导入规避循环依赖
+        gf = GradualFault(
+            fault_type=fault_type,
+            joint_id=joint_id,
+            ramp_duration=ramp_duration,
+            target_temp_increase=target_temp_increase,
+        )
+        self._gradual_faults.append(gf)
+        return {"status": "started", "fault_type": fault_type, "joint_id": joint_id}
+
+    async def reset_gradual_faults(self) -> dict:
+        """清除所有渐进式故障并重置激活故障列表。"""
+        self._gradual_faults.clear()
+        self._active_faults.clear()
+        self._frozen_joint_positions.clear()
+        return {"status": "reset"}
 
     async def apply_maintenance_action(
         self,
