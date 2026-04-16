@@ -251,6 +251,13 @@ function AgentWorkbenchPage() {
     })
   }, [loading, messages, latestTraceId])
 
+  // Abort SSE stream on unmount
+  useEffect(() => {
+    return () => {
+      streamControllerRef.current?.abort()
+    }
+  }, [])
+
   // Auto-populate fault context on mount when arriving from MonitorPage
   useEffect(() => {
     if (!DEMO_MODE || !faultParam || messages.length > 0) return

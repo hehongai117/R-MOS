@@ -1,5 +1,5 @@
 import { Activity, AlertTriangle, Battery, Gauge, RefreshCw, Thermometer, WifiOff, Zap } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
@@ -233,6 +233,16 @@ function MonitorPage() {
       await startDemoFault('knee_overheat')
       setDemoFaultActive(true)
     }
+  }, [demoFaultActive])
+
+  // Reset fault on page unmount
+  useEffect(() => {
+    return () => {
+      if (DEMO_MODE && demoFaultActive) {
+        void resetDemoFault()
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoFaultActive])
 
   const {
