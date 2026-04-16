@@ -1,9 +1,12 @@
 import { Activity, AlertTriangle, Battery, Gauge, RefreshCw, Thermometer, WifiOff, Zap } from 'lucide-react'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
 import Atom01Viewer from '@/components/Viewer3D/Atom01Viewer'
 import { Button } from '@/components/ui/button'
+import { DEMO_FAULT_TYPE, DEMO_MODE } from '@/config/demoMode'
+import { resetDemoFault, startDemoFault } from '@/api/demo'
 import { useWebSocket, type JointState } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
 
@@ -173,12 +176,13 @@ function SectionCard({
 const TEMP_WARN = 50
 const TEMP_DANGER = 55
 
-function MonitorJointRow({ joint }: { joint: JointState }) {
+function MonitorJointRow({ joint, onClick }: { joint: JointState; onClick?: () => void }) {
   const meta = resolveJointMeta(joint.joint_id)
   const tempValue = joint.temperature ?? 0
   const isError = !!joint.error_code
   const isTempAlert = tempValue >= TEMP_DANGER
   const tempTone = tempValue >= TEMP_DANGER ? 'text-red-400' : tempValue >= TEMP_WARN ? 'text-amber-400' : ''
+  const isClickable = isError || isTempAlert
 
   return (
     <div
@@ -189,7 +193,9 @@ function MonitorJointRow({ joint }: { joint: JointState }) {
           : isTempAlert
             ? 'border-amber-500/30 bg-amber-500/5 animate-pulse'
             : 'border-border-subtle bg-bg-elevated/40',
+        isClickable && 'cursor-pointer hover:brightness-125 transition-all',
       )}
+      onClick={isClickable ? onClick : undefined}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
@@ -215,6 +221,20 @@ function MonitorJointRow({ joint }: { joint: JointState }) {
 }
 
 function MonitorPage() {
+  const navigate = useNavigate()
+  const [demoFaultActive, setDemoFaultActive] = useState(false)
+
+  const handleDemoTrigger = useCallback(async () => {
+    if (!DEMO_MODE) return
+    if (demoFaultActive) {
+      await resetDemoFault()
+      setDemoFaultActive(false)
+    } else {
+      await startDemoFault('knee_overheat')
+      setDemoFaultActive(true)
+    }
+  }, [demoFaultActive])
+
   const {
     isConnected,
     telemetryData,
@@ -307,7 +327,13 @@ function MonitorPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-1 text-[10px] uppercase tracking-[0.24em] text-text-muted">REALTIME MONITOR</div>
-            <h1 className="text-2xl font-semibold text-text-primary">实时监控</h1>
+            <h1
+              className="text-2xl font-semibold text-text-primary"
+              onDoubleClick={handleDemoTrigger}
+              title={DEMO_MODE ? (demoFaultActive ? '双击重置故障' : '双击触发故障') : undefined}
+            >
+              实时监控
+            </h1>
             <p className="mt-1 text-sm text-text-muted">
               以 3D 数字孪生为中心，联动展示姿态、动力、故障和重点关节状态。
             </p>
@@ -502,7 +528,15 @@ function MonitorPage() {
           {priorityJoints.length > 0 ? (
             <div className="space-y-3">
               {priorityJoints.map((joint, index) => (
-                <MonitorJointRow key={`${joint.joint_id}-${index}`} joint={joint} />
+                <MonitorJointRow
+                  key={`${joint.joint_id}-${index}`}
+                  joint={joint}
+                  onClick={() => {
+                    if (DEMO_MODE) {
+                      navigate(`/agent/workbench?fault=${DEMO_FAULT_TYPE}&joint=${joint.joint_id}`)
+                    }
+                  }}
+                />
               ))}
             </div>
           ) : (
