@@ -682,7 +682,7 @@ git commit -m "feat: add demo SSE chat endpoint and fault trigger API"
 **Files:**
 - Create: `r-mos-frontend/src/api/demo.ts`
 
-- [ ] **Step 1: Create demo API client**
+- [x] **Step 1: Create demo API client**
 
 ```typescript
 // src/api/demo.ts
@@ -782,7 +782,7 @@ export function streamDemoChat(
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add r-mos-frontend/src/api/demo.ts
@@ -796,7 +796,7 @@ git commit -m "feat: add frontend demo API client with SSE streaming"
 **Files:**
 - Modify: `r-mos-frontend/src/pages/MonitorPage.tsx`
 
-- [ ] **Step 1: Add hidden fault trigger on logo double-click**
+- [x] **Step 1: Add hidden fault trigger on logo double-click**
 
 In `MonitorPage.tsx`, add an import for the demo API and navigation:
 
@@ -824,7 +824,7 @@ const handleDemoTrigger = useCallback(async () => {
 }, [demoFaultActive])
 ```
 
-- [ ] **Step 2: Attach double-click to logo area**
+- [x] **Step 2: Attach double-click to logo area**
 
 Find the header section title (around line 290-300, the "REALTIME MONITOR" heading area). Wrap the title or the R-MOS logo/icon with an `onDoubleClick` handler:
 
@@ -838,7 +838,7 @@ Find the header section title (around line 290-300, the "REALTIME MONITOR" headi
 </h1>
 ```
 
-- [ ] **Step 3: Add click-to-navigate on alert joint cards**
+- [x] **Step 3: Add click-to-navigate on alert joint cards**
 
 In the `MonitorJointRow` component, add a click handler to navigate to Agent workbench when the joint is in alert state. Change `MonitorJointRow` to accept an `onClick` prop:
 
@@ -878,7 +878,7 @@ Where `MonitorJointRow` is used (in the priorityJoints map, around line 487-491)
 ))}
 ```
 
-- [ ] **Step 4: Verify end-to-end**
+- [x] **Step 4: Verify end-to-end**
 
 1. Start backend and frontend with DEMO_MODE=true
 2. Open MonitorPage
@@ -886,7 +886,7 @@ Where `MonitorJointRow` is used (in the priorityJoints map, around line 487-491)
 4. Wait 30s → left knee joint card should pulse amber, then turn red
 5. Click the alert card → should navigate to `/agent/workbench?fault=knee_overheat&joint=knee_left`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/MonitorPage.tsx
@@ -902,7 +902,7 @@ git commit -m "feat: add demo fault trigger and click-to-navigate on alert joint
 
 This is the most complex frontend change. The existing page has a `submit()` function (lines 240-303) that calls `sendAgentRequestV2`. In DEMO_MODE, we replace this with SSE streaming from the demo endpoint.
 
-- [ ] **Step 1: Add demo imports and URL param reading**
+- [x] **Step 1: Add demo imports and URL param reading**
 
 At the top of `AgentWorkbenchPage.tsx`, add:
 
@@ -921,7 +921,7 @@ const jointParam = searchParams.get('joint')
 const navigate = useNavigate()
 ```
 
-- [ ] **Step 2: Add demo state variables**
+- [x] **Step 2: Add demo state variables**
 
 Add new state for demo mode after existing state declarations:
 
@@ -932,7 +932,7 @@ const [isStreaming, setIsStreaming] = useState(false)
 const streamControllerRef = useRef<AbortController | null>(null)
 ```
 
-- [ ] **Step 3: Auto-populate fault context on mount**
+- [x] **Step 3: Auto-populate fault context on mount**
 
 Add a useEffect that runs once when the page loads with fault params:
 
@@ -949,7 +949,7 @@ useEffect(() => {
 }, [faultParam, jointParam])
 ```
 
-- [ ] **Step 4: Create demo submit handler**
+- [x] **Step 4: Create demo submit handler**
 
 Add a new `demoSubmit` function alongside the existing `submit`:
 
@@ -1004,7 +1004,7 @@ const demoSubmit = useCallback(async (userMessage: string) => {
 }, [faultParam, jointParam, isStreaming])
 ```
 
-- [ ] **Step 5: Wire submit button to demo handler**
+- [x] **Step 5: Wire submit button to demo handler**
 
 Find where the submit/send button calls the existing `submit` function (around lines 518-540). Add a conditional:
 
@@ -1020,7 +1020,7 @@ Also wire the quick action buttons similarly:
 onClick={() => DEMO_MODE ? demoSubmit(action.prompt) : void submit(action.prompt, action.intent)}
 ```
 
-- [ ] **Step 6: Show streaming text in real-time**
+- [x] **Step 6: Show streaming text in real-time**
 
 In the message list rendering area (around lines 430-497), add a streaming message after the existing messages:
 
@@ -1037,7 +1037,7 @@ In the message list rendering area (around lines 430-497), add a streaming messa
 )}
 ```
 
-- [ ] **Step 7: Show "开始维保" button after diagnosis**
+- [x] **Step 7: Show "开始维保" button after diagnosis**
 
 After the message list, when demo meta has a sop_recommendation, show a prominent action button:
 
@@ -1054,7 +1054,7 @@ After the message list, when demo meta has a sop_recommendation, show a prominen
 )}
 ```
 
-- [ ] **Step 8: Wire demo diagnosis to sidebar DiagnosisPanel**
+- [x] **Step 8: Wire demo diagnosis to sidebar DiagnosisPanel**
 
 Find where `DiagnosisPanel` is rendered in the sidebar (around line 590+). When in DEMO_MODE, pass the mock diagnosis data:
 
@@ -1084,7 +1084,7 @@ const demoDiagnosis = demoMeta?.diagnosis ? {
 />
 ```
 
-- [ ] **Step 9: Verify demo chat flow**
+- [x] **Step 9: Verify demo chat flow**
 
 1. Navigate to `/agent/workbench?fault=knee_overheat&joint=knee_left`
 2. Should see auto-populated alert message
@@ -1093,7 +1093,7 @@ const demoDiagnosis = demoMeta?.diagnosis ? {
 5. "开始维保" button appears
 6. Click it → navigates to `/maintenance?sop=knee-bearing-replace`
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
@@ -1108,7 +1108,7 @@ git commit -m "feat: integrate mock LLM SSE streaming into Agent workbench for d
 - Create: `r-mos-frontend/src/data/sopKneeBearing.ts`
 - Create: `r-mos-backend/scripts/seed_demo_data.py`
 
-- [ ] **Step 1: Create knee bearing SOP script for frontend adjudication**
+- [x] **Step 1: Create knee bearing SOP script for frontend adjudication**
 
 Look at the existing SOP script format in `src/data/sopScripts.ts` (the `SOP_TORSO_MOTOR_REPLACEMENT` object around lines 72-150+) to match the structure. Create `src/data/sopKneeBearing.ts`:
 
@@ -1209,7 +1209,7 @@ export const SOP_KNEE_BEARING_REPLACE: SOPScript = {
 
 Note: The exact `SOPScript` type may differ from the above. Check `src/adjudication/types/adjudication.ts` and `src/data/sopScripts.ts` for the actual interface shape and adjust field names accordingly.
 
-- [ ] **Step 2: Register the new SOP in sopScripts**
+- [x] **Step 2: Register the new SOP in sopScripts**
 
 In `src/data/sopScripts.ts`, find the `ALL_SOP_SCRIPTS` array or equivalent export and add:
 
@@ -1224,7 +1224,7 @@ export const ALL_SOP_SCRIPTS = [
 ]
 ```
 
-- [ ] **Step 3: Create backend seed script**
+- [x] **Step 3: Create backend seed script**
 
 Create `r-mos-backend/scripts/seed_demo_data.py`:
 
@@ -1289,7 +1289,7 @@ if __name__ == "__main__":
     asyncio.run(seed_demo_data())
 ```
 
-- [ ] **Step 4: Run seed script**
+- [x] **Step 4: Run seed script**
 
 ```bash
 cd r-mos-backend && bash -c 'source .venv/bin/activate && python scripts/seed_demo_data.py'
@@ -1297,7 +1297,7 @@ cd r-mos-backend && bash -c 'source .venv/bin/activate && python scripts/seed_de
 
 Expected: `✅ Demo SOP seeded: id=... name=ATOM-01 左膝关节轴承更换`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add r-mos-frontend/src/data/sopKneeBearing.ts r-mos-frontend/src/data/sopScripts.ts r-mos-backend/scripts/seed_demo_data.py
@@ -1312,7 +1312,7 @@ git commit -m "feat: add knee bearing replacement SOP script and seed data"
 - Modify: `r-mos-frontend/src/pages/SOPMaintenancePage.tsx`
 - Modify: `r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
 
-- [ ] **Step 1: Read SOP param from URL and auto-select**
+- [x] **Step 1: Read SOP param from URL and auto-select**
 
 In `SOPMaintenancePage.tsx`, add URL param reading:
 
@@ -1328,7 +1328,7 @@ const [searchParams] = useSearchParams()
 const sopParam = searchParams.get('sop')
 ```
 
-- [ ] **Step 2: Pass initial SOP to SOPPlayerAdjudicated**
+- [x] **Step 2: Pass initial SOP to SOPPlayerAdjudicated**
 
 Find where `SOPPlayerAdjudicated` is rendered (in the left rail area). Add a prop:
 
@@ -1339,7 +1339,7 @@ Find where `SOPPlayerAdjudicated` is rendered (in the left rail area). Add a pro
 />
 ```
 
-- [ ] **Step 3: Handle initialSopId in SOPPlayerAdjudicated**
+- [x] **Step 3: Handle initialSopId in SOPPlayerAdjudicated**
 
 In `SOPPlayerAdjudicated.tsx`, add `initialSopId` to the component props:
 
@@ -1363,7 +1363,7 @@ useEffect(() => {
 }, [initialSopId, availableSOPs])
 ```
 
-- [ ] **Step 4: Add step timestamp recording for report**
+- [x] **Step 4: Add step timestamp recording for report**
 
 In the SOPPlayerAdjudicated component, add a ref to track step timestamps:
 
@@ -1385,7 +1385,7 @@ if (stepTimestamps.current[step.stepId]) {
 }
 ```
 
-- [ ] **Step 5: Navigate to report on SOP completion**
+- [x] **Step 5: Navigate to report on SOP completion**
 
 In the completion handler (around where `executionState === COMPLETE` is detected), add navigation:
 
@@ -1407,14 +1407,14 @@ useEffect(() => {
 }, [context?.executionState])
 ```
 
-- [ ] **Step 6: Verify SOP auto-selection flow**
+- [x] **Step 6: Verify SOP auto-selection flow**
 
 1. Navigate to `/maintenance?sop=knee-bearing-replace`
 2. SOP should auto-select and display knee bearing replacement steps
 3. Step through each step with the 3D viewer updating
 4. On completion, should auto-navigate to `/reports/demo`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/SOPMaintenancePage.tsx r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
@@ -1428,7 +1428,7 @@ git commit -m "feat: auto-select demo SOP from URL param + step timestamps + com
 **Files:**
 - Modify: `r-mos-frontend/src/pages/ReportPage.tsx`
 
-- [ ] **Step 1: Add demo report mode**
+- [x] **Step 1: Add demo report mode**
 
 In `ReportPage.tsx`, add demo detection:
 
@@ -1441,7 +1441,7 @@ const { taskId } = useParams()
 const isDemoReport = DEMO_MODE && taskId === 'demo'
 ```
 
-- [ ] **Step 2: Build demo report from sessionStorage**
+- [x] **Step 2: Build demo report from sessionStorage**
 
 Add a function to construct a demo report:
 
@@ -1493,7 +1493,7 @@ function buildDemoReport() {
 }
 ```
 
-- [ ] **Step 3: Add demo-specific sections to report**
+- [x] **Step 3: Add demo-specific sections to report**
 
 Before the existing report rendering, add demo-specific content when `isDemoReport`:
 
@@ -1560,7 +1560,7 @@ Before the existing report rendering, add demo-specific content when `isDemoRepo
 )}
 ```
 
-- [ ] **Step 4: Use demo report data when isDemoReport**
+- [x] **Step 4: Use demo report data when isDemoReport**
 
 In the existing useEffect that fetches report data, add a guard:
 
@@ -1577,7 +1577,7 @@ useEffect(() => {
 
 Ensure the `report` state and `loading` state variables are compatible with the demo report structure.
 
-- [ ] **Step 5: Add "返回监控" button at bottom**
+- [x] **Step 5: Add "返回监控" button at bottom**
 
 At the bottom of the report page, add a return button:
 
@@ -1594,13 +1594,13 @@ At the bottom of the report page, add a return button:
 )}
 ```
 
-- [ ] **Step 6: Verify report page**
+- [x] **Step 6: Verify report page**
 
 1. Complete the SOP in maintenance page (or navigate directly to `/reports/demo`)
 2. Should show fault summary, before/after comparison, citations, scores, recommendations
 3. "返回监控" button should work
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/ReportPage.tsx
@@ -1613,7 +1613,7 @@ git commit -m "feat: add demo report view with fault summary, comparison, and ci
 
 **Files:** None (verification only)
 
-- [ ] **Step 1: Start services in demo mode**
+- [x] **Step 1: Start services in demo mode**
 
 ```bash
 # Terminal 1 - Backend
@@ -1623,13 +1623,13 @@ cd r-mos-backend && bash -c 'source .venv/bin/activate && python scripts/seed_de
 cd r-mos-frontend && VITE_DEMO_MODE=true npm run dev
 ```
 
-- [ ] **Step 2: Verify login and navigation**
+- [x] **Step 2: Verify login and navigation**
 
 1. Open browser at http://localhost:3001
 2. Login as `admin@rmos.test` / `Admin@123`
 3. Sidebar should show only: 实时监控, AI 诊断工作台, 维保工作台, 维保报告
 
-- [ ] **Step 3: Verify Act 1 — Fault Detection**
+- [x] **Step 3: Verify Act 1 — Fault Detection**
 
 1. Click "实时监控"
 2. Double-click the "实时监控" heading → should trigger fault
@@ -1638,7 +1638,7 @@ cd r-mos-frontend && VITE_DEMO_MODE=true npm run dev
 5. At 65°C, knee card should turn red with error code
 6. Click the alert card → should navigate to Agent workbench with params
 
-- [ ] **Step 4: Verify Act 2 — AI Diagnosis**
+- [x] **Step 4: Verify Act 2 — AI Diagnosis**
 
 1. Should see auto-populated alert context message
 2. Type "诊断" and send → streaming diagnosis appears with typing animation
@@ -1646,25 +1646,25 @@ cd r-mos-frontend && VITE_DEMO_MODE=true npm run dev
 4. "开始维保" button appears at bottom
 5. Click "开始维保" → navigates to maintenance page
 
-- [ ] **Step 5: Verify Act 3 — 3D Guided Maintenance**
+- [x] **Step 5: Verify Act 3 — 3D Guided Maintenance**
 
 1. SOP should auto-select "左膝关节轴承更换"
 2. 3D model should focus on left knee area
 3. Step through all 6 steps, verifying 3D view changes
 4. On completion, should auto-navigate to report page
 
-- [ ] **Step 6: Verify Act 4 — Report**
+- [x] **Step 6: Verify Act 4 — Report**
 
 1. Report should show fault summary, before/after comparison (65→35°C)
 2. AI diagnosis citations should display
 3. Step scores and recommendations visible
 4. "返回监控" button works
 
-- [ ] **Step 7: Fix any issues found during verification**
+- [x] **Step 7: Fix any issues found during verification**
 
 Document and fix any bugs, visual glitches, or flow interruptions.
 
-- [ ] **Step 8: Final commit**
+- [x] **Step 8: Final commit**
 
 ```bash
 git add -A
@@ -1677,7 +1677,7 @@ git commit -m "fix: end-to-end demo flow adjustments"
 
 **Files:** Various touch-ups
 
-- [ ] **Step 1: Ensure fault resets when leaving monitor page**
+- [x] **Step 1: Ensure fault resets when leaving monitor page**
 
 In MonitorPage, add cleanup:
 
@@ -1691,14 +1691,14 @@ useEffect(() => {
 }, [demoFaultActive])
 ```
 
-- [ ] **Step 2: Add loading states for all transitions**
+- [x] **Step 2: Add loading states for all transitions**
 
 Verify each page transition has proper loading indicators:
 - Monitor → Agent: page should show loading skeleton until context loads
 - Agent → Maintenance: SOP should show loading until auto-selected
 - Maintenance → Report: brief transition state
 
-- [ ] **Step 3: Verify SSE cleanup on navigation**
+- [x] **Step 3: Verify SSE cleanup on navigation**
 
 In AgentWorkbenchPage, abort any active SSE stream on unmount:
 
@@ -1710,11 +1710,11 @@ useEffect(() => {
 }, [])
 ```
 
-- [ ] **Step 4: Test the full demo 3 times end-to-end**
+- [x] **Step 4: Test the full demo 3 times end-to-end**
 
 Run the complete demo flow 3 times to verify reliability.
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 ```bash
 git add -A
