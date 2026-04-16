@@ -6,7 +6,57 @@ import { Empty, Table } from 'antd'
 import { getTaskReport } from '@/api/task'
 import { DataCard, EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
+import { DEMO_MODE } from '@/config/demoMode'
 import type { TaskReport } from '@/types/report'
+
+function buildDemoReport(): TaskReport {
+  const timestamps = JSON.parse(sessionStorage.getItem('demo_step_timestamps') ?? '{}') as Record<string, { start: number; end?: number }>
+  const sopName = sessionStorage.getItem('demo_sop_name') ?? 'ATOM-01 左膝关节轴承更换'
+
+  const stepEntries = Object.entries(timestamps)
+  const totalDuration = stepEntries.reduce((sum, [, t]) => sum + ((t.end ?? t.start) - t.start), 0)
+
+  const STEP_NAMES = ['安全确认', '工具准备', '外壳拆卸', '轴承定位', '轴承更换', '回装验证']
+
+  return {
+    task_id: 0,
+    task_title: sopName,
+    sop_name: sopName,
+    status: 'COMPLETED',
+    final_score: 92,
+    pass_score: 60,
+    is_passed: true,
+    total_duration_seconds: Math.max(1, Math.round(totalDuration / 1000)),
+    total_steps: 6,
+    completed_steps: Math.max(stepEntries.length, 6),
+    skipped_steps: 0,
+    error_count: 0,
+    started_at: stepEntries[0]?.[1]?.start
+      ? new Date(stepEntries[0][1].start).toISOString()
+      : new Date().toISOString(),
+    completed_at: new Date().toISOString(),
+    generated_at: new Date().toISOString(),
+    score_breakdown: {
+      safety: 24,
+      procedure: 23,
+      precision: 22,
+      efficiency: 23,
+    },
+    step_scores: STEP_NAMES.map((name, i) => ({
+      step_index: i,
+      step_title: name,
+      score: i === 3 ? 14 : 16,
+      max_score: 16,
+      deductions: i === 3 ? [{ reason: '定位耗时略长', points: 2 }] : [],
+      remarks: i === 3 ? '建议加强故障特征识别训练' : '操作规范',
+    })),
+    recommendations: [
+      '整体操作规范，安全意识良好',
+      '轴承定位环节可加强磨损特征识别训练',
+      '建议下次维保时同步检查相邻关节状态',
+    ],
+  } as unknown as TaskReport
+}
 
 function formatDateTime(value?: string) {
   if (!value) return '-'
@@ -16,11 +66,14 @@ function formatDateTime(value?: string) {
 const ReportPage = () => {
   const { taskId } = useParams<{ taskId: string }>()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [report, setReport] = useState<TaskReport | null>(null)
+  const isDemoReport = DEMO_MODE && taskId === 'demo'
+  const [loading, setLoading] = useState(!isDemoReport)
+  const [report, setReport] = useState<TaskReport | null>(isDemoReport ? buildDemoReport() : null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isDemoReport) return
+
     const fetchReport = async () => {
       if (!taskId) {
         setError('缺少 taskId')
@@ -42,7 +95,7 @@ const ReportPage = () => {
     }
 
     void fetchReport()
-  }, [taskId])
+  }, [taskId, isDemoReport])
 
   const columns = [
     {
@@ -101,6 +154,67 @@ const ReportPage = () => {
         subtitle={report ? `${report.task_title} · 报告生成于 ${formatDateTime(report.generated_at)}` : '正在加载报告'}
         title="任务报告"
       />
+
+      {isDemoReport && (
+        <>
+          {/* Fault Summary Card */}
+          <div className="mb-6 rounded-xl border border-border-subtle bg-bg-elevated/60 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-brand-400">故障诊断摘要</h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-text-muted">故障类型</span>
+                <p className="font-medium text-text-primary">左膝关节轴承磨损</p>
+              </div>
+              <div>
+                <span className="text-text-muted">AI 置信度</span>
+                <p className="font-medium text-green-400">92%</p>
+              </div>
+              <div>
+                <span className="text-text-muted">风险评级</span>
+                <p className="font-medium text-amber-400">中高</p>
+              </div>
+              <div>
+                <span className="text-text-muted">处置结果</span>
+                <p className="font-medium text-green-400">维保完成</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Before/After Comparison */}
+          <div className="mb-6 rounded-xl border border-border-subtle bg-bg-elevated/60 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-brand-400">维保前后对比</h2>
+            <div className="grid grid-cols-2 gap-8">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-red-400">65°C</div>
+                <div className="text-sm text-text-muted">维保前 · 左膝温度</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-400">35°C</div>
+                <div className="text-sm text-text-muted">维保后 · 左膝温度</div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Diagnosis Citations */}
+          <div className="mb-6 rounded-xl border border-border-subtle bg-bg-elevated/60 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-brand-400">诊断证据链</h2>
+            <div className="space-y-2">
+              {[
+                { icon: '🌡️', text: '左膝温度 35→65°C（30s 内）', source: 'KNEE_LEFT.temperature' },
+                { icon: '⚙️', text: '左膝扭矩波动 ±2.1Nm', source: 'KNEE_LEFT.torque' },
+                { icon: '⚡', text: '左膝电流 2.0→2.8A', source: 'KNEE_LEFT.current' },
+                { icon: '📋', text: '上次维保距今 180 天，超出建议周期', source: 'maintenance_log' },
+              ].map((c, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg bg-bg-base/60 px-4 py-2 text-sm">
+                  <span>{c.icon}</span>
+                  <span className="text-text-primary">{c.text}</span>
+                  <span className="ml-auto text-xs text-text-muted">{c.source}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {report ? (
         <>
@@ -171,6 +285,17 @@ const ReportPage = () => {
               </div>
             )}
           </SectionCard>
+
+          {isDemoReport && (
+            <div className="mt-6 flex justify-center">
+              <button
+                className="rounded-lg bg-brand-500 px-6 py-3 text-base font-semibold text-white hover:bg-brand-600 transition-colors"
+                onClick={() => navigate('/monitor')}
+              >
+                返回实时监控
+              </button>
+            </div>
+          )}
         </>
       ) : null}
     </div>
