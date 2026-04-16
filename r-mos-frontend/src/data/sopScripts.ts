@@ -14,6 +14,7 @@ import {
     SystemState,
 } from '@/adjudication';
 import { HARDWARE_SOP_SCRIPTS } from './hardwareSOPScripts';
+import { SOP_KNEE_BEARING_REPLACE } from './sopKneeBearing';
 
 // ============================================================
 // 裁决级 SOP 数据结构
@@ -475,6 +476,7 @@ export const SOP_LEFT_ARM_INSPECTION: SOPScriptAdjudication = {
 // 所有可用的裁决级 SOP 脚本
 export const ALL_SOP_SCRIPTS: SOPScriptAdjudication[] = [
     ...HARDWARE_SOP_SCRIPTS,
+    SOP_KNEE_BEARING_REPLACE,
 ];
 
 // 辅助函数

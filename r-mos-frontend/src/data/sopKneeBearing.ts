@@ -1,0 +1,145 @@
+/**
+ * sopKneeBearing.ts - ATOM-01 左膝关节轴承更换 SOP（裁决级）
+ */
+
+import {
+    ActionType,
+    ErrorCategory,
+    SOPFailureReason,
+    SOPScriptAdjudication,
+    ValidationType,
+} from '@/adjudication'
+
+const DEFAULT_FAILURE_REASONS: SOPFailureReason[] = [
+    {
+        code: 'ERR_CONSTRAINT',
+        category: ErrorCategory.CONSTRAINT_VIOLATION,
+        description: '存在 ACTIVE 结构约束，禁止操作',
+        severity: 'critical',
+        teachingResponse: {
+            showHint: true,
+            hintContent: '请先解除相关约束后再继续',
+            allowRetry: true,
+        },
+        examResponse: {
+            deductPoints: 5,
+            allowContinue: false,
+            recordToReport: true,
+        },
+    },
+    {
+        code: 'ERR_INCOMPLETE',
+        category: ErrorCategory.INCOMPLETE_ACTION,
+        description: '操作未完成（语义/约束/几何未满足）',
+        severity: 'major',
+        teachingResponse: {
+            showHint: true,
+            hintContent: '请完成当前步骤的所有动作',
+            allowRetry: true,
+        },
+        examResponse: {
+            deductPoints: 3,
+            allowContinue: false,
+            recordToReport: true,
+        },
+    },
+]
+
+const BLOCK_ON_FAILURE = { action: 'block' as const, message: '裁决未通过，操作被阻断' }
+
+export const SOP_KNEE_BEARING_REPLACE: SOPScriptAdjudication = {
+    sopId: 'knee-bearing-replace',
+    title: 'ATOM-01 左膝关节轴承更换',
+    version: '1.0.0',
+    targetModule: 'left_knee',
+    estimatedTime: 45 * 60,
+    difficulty: 'intermediate',
+    steps: [
+        {
+            stepId: 'kbr-01',
+            stepIndex: 1,
+            title: '安全确认',
+            description: '断电并确认维保隔离，确保机器人处于安全停机状态。确认电源指示灯熄灭，检查急停按钮已锁定。',
+            action: ActionType.FOCUS_CAMERA,
+            targetParts: ['left_knee_link'],
+            requiredTool: null,
+            preconditions: [],
+            validations: [],
+            failureReasons: DEFAULT_FAILURE_REASONS,
+            onSuccess: { nextStepId: 'kbr-02', stateTransition: null },
+            onFailure: BLOCK_ON_FAILURE,
+        },
+        {
+            stepId: 'kbr-02',
+            stepIndex: 2,
+            title: '工具准备',
+            description: '确认 M3 内六角扳手、轴承拔取器、锂基润滑脂就位。',
+            action: ActionType.SELECT_TOOL,
+            targetParts: [],
+            requiredTool: 'hex_wrench_m3',
+            preconditions: [],
+            validations: [
+                { type: ValidationType.TOOL_MATCHED, params: { toolId: 'hex_wrench_m3' }, isRequired: true },
+            ],
+            failureReasons: DEFAULT_FAILURE_REASONS,
+            onSuccess: { nextStepId: 'kbr-03', stateTransition: null },
+            onFailure: BLOCK_ON_FAILURE,
+        },
+        {
+            stepId: 'kbr-03',
+            stepIndex: 3,
+            title: '外壳拆卸',
+            description: '拆卸左膝关节保护外壳，共 4 颗 M3 内六角螺丝，按对角线顺序拆卸，注意保管垫片。',
+            action: ActionType.EXTRACT_SCREW,
+            targetParts: ['left_knee_link'],
+            requiredTool: 'hex_wrench_m3',
+            preconditions: [],
+            validations: [],
+            failureReasons: DEFAULT_FAILURE_REASONS,
+            onSuccess: { nextStepId: 'kbr-04', stateTransition: null },
+            onFailure: BLOCK_ON_FAILURE,
+        },
+        {
+            stepId: 'kbr-04',
+            stepIndex: 4,
+            title: '轴承定位',
+            description: '定位磨损轴承，观察并记录磨损状态（划痕、变色、异响）。检查滚珠表面是否有凹坑，记录磨损照片作为证据。',
+            action: ActionType.FOCUS_CAMERA,
+            targetParts: ['left_knee_link'],
+            requiredTool: null,
+            preconditions: [],
+            validations: [],
+            failureReasons: DEFAULT_FAILURE_REASONS,
+            onSuccess: { nextStepId: 'kbr-05', stateTransition: null },
+            onFailure: BLOCK_ON_FAILURE,
+        },
+        {
+            stepId: 'kbr-05',
+            stepIndex: 5,
+            title: '轴承更换',
+            description: '使用拔取器取出旧轴承，安装新轴承（型号 6205-2RS），涂抹润滑脂。拔取时保持垂直用力，避免损伤轴座，新轴承安装前涂抹薄层润滑脂。',
+            action: ActionType.DETACH_PART,
+            targetParts: ['left_knee_link'],
+            requiredTool: 'bearing_puller',
+            preconditions: [],
+            validations: [],
+            failureReasons: DEFAULT_FAILURE_REASONS,
+            onSuccess: { nextStepId: 'kbr-06', stateTransition: null },
+            onFailure: BLOCK_ON_FAILURE,
+        },
+        {
+            stepId: 'kbr-06',
+            stepIndex: 6,
+            title: '回装验证',
+            description: '回装保护外壳，通电，执行关节活动度测试（±90° 全范围旋转）。螺丝按对角线顺序紧固，通电后先低速空载运行 5 分钟。',
+            action: ActionType.FOCUS_CAMERA,
+            targetParts: ['left_knee_link'],
+            requiredTool: 'hex_wrench_m3',
+            preconditions: [],
+            validations: [],
+            failureReasons: DEFAULT_FAILURE_REASONS,
+            onSuccess: { nextStepId: 'COMPLETE', stateTransition: null },
+            onFailure: BLOCK_ON_FAILURE,
+        },
+    ],
+}
