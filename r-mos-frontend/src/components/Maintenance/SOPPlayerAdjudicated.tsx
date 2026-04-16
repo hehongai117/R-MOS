@@ -14,7 +14,9 @@
  * - A.3：禁止绕过裁决层推进 SOP
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { DEMO_MODE } from '@/config/demoMode';
 import { Card, Space, Typography, Button, Steps, Tag, Progress, Alert, Select, Tooltip, Empty, Divider, Modal } from 'antd';
 import {
     PlayCircleOutlined,
@@ -54,6 +56,9 @@ const { Text } = Typography;
 export interface SOPPlayerAdjudicatedProps {
     // 可用的裁决级 SOP 脚本
     availableSOPs: SOPScriptAdjudication[];
+
+    // Demo: auto-select SOP by ID on mount
+    initialSopId?: string;
 
     // 回调
     onStepChange?: (step: SOPStepAdjudication | null, index: number) => void;
@@ -125,6 +130,7 @@ const PART_TARGET_ALIASES: Record<string, string[]> = {
 
 export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     availableSOPs,
+    initialSopId,
     onStepChange,
     onExplodeChange,
     onPartSelect,
@@ -139,6 +145,8 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     selectedSOPId,
     actionEvent,
 }) => {
+    const navigate = useNavigate();
+    const stepTimestamps = useRef<Record<string, { start: number; end?: number }>>({});
     const [selectedSOP, setSelectedSOP] = useState<SOPScriptAdjudication | null>(null);
     const [executor, setExecutor] = useState<SOPExecutor | null>(null);
     const [context, setContext] = useState<SOPExecutionContext | null>(null);
@@ -280,6 +288,39 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             handleSelectSOP(selectedSOPId);
         }
     }, [selectedSOPId, selectedSOP, handleSelectSOP, clearSelection]);
+
+    // Demo: auto-select SOP from URL param on mount
+    useEffect(() => {
+        if (!initialSopId || selectedSOP) return;
+        const sop = availableSOPs.find(s => s.sopId === initialSopId);
+        if (sop) {
+            handleSelectSOP(initialSopId);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialSopId, availableSOPs]);
+
+    // Demo: track step start timestamps
+    useEffect(() => {
+        if (!DEMO_MODE || !currentStep) return;
+        if (!stepTimestamps.current[currentStep.stepId]) {
+            stepTimestamps.current[currentStep.stepId] = { start: Date.now() };
+        }
+    }, [currentStep]);
+
+    // Demo: navigate to report on SOP completion
+    useEffect(() => {
+        if (!DEMO_MODE || context?.executionState !== SOPExecutionState.COMPLETE) return;
+        // Mark last step as complete
+        if (currentStep) {
+            const ts = stepTimestamps.current[currentStep.stepId];
+            if (ts && !ts.end) ts.end = Date.now();
+        }
+        sessionStorage.setItem('demo_step_timestamps', JSON.stringify(stepTimestamps.current));
+        sessionStorage.setItem('demo_sop_name', selectedSOP?.title ?? '');
+        const timer = setTimeout(() => navigate('/reports/demo'), 2000);
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [context?.executionState]);
 
     const normalizeSpec = useCallback((value: string): string => {
         return value.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '');

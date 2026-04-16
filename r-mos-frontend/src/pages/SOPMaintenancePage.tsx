@@ -12,6 +12,7 @@
  */
 
 import { useState, useCallback, Suspense, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, Card, Col, Descriptions, Empty, Row, Segmented, Select, Space, Tag, Typography, message } from 'antd';
 import {
     InfoCircleOutlined,
@@ -56,6 +57,7 @@ import {
     ScrewInfo,
 } from '@/components/Maintenance';
 import { SOPPlayerAdjudicated, type SOPActionEvent } from '@/components/Maintenance/SOPPlayerAdjudicated';
+import { DEMO_MODE } from '@/config/demoMode';
 import { ALL_SOP_SCRIPTS } from '@/data/sopScripts';
 import {
     getCorePartDetailRecord,
@@ -244,6 +246,8 @@ const LoadingFallback = () => (
 
 function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sopParam = searchParams.get('sop');
     const workspaceChrome = WORKSPACE_CHROME[workspaceVariant];
     const effectiveLayoutMode: MaintenanceLayoutMode = workspaceVariant === 'atom01' ? 'full' : (layoutMode ?? 'execution');
     const showExecutionRail = effectiveLayoutMode !== 'inspector';
@@ -1224,6 +1228,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         <SOPPlayerAdjudicated
             availableSOPs={availableSopScripts}
             selectedSOPId={linkedSOPId}
+            initialSopId={DEMO_MODE ? (sopParam ?? undefined) : undefined}
             onSOPChange={handleSOPChange}
             onStepChange={handleSOPStepChange}
             onExecutionContextChange={handleSOPContextChange}
