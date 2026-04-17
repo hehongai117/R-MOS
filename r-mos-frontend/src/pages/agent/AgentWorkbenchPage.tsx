@@ -688,7 +688,28 @@ function AgentWorkbenchPage() {
         >
           <DiagnosisPanel
             diagnosisResult={DEMO_MODE
-              ? (demoMeta?.diagnosis as unknown as import('@/api/agent-v2').DiagnosisResult | null ?? null)
+              ? (demoMeta?.diagnosis ? {
+                  success: true,
+                  primary_hypothesis: demoMeta.diagnosis.primary_hypothesis ? {
+                    fault_code: 'BEARING_WEAR',
+                    fault_name: String((demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).name ?? ''),
+                    confidence: Number((demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).confidence ?? 0),
+                    affected_parts: ((demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).affected_parts as string[]) ?? [],
+                    possible_causes: ['轴承长期运转磨损', '润滑不足加速磨损'],
+                    evidence: (demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).evidence as Record<string, unknown> ?? {},
+                  } : null,
+                  alternative_hypotheses: ((demoMeta.diagnosis.alternative_hypotheses as Array<Record<string, unknown>>) ?? []).map(h => ({
+                    fault_code: 'ALT',
+                    fault_name: String(h.name ?? ''),
+                    confidence: Number(h.confidence ?? 0),
+                    affected_parts: (h.affected_parts as string[]) ?? [],
+                    possible_causes: [],
+                    evidence: {},
+                  })),
+                  requires_supervisor: false,
+                  reasoning: String(demoMeta.diagnosis.reasoning ?? ''),
+                  recommended_actions: (demoMeta.diagnosis.recommended_actions as string[]) ?? [],
+                } as unknown as import('@/api/agent-v2').DiagnosisResult : null)
               : (latestDiagnosisBundle?.diagnosis ?? null)}
             maintenancePlan={DEMO_MODE ? null : (latestDiagnosisBundle?.maintenance_plan ?? null)}
             verificationResult={DEMO_MODE ? null : (latestDiagnosisBundle?.verification ?? null)}
