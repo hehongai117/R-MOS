@@ -350,6 +350,22 @@ function MonitorPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {DEMO_MODE && (
+              <Button
+                type="button"
+                variant={demoFaultActive ? 'outline' : 'default'}
+                size="sm"
+                onClick={handleDemoTrigger}
+                className={cn(
+                  demoFaultActive
+                    ? 'border-amber-500/50 text-amber-400 hover:bg-amber-500/10'
+                    : 'bg-brand-500 hover:bg-brand-600 text-white',
+                )}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                {demoFaultActive ? '重置故障' : '触发故障演示'}
+              </Button>
+            )}
             <span
               className={cn(
                 'status-dot',
@@ -379,6 +395,15 @@ function MonitorPage() {
           </div>
         </div>
       ) : null}
+
+      {DEMO_MODE && demoFaultActive && (
+        <div className="flex items-center gap-3 rounded-xl border border-brand-500/30 bg-brand-500/5 px-4 py-3 animate-pulse">
+          <Thermometer className="h-4 w-4 shrink-0 text-brand-400" />
+          <div className="text-sm text-text-secondary">
+            故障模拟已触发 — 等待左膝温度升高后，<strong className="text-text-primary">点击右侧变红的「左膝关节」卡片</strong>进入 AI 诊断
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_360px]">
         <div className="space-y-4">
