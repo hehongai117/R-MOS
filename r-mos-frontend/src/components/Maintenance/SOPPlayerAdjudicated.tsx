@@ -558,20 +558,20 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                 message="操作被阻断"
                                 description={
                                     <Space direction="vertical" size={4}>
-                                        <Text>{lastReport.reason}</Text>
+                                        <Text style={{ color: '#e0b0b0' }}>{lastReport.reason}</Text>
                                         {lastReport.requiredActions.length > 0 && (
                                             <div>
                                                 <Text type="secondary">需要先完成：</Text>
                                                 <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
                                                     {lastReport.requiredActions.map((action, i) => (
-                                                        <li key={i}><Text>{action}</Text></li>
+                                                        <li key={i}><Text style={{ color: '#d0c0c0' }}>{action}</Text></li>
                                                     ))}
                                                 </ul>
                                             </div>
                                         )}
                                     </Space>
                                 }
-                                style={{ marginBottom: 8 }}
+                                style={{ marginBottom: 8, background: '#2b1519', borderColor: '#5a2020' }}
                             />
                         )}
 
@@ -581,7 +581,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                 type="info"
                                 icon={<BulbOutlined />}
                                 message="教学提示"
-                                description={<Text>{lastReport.hint}</Text>}
+                                description={<Text style={{ color: '#b0b8c4' }}>{lastReport.hint}</Text>}
                                 action={
                                     <Button
                                         size="small"
@@ -592,7 +592,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                         重试
                                     </Button>
                                 }
-                                style={{ marginTop: -4, marginBottom: 8 }}
+                                style={{ marginTop: -4, marginBottom: 8, background: '#141c2b', borderColor: '#1e3a5f' }}
                             />
                         )}
 
@@ -606,12 +606,12 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                         <Tag color="#1890ff">
                                             步骤 {currentStep.stepIndex}
                                         </Tag>
-                                        <Text strong>{currentStep.title}</Text>
+                                        <Text strong style={{ color: '#e0e6ed' }}>{currentStep.title}</Text>
                                     </Space>
                                 }
                                 description={
                                     <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                        <Text>{currentStep.description}</Text>
+                                        <Text style={{ color: '#b0b8c4' }}>{currentStep.description}</Text>
 
                                         {/* 工具提示 */}
                                         {currentStep.requiredTool && (
@@ -650,12 +650,12 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                                 showIcon
                                                 message="等待实际操作完成"
                                                 description={executingHint}
-                                                style={{ marginTop: 6 }}
+                                                style={{ marginTop: 6, background: '#2a2215', borderColor: '#5a4a20' }}
                                             />
                                         )}
                                     </Space>
                                 }
-                                style={{ marginTop: 8 }}
+                                style={{ marginTop: 8, background: '#141c2b', borderColor: '#1e3a5f' }}
                             />
                         )}
 
@@ -666,6 +666,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                                 icon={<CheckCircleOutlined />}
                                 message="SOP 执行完成"
                                 description={`已完成「${selectedSOP.title}」的所有步骤。`}
+                                style={{ background: '#122118', borderColor: '#1e5a35' }}
                             />
                         )}
 
