@@ -160,8 +160,8 @@ export function SOPMaintenanceLeftRail({
                   className={cn(
                     'flex items-center gap-3 rounded-md px-3 py-2 text-sm',
                     isCurrent
-                      ? 'border-l-[3px] border-primary bg-[#111f33]'
-                      : 'bg-[rgba(255,255,255,0.03)]',
+                      ? 'border-l-[3px] border-primary bg-[#1a2d45]'
+                      : 'bg-[#1e2433]',
                   )}
                 >
                   <span
@@ -174,7 +174,7 @@ export function SOPMaintenanceLeftRail({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-text-primary">{step.title}</div>
-                    <div className="truncate text-xs text-text-muted">{step.description}</div>
+                    <div className="truncate text-xs text-text-secondary">{step.description}</div>
                   </div>
                   {isBlock ? <Lock aria-label="阻断步骤" className="h-4 w-4 text-amber" /> : null}
                   {step.hasCriticalFailureReason ? (
