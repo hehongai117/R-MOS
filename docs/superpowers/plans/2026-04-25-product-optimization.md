@@ -959,7 +959,7 @@ git commit -m "chore: remove backend demo endpoints"
 - Delete: 3 test files
 - Modify: `r-mos-backend/app/api/v1/endpoints/agent.py` (remove imports and route blocks)
 
-- [ ] **Step 1: Identify Phase 2 route blocks in agent.py**
+- [x] **Step 1: Identify Phase 2 route blocks in agent.py**
 
 The agent.py file has these Phase 2 sections that reference the deleted services. Each section is a group of route handler functions. Find the sections by searching for:
 
@@ -972,7 +972,7 @@ The agent.py file has these Phase 2 sections that reference the deleted services
 
 Comment out or delete these route blocks entirely. Also remove the `evaluation/report` and `sop/quality` endpoints if they depend on deleted services.
 
-- [ ] **Step 2: Remove Phase 2 imports from agent.py**
+- [x] **Step 2: Remove Phase 2 imports from agent.py**
 
 Remove these import lines from the top of agent.py:
 ```python
@@ -991,7 +991,7 @@ from app.services.system_monitor import (...)           # line 1454
 
 Keep imports that are still used by remaining routes (e.g., `approval_queue`, `policy_matrix`, `orchestrator_v2`).
 
-- [ ] **Step 3: Delete service files**
+- [x] **Step 3: Delete service files**
 
 ```bash
 cd r-mos-backend
@@ -1003,7 +1003,7 @@ rm app/services/feature_flag.py
 rm app/services/system_monitor.py
 ```
 
-- [ ] **Step 4: Delete Phase 2/3/4 contract tests**
+- [x] **Step 4: Delete Phase 2/3/4 contract tests**
 
 ```bash
 cd r-mos-backend
@@ -1012,7 +1012,7 @@ rm -f tests/unit/test_phase3_contract.py
 rm -f tests/unit/test_phase4_contract.py
 ```
 
-- [ ] **Step 5: Verify the backend still imports cleanly**
+- [x] **Step 5: Verify the backend still imports cleanly**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && python -c "from app.api.v1 import api_router; print('OK')"
@@ -1028,7 +1028,7 @@ cd r-mos-backend && source venv/bin/activate && python -m pytest tests/ -x --tim
 
 Expected: all remaining tests pass (some may need adjustment if they imported Phase 2 fixtures)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
