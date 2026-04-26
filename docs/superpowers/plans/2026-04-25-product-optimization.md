@@ -367,7 +367,7 @@ git commit -m "refactor: remove DEMO_MODE from ReportPage"
 **Files:**
 - Delete: 17 page files + 3 test files (see File Structure above)
 
-- [ ] **Step 1: Delete all unused page files**
+- [x] **Step 1: Delete all unused page files**
 
 ```bash
 cd r-mos-frontend
@@ -390,7 +390,7 @@ rm src/pages/admin/FaultManagePage.tsx
 rm src/pages/admin/SeedDataPage.tsx
 ```
 
-- [ ] **Step 2: Delete associated test files**
+- [x] **Step 2: Delete associated test files**
 
 ```bash
 cd r-mos-frontend
@@ -399,7 +399,7 @@ rm -f src/pages/__tests__/MaintenanceProjectDraftPage.test.tsx
 rm -f src/pages/__tests__/SOPMaintenanceInspectorPage.test.tsx
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A
@@ -915,7 +915,7 @@ git commit -m "feat: add ScenarioPickerPage skeleton with difficulty filter"
 - Delete: `r-mos-backend/app/api/v1/endpoints/demo.py`
 - Modify: `r-mos-backend/app/api/v1/__init__.py`
 
-- [ ] **Step 1: Remove demo import and router registration**
+- [x] **Step 1: Remove demo import and router registration**
 
 In `r-mos-backend/app/api/v1/__init__.py`, remove:
 ```python
@@ -928,13 +928,13 @@ In `r-mos-backend/app/api/v1/__init__.py`, remove:
 api_router.include_router(demo.router, tags=["demo"])  # Demo-only endpoints
 ```
 
-- [ ] **Step 2: Delete the demo endpoint file**
+- [x] **Step 2: Delete the demo endpoint file**
 
 ```bash
 rm r-mos-backend/app/api/v1/endpoints/demo.py
 ```
 
-- [ ] **Step 3: Verify the backend starts without errors**
+- [x] **Step 3: Verify the backend starts without errors**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && python -c "from app.api.v1 import api_router; print(f'Routes: {len(api_router.routes)}')"
@@ -942,7 +942,7 @@ cd r-mos-backend && source venv/bin/activate && python -c "from app.api.v1 impor
 
 Expected: prints route count without ImportError
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add r-mos-backend/app/api/v1/__init__.py
