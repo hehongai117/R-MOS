@@ -20,19 +20,19 @@ from app.models.approval import Approval
 from app.services.tool_executor import validate_tool_request_security
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor
-from app.api.v1.endpoints.ai_commands import _plan_tool_call, PlannedToolCall
+from app.api.v1.endpoints.ai_commands import _plan_tool_call
 
 logger = logging.getLogger(__name__)
 
 from app.services.agent_service import orchestrator
-from app.services.coach_agent import coach_agent, CoachOutput
-from app.services.diagnoser_agent import diagnoser_agent, DiagnoserOutput
+from app.services.coach_agent import coach_agent
+from app.services.diagnoser_agent import diagnoser_agent
 from app.services.knowledge_governance import knowledge_governance
 from app.services.multi_agent_coordinator import multi_agent_coordinator
 from app.services.evidence_enforcement import evidence_enforcer, ACTION_EVIDENCE_REQUIREMENTS
-from app.services.orchestrator_v2 import orchestrator_v2, TaskFSMState, TaskEventType
+from app.services.orchestrator_v2 import orchestrator_v2, TaskEventType
 from app.services.approval_queue import approval_queue, ApprovalPriority
-from app.services.policy_matrix import policy_matrix, PolicyDecision
+from app.services.policy_matrix import policy_matrix
 from app.services.authz_guard import require_permission
 from app.services.knowledge.project_ingest_worker import ProjectIngestWorker
 from app.services.knowledge.project_ingest_service import project_ingest_service
