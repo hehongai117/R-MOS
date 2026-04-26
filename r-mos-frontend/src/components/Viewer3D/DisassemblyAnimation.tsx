@@ -86,8 +86,6 @@ const ScrewModel: React.FC<{
 export interface DisassemblyAnimationProps {
     /** 是否播放 */
     isPlaying: boolean;
-    /** 演示模式（目前默认 true） */
-    demoMode?: boolean;
     /** 动画完成回调 */
     onComplete?: () => void;
     /** 当前播放进度回调 (0~1) */
