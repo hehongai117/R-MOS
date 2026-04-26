@@ -1020,7 +1020,7 @@ cd r-mos-backend && source venv/bin/activate && python -c "from app.api.v1 impor
 
 Expected: `OK`
 
-- [ ] **Step 6: Run remaining backend tests**
+- [x] **Step 6: Run remaining backend tests**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && python -m pytest tests/ -x --timeout=30 2>&1 | tail -20
