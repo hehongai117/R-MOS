@@ -1086,26 +1086,26 @@ git add -A && git diff --cached --stat && git commit -m "fix: clean up remaining
 
 **Files:** None (manual verification)
 
-- [ ] **Step 1: Start backend**
+- [x] **Step 1: Start backend**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && python main.py
 ```
 
-- [ ] **Step 2: Start frontend (without DEMO_MODE)**
+- [x] **Step 2: Start frontend (without DEMO_MODE)**
 
 ```bash
 cd r-mos-frontend && npm run dev
 ```
 
-- [ ] **Step 3: Verify login and navigation**
+- [x] **Step 3: Verify login and navigation**
 
 1. Open `http://localhost:3000`
 2. Login with test credentials
 3. Verify sidebar navigation matches the new structure for the logged-in role
 4. Click through each nav item and verify pages load without blank screens or console errors
 
-- [ ] **Step 4: Verify core flow pages**
+- [x] **Step 4: Verify core flow pages**
 
 1. `/monitor` — loads, shows joint cards, no demo button
 2. `/agent/workbench` — loads, chat input works
@@ -1114,11 +1114,11 @@ cd r-mos-frontend && npm run dev
 5. `/my-tasks` — loads, shows tabs and empty state
 6. `/scenarios` — loads, shows difficulty filter and empty state
 
-- [ ] **Step 5: Verify deleted pages return 404 / redirect**
+- [x] **Step 5: Verify deleted pages return 404 / redirect**
 
 Navigate to `/ai-chat`, `/incidents`, `/admin/features` — should redirect to `/` or show fallback.
 
-- [ ] **Step 6: Commit final state tag**
+- [x] **Step 6: Commit final state tag**
 
 ```bash
 git tag v0.2.0-product-skeleton
