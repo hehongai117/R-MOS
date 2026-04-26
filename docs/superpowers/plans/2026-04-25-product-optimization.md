@@ -413,7 +413,7 @@ git commit -m "chore: delete 17 unused pages and their tests"
 **Files:**
 - Modify: `src/App.tsx`
 
-- [ ] **Step 1: Remove lazy imports for deleted pages**
+- [x] **Step 1: Remove lazy imports for deleted pages**
 
 Remove these lines from App.tsx (lines 15-24, 27-29, 31, 33, 36, 39):
 ```typescript
@@ -438,14 +438,14 @@ const TaskExecutionPage = lazy(() => import('@/pages/TaskExecutionPage'))
 const TrainingWorkbenchPage = lazy(() => import('@/pages/TrainingWorkbenchPage'))
 ```
 
-- [ ] **Step 2: Add lazy imports for new pages**
+- [x] **Step 2: Add lazy imports for new pages**
 
 ```typescript
 const MyTasksPage = lazy(() => import('@/pages/MyTasksPage'))
 const ScenarioPickerPage = lazy(() => import('@/pages/ScenarioPickerPage'))
 ```
 
-- [ ] **Step 3: Remove deleted routes from the Route tree**
+- [x] **Step 3: Remove deleted routes from the Route tree**
 
 Remove these `<Route>` elements:
 ```tsx
@@ -471,7 +471,7 @@ Remove these `<Route>` elements:
 <Route path="tasks/:taskId" ... />                 {/* line 181 */}
 ```
 
-- [ ] **Step 4: Add new routes**
+- [x] **Step 4: Add new routes**
 
 Add inside the protected route block:
 ```tsx
@@ -485,7 +485,7 @@ Add inside the protected route block:
 />
 ```
 
-- [ ] **Step 5: Verify the full route set is correct**
+- [x] **Step 5: Verify the full route set is correct**
 
 After edits, the protected routes should be:
 ```
@@ -511,13 +511,13 @@ After edits, the protected routes should be:
 /reports/:taskId           → ReportPage
 ```
 
-- [ ] **Step 6: Verify compilation**
+- [x] **Step 6: Verify compilation**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit src/App.tsx 2>&1 | head -20
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add r-mos-frontend/src/App.tsx
