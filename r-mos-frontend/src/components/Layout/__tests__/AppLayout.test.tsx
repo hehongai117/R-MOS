@@ -44,34 +44,36 @@ describe('AppLayout', () => {
     })
   })
 
-  it('shows restored legacy feature links for student users', () => {
+  it('shows student nav with practice center and maintenance flow', () => {
     renderLayoutForRole('student')
 
-    expect(screen.getByRole('link', { name: '训练工作台' }).getAttribute('href')).toBe('/workbench/training')
-    expect(screen.getByRole('link', { name: 'AI 工作台' }).getAttribute('href')).toBe('/agent/workbench')
-    expect(screen.queryByRole('link', { name: 'ATOM01 维保工作台' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'SOP 工作台' }).getAttribute('href')).toBe('/maintenance')
+    expect(screen.getByRole('link', { name: '我的任务' }).getAttribute('href')).toBe('/my-tasks')
+    expect(screen.getByRole('link', { name: '自主练习' }).getAttribute('href')).toBe('/scenarios')
+    expect(screen.getByRole('link', { name: '实时监控' }).getAttribute('href')).toBe('/monitor')
+    expect(screen.getByRole('link', { name: 'AI 诊断工作台' }).getAttribute('href')).toBe('/agent/workbench')
+    expect(screen.getByRole('link', { name: '维保练习工作台' }).getAttribute('href')).toBe('/maintenance')
+    expect(screen.getByRole('link', { name: '我的技能' }).getAttribute('href')).toBe('/student/skills')
     expect(screen.getByRole('link', { name: '3D 展示' }).getAttribute('href')).toBe('/atom01')
-    expect(screen.getByRole('link', { name: '执行回放' }).getAttribute('href')).toBe('/agent/replay')
   })
 
-  it('keeps teacher workbench links and moves sop tools into workbench', () => {
+  it('shows teacher nav with teaching management and tools', () => {
     renderLayoutForRole('teacher')
 
     expect(screen.getByRole('link', { name: '班级监控台' }).getAttribute('href')).toBe('/workbench/teaching')
-    expect(screen.queryByRole('link', { name: 'ATOM01 维保工作台' })).toBeNull()
     expect(screen.getByRole('link', { name: '作业管理' }).getAttribute('href')).toBe('/teaching/assignments')
-    expect(screen.getByRole('link', { name: 'SOP 工作台' }).getAttribute('href')).toBe('/maintenance')
+    expect(screen.getByRole('link', { name: '学员档案' }).getAttribute('href')).toBe('/teacher/students')
+    expect(screen.getByRole('link', { name: 'SOP 管理' }).getAttribute('href')).toBe('/sops')
     expect(screen.getByRole('link', { name: '实时监控' }).getAttribute('href')).toBe('/monitor')
+    expect(screen.getByRole('link', { name: '知识库' }).getAttribute('href')).toBe('/knowledge')
   })
 
-  it('keeps admin console links and exposes the moved workbench entries', () => {
+  it('shows admin nav with overview and full management access', () => {
     renderLayoutForRole('admin')
 
     expect(screen.getByRole('link', { name: '系统概览' }).getAttribute('href')).toBe('/admin/console')
-    expect(screen.queryByRole('link', { name: 'ATOM01 维保工作台' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'SOP 工作台' }).getAttribute('href')).toBe('/maintenance')
-    expect(screen.getByRole('link', { name: '审批队列' }).getAttribute('href')).toBe('/admin/approvals')
+    expect(screen.getByRole('link', { name: '班级监控台' }).getAttribute('href')).toBe('/workbench/teaching')
+    expect(screen.getByRole('link', { name: '作业管理' }).getAttribute('href')).toBe('/teaching/assignments')
+    expect(screen.getByRole('link', { name: 'SOP 管理' }).getAttribute('href')).toBe('/sops')
     expect(screen.getByRole('link', { name: '知识库' }).getAttribute('href')).toBe('/knowledge')
   })
 })

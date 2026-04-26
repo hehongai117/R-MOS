@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { reconnectMock, useWebSocketMock } = vi.hoisted(() => ({
@@ -111,7 +112,7 @@ describe('MonitorPage', () => {
   })
 
   it('renders monitor dashboard sections and passes mapped telemetry to the atom01 viewer', () => {
-    render(<MonitorPage />)
+    render(<MemoryRouter><MonitorPage /></MemoryRouter>)
 
     expect(screen.getByText('REALTIME MONITOR')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '实时监控' })).toBeTruthy()
@@ -142,7 +143,7 @@ describe('MonitorPage', () => {
       reconnect: reconnectMock,
     })
 
-    render(<MonitorPage />)
+    render(<MemoryRouter><MonitorPage /></MemoryRouter>)
 
     expect(screen.getByRole('button', { name: '重连' })).toBeTruthy()
     expect(screen.getByText('机器人适配器不可用')).toBeTruthy()
@@ -160,7 +161,7 @@ describe('MonitorPage', () => {
       reconnect: reconnectMock,
     })
 
-    render(<MonitorPage />)
+    render(<MemoryRouter><MonitorPage /></MemoryRouter>)
 
     fireEvent.click(screen.getByRole('button', { name: '重连' }))
 

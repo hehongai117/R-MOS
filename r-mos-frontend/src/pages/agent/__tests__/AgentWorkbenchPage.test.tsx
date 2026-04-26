@@ -49,6 +49,15 @@ vi.mock('@/components/Agent/AgentStatusCapsule', () => ({
   setWorkbenchCapsule: setWorkbenchCapsuleMock,
 }));
 
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  };
+});
+
 vi.mock('@/hooks/useWebSocket', () => ({
   useWebSocket: () => ({
     status: 'connected',
