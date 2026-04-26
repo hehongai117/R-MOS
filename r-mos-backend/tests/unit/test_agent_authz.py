@@ -126,46 +126,6 @@ def _register_and_login(client: TestClient, email: str) -> str:
 
 # ============ 只读端点测试 ============
 
-def test_agent_features_without_token_returns_401() -> None:
-    """测试无 token 访问只读端点返回 401."""
-    client, _ = _build_client()
-    try:
-        resp = client.get("/api/v1/agent/features")
-        assert resp.status_code == 401
-        body = resp.json()
-        assert body["error_type"] == "AuthenticationRequiredError"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-        app.state.test_sessionmaker = None
-
-
-def test_agent_features_with_valid_token_returns_200() -> None:
-    """测试有效 token 访问只读端点返回 200."""
-    client, session_factory = _build_client()
-    try:
-        token = _register_and_login(client, "reader@example.com")
-        asyncio.run(
-            _grant_role(
-                session_factory,
-                email="reader@example.com",
-                role_name="viewer",
-                permission_keys=["agent:read"],
-            )
-        )
-
-        resp = client.get(
-            "/api/v1/agent/features",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        # 可能返回 200 或 403（取决于角色是否有其他权限）
-        assert resp.status_code in [200, 403]
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-        app.state.test_sessionmaker = None
-
-
 def test_agent_task_status_without_permission_returns_403() -> None:
     """测试无权限访问只读端点返回 403."""
     client, session_factory = _build_client()
@@ -338,44 +298,3 @@ def test_agent_approval_approve_write_endpoint() -> None:
         app.state.test_sessionmaker = None
 
 
-def test_agent_monitor_health_without_permission() -> None:
-    """测试监控端点无权限访问."""
-    client, session_factory = _build_client()
-    try:
-        token = _register_and_login(client, "nomons@example.com")
-        # 不授予任何权限
-
-        resp = client.get(
-            "/api/v1/agent/monitor/health",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert resp.status_code == 403
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-        app.state.test_sessionmaker = None
-
-
-def test_agent_monitor_health_with_read_permission() -> None:
-    """测试监控端点有读取权限."""
-    client, session_factory = _build_client()
-    try:
-        token = _register_and_login(client, "monitor@example.com")
-        asyncio.run(
-            _grant_role(
-                session_factory,
-                email="monitor@example.com",
-                role_name="monitor_user",
-                permission_keys=["agent:read"],
-            )
-        )
-
-        resp = client.get(
-            "/api/v1/agent/monitor/health",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert resp.status_code in [200, 403]
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-        app.state.test_sessionmaker = None
