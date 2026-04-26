@@ -1,28 +1,17 @@
 import {
   Activity,
-  AlertTriangle,
-  BarChart2,
   BarChart3,
   BookOpen,
   Bot,
   Boxes,
-  Brain,
-  CheckSquare,
   ClipboardList,
-  Cpu,
-  Database,
   Dumbbell,
-  FileSearch,
   FileText,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
   Monitor,
-  PlayCircle,
   Settings,
-  ShieldCheck,
   Sparkles,
-  ToggleRight,
   Users,
   Wrench,
   type LucideIcon,
@@ -63,43 +52,40 @@ interface LayoutConfig {
 
 const STUDENT_NAV: NavGroup[] = [
   {
-    label: '工作台',
+    label: '练习中心',
     items: [
-      { label: '训练工作台', to: '/workbench/training', icon: Dumbbell },
-      { label: 'AI 工作台', to: '/agent/workbench', icon: Bot },
-      { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
+      { label: '我的任务', to: '/my-tasks', icon: ClipboardList },
+      { label: '自主练习', to: '/scenarios', icon: Dumbbell },
+    ],
+  },
+  {
+    label: '维保流程',
+    items: [
+      { label: '实时监控', to: '/monitor', icon: Activity },
+      { label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot },
+      { label: '维保练习工作台', to: '/maintenance', icon: Wrench },
+    ],
+  },
+  {
+    label: '学习成长',
+    items: [
+      { label: '维保报告', to: '/reports', icon: FileText },
+      { label: '我的技能', to: '/student/skills', icon: BarChart3 },
     ],
   },
   {
     label: '工具',
     items: [
       { label: '3D 展示', to: '/atom01', icon: Boxes },
-      { label: '实时监控', to: '/monitor', icon: Activity },
-    ],
-  },
-  {
-    label: '记录与资源',
-    items: [
-      { label: '我的技能', to: '/student/skills', icon: BarChart3 },
-      { label: '任务报告', to: '/reports', icon: FileText },
-      { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
-      { label: '知识库', to: '/knowledge', icon: BookOpen },
-      { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
     ],
   },
 ]
 
 const TEACHER_NAV: NavGroup[] = [
   {
-    label: '工作台',
-    items: [
-      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-      { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
-    ],
-  },
-  {
     label: '教学管理',
     items: [
+      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
       { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
       { label: '学员档案', to: '/teacher/students', icon: Users },
     ],
@@ -109,24 +95,14 @@ const TEACHER_NAV: NavGroup[] = [
     items: [
       { label: 'SOP 管理', to: '/sops', icon: FileText },
       { label: '3D 展示', to: '/atom01', icon: Boxes },
-    ],
-  },
-  {
-    label: '监控与审核',
-    items: [
       { label: '实时监控', to: '/monitor', icon: Activity },
-      { label: '事件列表', to: '/incidents', icon: AlertTriangle },
-      { label: '证据查看', to: '/evidence', icon: FileSearch },
-      { label: '评估状态', to: '/assessments', icon: ShieldCheck },
     ],
   },
   {
-    label: '记录与资源',
+    label: '记录',
     items: [
-      { label: '任务报告', to: '/reports', icon: BarChart3 },
-      { label: '执行回放', to: '/agent/replay', icon: PlayCircle },
+      { label: '维保报告', to: '/reports', icon: BarChart3 },
       { label: '知识库', to: '/knowledge', icon: BookOpen },
-      { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
     ],
   },
 ]
@@ -139,15 +115,9 @@ const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
-    label: '工作台',
-    items: [
-      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-      { label: 'SOP 工作台', to: '/maintenance', icon: Wrench },
-    ],
-  },
-  {
     label: '教学管理',
     items: [
+      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
       { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
       { label: '学员档案', to: '/teacher/students', icon: Users },
     ],
@@ -157,30 +127,14 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { label: 'SOP 管理', to: '/sops', icon: FileText },
       { label: '3D 展示', to: '/atom01', icon: Boxes },
-    ],
-  },
-  {
-    label: '监控与审核',
-    items: [
       { label: '实时监控', to: '/monitor', icon: Activity },
-      { label: '事件列表', to: '/incidents', icon: AlertTriangle },
-      { label: '证据查看', to: '/evidence', icon: FileSearch },
-      { label: '评估状态', to: '/assessments', icon: ShieldCheck },
-      { label: '信念追踪', to: '/belief-tracker', icon: Brain },
     ],
   },
   {
-    label: '平台管理',
+    label: '记录',
     items: [
-      { label: '审批队列', to: '/admin/approvals', icon: CheckSquare },
-      { label: '补偿方案', to: '/admin/compensation', icon: Wrench },
-      { label: 'Feature Flag', to: '/admin/features', icon: ToggleRight },
-      { label: '验收看板', to: '/admin/acceptance', icon: BarChart2 },
-      { label: 'LLM 指标', to: '/admin/llm-metrics', icon: Cpu },
-      { label: '故障管理', to: '/admin/faults', icon: AlertTriangle },
-      { label: '数据管理', to: '/admin/seed-data', icon: Database },
+      { label: '维保报告', to: '/reports', icon: BarChart3 },
       { label: '知识库', to: '/knowledge', icon: BookOpen },
-      { label: 'AI 助手', to: '/ai-chat', icon: MessageSquare },
     ],
   },
 ]

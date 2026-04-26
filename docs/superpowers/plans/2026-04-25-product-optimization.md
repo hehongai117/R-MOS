@@ -531,7 +531,7 @@ git commit -m "refactor: update routes - remove deleted pages, add MyTasks and S
 **Files:**
 - Modify: `src/components/Layout/AppLayout.tsx`
 
-- [ ] **Step 1: Remove DEMO_MODE import and DEMO_NAV**
+- [x] **Step 1: Remove DEMO_MODE import and DEMO_NAV**
 
 Remove:
 ```typescript
@@ -548,7 +548,7 @@ const config = DEMO_MODE ? DEMO_LAYOUT_CONFIG : LAYOUT_CONFIG[role]
 const config = LAYOUT_CONFIG[role]
 ```
 
-- [ ] **Step 2: Replace STUDENT_NAV**
+- [x] **Step 2: Replace STUDENT_NAV**
 
 Replace the `STUDENT_NAV` array (lines 65-91) with:
 ```typescript
@@ -584,7 +584,7 @@ const STUDENT_NAV: NavGroup[] = [
 ]
 ```
 
-- [ ] **Step 3: Replace TEACHER_NAV**
+- [x] **Step 3: Replace TEACHER_NAV**
 
 Replace the `TEACHER_NAV` array (lines 93-133) with:
 ```typescript
@@ -615,7 +615,7 @@ const TEACHER_NAV: NavGroup[] = [
 ]
 ```
 
-- [ ] **Step 4: Replace ADMIN_NAV**
+- [x] **Step 4: Replace ADMIN_NAV**
 
 Replace the `ADMIN_NAV` array (lines 135-187) with:
 ```typescript
@@ -652,19 +652,19 @@ const ADMIN_NAV: NavGroup[] = [
 ]
 ```
 
-- [ ] **Step 5: Remove unused icon imports**
+- [x] **Step 5: Remove unused icon imports**
 
 From the Lucide imports at the top, remove icons no longer referenced: `AlertTriangle`, `Brain`, `CheckSquare`, `Cpu`, `Database`, `FileSearch`, `MessageSquare`, `PlayCircle`, `ShieldCheck`, `ToggleRight`. Keep: `Activity`, `BarChart3`, `BookOpen`, `Boxes`, `Bot`, `ClipboardList`, `Dumbbell`, `FileText`, `LayoutDashboard`, `LogOut`, `Monitor`, `Settings`, `Sparkles`, `Users`, `Wrench`.
 
 Verify by searching each icon name in the file after edits.
 
-- [ ] **Step 6: Verify compilation**
+- [x] **Step 6: Verify compilation**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit src/components/Layout/AppLayout.tsx 2>&1 | head -20
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add r-mos-frontend/src/components/Layout/AppLayout.tsx
