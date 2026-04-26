@@ -41,7 +41,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { DEMO_MODE } from '@/config/demoMode'
 import { cn } from '@/lib/utils'
 import { type UserRole, useAuthStore } from '@/store/authStore'
 
@@ -186,30 +185,6 @@ const ADMIN_NAV: NavGroup[] = [
   },
 ]
 
-const DEMO_NAV: NavGroup[] = [
-  {
-    label: '监控中心',
-    items: [{ label: '实时监控', to: '/monitor', icon: Activity }],
-  },
-  {
-    label: '智能诊断',
-    items: [{ label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot }],
-  },
-  {
-    label: '维保执行',
-    items: [
-      { label: '维保工作台', to: '/maintenance', icon: Wrench },
-      { label: '维保报告', to: '/reports', icon: FileText },
-    ],
-  },
-]
-
-const DEMO_LAYOUT_CONFIG: LayoutConfig = {
-  badgeLabel: 'Demo',
-  badgeVariant: 'default',
-  navGroups: DEMO_NAV,
-}
-
 const LAYOUT_CONFIG: Record<UserRole, LayoutConfig> = {
   student: {
     badgeLabel: '学员',
@@ -292,7 +267,7 @@ function RoleLayoutShell({
 }) {
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
-  const config = DEMO_MODE ? DEMO_LAYOUT_CONFIG : LAYOUT_CONFIG[role]
+  const config = LAYOUT_CONFIG[role]
   const displayName = getDisplayName(fullName, email)
 
   return (

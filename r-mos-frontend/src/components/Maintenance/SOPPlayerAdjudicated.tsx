@@ -14,9 +14,8 @@
  * - A.3：禁止绕过裁决层推进 SOP
  */
 
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DEMO_MODE } from '@/config/demoMode';
 import { Card, Space, Typography, Button, Steps, Tag, Progress, Alert, Select, Tooltip, Empty, Divider, Modal } from 'antd';
 import {
     PlayCircleOutlined,
@@ -71,6 +70,9 @@ export interface SOPPlayerAdjudicatedProps {
     onExecutorReady?: (executor: SOPExecutor | null) => void;
     onSOPChange?: (sop: SOPScriptAdjudication | null) => void;
     onExecutionContextChange?: (context: SOPExecutionContext | null, step: SOPStepAdjudication | null) => void;
+
+    // Session ID for navigation to report page on SOP completion
+    sessionId?: string;
 
     // 当前状态
     currentToolId?: string | null;
@@ -141,12 +143,12 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     onExecutorReady,
     onSOPChange,
     onExecutionContextChange,
+    sessionId,
     currentToolId: propCurrentToolId,
     selectedSOPId,
     actionEvent,
 }) => {
     const navigate = useNavigate();
-    const stepTimestamps = useRef<Record<string, { start: number; end?: number }>>({});
     const [selectedSOP, setSelectedSOP] = useState<SOPScriptAdjudication | null>(null);
     const [executor, setExecutor] = useState<SOPExecutor | null>(null);
     const [context, setContext] = useState<SOPExecutionContext | null>(null);
@@ -299,28 +301,13 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialSopId, availableSOPs]);
 
-    // Demo: track step start timestamps
+    // Navigate to report on SOP completion
     useEffect(() => {
-        if (!DEMO_MODE || !currentStep) return;
-        if (!stepTimestamps.current[currentStep.stepId]) {
-            stepTimestamps.current[currentStep.stepId] = { start: Date.now() };
-        }
-    }, [currentStep]);
-
-    // Demo: navigate to report on SOP completion
-    useEffect(() => {
-        if (!DEMO_MODE || context?.executionState !== SOPExecutionState.COMPLETE) return;
-        // Mark last step as complete
-        if (currentStep) {
-            const ts = stepTimestamps.current[currentStep.stepId];
-            if (ts && !ts.end) ts.end = Date.now();
-        }
-        sessionStorage.setItem('demo_step_timestamps', JSON.stringify(stepTimestamps.current));
-        sessionStorage.setItem('demo_sop_name', selectedSOP?.title ?? '');
-        const timer = setTimeout(() => navigate('/reports/demo'), 2000);
+        if (context?.executionState !== SOPExecutionState.COMPLETE || !sessionId) return;
+        const timer = setTimeout(() => navigate(`/reports/${sessionId}`), 2000);
         return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [context?.executionState]);
+    }, [context?.executionState, sessionId, navigate]);
 
     const normalizeSpec = useCallback((value: string): string => {
         return value.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '');

@@ -1,12 +1,10 @@
 import { Activity, AlertTriangle, Battery, Gauge, RefreshCw, Thermometer, WifiOff, Zap } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
 import Atom01Viewer from '@/components/Viewer3D/Atom01Viewer'
 import { Button } from '@/components/ui/button'
-import { DEMO_FAULT_TYPE, DEMO_MODE } from '@/config/demoMode'
-import { resetDemoFault, startDemoFault } from '@/api/demo'
 import { useWebSocket, type JointState } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
 
@@ -222,28 +220,6 @@ function MonitorJointRow({ joint, onClick }: { joint: JointState; onClick?: () =
 
 function MonitorPage() {
   const navigate = useNavigate()
-  const [demoFaultActive, setDemoFaultActive] = useState(false)
-
-  const handleDemoTrigger = useCallback(async () => {
-    if (!DEMO_MODE) return
-    if (demoFaultActive) {
-      await resetDemoFault()
-      setDemoFaultActive(false)
-    } else {
-      await startDemoFault('knee_overheat')
-      setDemoFaultActive(true)
-    }
-  }, [demoFaultActive])
-
-  // Reset fault on page unmount
-  useEffect(() => {
-    return () => {
-      if (DEMO_MODE && demoFaultActive) {
-        void resetDemoFault()
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demoFaultActive])
 
   const {
     isConnected,
@@ -339,8 +315,6 @@ function MonitorPage() {
             <div className="mb-1 text-[10px] uppercase tracking-[0.24em] text-text-muted">REALTIME MONITOR</div>
             <h1
               className="text-2xl font-semibold text-text-primary"
-              onDoubleClick={handleDemoTrigger}
-              title={DEMO_MODE ? (demoFaultActive ? '双击重置故障' : '双击触发故障') : undefined}
             >
               实时监控
             </h1>
@@ -350,22 +324,6 @@ function MonitorPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {DEMO_MODE && (
-              <Button
-                type="button"
-                variant={demoFaultActive ? 'outline' : 'default'}
-                size="sm"
-                onClick={handleDemoTrigger}
-                className={cn(
-                  demoFaultActive
-                    ? 'border-amber-500/50 text-amber-400 hover:bg-amber-500/10'
-                    : 'bg-brand-500 hover:bg-brand-600 text-white',
-                )}
-              >
-                <AlertTriangle className="h-4 w-4" />
-                {demoFaultActive ? '重置故障' : '触发故障演示'}
-              </Button>
-            )}
             <span
               className={cn(
                 'status-dot',
@@ -395,15 +353,6 @@ function MonitorPage() {
           </div>
         </div>
       ) : null}
-
-      {DEMO_MODE && demoFaultActive && (
-        <div className="flex items-center gap-3 rounded-xl border border-brand-500/30 bg-brand-500/5 px-4 py-3 animate-pulse">
-          <Thermometer className="h-4 w-4 shrink-0 text-brand-400" />
-          <div className="text-sm text-text-secondary">
-            故障模拟已触发 — 等待左膝温度升高后，<strong className="text-text-primary">点击右侧变红的「左膝关节」卡片</strong>进入 AI 诊断
-          </div>
-        </div>
-      )}
 
       <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_360px]">
         <div className="space-y-4">
@@ -567,9 +516,7 @@ function MonitorPage() {
                   key={`${joint.joint_id}-${index}`}
                   joint={joint}
                   onClick={() => {
-                    if (DEMO_MODE) {
-                      navigate(`/agent/workbench?fault=${DEMO_FAULT_TYPE}&joint=${joint.joint_id}`)
-                    }
+                    navigate(`/agent/workbench?fault=${joint.error_code ?? 'unknown'}&joint=${joint.joint_id}`)
                   }}
                 />
               ))}

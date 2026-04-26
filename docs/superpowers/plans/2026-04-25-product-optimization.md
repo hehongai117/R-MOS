@@ -88,19 +88,19 @@ r-mos-backend/app/api/v1/endpoints/agent.py          — remove Phase 2 imports 
 - Delete: `src/config/demoMode.ts`
 - Delete: `src/api/demo.ts`
 
-- [ ] **Step 1: Delete the demo mode config file**
+- [x] **Step 1: Delete the demo mode config file**
 
 ```bash
 rm r-mos-frontend/src/config/demoMode.ts
 ```
 
-- [ ] **Step 2: Delete the demo API client**
+- [x] **Step 2: Delete the demo API client**
 
 ```bash
 rm r-mos-frontend/src/api/demo.ts
 ```
 
-- [ ] **Step 3: Verify no other files in config/ depend on demoMode**
+- [x] **Step 3: Verify no other files in config/ depend on demoMode**
 
 ```bash
 cd r-mos-frontend && grep -r "demoMode" src/config/ || echo "CLEAN"
@@ -108,7 +108,7 @@ cd r-mos-frontend && grep -r "demoMode" src/config/ || echo "CLEAN"
 
 Expected: `CLEAN` (both files deleted)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A r-mos-frontend/src/config/demoMode.ts r-mos-frontend/src/api/demo.ts
@@ -122,7 +122,7 @@ git commit -m "chore: remove DEMO_MODE config and demo API client"
 **Files:**
 - Modify: `src/pages/MonitorPage.tsx`
 
-- [ ] **Step 1: Remove demo imports**
+- [x] **Step 1: Remove demo imports**
 
 Remove these lines from the top of MonitorPage.tsx:
 ```typescript
@@ -131,7 +131,7 @@ import { DEMO_FAULT_TYPE, DEMO_MODE } from '@/config/demoMode'
 import { resetDemoFault, startDemoFault } from '@/api/demo'
 ```
 
-- [ ] **Step 2: Remove demo state and handler**
+- [x] **Step 2: Remove demo state and handler**
 
 Remove the `demoFaultActive` state declaration:
 ```typescript
@@ -141,7 +141,7 @@ const [demoFaultActive, setDemoFaultActive] = useState(false)
 
 Remove the `handleDemoTrigger` callback (the function that calls `startDemoFault` / `resetDemoFault`). Remove the `useEffect` that calls `resetDemoFault` on unmount when `DEMO_MODE && demoFaultActive`.
 
-- [ ] **Step 3: Remove demo UI elements from JSX**
+- [x] **Step 3: Remove demo UI elements from JSX**
 
 Remove the `title` prop with DEMO_MODE ternary on the page header (around line 343).
 
@@ -149,7 +149,7 @@ Remove the "触发故障演示" button block (`{DEMO_MODE && (` ... `)}`) around
 
 Remove the demo status alert block (`{DEMO_MODE && demoFaultActive && (` ... `)}`) around line 399.
 
-- [ ] **Step 4: Clean up joint click navigation**
+- [x] **Step 4: Clean up joint click navigation**
 
 In the joint card click handler (around line 570), there is:
 ```typescript
@@ -165,17 +165,17 @@ navigate(`/agent/workbench?fault=${joint.fault_code ?? 'unknown'}&joint=${joint.
 
 If the joint does not have a `fault_code` field, use the joint's error state or status to determine the fault type. The key is: clicking an alerting joint always navigates to the diagnosis workbench with fault context.
 
-- [ ] **Step 5: Remove unused imports**
+- [x] **Step 5: Remove unused imports**
 
 Clean up any now-unused imports (`useState` if no longer needed for demo state, etc.).
 
-- [ ] **Step 6: Verify the file compiles**
+- [x] **Step 6: Verify the file compiles**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit src/pages/MonitorPage.tsx 2>&1 | head -20
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/MonitorPage.tsx
@@ -189,7 +189,7 @@ git commit -m "refactor: remove DEMO_MODE from MonitorPage"
 **Files:**
 - Modify: `src/pages/agent/AgentWorkbenchPage.tsx`
 
-- [ ] **Step 1: Remove demo imports**
+- [x] **Step 1: Remove demo imports**
 
 Remove:
 ```typescript
@@ -197,7 +197,7 @@ import { DEMO_MODE } from '@/config/demoMode'
 import { streamDemoChat, type DemoChatMeta } from '@/api/demo'
 ```
 
-- [ ] **Step 2: Remove demo-specific state and logic**
+- [x] **Step 2: Remove demo-specific state and logic**
 
 Remove or refactor the `demoMeta` state and `demoSubmit` function that calls `streamDemoChat`.
 
@@ -211,18 +211,18 @@ useEffect(() => {
 }, [faultParam, jointParam])
 ```
 
-- [ ] **Step 3: Unify submit handlers**
+- [x] **Step 3: Unify submit handlers**
 
 Replace all `DEMO_MODE ? void demoSubmit(...) : void submit(...)` ternaries with just the real `submit()` call. This affects:
 - Enter key handler (around line 624)
 - Quick action button onClick (around line 636)
 - Submit button disabled state (around line 642)
 
-- [ ] **Step 4: Clean DiagnosisPanel props**
+- [x] **Step 4: Clean DiagnosisPanel props**
 
 Replace the large DEMO_MODE ternary block (lines 690-721) that conditionally maps `demoMeta` vs real data to DiagnosisPanel props. Use only the real data path.
 
-- [ ] **Step 5: Remove SOP recommendation button guard**
+- [x] **Step 5: Remove SOP recommendation button guard**
 
 The "开始维保" button (around line 584) is currently wrapped in `{DEMO_MODE && demoMeta?.sop_recommendation && ...}`. Change it to show whenever there is a valid SOP recommendation from the real diagnosis result, not only in demo mode:
 ```typescript
@@ -233,17 +233,17 @@ The "开始维保" button (around line 584) is currently wrapped in `{DEMO_MODE 
 )}
 ```
 
-- [ ] **Step 6: Remove unused imports and types**
+- [x] **Step 6: Remove unused imports and types**
 
 Remove `DemoChatMeta` type, `demoMeta` state, `demoSubmit` function, and any other now-unused references.
 
-- [ ] **Step 7: Verify compilation**
+- [x] **Step 7: Verify compilation**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit src/pages/agent/AgentWorkbenchPage.tsx 2>&1 | head -20
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
@@ -258,7 +258,7 @@ git commit -m "refactor: remove DEMO_MODE from AgentWorkbenchPage"
 - Modify: `src/components/Maintenance/SOPPlayerAdjudicated.tsx`
 - Modify: `src/pages/SOPMaintenancePage.tsx`
 
-- [ ] **Step 1: Clean SOPPlayerAdjudicated**
+- [x] **Step 1: Clean SOPPlayerAdjudicated**
 
 Remove the import:
 ```typescript
@@ -280,7 +280,7 @@ useEffect(() => {
 
 The `sessionId` should be passed as a prop or obtained from the practice session context. If it's not available yet, use a placeholder prop `sessionId?: string` and navigate only when it exists.
 
-- [ ] **Step 2: Clean SOPMaintenancePage**
+- [x] **Step 2: Clean SOPMaintenancePage**
 
 Remove the import:
 ```typescript
@@ -298,13 +298,13 @@ initialSopId={sopParam ?? undefined}
 
 The `sop` query parameter should always work, not only in demo mode.
 
-- [ ] **Step 3: Verify compilation**
+- [x] **Step 3: Verify compilation**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit src/components/Maintenance/SOPPlayerAdjudicated.tsx src/pages/SOPMaintenancePage.tsx 2>&1 | head -20
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx r-mos-frontend/src/pages/SOPMaintenancePage.tsx
@@ -318,7 +318,7 @@ git commit -m "refactor: remove DEMO_MODE from SOPPlayer and SOPMaintenancePage"
 **Files:**
 - Modify: `src/pages/ReportPage.tsx`
 
-- [ ] **Step 1: Remove demo imports and buildDemoReport**
+- [x] **Step 1: Remove demo imports and buildDemoReport**
 
 Remove:
 ```typescript
@@ -327,7 +327,7 @@ import { DEMO_MODE } from '@/config/demoMode'
 
 Remove the entire `buildDemoReport()` function (lines 12-59).
 
-- [ ] **Step 2: Remove demo conditional logic**
+- [x] **Step 2: Remove demo conditional logic**
 
 Remove the `isDemoReport` variable and all conditionals that use it:
 ```typescript
@@ -347,13 +347,13 @@ const [report, setReport] = useState<TaskReport | null>(null)
 
 The page should always fetch from the backend API.
 
-- [ ] **Step 3: Verify compilation**
+- [x] **Step 3: Verify compilation**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit src/pages/ReportPage.tsx 2>&1 | head -20
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/ReportPage.tsx

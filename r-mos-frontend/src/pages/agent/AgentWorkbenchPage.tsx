@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Drawer, message } from 'antd'
 import {
@@ -39,8 +39,6 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { DEMO_MODE } from '@/config/demoMode'
-import { streamDemoChat, type DemoChatMeta } from '@/api/demo'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -167,12 +165,6 @@ function AgentWorkbenchPage() {
   const [diagnosisActionLoading, setDiagnosisActionLoading] = useState(false)
   const listRef = useRef<HTMLDivElement | null>(null)
 
-  // Demo mode state
-  const [demoMeta, setDemoMeta] = useState<DemoChatMeta | null>(null)
-  const [streamingText, setStreamingText] = useState('')
-  const [isStreaming, setIsStreaming] = useState(false)
-  const streamControllerRef = useRef<AbortController | null>(null)
-
   const latestTraceId = useMemo(
     () => [...messages].reverse().find((msg) => msg.traceId)?.traceId,
     [messages],
@@ -251,70 +243,18 @@ function AgentWorkbenchPage() {
     })
   }, [loading, messages, latestTraceId])
 
-  // Abort SSE stream on unmount
-  useEffect(() => {
-    return () => {
-      streamControllerRef.current?.abort()
-    }
-  }, [])
-
   // Auto-populate fault context on mount when arriving from MonitorPage
   useEffect(() => {
-    if (!DEMO_MODE || !faultParam || messages.length > 0) return
-    const contextMsg: ChatMessage = {
+    if (!faultParam || messages.length > 0) return
+    const alertMsg = `检测到设备告警：${jointParam ?? '未知关节'} 温度异常升高，已超过安全阈值。\n请输入"诊断"开始故障分析，或直接描述您的需求。`
+    setMessages([{
       id: `system-${Date.now()}`,
       role: 'assistant',
-      content: `检测到设备告警：**${jointParam ?? '未知关节'}** 温度异常升高至 65°C，已超过安全阈值。\n\n请输入"诊断"开始故障分析，或直接描述您的需求。`,
+      content: alertMsg,
       timestamp: Date.now(),
-    }
-    setMessages([contextMsg])
+    }])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faultParam, jointParam])
-
-  const demoSubmit = useCallback(async (userMessage: string) => {
-    if (!userMessage.trim() || isStreaming) return
-
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: userMessage.trim(),
-      timestamp: Date.now(),
-    }
-    setMessages(prev => [...prev, userMsg])
-    setInput('')
-    setIsStreaming(true)
-    setStreamingText('')
-
-    const assistantId = `assistant-${Date.now()}`
-
-    streamControllerRef.current = streamDemoChat(
-      userMessage,
-      faultParam ? { fault: faultParam, joint: jointParam } : null,
-      (event) => {
-        if (event.type === 'meta') {
-          setDemoMeta(event as DemoChatMeta)
-        } else if (event.type === 'text') {
-          setStreamingText(prev => prev + event.content)
-        }
-      },
-      () => {
-        setStreamingText(finalText => {
-          setMessages(prev => [...prev, {
-            id: assistantId,
-            role: 'assistant',
-            content: finalText,
-            timestamp: Date.now(),
-          }])
-          return ''
-        })
-        setIsStreaming(false)
-      },
-      (err) => {
-        console.error('Demo chat error:', err)
-        setIsStreaming(false)
-      },
-    )
-  }, [faultParam, jointParam, isStreaming])
 
   const submit = async (customInput?: string, customIntent?: string) => {
     const content = (customInput ?? input).trim()
@@ -572,22 +512,13 @@ function AgentWorkbenchPage() {
                     </div>
                   </div>
                 ))}
-                {isStreaming && streamingText && (
-                  <div className="flex gap-3 px-4">
-                    <StatusBadge status="active" label="智能体" />
-                    <div className="flex-1 rounded-xl bg-bg-elevated/60 p-4">
-                      <MessageBody content={streamingText} />
-                      <span className="inline-block h-4 w-1 animate-pulse bg-brand-500 ml-0.5" />
-                    </div>
-                  </div>
-                )}
-                {DEMO_MODE && demoMeta?.sop_recommendation && !isStreaming && (
+                {latestDiagnosisBundle?.diagnosis && (
                   <div className="flex justify-center px-4 py-3">
                     <button
                       className="rounded-lg bg-brand-500 px-6 py-3 text-base font-semibold text-white shadow-lg hover:bg-brand-600 transition-colors"
-                      onClick={() => navigate(`/maintenance?sop=${demoMeta.sop_recommendation!.sop_id}`)}
+                      onClick={() => navigate('/maintenance')}
                     >
-                      开始维保 → {demoMeta.sop_recommendation.sop_name}
+                      开始维保
                     </button>
                   </div>
                 )}
@@ -621,8 +552,7 @@ function AgentWorkbenchPage() {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault()
-                    if (DEMO_MODE) void demoSubmit(input)
-                    else void submit()
+                    void submit()
                   }
                 }}
               />
@@ -633,13 +563,13 @@ function AgentWorkbenchPage() {
                       key={action.id}
                       size="sm"
                       variant="ghost"
-                      onClick={() => DEMO_MODE ? void demoSubmit(action.prompt) : void submit(action.prompt, action.intent)}
+                      onClick={() => void submit(action.prompt, action.intent)}
                     >
                       {action.title}
                     </Button>
                   ))}
                 </div>
-                <Button disabled={DEMO_MODE ? isStreaming : loading} onClick={() => DEMO_MODE ? void demoSubmit(input) : void submit()}>
+                <Button disabled={loading} onClick={() => void submit()}>
                   <Send className="h-4 w-4" />
                   发送
                 </Button>
@@ -687,38 +617,13 @@ function AgentWorkbenchPage() {
           description="展示故障推理、维保方案和仿真验证结果"
         >
           <DiagnosisPanel
-            diagnosisResult={DEMO_MODE
-              ? (demoMeta?.diagnosis ? {
-                  success: true,
-                  primary_hypothesis: demoMeta.diagnosis.primary_hypothesis ? {
-                    fault_code: 'BEARING_WEAR',
-                    fault_name: String((demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).name ?? ''),
-                    confidence: Number((demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).confidence ?? 0),
-                    affected_parts: ((demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).affected_parts as string[]) ?? [],
-                    possible_causes: ['轴承长期运转磨损', '润滑不足加速磨损'],
-                    evidence: (demoMeta.diagnosis.primary_hypothesis as Record<string, unknown>).evidence as Record<string, unknown> ?? {},
-                  } : null,
-                  alternative_hypotheses: ((demoMeta.diagnosis.alternative_hypotheses as Array<Record<string, unknown>>) ?? []).map(h => ({
-                    fault_code: 'ALT',
-                    fault_name: String(h.name ?? ''),
-                    confidence: Number(h.confidence ?? 0),
-                    affected_parts: (h.affected_parts as string[]) ?? [],
-                    possible_causes: [],
-                    evidence: {},
-                  })),
-                  requires_supervisor: false,
-                  reasoning: String(demoMeta.diagnosis.reasoning ?? ''),
-                  recommended_actions: (demoMeta.diagnosis.recommended_actions as string[]) ?? [],
-                } as unknown as import('@/api/agent-v2').DiagnosisResult : null)
-              : (latestDiagnosisBundle?.diagnosis ?? null)}
-            maintenancePlan={DEMO_MODE ? null : (latestDiagnosisBundle?.maintenance_plan ?? null)}
-            verificationResult={DEMO_MODE ? null : (latestDiagnosisBundle?.verification ?? null)}
-            isLoading={DEMO_MODE ? isStreaming : (loading && intent === 'delegate-diagnoser')}
+            diagnosisResult={latestDiagnosisBundle?.diagnosis ?? null}
+            maintenancePlan={latestDiagnosisBundle?.maintenance_plan ?? null}
+            verificationResult={latestDiagnosisBundle?.verification ?? null}
+            isLoading={loading && intent === 'delegate-diagnoser'}
             isActionSubmitting={diagnosisActionLoading}
-            onConfirmExecution={DEMO_MODE
-              ? () => { if (demoMeta?.sop_recommendation) navigate(`/maintenance?sop=${demoMeta.sop_recommendation.sop_id}`) }
-              : handleConfirmDiagnosisExecution}
-            onEscalateToTeacher={DEMO_MODE ? () => {} : handleEscalateDiagnosis}
+            onConfirmExecution={handleConfirmDiagnosisExecution}
+            onEscalateToTeacher={handleEscalateDiagnosis}
           />
         </SectionCard>
       </div>

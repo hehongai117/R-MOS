@@ -57,7 +57,6 @@ import {
     ScrewInfo,
 } from '@/components/Maintenance';
 import { SOPPlayerAdjudicated, type SOPActionEvent } from '@/components/Maintenance/SOPPlayerAdjudicated';
-import { DEMO_MODE } from '@/config/demoMode';
 import { ALL_SOP_SCRIPTS } from '@/data/sopScripts';
 import {
     getCorePartDetailRecord,
@@ -1228,7 +1227,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         <SOPPlayerAdjudicated
             availableSOPs={availableSopScripts}
             selectedSOPId={linkedSOPId}
-            initialSopId={DEMO_MODE ? (sopParam ?? undefined) : undefined}
+            initialSopId={sopParam ?? undefined}
             onSOPChange={handleSOPChange}
             onStepChange={handleSOPStepChange}
             onExecutionContextChange={handleSOPContextChange}
