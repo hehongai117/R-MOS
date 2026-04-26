@@ -679,7 +679,7 @@ git commit -m "refactor: restructure navigation for student/teacher/admin roles"
 - Create: `src/pages/MyTasksPage.tsx`
 - Test: `src/pages/__tests__/MyTasksPage.test.tsx`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 Create `src/pages/__tests__/MyTasksPage.test.tsx`:
 ```tsx
@@ -711,7 +711,7 @@ describe('MyTasksPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/pages/__tests__/MyTasksPage.test.tsx 2>&1 | tail -10
@@ -719,7 +719,7 @@ cd r-mos-frontend && npx vitest run src/pages/__tests__/MyTasksPage.test.tsx 2>&
 
 Expected: FAIL — module not found
 
-- [ ] **Step 3: Write the page**
+- [x] **Step 3: Write the page**
 
 Create `src/pages/MyTasksPage.tsx`:
 ```tsx
@@ -770,7 +770,7 @@ export default function MyTasksPage() {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/pages/__tests__/MyTasksPage.test.tsx 2>&1 | tail -10
@@ -778,7 +778,7 @@ cd r-mos-frontend && npx vitest run src/pages/__tests__/MyTasksPage.test.tsx 2>&
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/MyTasksPage.tsx r-mos-frontend/src/pages/__tests__/MyTasksPage.test.tsx
@@ -793,7 +793,7 @@ git commit -m "feat: add MyTasksPage skeleton with status tabs"
 - Create: `src/pages/ScenarioPickerPage.tsx`
 - Test: `src/pages/__tests__/ScenarioPickerPage.test.tsx`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 Create `src/pages/__tests__/ScenarioPickerPage.test.tsx`:
 ```tsx
@@ -826,7 +826,7 @@ describe('ScenarioPickerPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/pages/__tests__/ScenarioPickerPage.test.tsx 2>&1 | tail -10
@@ -834,7 +834,7 @@ cd r-mos-frontend && npx vitest run src/pages/__tests__/ScenarioPickerPage.test.
 
 Expected: FAIL — module not found
 
-- [ ] **Step 3: Write the page**
+- [x] **Step 3: Write the page**
 
 Create `src/pages/ScenarioPickerPage.tsx`:
 ```tsx
@@ -892,7 +892,7 @@ export default function ScenarioPickerPage() {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/pages/__tests__/ScenarioPickerPage.test.tsx 2>&1 | tail -10
@@ -900,7 +900,7 @@ cd r-mos-frontend && npx vitest run src/pages/__tests__/ScenarioPickerPage.test.
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/ScenarioPickerPage.tsx r-mos-frontend/src/pages/__tests__/ScenarioPickerPage.test.tsx
@@ -1041,7 +1041,7 @@ git commit -m "chore: remove Phase 2 dead services (belief, compensation, replay
 
 **Files:** None (verification only)
 
-- [ ] **Step 1: Run TypeScript type check on entire frontend**
+- [x] **Step 1: Run TypeScript type check on entire frontend**
 
 ```bash
 cd r-mos-frontend && npx tsc --noEmit 2>&1 | tail -30
@@ -1049,7 +1049,7 @@ cd r-mos-frontend && npx tsc --noEmit 2>&1 | tail -30
 
 Expected: no errors. If there are errors from deleted imports in files we didn't touch, fix them by removing the dead references.
 
-- [ ] **Step 2: Run Vite build**
+- [x] **Step 2: Run Vite build**
 
 ```bash
 cd r-mos-frontend && npm run build 2>&1 | tail -20
@@ -1057,7 +1057,7 @@ cd r-mos-frontend && npm run build 2>&1 | tail -20
 
 Expected: build succeeds
 
-- [ ] **Step 3: Run frontend tests**
+- [x] **Step 3: Run frontend tests**
 
 ```bash
 cd r-mos-frontend && npx vitest run 2>&1 | tail -30
@@ -1065,7 +1065,7 @@ cd r-mos-frontend && npx vitest run 2>&1 | tail -30
 
 Expected: all tests pass. If tests for deleted pages still exist and fail, delete them.
 
-- [ ] **Step 4: Fix any remaining broken references**
+- [x] **Step 4: Fix any remaining broken references**
 
 Search for any remaining imports of deleted modules:
 ```bash
@@ -1074,7 +1074,7 @@ cd r-mos-frontend && grep -r "demoMode\|AIChatPage\|BeliefTracker\|DiagnosisPage
 
 Fix any hits.
 
-- [ ] **Step 5: Commit fixes if any**
+- [x] **Step 5: Commit fixes if any**
 
 ```bash
 git add -A && git diff --cached --stat && git commit -m "fix: clean up remaining references to deleted modules" || echo "NOTHING TO COMMIT"
