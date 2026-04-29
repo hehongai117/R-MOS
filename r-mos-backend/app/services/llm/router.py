@@ -32,6 +32,8 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
+    DEEPSEEK = "deepseek"
+    MINIMAX = "minimax"
 
 
 @dataclass
@@ -45,6 +47,8 @@ class LLMResponse:
     raw_response: Any
     prompt_hash: str
     response_hash: str
+    is_fallback: bool = False
+    provider_used: str = ""
 
 
 class BaseLLMClient(ABC):
@@ -221,6 +225,22 @@ class LLMRouter:
             return OpenAIClient(api_key=api_key, base_url=base_url)
         if provider == LLMProvider.ANTHROPIC:
             return AnthropicClient(api_key=api_key)
+        if provider == LLMProvider.DEEPSEEK:
+            from .deepseek_provider import DeepSeekClient
+            from app.core.config import settings
+            return DeepSeekClient(
+                api_key=api_key or settings.DEEPSEEK_API_KEY,
+                base_url=base_url or settings.DEEPSEEK_BASE_URL,
+                timeout=settings.LLM_TIMEOUT_SECONDS,
+            )
+        if provider == LLMProvider.MINIMAX:
+            from .minimax_provider import MiniMaxClient
+            from app.core.config import settings
+            return MiniMaxClient(
+                api_key=api_key or settings.MINIMAX_API_KEY,
+                group_id=settings.MINIMAX_GROUP_ID,
+                timeout=settings.LLM_TIMEOUT_SECONDS,
+            )
         return OllamaClient(base_url=base_url)
 
     def _get_client(
@@ -320,6 +340,73 @@ class LLMRouter:
             return "我正在检索相关知识库内容，请稍候。"
         else:
             return "我理解您的需求。让我为您处理这个请求。"
+
+    async def chat_with_fallback(
+        self,
+        messages: list[dict],
+        model: str = "deepseek-chat",
+        tools: Optional[list[dict]] = None,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+    ) -> LLMResponse:
+        """
+        Chat with automatic fallback chain:
+        primary → fallback → mock
+        """
+        from .mock_provider import match_intent
+
+        providers_to_try = [
+            (LLMProvider.DEEPSEEK, model),
+            (LLMProvider.MINIMAX, "abab6.5-chat"),
+        ]
+
+        prompt_hash = self._compute_hash(str(messages))
+        last_error: Optional[Exception] = None
+
+        for provider, provider_model in providers_to_try:
+            try:
+                client = self._get_client(provider)
+                content, tokens_in, tokens_out, raw = await client.chat(
+                    messages=messages,
+                    model=provider_model,
+                    tools=tools,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                return LLMResponse(
+                    content=content,
+                    provider=provider,
+                    model=provider_model,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    raw_response=raw,
+                    prompt_hash=prompt_hash,
+                    response_hash=self._compute_hash(content),
+                    is_fallback=(provider != LLMProvider.DEEPSEEK),
+                    provider_used=provider.value,
+                )
+            except Exception as e:
+                logger.warning(f"LLM call failed ({provider.value}/{provider_model}): {e}")
+                last_error = e
+                continue
+
+        # All providers failed — use mock
+        last_msg = messages[-1].get("content", "") if messages else ""
+        mock_result = match_intent(last_msg)
+        content = mock_result.text
+
+        return LLMResponse(
+            content=content,
+            provider=LLMProvider.OPENAI,  # placeholder
+            model="mock",
+            tokens_in=0,
+            tokens_out=0,
+            raw_response={"error": str(last_error), "fallback": "mock"},
+            prompt_hash=prompt_hash,
+            response_hash=self._compute_hash(content),
+            is_fallback=True,
+            provider_used="mock",
+        )
 
     def set_fallback(self, enabled: bool):
         """设置是否启用 fallback"""

@@ -41,6 +41,16 @@ class Settings(BaseSettings):
     AGENT_V2_DEFAULT_BUDGET_MS: int = 300000  # 5 minutes
     AGENT_V2_IDEMPOTENCY_TTL_SECONDS: int = 3600  # 1 hour
 
+    # LLM Provider Config
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_GROUP_ID: str = ""
+    LLM_PRIMARY_PROVIDER: str = "deepseek"
+    LLM_FALLBACK_PROVIDER: str = "minimax"
+    LLM_TIMEOUT_SECONDS: float = 10.0
+    LLM_ENABLE_MOCK_FALLBACK: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True
