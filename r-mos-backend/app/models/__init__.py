@@ -29,6 +29,9 @@ from app.models.refresh_token import RefreshToken
 from app.models.access_token import AccessToken
 from app.models.user import User
 from app.models.user_preference import UserPreference
+from app.models.fault_sop_mapping import FaultSOPMapping
+from app.models.task_execution import TaskExecution, TaskStepResult
+from app.models.knowledge_document import KnowledgeDocument
 from app.models.teaching import (
     GuidancePolicy,
     TeachingClass,
@@ -109,4 +112,9 @@ __all__ = [
     "Assignment",
     "AssignmentAttempt",
     "EvidenceLink",
+    # Pipeline
+    "FaultSOPMapping",
+    "TaskExecution",
+    "TaskStepResult",
+    "KnowledgeDocument",
 ]
