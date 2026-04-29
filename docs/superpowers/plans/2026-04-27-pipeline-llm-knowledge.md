@@ -78,7 +78,7 @@
 - Modify: `r-mos-backend/app/core/config.py`
 - Test: `r-mos-backend/tests/unit/test_deepseek_provider.py`
 
-- [ ] **Step 1: Write failing test for DeepSeek provider**
+- [x] **Step 1: Write failing test for DeepSeek provider**
 
 ```python
 # tests/unit/test_deepseek_provider.py
@@ -143,12 +143,12 @@ async def test_deepseek_chat_with_timeout():
         )
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_deepseek_provider.py -v`
 Expected: FAIL with "ModuleNotFoundError: No module named 'app.services.llm.deepseek_provider'"
 
-- [ ] **Step 3: Implement DeepSeek provider**
+- [x] **Step 3: Implement DeepSeek provider**
 
 ```python
 # app/services/llm/deepseek_provider.py
@@ -202,12 +202,12 @@ class DeepSeekClient(BaseLLMClient):
         return content, tokens_in, tokens_out, response
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_deepseek_provider.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Add config settings for LLM providers**
+- [x] **Step 5: Add config settings for LLM providers**
 
 Add to `app/core/config.py` inside the `Settings` class:
 
@@ -223,7 +223,7 @@ Add to `app/core/config.py` inside the `Settings` class:
     LLM_ENABLE_MOCK_FALLBACK: bool = True
 ```
 
-- [ ] **Step 6: Register DeepSeek in LLM Router**
+- [x] **Step 6: Register DeepSeek in LLM Router**
 
 Add to `app/services/llm/router.py`:
 
@@ -240,7 +240,7 @@ Add to `app/services/llm/router.py`:
             )
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/services/llm/deepseek_provider.py app/services/llm/router.py app/core/config.py tests/unit/test_deepseek_provider.py
@@ -256,7 +256,7 @@ git commit -m "feat: add DeepSeek LLM provider with OpenAI-compatible API"
 - Modify: `r-mos-backend/app/services/llm/router.py`
 - Test: `r-mos-backend/tests/unit/test_minimax_provider.py`
 
-- [ ] **Step 1: Write failing test for MiniMax provider**
+- [x] **Step 1: Write failing test for MiniMax provider**
 
 ```python
 # tests/unit/test_minimax_provider.py
@@ -324,12 +324,12 @@ async def test_minimax_chat_raises_on_http_error():
             )
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_minimax_provider.py -v`
 Expected: FAIL with "ModuleNotFoundError"
 
-- [ ] **Step 3: Implement MiniMax provider**
+- [x] **Step 3: Implement MiniMax provider**
 
 ```python
 # app/services/llm/minimax_provider.py
@@ -394,12 +394,12 @@ class MiniMaxClient(BaseLLMClient):
         return content, tokens_in, tokens_out, data
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_minimax_provider.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Register MiniMax in LLM Router**
+- [x] **Step 5: Register MiniMax in LLM Router**
 
 Add `MINIMAX = "minimax"` to the `LLMProvider` enum in `router.py`.
 
@@ -415,7 +415,7 @@ Add to `_build_client()`:
             )
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/services/llm/minimax_provider.py app/services/llm/router.py tests/unit/test_minimax_provider.py
@@ -430,7 +430,7 @@ git commit -m "feat: add MiniMax LLM provider with HTTP API"
 - Modify: `r-mos-backend/app/services/llm/router.py`
 - Test: `r-mos-backend/tests/unit/test_llm_router_fallback.py`
 
-- [ ] **Step 1: Write failing test for fallback chain**
+- [x] **Step 1: Write failing test for fallback chain**
 
 ```python
 # tests/unit/test_llm_router_fallback.py
@@ -510,12 +510,12 @@ async def test_router_primary_success_no_fallback():
         assert response.is_fallback is False
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_llm_router_fallback.py -v`
 Expected: FAIL with "AttributeError: 'LLMRouter' object has no attribute 'chat_with_fallback'"
 
-- [ ] **Step 3: Implement `chat_with_fallback` method in LLMRouter**
+- [x] **Step 3: Implement `chat_with_fallback` method in LLMRouter**
 
 Add to `LLMResponse` dataclass:
 ```python
@@ -594,12 +594,12 @@ Add method to `LLMRouter` class:
         )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_llm_router_fallback.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/services/llm/router.py tests/unit/test_llm_router_fallback.py
@@ -614,7 +614,7 @@ git commit -m "feat: add LLM router fallback chain (primary→secondary→mock)"
 - Modify: `r-mos-backend/app/services/simulation/fault_scenarios.py`
 - Test: `r-mos-backend/tests/unit/test_fault_scenarios.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 # tests/unit/test_fault_scenarios.py
@@ -660,12 +660,12 @@ def test_inject_fault_creates_active_fault():
     assert not fault.is_complete
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_fault_scenarios.py -v`
 Expected: FAIL with import errors
 
-- [ ] **Step 3: Rewrite fault_scenarios.py with 3 scenarios**
+- [x] **Step 3: Rewrite fault_scenarios.py with 3 scenarios**
 
 ```python
 # app/services/simulation/fault_scenarios.py
@@ -763,12 +763,12 @@ def inject_fault(fault_type: str) -> ActiveFault:
     return ActiveFault(fault_type=fault_type, scenario=scenario)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_fault_scenarios.py -v`
 Expected: 4 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/services/simulation/fault_scenarios.py tests/unit/test_fault_scenarios.py
@@ -784,7 +784,7 @@ git commit -m "feat: define 3 fault scenarios (E001 overheat, E005 loose, E003 c
 - Create: `r-mos-backend/app/models/task_execution.py`
 - Modify: `r-mos-backend/app/models/__init__.py`
 
-- [ ] **Step 1: Create fault_sop_mapping model**
+- [x] **Step 1: Create fault_sop_mapping model**
 
 ```python
 # app/models/fault_sop_mapping.py
@@ -810,7 +810,7 @@ class FaultSOPMapping(Base, TimestampMixin):
     priority = Column(Integer, default=1, comment="优先级（同 fault_type 多 SOP 时）")
 ```
 
-- [ ] **Step 2: Create task_execution model**
+- [x] **Step 2: Create task_execution model**
 
 ```python
 # app/models/task_execution.py
@@ -855,7 +855,7 @@ class TaskStepResult(Base, TimestampMixin):
     execution = relationship("TaskExecution", back_populates="step_results")
 ```
 
-- [ ] **Step 3: Register models in `__init__.py`**
+- [x] **Step 3: Register models in `__init__.py`**
 
 Add to `app/models/__init__.py`:
 ```python
@@ -863,12 +863,12 @@ from .fault_sop_mapping import FaultSOPMapping  # noqa: F401
 from .task_execution import TaskExecution, TaskStepResult  # noqa: F401
 ```
 
-- [ ] **Step 4: Verify models load without error**
+- [x] **Step 4: Verify models load without error**
 
 Run: `cd r-mos-backend && python -c "from app.models.fault_sop_mapping import FaultSOPMapping; from app.models.task_execution import TaskExecution, TaskStepResult; print('OK')"`
 Expected: `OK`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/models/fault_sop_mapping.py app/models/task_execution.py app/models/__init__.py
@@ -885,7 +885,7 @@ git commit -m "feat: add FaultSOPMapping + TaskExecution data models"
 - Modify: `r-mos-backend/app/models/__init__.py`
 - Test: `r-mos-backend/tests/unit/test_knowledge_retriever.py`
 
-- [ ] **Step 1: Create knowledge_document model**
+- [x] **Step 1: Create knowledge_document model**
 
 ```python
 # app/models/knowledge_document.py
@@ -911,7 +911,7 @@ class KnowledgeDocument(Base, TimestampMixin):
     approved_at = Column(DateTime, nullable=True)
 ```
 
-- [ ] **Step 2: Write failing test for knowledge retriever**
+- [x] **Step 2: Write failing test for knowledge retriever**
 
 ```python
 # tests/unit/test_knowledge_retriever.py
@@ -961,12 +961,12 @@ async def test_retrieve_without_fault_type_uses_text_search():
     assert isinstance(results, list)
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_knowledge_retriever.py -v`
 Expected: FAIL with import error
 
-- [ ] **Step 4: Implement knowledge retriever**
+- [x] **Step 4: Implement knowledge retriever**
 
 ```python
 # app/services/knowledge/knowledge_retriever.py
@@ -1082,7 +1082,7 @@ class KnowledgeRetriever:
         return matched[:limit]
 ```
 
-- [ ] **Step 5: Register model, run tests**
+- [x] **Step 5: Register model, run tests**
 
 Add to `app/models/__init__.py`:
 ```python
@@ -1092,7 +1092,7 @@ from .knowledge_document import KnowledgeDocument  # noqa: F401
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_knowledge_retriever.py -v`
 Expected: 2 passed
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/models/knowledge_document.py app/services/knowledge/knowledge_retriever.py app/models/__init__.py tests/unit/test_knowledge_retriever.py
@@ -1107,7 +1107,7 @@ git commit -m "feat: add KnowledgeDocument model and mixed tag+text retriever"
 - Create: `r-mos-backend/app/services/pipeline/fault_diagnosis_service.py`
 - Test: `r-mos-backend/tests/unit/test_fault_diagnosis_service.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 # tests/unit/test_fault_diagnosis_service.py
@@ -1176,12 +1176,12 @@ async def test_diagnose_no_fault():
     assert result["fault_type"] is None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_fault_diagnosis_service.py -v`
 Expected: FAIL with import error
 
-- [ ] **Step 3: Implement fault diagnosis service**
+- [x] **Step 3: Implement fault diagnosis service**
 
 ```python
 # app/services/pipeline/__init__.py
@@ -1341,12 +1341,12 @@ class FaultDiagnosisService:
         return response.content if response.content else None
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_fault_diagnosis_service.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/services/pipeline/__init__.py app/services/pipeline/fault_diagnosis_service.py tests/unit/test_fault_diagnosis_service.py
@@ -1361,7 +1361,7 @@ git commit -m "feat: implement fault diagnosis service with rule engine + LLM en
 - Create: `r-mos-backend/app/services/pipeline/task_pipeline_service.py`
 - Test: `r-mos-backend/tests/unit/test_task_pipeline_service.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 # tests/unit/test_task_pipeline_service.py
@@ -1429,12 +1429,12 @@ async def test_complete_step_records_result():
     assert mock_db.add.called
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_task_pipeline_service.py -v`
 Expected: FAIL with import error
 
-- [ ] **Step 3: Implement task pipeline service**
+- [x] **Step 3: Implement task pipeline service**
 
 ```python
 # app/services/pipeline/task_pipeline_service.py
@@ -1578,12 +1578,12 @@ class TaskPipelineService:
         }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd r-mos-backend && python -m pytest tests/unit/test_task_pipeline_service.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/services/pipeline/task_pipeline_service.py tests/unit/test_task_pipeline_service.py
@@ -1598,7 +1598,7 @@ git commit -m "feat: implement task pipeline service (diagnosis→task→step→
 - Create: `r-mos-backend/app/api/v1/endpoints/pipeline.py`
 - Modify: `r-mos-backend/app/api/v1/__init__.py`
 
-- [ ] **Step 1: Create pipeline endpoint file**
+- [x] **Step 1: Create pipeline endpoint file**
 
 ```python
 # app/api/v1/endpoints/pipeline.py
@@ -1721,7 +1721,7 @@ async def complete_task(
     return TaskCompleteResponse(**result)
 ```
 
-- [ ] **Step 2: Register router in `__init__.py`**
+- [x] **Step 2: Register router in `__init__.py`**
 
 Add to `app/api/v1/__init__.py`:
 ```python
@@ -1729,12 +1729,12 @@ from .endpoints.pipeline import router as pipeline_router
 app.include_router(pipeline_router, prefix="/api/v1")
 ```
 
-- [ ] **Step 3: Verify endpoint registration**
+- [x] **Step 3: Verify endpoint registration**
 
 Run: `cd r-mos-backend && python -c "from app.api.v1.endpoints.pipeline import router; print(f'{len(router.routes)} routes registered')"`
 Expected: `4 routes registered`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/api/v1/endpoints/pipeline.py app/api/v1/__init__.py
@@ -1749,7 +1749,7 @@ git commit -m "feat: add pipeline API endpoints (diagnose, create-task, step-com
 - Create: `r-mos-backend/scripts/seed_fault_sops.py`
 - Create: `r-mos-backend/scripts/seed_knowledge.py`
 
-- [ ] **Step 1: Create SOP + mapping seed script**
+- [x] **Step 1: Create SOP + mapping seed script**
 
 ```python
 # scripts/seed_fault_sops.py
@@ -1858,7 +1858,7 @@ if __name__ == "__main__":
     asyncio.run(seed())
 ```
 
-- [ ] **Step 2: Create knowledge seed script**
+- [x] **Step 2: Create knowledge seed script**
 
 ```python
 # scripts/seed_knowledge.py
@@ -2118,12 +2118,12 @@ if __name__ == "__main__":
     asyncio.run(seed())
 ```
 
-- [ ] **Step 3: Verify scripts parse without error**
+- [x] **Step 3: Verify scripts parse without error**
 
 Run: `cd r-mos-backend && python -c "import scripts.seed_fault_sops; import scripts.seed_knowledge; print('OK')"`
 Expected: `OK`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/seed_fault_sops.py scripts/seed_knowledge.py
@@ -2137,7 +2137,7 @@ git commit -m "feat: add seed scripts for 3 SOPs + 5 knowledge documents"
 **Files:**
 - Create: `r-mos-frontend/src/api/pipeline.ts`
 
-- [ ] **Step 1: Create pipeline API client**
+- [x] **Step 1: Create pipeline API client**
 
 ```typescript
 // src/api/pipeline.ts
@@ -2216,7 +2216,7 @@ export async function completeTask(executionId: number): Promise<TaskCompleteRes
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add r-mos-frontend/src/api/pipeline.ts
@@ -2232,7 +2232,7 @@ git commit -m "feat: add frontend pipeline API client"
 - Modify: `r-mos-frontend/src/pages/MonitorPage.tsx`
 - Test: `r-mos-frontend/src/pages/__tests__/MonitorPage.fault-alert.test.tsx`
 
-- [ ] **Step 1: Create FaultAlertCard component**
+- [x] **Step 1: Create FaultAlertCard component**
 
 ```tsx
 // src/components/Monitor/FaultAlertCard.tsx
@@ -2300,7 +2300,7 @@ export function FaultAlertCard({ alert, onDiagnose, onDismiss }: FaultAlertCardP
 }
 ```
 
-- [ ] **Step 2: Integrate into MonitorPage**
+- [x] **Step 2: Integrate into MonitorPage**
 
 Add to the top of `MonitorPage.tsx` (after existing imports):
 ```tsx
@@ -2371,7 +2371,7 @@ Render alerts at the top of the page content area:
 )}
 ```
 
-- [ ] **Step 3: Write test for FaultAlertCard integration**
+- [x] **Step 3: Write test for FaultAlertCard integration**
 
 ```tsx
 // src/pages/__tests__/MonitorPage.fault-alert.test.tsx
@@ -2414,12 +2414,12 @@ describe('FaultAlertCard', () => {
 })
 ```
 
-- [ ] **Step 4: Run test**
+- [x] **Step 4: Run test**
 
 Run: `cd r-mos-frontend && npx vitest run src/pages/__tests__/MonitorPage.fault-alert.test.tsx`
 Expected: 2 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add r-mos-frontend/src/components/Monitor/FaultAlertCard.tsx r-mos-frontend/src/pages/MonitorPage.tsx r-mos-frontend/src/pages/__tests__/MonitorPage.fault-alert.test.tsx
@@ -2433,7 +2433,7 @@ git commit -m "feat: add FaultAlertCard on MonitorPage with one-click diagnosis"
 **Files:**
 - Modify: `r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx`
 
-- [ ] **Step 1: Add task creation flow after diagnosis**
+- [x] **Step 1: Add task creation flow after diagnosis**
 
 Add import at top:
 ```tsx
@@ -2480,12 +2480,12 @@ Add button in the diagnosis result area:
 )}
 ```
 
-- [ ] **Step 2: Verify compilation**
+- [x] **Step 2: Verify compilation**
 
 Run: `cd r-mos-frontend && npx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add r-mos-frontend/src/pages/agent/AgentWorkbenchPage.tsx
@@ -2499,7 +2499,7 @@ git commit -m "feat: add 'create maintenance task' action in AgentWorkbench afte
 **Files:**
 - Modify: `r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx`
 
-- [ ] **Step 1: Add step completion API calls**
+- [x] **Step 1: Add step completion API calls**
 
 Add import:
 ```tsx
@@ -2538,12 +2538,12 @@ if (executionId) {
 }
 ```
 
-- [ ] **Step 2: Verify compilation**
+- [x] **Step 2: Verify compilation**
 
 Run: `cd r-mos-frontend && npx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
@@ -2558,7 +2558,7 @@ git commit -m "feat: sync SOP step completion to backend pipeline"
 - Create: `r-mos-backend/app/api/v1/endpoints/llm_health.py`
 - Modify: `r-mos-backend/app/api/v1/__init__.py`
 
-- [ ] **Step 1: Create LLM health endpoint**
+- [x] **Step 1: Create LLM health endpoint**
 
 ```python
 # app/api/v1/endpoints/llm_health.py
@@ -2637,7 +2637,7 @@ async def llm_health():
     )
 ```
 
-- [ ] **Step 2: Register router**
+- [x] **Step 2: Register router**
 
 Add to `app/api/v1/__init__.py`:
 ```python
@@ -2645,7 +2645,7 @@ from .endpoints.llm_health import router as llm_health_router
 app.include_router(llm_health_router, prefix="/api/v1")
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/api/v1/endpoints/llm_health.py app/api/v1/__init__.py
@@ -2658,22 +2658,22 @@ git commit -m "feat: add GET /api/v1/llm/health endpoint for provider status"
 
 **Files:** None (verification only)
 
-- [ ] **Step 1: Run all backend tests**
+- [x] **Step 1: Run all backend tests**
 
 Run: `cd r-mos-backend && python -m pytest tests/ -v --tb=short`
 Expected: All new tests pass, no regressions in existing tests.
 
-- [ ] **Step 2: Run frontend compilation check**
+- [x] **Step 2: Run frontend compilation check**
 
 Run: `cd r-mos-frontend && npx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 3: Run frontend tests**
+- [x] **Step 3: Run frontend tests**
 
 Run: `cd r-mos-frontend && npx vitest run`
 Expected: All tests pass
 
-- [ ] **Step 4: Commit any fixes needed**
+- [x] **Step 4: Commit any fixes needed**
 
 If any test failures, fix them and commit with:
 ```bash
@@ -2687,11 +2687,11 @@ git commit -m "fix: resolve test issues from pipeline integration"
 **Files:**
 - Create: Alembic migration file
 
-- [ ] **Step 1: Generate migration**
+- [x] **Step 1: Generate migration**
 
 Run: `cd r-mos-backend && alembic revision --autogenerate -m "add fault_sop_mapping, task_execution, knowledge_document tables"`
 
-- [ ] **Step 2: Review generated migration**
+- [x] **Step 2: Review generated migration**
 
 Read the generated migration file, verify it includes:
 - `fault_sop_mappings` table
@@ -2699,17 +2699,17 @@ Read the generated migration file, verify it includes:
 - `task_step_results` table
 - `knowledge_documents` table
 
-- [ ] **Step 3: Run migration**
+- [x] **Step 3: Run migration**
 
 Run: `cd r-mos-backend && alembic upgrade head`
 Expected: Migration applies successfully
 
-- [ ] **Step 4: Run seed scripts**
+- [x] **Step 4: Run seed scripts**
 
 Run: `cd r-mos-backend && python scripts/seed_fault_sops.py && python scripts/seed_knowledge.py`
 Expected: "Done: 3 SOPs + mappings seeded." and "Done: 5 knowledge documents seeded."
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add alembic/versions/
@@ -2722,15 +2722,15 @@ git commit -m "feat: add database migration for pipeline tables"
 
 **Files:** None (verification only)
 
-- [ ] **Step 1: Start backend**
+- [x] **Step 1: Start backend**
 
 Run: `cd r-mos-backend && python main.py`
 
-- [ ] **Step 2: Start frontend**
+- [x] **Step 2: Start frontend**
 
 Run: `cd r-mos-frontend && npm run dev`
 
-- [ ] **Step 3: Verify pipeline API**
+- [x] **Step 3: Verify pipeline API**
 
 ```bash
 # Diagnose with overheating telemetry
@@ -2741,18 +2741,18 @@ curl -X POST http://localhost:8000/api/v1/pipeline/diagnose \
 # Expected: {"success":true,"fault_type":"E001_OVERHEAT","confidence":0.9,...}
 ```
 
-- [ ] **Step 4: Verify LLM health**
+- [x] **Step 4: Verify LLM health**
 
 ```bash
 curl http://localhost:8000/api/v1/llm/health
 # Expected: {"deepseek":{"status":"unconfigured"},"minimax":{"status":"unconfigured"},"mock":{"status":"always_available"},"active_provider":"mock"}
 ```
 
-- [ ] **Step 5: Verify frontend renders fault alert**
+- [x] **Step 5: Verify frontend renders fault alert**
 
 Open `http://localhost:5173/monitor` in browser. If WebSocket pushes telemetry with temperature > 70, a FaultAlertCard should appear.
 
-- [ ] **Step 6: Tag release**
+- [x] **Step 6: Tag release**
 
 ```bash
 git tag v0.3.0-pipeline-llm-knowledge

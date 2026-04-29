@@ -14,8 +14,9 @@
  * - A.3：禁止绕过裁决层推进 SOP
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { completeStep as pipelineCompleteStep, completeTask as pipelineCompleteTask } from '@/api/pipeline';
 import { Card, Space, Typography, Button, Steps, Tag, Progress, Alert, Select, Tooltip, Empty, Divider, Modal } from 'antd';
 import {
     PlayCircleOutlined,
@@ -177,6 +178,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     const isCompleted = context?.executionState === SOPExecutionState.COMPLETE;
     const isFailed = context?.executionState === SOPExecutionState.FAILED;
     const isBlocked = context?.executionState === SOPExecutionState.BLOCKED || isFailed;
+
 
     const executingHint = useMemo(() => {
         if (!currentStep || context?.executionState !== SOPExecutionState.EXECUTING) return null;
@@ -418,8 +420,53 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     }, [actionEvent, executor, context, currentStep, handleActionEvent]);
 
     // 执行下一步
+    const stepStartTimeRef = useRef<number>(Date.now());
+
+    // Reset step timer when step changes
+    useEffect(() => {
+        stepStartTimeRef.current = Date.now();
+    }, [context?.currentStepIndex]);
+
+    // Sync step completion to backend pipeline (non-blocking)
+    const syncStepCompletion = useCallback((stepIndex: number) => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const executionId = searchParams.get('execution_id');
+        if (!executionId) return;
+
+        const durationSeconds = Math.round((Date.now() - stepStartTimeRef.current) / 1000);
+        pipelineCompleteStep(Number(executionId), {
+            step_index: stepIndex,
+            duration_seconds: durationSeconds,
+        }).catch(console.error);
+    }, []);
+
+    // Sync task completion to backend pipeline
+    const syncTaskCompletion = useCallback(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const executionId = searchParams.get('execution_id');
+        if (!executionId) return;
+
+        pipelineCompleteTask(Number(executionId))
+            .then((result) => {
+                if (result.report_generation === 'triggered') {
+                    navigate(`/reports?task_id=${result.task_id}`);
+                }
+            })
+            .catch(console.error);
+    }, [navigate]);
+
+    // Auto-trigger task completion when all steps are done
+    const hasTriggeredCompletion = useRef(false);
+    useEffect(() => {
+        if (isCompleted && !hasTriggeredCompletion.current) {
+            hasTriggeredCompletion.current = true;
+            syncTaskCompletion();
+        }
+    }, [isCompleted, syncTaskCompletion]);
+
     const handleNext = useCallback(() => {
         if (!executor || isCompleted) return;
+        const prevStepIndex = context?.currentStepIndex ?? 0;
 
         // 如果当前是 IDLE 状态，尝试执行步骤
         if (context?.executionState === SOPExecutionState.IDLE) {
@@ -436,19 +483,25 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             ) {
                 const validateReport = executor.validateAndAdvance();
                 setLastReport(validateReport);
+                if (validateReport.result === AdjudicationResult.ALLOWED) {
+                    syncStepCompletion(prevStepIndex);
+                }
             }
         }
         // 如果当前是 EXECUTING 状态，尝试验证并推进
         else if (context?.executionState === SOPExecutionState.EXECUTING) {
             const report = executor.validateAndAdvance();
             setLastReport(report);
+            if (report.result === AdjudicationResult.ALLOWED) {
+                syncStepCompletion(prevStepIndex);
+            }
         }
         // 如果当前是 BLOCKED 状态，重试
         else if (context?.executionState === SOPExecutionState.BLOCKED) {
             const report = executor.executeStep();
             setLastReport(report);
         }
-    }, [executor, context, isCompleted, currentStep]);
+    }, [executor, context, isCompleted, currentStep, syncStepCompletion]);
 
     const handleRetry = useCallback(() => {
         if (!executor) return;

@@ -1,6 +1,8 @@
 import { Activity, AlertTriangle, Battery, Gauge, RefreshCw, Thermometer, WifiOff, Zap } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+import { FaultAlertCard, type FaultAlert } from '@/components/Monitor/FaultAlertCard'
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
 import Atom01Viewer from '@/components/Viewer3D/Atom01Viewer'
@@ -275,6 +277,50 @@ function MonitorPage() {
     [monitorJoints],
   )
 
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
+
+  const faultAlerts = useMemo(() => {
+    if (!telemetryData?.joints) return []
+    const alerts: FaultAlert[] = []
+
+    for (const joint of telemetryData.joints) {
+      if ((joint.temperature ?? 0) >= 70) {
+        alerts.push({
+          id: `${joint.joint_id}-overheat`,
+          fault_type: 'E001_OVERHEAT',
+          fault_name: '关节过热告警',
+          affected_joints: [joint.joint_id],
+          current_value: `${joint.temperature}°C`,
+          threshold: '70°C',
+          severity: (joint.temperature ?? 0) >= 80 ? 'danger' : 'warning',
+        })
+      }
+    }
+
+    const voltage = telemetryData.sensors?.voltage?.main as number | undefined
+    if (voltage && voltage < 20) {
+      alerts.push({
+        id: 'voltage-drop',
+        fault_type: 'E003_VOLTAGE_DROP',
+        fault_name: '电压跌落告警',
+        affected_joints: ['system'],
+        current_value: `${voltage}V`,
+        threshold: '20V',
+        severity: 'danger',
+      })
+    }
+
+    return alerts.filter(a => !dismissedAlerts.has(a.id))
+  }, [telemetryData, dismissedAlerts])
+
+  const handleDiagnose = (alert: FaultAlert) => {
+    navigate(`/agent/workbench?fault_type=${alert.fault_type}&joints=${alert.affected_joints.join(',')}`)
+  }
+
+  const handleDismissAlert = (alertId: string) => {
+    setDismissedAlerts(prev => new Set(prev).add(alertId))
+  }
+
   const priorityJoints = useMemo(
     () =>
       [...monitorJoints]
@@ -343,6 +389,19 @@ function MonitorPage() {
           </div>
         </div>
       </div>
+
+      {faultAlerts.length > 0 && (
+        <div className="space-y-2">
+          {faultAlerts.map(alert => (
+            <FaultAlertCard
+              key={alert.id}
+              alert={alert}
+              onDiagnose={handleDiagnose}
+              onDismiss={handleDismissAlert}
+            />
+          ))}
+        </div>
+      )}
 
       {error ? (
         <div className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3">

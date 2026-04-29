@@ -23,6 +23,7 @@ import {
   runDiagnosisAction,
   sendAgentRequestV2,
 } from '@/api/agent-v2'
+import { createTaskFromDiagnosis } from '@/api/pipeline'
 import { setWorkbenchCapsule } from '@/components/Agent/AgentStatusCapsule'
 import {
   DiagnosisPanel,
@@ -163,6 +164,7 @@ function AgentWorkbenchPage() {
   const [traceEvents, setTraceEvents] = useState<Record<string, unknown>[]>([])
   const [traceOpen, setTraceOpen] = useState(false)
   const [diagnosisActionLoading, setDiagnosisActionLoading] = useState(false)
+  const [createdTask, setCreatedTask] = useState<{ task_id: number; execution_id: number; sop_name: string } | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
 
   const latestTraceId = useMemo(
@@ -356,6 +358,23 @@ function AgentWorkbenchPage() {
 
   const handleEscalateDiagnosis = () => {
     void handleDiagnosisAction('escalate_to_teacher')
+  }
+
+  const handleCreatePipelineTask = async () => {
+    const diagnosis = latestDiagnosisBundle?.diagnosis
+    if (!diagnosis?.fault_type || !latestTraceId) return
+    try {
+      const result = await createTaskFromDiagnosis({
+        diagnosis_trace_id: latestTraceId,
+        fault_type: diagnosis.fault_type,
+        student_id: user?.user_id ?? 1,
+      })
+      setCreatedTask(result)
+      message.success(`维保任务已创建: ${result.sop_name}`)
+      navigate(`/maintenance?task_id=${result.task_id}&execution_id=${result.execution_id}`)
+    } catch {
+      message.error('创建维保任务失败')
+    }
   }
 
   const openTrace = async (traceId: string) => {
@@ -625,6 +644,17 @@ function AgentWorkbenchPage() {
             onConfirmExecution={handleConfirmDiagnosisExecution}
             onEscalateToTeacher={handleEscalateDiagnosis}
           />
+          {latestDiagnosisBundle?.diagnosis?.fault_type && !createdTask && (
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+              <div className="flex-1">
+                <div className="text-sm font-medium">推荐: 创建维保任务</div>
+                <div className="text-xs text-text-muted">基于诊断结果自动匹配 SOP 并创建任务</div>
+              </div>
+              <Button onClick={handleCreatePipelineTask}>
+                创建维保任务 <ArrowRight className="ml-1 h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </SectionCard>
       </div>
 
