@@ -362,11 +362,11 @@ function AgentWorkbenchPage() {
 
   const handleCreatePipelineTask = async () => {
     const diagnosis = latestDiagnosisBundle?.diagnosis
-    if (!diagnosis?.fault_type || !latestTraceId) return
+    if (!diagnosis?.primary_hypothesis?.fault_code || !latestTraceId) return
     try {
       const result = await createTaskFromDiagnosis({
         diagnosis_trace_id: latestTraceId,
-        fault_type: diagnosis.fault_type,
+        fault_type: diagnosis.primary_hypothesis.fault_code,
         student_id: user?.user_id ?? 1,
       })
       setCreatedTask(result)
@@ -644,7 +644,7 @@ function AgentWorkbenchPage() {
             onConfirmExecution={handleConfirmDiagnosisExecution}
             onEscalateToTeacher={handleEscalateDiagnosis}
           />
-          {latestDiagnosisBundle?.diagnosis?.fault_type && !createdTask && (
+          {latestDiagnosisBundle?.diagnosis?.primary_hypothesis?.fault_code && !createdTask && (
             <div className="mt-4 flex items-center gap-3 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
               <div className="flex-1">
                 <div className="text-sm font-medium">推荐: 创建维保任务</div>
