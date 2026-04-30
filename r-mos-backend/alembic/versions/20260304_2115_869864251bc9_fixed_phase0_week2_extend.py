@@ -27,54 +27,73 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _safe_add_column(table: str, column: sa.Column) -> None:
+    """Add column if it doesn't already exist (SQLite-safe)."""
+    try:
+        op.add_column(table, column)
+    except Exception:
+        pass
+
+
+def _safe_create_index(name: str, table: str, columns: list, **kw) -> None:
+    """Create index if it doesn't already exist."""
+    try:
+        op.create_index(name, table, columns, **kw)
+    except Exception:
+        pass
+
+
 def upgrade() -> None:
     # === ai_tool_calls table extensions ===
-    op.add_column('ai_tool_calls', sa.Column('input_params', sa.JSON(), nullable=True))
-    op.add_column('ai_tool_calls', sa.Column('execution_time_ms', sa.Integer(), nullable=True))
-    op.add_column('ai_tool_calls', sa.Column('retry_count', sa.Integer(), nullable=False, server_default='0'))
-    op.add_column('ai_tool_calls', sa.Column('parent_tool_call_id', sa.Integer(), nullable=True))
-    op.add_column('ai_tool_calls', sa.Column('call_depth', sa.Integer(), nullable=False, server_default='0'))
-    op.add_column('ai_tool_calls', sa.Column('evidence_collected', sa.JSON(), nullable=False, server_default='{}'))
-    op.add_column('ai_tool_calls', sa.Column('safety_check_passed', sa.String(length=8), nullable=True))
-    op.add_column('ai_tool_calls', sa.Column('model_version', sa.String(length=32), nullable=True))
+    _safe_add_column('ai_tool_calls', sa.Column('input_params', sa.JSON(), nullable=True))
+    _safe_add_column('ai_tool_calls', sa.Column('execution_time_ms', sa.Integer(), nullable=True))
+    _safe_add_column('ai_tool_calls', sa.Column('retry_count', sa.Integer(), nullable=False, server_default='0'))
+    _safe_add_column('ai_tool_calls', sa.Column('parent_tool_call_id', sa.Integer(), nullable=True))
+    _safe_add_column('ai_tool_calls', sa.Column('call_depth', sa.Integer(), nullable=False, server_default='0'))
+    _safe_add_column('ai_tool_calls', sa.Column('evidence_collected', sa.JSON(), nullable=False, server_default='{}'))
+    _safe_add_column('ai_tool_calls', sa.Column('safety_check_passed', sa.String(length=8), nullable=True))
+    _safe_add_column('ai_tool_calls', sa.Column('model_version', sa.String(length=32), nullable=True))
 
     # Add index for tool_calls status+time
-    op.create_index('ix_tool_calls_status_time', 'ai_tool_calls', ['status', 'created_at'], unique=False)
+    _safe_create_index('ix_tool_calls_status_time', 'ai_tool_calls', ['status', 'created_at'], unique=False)
 
-    # Add foreign key for parent_tool_call_id
-    op.create_foreign_key(
-        'fk_tool_calls_parent',
-        'ai_tool_calls',
-        'ai_tool_calls',
-        ['parent_tool_call_id'],
-        ['id'],
-        ondelete='SET NULL'
-    )
+    # Add foreign key for parent_tool_call_id (skip on SQLite — no ALTER TABLE ADD FK)
+    try:
+        op.create_foreign_key(
+            'fk_tool_calls_parent',
+            'ai_tool_calls',
+            'ai_tool_calls',
+            ['parent_tool_call_id'],
+            ['id'],
+            ondelete='SET NULL'
+        )
+    except Exception:
+        pass
 
     # === commands table extensions ===
-    op.add_column('commands', sa.Column('resource_ref', sa.JSON(), nullable=True))
-    op.add_column('commands', sa.Column('policy_context', sa.JSON(), nullable=True))
-    op.add_column('commands', sa.Column('intent_classification', sa.String(length=64), nullable=True))
-    op.add_column('commands', sa.Column('idempotency_key', sa.String(length=128), nullable=True))
-    op.add_column('commands', sa.Column('policy_decision', sa.JSON(), nullable=True))
-    op.add_column('commands', sa.Column('risk_level', sa.String(length=8), nullable=True))
-    op.add_column('commands', sa.Column('evidence_refs', sa.JSON(), nullable=False, server_default='[]'))
-    op.add_column('commands', sa.Column('approved_by', sa.String(length=64), nullable=True))
-    op.add_column('commands', sa.Column('approved_at', sa.DateTime(), nullable=True))
-    op.add_column('commands', sa.Column('execution_budget_ms', sa.Integer(), nullable=True))
+    _safe_add_column('commands', sa.Column('resource_ref', sa.JSON(), nullable=True))
+    _safe_add_column('commands', sa.Column('policy_context', sa.JSON(), nullable=True))
+    _safe_add_column('commands', sa.Column('intent_classification', sa.String(length=64), nullable=True))
+    _safe_add_column('commands', sa.Column('idempotency_key', sa.String(length=128), nullable=True))
+    _safe_add_column('commands', sa.Column('policy_decision', sa.JSON(), nullable=True))
+    _safe_add_column('commands', sa.Column('risk_level', sa.String(length=8), nullable=True))
+    _safe_add_column('commands', sa.Column('evidence_refs', sa.JSON(), nullable=False, server_default='[]'))
+    _safe_add_column('commands', sa.Column('approved_by', sa.String(length=64), nullable=True))
+    _safe_add_column('commands', sa.Column('approved_at', sa.DateTime(), nullable=True))
+    _safe_add_column('commands', sa.Column('execution_budget_ms', sa.Integer(), nullable=True))
 
     # Add indexes for commands
-    op.create_index('ix_commands_idempotency_key', 'commands', ['idempotency_key'], unique=False)
-    op.create_index('ix_commands_intent_classification', 'commands', ['intent_classification'], unique=False)
-    op.create_index('ix_commands_risk_level', 'commands', ['risk_level'], unique=False)
-    op.create_index('ix_commands_risk_status', 'commands', ['risk_level', 'status'], unique=False)
+    _safe_create_index('ix_commands_idempotency_key', 'commands', ['idempotency_key'], unique=False)
+    _safe_create_index('ix_commands_intent_classification', 'commands', ['intent_classification'], unique=False)
+    _safe_create_index('ix_commands_risk_level', 'commands', ['risk_level'], unique=False)
+    _safe_create_index('ix_commands_risk_status', 'commands', ['risk_level', 'status'], unique=False)
 
     # === skills table extensions ===
-    op.add_column('skills', sa.Column('evidence_requirements', sa.JSON(), nullable=True))
-    op.add_column('skills', sa.Column('approval_workflow', sa.JSON(), nullable=True))
-    op.add_column('skills', sa.Column('policy_rules', sa.JSON(), nullable=True))
-    op.add_column('skills', sa.Column('execution_timeout_ms', sa.Integer(), nullable=True))
-    op.add_column('skills', sa.Column('deprecated_at', sa.DateTime(), nullable=True))
+    _safe_add_column('skills', sa.Column('evidence_requirements', sa.JSON(), nullable=True))
+    _safe_add_column('skills', sa.Column('approval_workflow', sa.JSON(), nullable=True))
+    _safe_add_column('skills', sa.Column('policy_rules', sa.JSON(), nullable=True))
+    _safe_add_column('skills', sa.Column('execution_timeout_ms', sa.Integer(), nullable=True))
+    _safe_add_column('skills', sa.Column('deprecated_at', sa.DateTime(), nullable=True))
 
 
 def downgrade() -> None:

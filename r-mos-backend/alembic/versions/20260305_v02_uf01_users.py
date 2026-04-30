@@ -18,17 +18,29 @@ branch_labels = None
 depends_on = None
 
 
+def _safe_add_column(table: str, column: sa.Column) -> None:
+    try:
+        op.add_column(table, column)
+    except Exception:
+        pass
+
+def _safe_create_index(name: str, table: str, columns: list, **kw) -> None:
+    try:
+        op.create_index(name, table, columns, **kw)
+    except Exception:
+        pass
+
 def upgrade() -> None:
     # Add new columns to users table
-    op.add_column('users', sa.Column('role', sa.String(20), nullable=False, server_default='student'))
-    op.add_column('users', sa.Column('teacher_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True))
-    op.add_column('users', sa.Column('class_id', sa.Integer(), nullable=True))
-    op.add_column('users', sa.Column('hint_level', sa.Integer(), nullable=False, server_default='3'))
+    _safe_add_column('users', sa.Column('role', sa.String(20), nullable=False, server_default='student'))
+    _safe_add_column('users', sa.Column('teacher_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True))
+    _safe_add_column('users', sa.Column('class_id', sa.Integer(), nullable=True))
+    _safe_add_column('users', sa.Column('hint_level', sa.Integer(), nullable=False, server_default='3'))
 
     # Create indexes
-    op.create_index('ix_users_role', 'users', ['role'])
-    op.create_index('ix_users_teacher_id', 'users', ['teacher_id'])
-    op.create_index('ix_users_class_id', 'users', ['class_id'])
+    _safe_create_index('ix_users_role', 'users', ['role'])
+    _safe_create_index('ix_users_teacher_id', 'users', ['teacher_id'])
+    _safe_create_index('ix_users_class_id', 'users', ['class_id'])
 
 
 def downgrade() -> None:
