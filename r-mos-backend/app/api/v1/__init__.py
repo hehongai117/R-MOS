@@ -25,6 +25,7 @@ from app.api.v1.endpoints import (
     maintenance,
     pipeline,
     llm_health,
+    student_tasks,
 )
 
 # 创建v1版本路由
@@ -53,6 +54,7 @@ api_router.include_router(training.router, tags=["training"])  # UF-04, UF-06
 api_router.include_router(maintenance.router, tags=["maintenance"])
 api_router.include_router(pipeline.router, tags=["pipeline"])
 api_router.include_router(llm_health.router, tags=["llm"])
+api_router.include_router(student_tasks.router, tags=["student"])
 
 # WebSocket不需要/api/v1前缀，单独注册
 websocket_router = websocket.router
