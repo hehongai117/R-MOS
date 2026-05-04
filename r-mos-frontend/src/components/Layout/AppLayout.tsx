@@ -54,16 +54,16 @@ const STUDENT_NAV: NavGroup[] = [
   {
     label: '练习中心',
     items: [
+      { label: '学习进度', to: '/dashboard', icon: BarChart3 },
       { label: '我的任务', to: '/my-tasks', icon: ClipboardList },
       { label: '自主练习', to: '/scenarios', icon: Dumbbell },
     ],
   },
   {
-    label: '维保流程',
+    label: '维保操作',
     items: [
       { label: '实时监控', to: '/monitor', icon: Activity },
-      { label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot },
-      { label: '维保练习工作台', to: '/maintenance', icon: Wrench },
+      { label: '维保练习', to: '/maintenance', icon: Wrench },
     ],
   },
   {
@@ -71,12 +71,13 @@ const STUDENT_NAV: NavGroup[] = [
     items: [
       { label: '维保报告', to: '/reports', icon: FileText },
       { label: '我的技能', to: '/student/skills', icon: BarChart3 },
+      { label: '3D 展示', to: '/atom01', icon: Boxes },
     ],
   },
   {
-    label: '工具',
+    label: '进阶工具',
     items: [
-      { label: '3D 展示', to: '/atom01', icon: Boxes },
+      { label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot },
     ],
   },
 ]
