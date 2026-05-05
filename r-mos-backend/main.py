@@ -46,6 +46,9 @@ async def lifespan(app: FastAPI):
     """
     # 启动事件
     logger.info("R-MOS Backend 启动中...")
+    # 生产环境配置校验
+    if not settings.DEBUG:
+        settings.validate_production()
     try:
         adapter = await AdapterFactory.get_adapter()
         logger.info(f"Adapter已连接: {adapter.__class__.__name__}")

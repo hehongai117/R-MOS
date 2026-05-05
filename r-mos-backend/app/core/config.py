@@ -68,5 +68,13 @@ class Settings(BaseSettings):
             if "sqlite" in self.DATABASE_URL:
                 raise RuntimeError("SQLite not supported in production, use PostgreSQL")
 
+    @property
+    def ROBOT_ADAPTER_TYPE(self) -> str:
+        """向后兼容: adapter factory 仍然用这个名字。
+        ROBOT_MODE="simulation" 映射到 factory 期望的 "mock"。
+        """
+        mode_map = {"simulation": "mock", "physical": "real"}
+        return mode_map.get(self.ROBOT_MODE, self.ROBOT_MODE)
+
 
 settings = Settings()
