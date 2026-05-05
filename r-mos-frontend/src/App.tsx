@@ -29,6 +29,7 @@ const TeachingDiagnosisPage = lazy(() => import('@/teaching/pages/TeachingDiagno
 const TeachingEvidencePage = lazy(() => import('@/teaching/pages/TeachingEvidencePage'))
 const TeacherMonitorPage = lazy(() => import('@/teaching/pages/TeacherMonitorPage'))
 const TeacherStudentsPage = lazy(() => import('@/teaching/pages/TeacherStudentsPage'))
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 
 function DefaultRouteRedirect() {
   const defaultRoute =
@@ -72,6 +73,10 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<DefaultRouteRedirect />} />
+                <Route
+                  path="dashboard"
+                  element={withSuspense(withRoles(<DashboardPage />, ['student']))}
+                />
 
                 <Route
                   path="my-tasks"
