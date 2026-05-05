@@ -35,7 +35,7 @@ function DefaultRouteRedirect() {
   const defaultRoute =
     useAuthStore((state) => state.defaultRoute) ??
     localStorage.getItem(AUTH_STORAGE_KEYS.defaultRoute) ??
-    '/login'
+    '/dashboard'
 
   return <Navigate replace to={defaultRoute} />
 }
