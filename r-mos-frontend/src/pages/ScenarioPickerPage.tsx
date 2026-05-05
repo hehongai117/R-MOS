@@ -1,12 +1,39 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dumbbell, Sparkles } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Dumbbell, Sparkles, Play } from 'lucide-react'
+import { fetchScenarios, type ScenarioItem } from '@/api/scenarios'
 
 type Difficulty = 'all' | 'beginner' | 'intermediate' | 'advanced'
 
+const DIFFICULTY_LABEL: Record<string, string> = {
+  beginner: '入门',
+  intermediate: '进阶',
+  advanced: '高级',
+}
+
+const DIFFICULTY_VARIANT: Record<string, 'default' | 'success' | 'destructive'> = {
+  beginner: 'default',
+  intermediate: 'success',
+  advanced: 'destructive',
+}
+
 export default function ScenarioPickerPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('all')
+  const [scenarios, setScenarios] = useState<ScenarioItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    setLoading(true)
+    fetchScenarios(difficulty)
+      .then((res) => setScenarios(res.items))
+      .catch(() => setScenarios([]))
+      .finally(() => setLoading(false))
+  }, [difficulty])
 
   return (
     <div className="space-y-6">
@@ -19,7 +46,7 @@ export default function ScenarioPickerPage() {
         <CardContent className="flex items-center gap-3 py-4">
           <Sparkles className="h-5 w-5 text-primary" />
           <p className="text-sm text-text-secondary">
-            AI 将根据你的技能画像推荐适合当前水平的练习场景。
+            选择一个故障场景开始练习，AI 助手会在练习过程中为你提供帮助。
           </p>
         </CardContent>
       </Card>
@@ -33,18 +60,52 @@ export default function ScenarioPickerPage() {
         </TabsList>
       </Tabs>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base text-text-secondary">
-            暂无可用的练习场景
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-text-muted">
-            故障场景库将在后续版本中填充。届时你可以选择不同类型和难度的故障进行练习。
-          </p>
-        </CardContent>
-      </Card>
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="py-6">
+                <div className="h-5 w-32 rounded bg-bg-elevated" />
+                <div className="mt-3 h-4 w-24 rounded bg-bg-elevated" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : scenarios.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-text-muted">
+              暂无可用的练习场景。教师配置故障场景后将显示在此处。
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {scenarios.map((scenario) => (
+            <Card key={scenario.id} className="transition-all hover:border-primary/30 hover:shadow-sm">
+              <CardContent className="space-y-3 py-5">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-text-primary">
+                    {scenario.sop_title || scenario.fault_type}
+                  </span>
+                  <Badge variant={DIFFICULTY_VARIANT[scenario.difficulty]}>
+                    {DIFFICULTY_LABEL[scenario.difficulty]}
+                  </Badge>
+                </div>
+                <p className="text-xs text-text-muted">故障类型: {scenario.fault_type}</p>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => navigate(`/maintenance?sop_id=${scenario.sop_id}`)}
+                >
+                  <Play className="mr-2 h-3 w-3" />
+                  开始练习
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
