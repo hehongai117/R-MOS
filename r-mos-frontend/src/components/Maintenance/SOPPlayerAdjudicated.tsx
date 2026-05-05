@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { AIAssistantPanel } from '@/components/AIAssistant/AIAssistantPanel';
 import { useNavigate } from 'react-router-dom';
 import { completeStep as pipelineCompleteStep, completeTask as pipelineCompleteTask } from '@/api/pipeline';
 import { Card, Space, Typography, Button, Steps, Tag, Progress, Alert, Select, Tooltip, Empty, Divider, Modal } from 'antd';
@@ -828,6 +829,19 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                     </Space>
                 )}
             </Modal>
+
+            <AIAssistantPanel
+                sopId={undefined}
+                sopTitle={selectedSOP?.title}
+                currentStepIndex={context?.currentStepIndex}
+                currentStepDescription={
+                    selectedSOP && context
+                        ? selectedSOP.steps[context.currentStepIndex]?.description
+                        : undefined
+                }
+                faultType={undefined}
+                hintLevel={3}
+            />
         </Card>
     );
 };
