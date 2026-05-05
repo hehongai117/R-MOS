@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rmos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-rmos}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rmos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./r-mos-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rmos}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-rmos}
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-me}
+      DEBUG: "false"
+      CORS_ORIGINS: '["http://localhost", "http://localhost:3000"]'
+      ROBOT_MODE: ${ROBOT_MODE:-simulation}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      LLM_ENABLE_MOCK_FALLBACK: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./r-mos-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
