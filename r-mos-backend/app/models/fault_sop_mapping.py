@@ -18,3 +18,7 @@ class FaultSOPMapping(Base, TimestampMixin):
     )
     difficulty = Column(String(20), nullable=False, comment="难度: beginner/intermediate/advanced")
     priority = Column(Integer, default=1, comment="优先级（同 fault_type 多 SOP 时）")
+    robot_model_id = Column(
+        Integer, ForeignKey("robot_models.id", ondelete="SET NULL"),
+        nullable=True, index=True, comment="关联机器人型号 ID",
+    )

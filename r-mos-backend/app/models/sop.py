@@ -22,7 +22,11 @@ class SOP(Base, TimestampMixin):
     category = Column(String(50), nullable=True, comment="分类")
     difficulty_level = Column(String(20), default="medium", comment="难度等级：low/medium/high")
     estimated_time = Column(Integer, nullable=True, comment="预估时长（秒）")
-    
+    robot_model_id = Column(
+        Integer, ForeignKey("robot_models.id", ondelete="SET NULL"),
+        nullable=True, index=True, comment="关联机器人型号 ID",
+    )
+
     # V2.1.2修正：移除级联删除，保护历史数据
     steps = relationship(
         "SOPStep", 

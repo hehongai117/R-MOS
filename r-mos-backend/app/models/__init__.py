@@ -41,6 +41,9 @@ from app.models.teaching import (
     AssignmentAttempt,
     EvidenceLink,
 )
+from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
+from app.models.robot_asset import RobotAsset, AssetType
+from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
 
 __all__ = [
     # Base
@@ -117,4 +120,14 @@ __all__ = [
     "TaskExecution",
     "TaskStepResult",
     "KnowledgeDocument",
+    # Robot platform
+    "RobotModel",
+    "RobotVisibility",
+    "RobotStatus",
+    "TeacherRobotBinding",
+    "RobotAsset",
+    "AssetType",
+    "AnalysisTask",
+    "AnalysisTaskType",
+    "AnalysisTaskStatus",
 ]
