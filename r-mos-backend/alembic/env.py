@@ -28,6 +28,9 @@ from app.models import (
     Observation,
     EvidenceBundle, EvidenceItem,
     AssessmentProvider, ExternalAssessment, AssessmentAuditEvent,
+    RobotModel, TeacherRobotBinding,
+    RobotAsset,
+    AnalysisTask,
 )
 
 # Alembic Config对象
