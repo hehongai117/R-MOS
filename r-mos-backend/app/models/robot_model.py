@@ -39,7 +39,7 @@ class RobotModel(Base, TimestampMixin):
     description = Column(Text, nullable=True, comment="机器人描述")
     thumbnail_path = Column(String(500), nullable=True, comment="缩略图相对路径")
 
-    # NOTE: assets relationship will be added in Task 2 when RobotAsset model is created
+    assets = relationship("RobotAsset", back_populates="robot_model", cascade="all, delete-orphan")
     bindings = relationship("TeacherRobotBinding", back_populates="robot_model", cascade="all, delete-orphan")
 
     def __repr__(self):
