@@ -1,10 +1,12 @@
 """Robot model CRUD API endpoints."""
 import os
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.services.storage.file_storage import LocalFileStorage
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.schemas.robot_model import (
@@ -123,3 +125,36 @@ async def delete_robot(
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以删除")
     await db.delete(robot)
     await db.commit()
+
+
+# Initialize storage (will be replaced with DI later)
+_storage = LocalFileStorage()
+
+
+@router.get("/{robot_id}/assets/{file_path:path}")
+async def get_robot_asset(
+    robot_id: int,
+    file_path: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取机器人资产文件（3D 模型、manifest 等）。"""
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+
+    full_path = _storage.get_full_path(robot_model_id=robot_id, rel_path=file_path)
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
+    content_types = {
+        "glb": "model/gltf-binary",
+        "gltf": "model/gltf+json",
+        "json": "application/json",
+        "png": "image/png",
+        "jpg": "image/jpeg",
+    }
+    media_type = content_types.get(ext, "application/octet-stream")
+
+    return FileResponse(full_path, media_type=media_type)
