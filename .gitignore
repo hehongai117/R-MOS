@@ -76,3 +76,6 @@ PROJECT_DIRECTORY_FULL.txt
 # delivery bundles (re-generated in freeze step)
 /gate3_delivery_*.zip
 /gate3_delivery_*.tar.gz
+
+# Robot asset storage (managed by backend, not tracked in git)
+/data/robot-assets/
