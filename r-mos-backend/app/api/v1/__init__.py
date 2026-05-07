@@ -28,6 +28,7 @@ from app.api.v1.endpoints import (
     student_tasks,
     scenarios,
     ai_assistant,
+    robots,
 )
 
 # 创建v1版本路由
@@ -59,6 +60,7 @@ api_router.include_router(llm_health.router, tags=["llm"])
 api_router.include_router(student_tasks.router, tags=["student"])
 api_router.include_router(scenarios.router, tags=["scenarios"])
 api_router.include_router(ai_assistant.router, tags=["ai-assistant"])
+api_router.include_router(robots.router, tags=["robots"])
 
 # WebSocket不需要/api/v1前缀，单独注册
 websocket_router = websocket.router
