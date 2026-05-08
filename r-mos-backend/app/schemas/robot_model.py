@@ -3,8 +3,6 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-from app.models.robot_model import RobotVisibility
-
 
 class RobotModelCreate(BaseModel):
     brand: str = Field(..., max_length=100, description="机器人品牌")
@@ -18,7 +16,6 @@ class RobotModelUpdate(BaseModel):
     model_name: Optional[str] = Field(default=None, max_length=200)
     version: Optional[str] = Field(default=None, max_length=50)
     description: Optional[str] = None
-    visibility: Optional[RobotVisibility] = None
 
 
 class RobotModelResponse(BaseModel):

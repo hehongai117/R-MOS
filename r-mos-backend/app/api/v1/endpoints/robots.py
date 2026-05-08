@@ -219,6 +219,16 @@ async def trigger_analysis(
     if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以触发分析")
 
+    # 防止重复触发：检查是否有未完成的分析任务
+    existing = await db.execute(
+        select(AnalysisTask).where(
+            AnalysisTask.robot_model_id == robot_id,
+            AnalysisTask.status.in_([AnalysisTaskStatus.PENDING, AnalysisTaskStatus.RUNNING]),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="已有分析任务进行中，请等待完成后再触发")
+
     # 查询该机器人的上传文件 ID
     asset_result = await db.execute(
         select(RobotAsset.id).where(
@@ -250,10 +260,13 @@ async def list_analysis_tasks(
     actor: ActorContext = Depends(get_current_actor),
 ):
     """查看机器人的分析任务列表。"""
+    _require_teacher_or_admin(actor)
     result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
+    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+        raise HTTPException(status_code=403, detail="只有创建者或管理员可以查看分析任务")
 
     task_result = await db.execute(
         select(AnalysisTask)
