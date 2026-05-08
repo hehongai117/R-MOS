@@ -19,7 +19,7 @@ describe('MyTasksPage', () => {
         <MyTasksPage />
       </MemoryRouter>,
     )
-    expect(screen.getByText('待完成')).toBeTruthy()
+    expect(screen.getByText('全部')).toBeTruthy()
     expect(screen.getByText('进行中')).toBeTruthy()
     expect(screen.getByText('已完成')).toBeTruthy()
   })
