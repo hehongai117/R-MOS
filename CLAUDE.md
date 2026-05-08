@@ -25,7 +25,7 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 |-------|------|-------|--------|
 | 0 | Data models + storage + migration | 10 | ✅ Done |
 | 1 | File upload + full robot API | 6 | ✅ Done |
-| 2 | Teacher frontend (knowledge + robot mgmt) | 8 | ⬚ Not started |
+| 2 | Teacher frontend (knowledge + robot mgmt) | 10 | ✅ Done |
 | 3 | AI analysis pipeline | 7 | ⬚ Not started |
 | 4 | Student frontend (robot selection + context switch) | 6 | ⬚ Not started |
 | 5 | 3D viewer dynamic loading | 5 | ⬚ Not started |
