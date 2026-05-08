@@ -52,3 +52,8 @@ class RobotAssetResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class FileUploadResponse(BaseModel):
+    uploaded: List[RobotAssetResponse]
+    failed: List[dict]  # {"filename": str, "error": str}

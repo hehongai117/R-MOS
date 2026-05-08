@@ -1,6 +1,7 @@
 """Robot model CRUD API endpoints."""
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,15 +9,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.storage.file_storage import LocalFileStorage
 from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.robot_service import RobotService
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
+from app.models.robot_asset import RobotAsset, AssetType
 from app.schemas.robot_model import (
     RobotModelCreate,
     RobotModelUpdate,
     RobotModelResponse,
     RobotModelListResponse,
+    RobotAssetResponse,
+    FileUploadResponse,
 )
 
 router = APIRouter(prefix="/robots", tags=["robots"])
+
+# Initialize storage (will be replaced with DI later)
+_storage = LocalFileStorage()
 
 
 def _require_teacher_or_admin(actor: ActorContext):
@@ -139,8 +147,59 @@ async def delete_robot(
     await db.commit()
 
 
-# Initialize storage (will be replaced with DI later)
-_storage = LocalFileStorage()
+@router.post("/{robot_id}/upload", response_model=FileUploadResponse)
+async def upload_robot_files(
+    robot_id: int,
+    files: List[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """上传文件到机器人（支持批量）。"""
+    _require_teacher_or_admin(actor)
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+        raise HTTPException(status_code=403, detail="只有创建者或管理员可以上传文件")
+
+    uploaded = []
+    failed = []
+
+    for file in files:
+        try:
+            clean_name = RobotService.validate_filename(file.filename or "")
+            content = await file.read()
+            RobotService.validate_file_size(len(content))
+
+            asset_type = RobotService.detect_asset_type(clean_name)
+            subdirectory = RobotService.detect_subdirectory(asset_type)
+
+            rel_path = _storage.upload(
+                robot_model_id=robot_id,
+                filename=clean_name,
+                content=content,
+                subdirectory=subdirectory,
+            )
+
+            asset = RobotAsset(
+                robot_model_id=robot_id,
+                asset_type=asset_type,
+                file_path=rel_path,
+                file_size=len(content),
+            )
+            db.add(asset)
+            await db.flush()
+            await db.refresh(asset)
+            uploaded.append(asset)
+        except ValueError as e:
+            failed.append({"filename": file.filename or "", "error": str(e)})
+
+    await db.commit()
+    return FileUploadResponse(
+        uploaded=[RobotAssetResponse.model_validate(a) for a in uploaded],
+        failed=failed,
+    )
 
 
 @router.get("/{robot_id}/assets/{file_path:path}")
