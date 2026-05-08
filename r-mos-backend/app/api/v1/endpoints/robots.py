@@ -20,6 +20,8 @@ from app.schemas.robot_model import (
     RobotAssetResponse,
     FileUploadResponse,
 )
+from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
+from app.schemas.analysis_task import AnalysisTaskResponse, AnalysisTaskListResponse
 
 router = APIRouter(prefix="/robots", tags=["robots"])
 
@@ -200,6 +202,119 @@ async def upload_robot_files(
         uploaded=[RobotAssetResponse.model_validate(a) for a in uploaded],
         failed=failed,
     )
+
+
+@router.post("/{robot_id}/analyze", response_model=AnalysisTaskResponse, status_code=status.HTTP_201_CREATED)
+async def trigger_analysis(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """手动触发 AI 分析（创建 AnalysisTask）。"""
+    _require_teacher_or_admin(actor)
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+        raise HTTPException(status_code=403, detail="只有创建者或管理员可以触发分析")
+
+    # 查询该机器人的上传文件 ID
+    asset_result = await db.execute(
+        select(RobotAsset.id).where(
+            RobotAsset.robot_model_id == robot_id,
+            RobotAsset.asset_type == AssetType.UPLOAD_ORIGINAL,
+        )
+    )
+    doc_ids = [row[0] for row in asset_result.all()]
+
+    task = AnalysisTask(
+        robot_model_id=robot_id,
+        task_type=AnalysisTaskType.FULL,
+        status=AnalysisTaskStatus.PENDING,
+        input_document_ids=doc_ids,
+    )
+    db.add(task)
+
+    # 更新机器人状态为 analyzing
+    robot.status = RobotStatus.ANALYZING
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+@router.get("/{robot_id}/analysis-tasks", response_model=AnalysisTaskListResponse)
+async def list_analysis_tasks(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """查看机器人的分析任务列表。"""
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+
+    task_result = await db.execute(
+        select(AnalysisTask)
+        .where(AnalysisTask.robot_model_id == robot_id)
+        .order_by(AnalysisTask.created_at.desc())
+    )
+    tasks = list(task_result.scalars().all())
+    return AnalysisTaskListResponse(items=tasks, total=len(tasks))
+
+
+@router.put("/{robot_id}/publish", response_model=RobotModelResponse)
+async def publish_robot(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """发布机器人（status → ready）或取消发布（status → draft）。"""
+    _require_teacher_or_admin(actor)
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+        raise HTTPException(status_code=403, detail="只有创建者或管理员可以发布")
+
+    if robot.status == RobotStatus.READY:
+        # 取消发布
+        robot.status = RobotStatus.DRAFT
+    else:
+        if not RobotService.can_publish(robot.status):
+            raise HTTPException(status_code=409, detail="当前状态不允许发布（分析进行中）")
+        robot.status = RobotStatus.READY
+
+    await db.commit()
+    await db.refresh(robot)
+    return robot
+
+
+@router.put("/{robot_id}/visibility", response_model=RobotModelResponse)
+async def set_visibility(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """切换机器人共享状态（private ↔ shared）。"""
+    _require_teacher_or_admin(actor)
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+        raise HTTPException(status_code=403, detail="只有创建者或管理员可以修改共享状态")
+
+    if robot.visibility == RobotVisibility.SHARED:
+        robot.visibility = RobotVisibility.PRIVATE
+    else:
+        robot.visibility = RobotVisibility.SHARED
+
+    await db.commit()
+    await db.refresh(robot)
+    return robot
 
 
 @router.get("/{robot_id}/assets/{file_path:path}")
