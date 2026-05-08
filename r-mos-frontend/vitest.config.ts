@@ -17,6 +17,7 @@ export default defineConfig({
       "src/pages/**/__tests__/**/*.test.{ts,tsx}",
       "src/teaching/**/__tests__/**/*.test.{ts,tsx}",
       "src/store/**/__tests__/**/*.test.{ts,tsx}",
+      "src/types/**/__tests__/**/*.test.{ts,tsx}",
     ],
     environment: "jsdom",
     globals: true,
