@@ -6461,4 +6461,47 @@
   - 当前分支 `feat/phase1-2-fsm-evidence` 此前未配置 upstream，推送时需要显式建立远端跟踪。
   - 3 个脚本引用了桌面目录下的本地 PPT 文件路径，并依赖 `python-pptx`/`lxml` 等环境；本次验证只覆盖语法有效性，不覆盖运行时外部文件存在性。
 - Next Step:
+
+---
+
+- DateTime: 2026-05-09 05:00:07 +0800
+- Task: Phase 2 完成（教师前端：知识库 + 机器人管理）— 多机器人可插拔平台
+- Scope (files changed):
+  - 新增文件:
+    - r-mos-frontend/src/types/robotModel.ts — RobotModel 类型定义
+    - r-mos-frontend/src/types/__tests__/robotModel.test.ts
+    - r-mos-frontend/src/api/robots.ts — 机器人 API 客户端
+    - r-mos-frontend/src/api/__tests__/robots.test.ts
+    - r-mos-frontend/src/store/robotStore.ts — Zustand 机器人状态管理
+    - r-mos-frontend/src/store/__tests__/robotStore.test.ts
+    - r-mos-frontend/src/components/knowledge/RobotSidebar.tsx — 机器人列表侧边栏
+    - r-mos-frontend/src/components/knowledge/__tests__/RobotSidebar.test.tsx
+    - r-mos-frontend/src/components/knowledge/AddRobotDialog.tsx — 添加机器人对话框
+    - r-mos-frontend/src/components/knowledge/__tests__/AddRobotDialog.test.tsx
+    - r-mos-frontend/src/components/knowledge/FileUploader.tsx — 拖拽上传组件
+    - r-mos-frontend/src/components/knowledge/__tests__/FileUploader.test.tsx
+    - r-mos-frontend/src/components/knowledge/AnalysisStatusPanel.tsx — 分析状态面板
+    - r-mos-frontend/src/components/knowledge/__tests__/AnalysisStatusPanel.test.tsx
+    - r-mos-frontend/src/components/knowledge/PublishControl.tsx — 发布控制 UI
+    - r-mos-frontend/src/components/knowledge/__tests__/PublishControl.test.tsx
+    - r-mos-frontend/src/pages/__tests__/KnowledgePage.phase2.test.tsx
+  - 修改文件:
+    - r-mos-frontend/src/pages/KnowledgePage.tsx — 整合机器人侧边栏与管理组件
+    - r-mos-frontend/src/pages/__tests__/MyTasksPage.test.tsx — 修复 pre-existing 测试
+    - r-mos-frontend/src/components/Layout/__tests__/AppLayout.test.tsx — 修复 pre-existing 测试
+    - r-mos-frontend/src/test-setup.ts — 添加 matchMedia mock
+    - r-mos-frontend/vitest.config.ts — 测试配置调整
+    - r-mos-frontend/package.json — 新增 zustand 依赖
+    - CLAUDE.md — Phase 2 状态更新为 ✅ Done
+    - docs/superpowers/plans/2026-05-08-multi-robot-master-plan.md — Phase 2 状态更新
+- Commands Run:
+  - cd r-mos-frontend && npm test -- --run
+  - cd r-mos-frontend && npm run build
+- Tests: 146 passed, 0 failed
+- Result: PASS
+- Risks/Notes:
+  - 修复了 2 个 pre-existing 测试失败：MyTasksPage.test.tsx（tab 期望从 '待完成' 改为 '全部'）和 AppLayout.test.tsx（学生导航期望从 '维保练习工作台' 改为 '维保练习'）
+  - Phase 2 共 10 个 Task 全部完成（原计划 8 个，实际拆分为 10 个），新增 1691 行代码
+  - 前端构建通过（8.37s），无 TypeScript 类型错误
+- Next Step: Phase 3 — AI 分析管线（7 Tasks）
   - 将当前分支提交并推送到 `origin/feat/phase1-2-fsm-evidence`
