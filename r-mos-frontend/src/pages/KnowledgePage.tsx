@@ -14,13 +14,21 @@ import {
   listRobotProjects,
   uploadRobotProjectPackage,
 } from '@/api/robotKnowledge'
+import { listAnalysisTasks } from '@/api/robots'
+import { AddRobotDialog } from '@/components/knowledge/AddRobotDialog'
+import { AnalysisStatusPanel } from '@/components/knowledge/AnalysisStatusPanel'
+import { FileUploader } from '@/components/knowledge/FileUploader'
+import { PublishControl } from '@/components/knowledge/PublishControl'
 import { RobotProjectTable } from '@/components/knowledge/RobotProjectTable'
 import { RobotProjectUploadPanel } from '@/components/knowledge/RobotProjectUploadPanel'
+import { RobotSidebar } from '@/components/knowledge/RobotSidebar'
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuthStore } from '@/store/authStore'
+import { useRobotStore, useSelectedRobot } from '@/store/robotStore'
+import type { AnalysisTask, RobotModelCreateRequest } from '@/types/robotModel'
 import type { RobotProjectSummary, RobotProjectUploadJob } from '@/types/robotKnowledge'
 
 const { Option } = Select
@@ -49,6 +57,18 @@ function uploadStatusTone(status: string) {
 const KnowledgePage = () => {
   const role = useAuthStore((state) => state.user?.role ?? 'student')
   const canManageKnowledge = role === 'teacher' || role === 'admin'
+
+  // Robot store
+  const { robots, selectedRobotId, isLoading: robotsLoading, fetchRobots, selectRobot, addRobot, togglePublish, toggleVisibility } = useRobotStore((state) => state)
+  const selectedRobot = useSelectedRobot()
+
+  // Add robot dialog state
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [addingRobot, setAddingRobot] = useState(false)
+
+  // Analysis tasks state
+  const [analysisTasks, setAnalysisTasks] = useState<AnalysisTask[]>([])
+  const [analysisLoading, setAnalysisLoading] = useState(false)
 
   const [activeTab, setActiveTab] = useState('search')
   const [loading, setLoading] = useState(false)
@@ -139,6 +159,19 @@ const KnowledgePage = () => {
     void poll()
   }, [loadProjects, upsertUploadJob])
 
+  // Load analysis tasks when selectedRobotId changes
+  const loadAnalysisTasks = useCallback(async (robotId: number) => {
+    setAnalysisLoading(true)
+    try {
+      const result = await listAnalysisTasks(robotId)
+      setAnalysisTasks(result.items)
+    } catch {
+      message.error('加载分析任务失败')
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void handleSearch()
     void loadProjects()
@@ -150,6 +183,48 @@ const KnowledgePage = () => {
       pollingTimersRef.current = {}
     }
   }, [handleSearch, loadProjects])
+
+  // Fetch robots on mount for teacher/admin
+  useEffect(() => {
+    if (canManageKnowledge) {
+      void fetchRobots()
+    }
+  }, [canManageKnowledge, fetchRobots])
+
+  // Load analysis tasks when selected robot changes
+  useEffect(() => {
+    if (selectedRobotId !== null) {
+      void loadAnalysisTasks(selectedRobotId)
+    } else {
+      setAnalysisTasks([])
+    }
+  }, [selectedRobotId, loadAnalysisTasks])
+
+  const handleAddRobot = async (data: RobotModelCreateRequest) => {
+    setAddingRobot(true)
+    try {
+      await addRobot(data)
+      message.success('机器人已创建')
+      setAddDialogOpen(false)
+    } catch {
+      message.error('创建机器人失败')
+    } finally {
+      setAddingRobot(false)
+    }
+  }
+
+  const handleTriggerAnalysis = async () => {
+    if (!selectedRobotId) return
+    try {
+      const { triggerAnalysis } = await import('@/api/robots')
+      await triggerAnalysis(selectedRobotId)
+      await loadAnalysisTasks(selectedRobotId)
+      await fetchRobots()
+      message.success('分析任务已触发')
+    } catch {
+      message.error('触发分析失败')
+    }
+  }
 
   const handleCreate = async (values: {
     title: string
@@ -432,15 +507,53 @@ const KnowledgePage = () => {
           </SectionCard>
         ),
       },
+      // File upload tab (teacher/admin with selected robot)
+      ...(selectedRobotId !== null
+        ? [
+            {
+              key: 'upload',
+              label: '文件上传',
+              children: (
+                <SectionCard title="上传机器人文件">
+                  <FileUploader
+                    robotId={selectedRobotId}
+                    onUploadComplete={() => {
+                      if (selectedRobotId !== null) {
+                        void loadAnalysisTasks(selectedRobotId)
+                      }
+                    }}
+                  />
+                </SectionCard>
+              ),
+            },
+            {
+              key: 'analysis',
+              label: '分析状态',
+              children: (
+                <SectionCard title="AI 分析任务">
+                  <AnalysisStatusPanel
+                    tasks={analysisTasks}
+                    loading={analysisLoading}
+                    onTrigger={() => void handleTriggerAnalysis()}
+                    canTrigger={true}
+                  />
+                </SectionCard>
+              ),
+            },
+          ]
+        : []),
       baseItems[1],
     ]
   }, [
     activeTab,
+    analysisTasks,
+    analysisLoading,
     canManageKnowledge,
     form,
     handleSearch,
     knowledgeColumns,
     knowledgeList,
+    loadAnalysisTasks,
     loading,
     projects,
     projectsLoading,
@@ -448,10 +561,11 @@ const KnowledgePage = () => {
     searchQuery,
     selectedDevice,
     selectedProjectId,
+    selectedRobotId,
     uploadJobs,
   ])
 
-  return (
+  const mainContent = (
     <div className="space-y-6">
       <PageHeader
         title="知识库"
@@ -459,7 +573,51 @@ const KnowledgePage = () => {
         breadcrumb={['通用', '知识库']}
       />
 
+      {/* Publish control bar — shown when a robot is selected */}
+      {canManageKnowledge && selectedRobot ? (
+        <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-elevated px-4 py-2">
+          <div className="text-sm text-text-secondary">
+            <span className="font-medium text-text-primary">{selectedRobot.brand}</span>
+            {' · '}
+            <span>{selectedRobot.model_name}</span>
+            {selectedRobot.version ? (
+              <span className="ml-1 text-text-muted">v{selectedRobot.version}</span>
+            ) : null}
+          </div>
+          <PublishControl
+            robot={selectedRobot}
+            onPublish={() => void togglePublish(selectedRobot.id)}
+            onToggleVisibility={() => void toggleVisibility(selectedRobot.id)}
+          />
+        </div>
+      ) : null}
+
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} />
+    </div>
+  )
+
+  if (!canManageKnowledge) {
+    return <div className="space-y-6">{mainContent}</div>
+  }
+
+  return (
+    <div className="flex gap-0">
+      <RobotSidebar
+        robots={robots}
+        selectedRobotId={selectedRobotId}
+        loading={robotsLoading}
+        onSelect={selectRobot}
+        onAdd={() => setAddDialogOpen(true)}
+      />
+      <div className="min-w-0 flex-1 pl-6">
+        {mainContent}
+      </div>
+      <AddRobotDialog
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        onSubmit={handleAddRobot}
+        submitting={addingRobot}
+      />
     </div>
   )
 }
