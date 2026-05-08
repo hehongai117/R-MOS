@@ -82,4 +82,8 @@ class LocalFileStorage(FileStorageBase):
         return sorted(results)
 
     def get_full_path(self, robot_model_id: int, rel_path: str) -> str:
-        return str(self._robot_dir(robot_model_id) / rel_path)
+        robot_dir = self._robot_dir(robot_model_id).resolve()
+        full = (robot_dir / rel_path).resolve()
+        if not full.is_relative_to(robot_dir):
+            raise ValueError(f"Path traversal detected: {rel_path}")
+        return str(full)

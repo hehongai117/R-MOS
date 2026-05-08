@@ -101,10 +101,14 @@ def upgrade() -> None:
                   sa.Column('robot_model_id', sa.Integer(),
                             sa.ForeignKey('robot_models.id', ondelete='SET NULL'),
                             nullable=True, index=True))
+    op.add_column('knowledge_documents',
+                  sa.Column('generation_status', sa.String(20),
+                            server_default='manual', nullable=True))
 
 
 def downgrade() -> None:
     # Remove columns from existing tables
+    op.drop_column('knowledge_documents', 'generation_status')
     op.drop_column('knowledge_documents', 'robot_model_id')
     op.drop_column('fault_sop_mappings', 'robot_model_id')
     op.drop_column('sops', 'robot_model_id')
@@ -116,8 +120,8 @@ def downgrade() -> None:
     op.drop_table('robot_models')
 
     # Drop enums
-    sa.Enum(name='analysistaskstatus').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='analysistasktype').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='assettype').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='robotstatus').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='robotvisibility').drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS analysistaskstatus")
+    op.execute("DROP TYPE IF EXISTS analysistasktype")
+    op.execute("DROP TYPE IF EXISTS assettype")
+    op.execute("DROP TYPE IF EXISTS robotstatus")
+    op.execute("DROP TYPE IF EXISTS robotvisibility")

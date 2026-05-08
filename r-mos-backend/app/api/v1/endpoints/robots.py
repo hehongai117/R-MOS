@@ -78,11 +78,23 @@ async def get_robot(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
-    """获取机器人详情。"""
+    """获取机器人详情（需绑定关系或共享可见）。"""
     result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
+    if "admin" in actor.roles:
+        return robot
+    if robot.visibility == RobotVisibility.SHARED:
+        return robot
+    binding_result = await db.execute(
+        select(TeacherRobotBinding).where(
+            TeacherRobotBinding.teacher_id == actor.user_id,
+            TeacherRobotBinding.robot_model_id == robot_id,
+        )
+    )
+    if not binding_result.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="无权访问该机器人")
     return robot
 
 
@@ -136,6 +148,7 @@ async def get_robot_asset(
     robot_id: int,
     file_path: str,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """获取机器人资产文件（3D 模型、manifest 等）。"""
     result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
@@ -143,7 +156,10 @@ async def get_robot_asset(
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
 
-    full_path = _storage.get_full_path(robot_model_id=robot_id, rel_path=file_path)
+    try:
+        full_path = _storage.get_full_path(robot_model_id=robot_id, rel_path=file_path)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="非法文件路径")
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="文件不存在")
 
