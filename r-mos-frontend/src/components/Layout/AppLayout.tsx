@@ -32,6 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { type UserRole, useAuthStore } from '@/store/authStore'
+import { useRobotContextStore } from '@/store/robotContextStore'
 
 interface NavItem {
   label: string
@@ -224,6 +225,7 @@ function RoleLayoutShell({
   const navigate = useNavigate()
   const config = LAYOUT_CONFIG[role]
   const displayName = getDisplayName(fullName, email)
+  const { currentRobot, availableRobots, setCurrentRobot } = useRobotContextStore()
 
   return (
     <div className="flex min-h-screen bg-bg-base text-text-primary">
@@ -284,8 +286,33 @@ function RoleLayoutShell({
         </div>
       </aside>
 
-      <main className="ml-[220px] flex-1 overflow-auto p-6">
-        <div className="mx-auto min-h-[calc(100vh-3rem)] max-w-[1600px]">
+      <main className="ml-[220px] flex-1 overflow-auto">
+        {/* 学生角色且有多台机器人时显示顶部机器人切换栏 */}
+        {role === 'student' && availableRobots.length > 1 && (
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border-subtle bg-bg-surface/95 px-6 py-2 backdrop-blur">
+            <Bot className="h-4 w-4 text-text-muted" />
+            <span className="text-xs text-text-secondary">当前机器人:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 rounded-md border border-border-subtle px-3 py-1 text-xs transition-colors hover:bg-bg-elevated">
+                  <span>{currentRobot ? `${currentRobot.brand} ${currentRobot.model_name}` : '请选择机器人'}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {availableRobots.map((r) => (
+                  <DropdownMenuItem
+                    key={r.id}
+                    onClick={() => setCurrentRobot(r)}
+                    className={cn(r.id === currentRobot?.id && 'bg-primary-muted text-primary')}
+                  >
+                    {r.brand} {r.model_name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        <div className="mx-auto min-h-[calc(100vh-3rem)] max-w-[1600px] p-6">
           <Outlet />
         </div>
       </main>
