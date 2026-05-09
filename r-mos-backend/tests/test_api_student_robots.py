@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -10,10 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 import app.models as app_models  # noqa: F401
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.base import Base
-from app.models.user import User
 from app.models.robot_model import RobotModel, RobotStatus, RobotVisibility, TeacherRobotBinding
+from app.models.user import User
 from app.services.authz_guard import ActorContext, get_current_actor
 from main import app
 
@@ -44,8 +46,14 @@ def student_robots_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
 
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as client:
-        yield client, session_factory
+    # 在 lifespan 启动前设置 DEBUG=True，跳过生产环境校验（避免 SQLite 检查失败）
+    _orig_debug = settings.DEBUG
+    settings.DEBUG = True
+    try:
+        with TestClient(app) as client:
+            yield client, session_factory
+    finally:
+        settings.DEBUG = _orig_debug
 
     app.dependency_overrides.clear()
     asyncio.run(engine.dispose())
@@ -54,11 +62,6 @@ def student_robots_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _auth_headers(user_id: int, role: str) -> dict[str, str]:
-    """构造绕过真实 token 校验的 mock headers（通过依赖覆盖注入）。"""
-    return {"X-Test-User-Id": str(user_id), "X-Test-User-Role": role}
-
 
 def _make_actor_override(user_id: int, role: str):
     """为指定用户/角色生成 get_current_actor 覆盖函数。"""
@@ -77,10 +80,10 @@ def _make_actor_override(user_id: int, role: str):
 # ---------------------------------------------------------------------------
 
 async def _setup_teacher_with_robots(session_factory):
-    """创建教师 + 2 个 READY 机器人 + 1 个 DRAFT 机器人，返回 (teacher, ready_robots, draft_robot)。"""
+    """创建教师 + 2 个 READY 机器人 + 1 个 DRAFT 机器人，返回 (teacher_id, ready_ids, draft_id)。"""
     async with session_factory() as session:
         teacher = User(
-            email="teacher_robot@test.com",
+            email=f"teacher_{uuid4().hex[:8]}@test.com",
             password_hash="hashed",
             role="teacher",
             full_name="Robot Teacher",
@@ -114,7 +117,6 @@ async def _setup_teacher_with_robots(session_factory):
             ))
         await session.commit()
 
-        # 刷新获取最新 id
         await session.refresh(teacher)
         await session.refresh(robot_ready_1)
         await session.refresh(robot_ready_2)
@@ -128,7 +130,6 @@ async def _setup_teacher_with_robots(session_factory):
 
 async def _create_student(session_factory, *, teacher_id: int | None) -> int:
     """创建学生用户，返回其 id。"""
-    from uuid import uuid4
     async with session_factory() as session:
         student = User(
             email=f"student_{uuid4().hex[:8]}@test.com",
@@ -193,5 +194,25 @@ def test_student_robots_forbidden_for_other_student(student_robots_env):
     try:
         response = client.get(f"/api/v1/students/{student_id}/robots")
         assert response.status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_actor, None)
+
+
+def test_student_robots_teacher_can_view_any_student(student_robots_env):
+    """教师可以查看任意学生的机器人列表"""
+    client, session_factory = student_robots_env
+
+    teacher_id, ready_ids, _ = asyncio.run(_setup_teacher_with_robots(session_factory))
+    student_id = asyncio.run(_create_student(session_factory, teacher_id=teacher_id))
+
+    # 以教师身份请求学生的机器人列表
+    app.dependency_overrides[get_current_actor] = _make_actor_override(teacher_id, "teacher")
+    try:
+        response = client.get(f"/api/v1/students/{student_id}/robots")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        ids = {item["id"] for item in data["items"]}
+        assert ids == set(ready_ids)
     finally:
         app.dependency_overrides.pop(get_current_actor, None)
