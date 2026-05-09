@@ -24,7 +24,7 @@ class RobotAsset(Base, TimestampMixin):
     asset_type = Column(Enum(AssetType), nullable=False, comment="资产类型")
     file_path = Column(String(500), nullable=False, comment="相对存储路径")
     file_size = Column(Integer, nullable=True, comment="文件大小（字节）")
-    metadata = Column(JSON, nullable=True, comment="元数据（顶点数、节点数等）")
+    asset_metadata = Column(JSON, nullable=True, comment="元数据（顶点数、节点数等）")
 
     robot_model = relationship("RobotModel", back_populates="assets")
 
