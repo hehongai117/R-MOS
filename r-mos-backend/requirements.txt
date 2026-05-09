@@ -40,3 +40,4 @@ redis>=5.0.0
 
 # PDF processing (Phase 3)
 PyMuPDF>=1.24.0
+trimesh
