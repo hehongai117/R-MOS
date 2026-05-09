@@ -24,6 +24,7 @@ from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTas
 from app.schemas.analysis_task import AnalysisTaskResponse, AnalysisTaskListResponse
 
 router = APIRouter(prefix="/robots", tags=["robots"])
+students_router = APIRouter(prefix="/students", tags=["students"])
 
 # Initialize storage (will be replaced with DI later)
 _storage = LocalFileStorage()
@@ -361,3 +362,36 @@ async def get_robot_asset(
     media_type = content_types.get(ext, "application/octet-stream")
 
     return FileResponse(full_path, media_type=media_type)
+
+
+@students_router.get("/{student_id}/robots", response_model=RobotModelListResponse)
+async def list_student_robots(
+    student_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """学生查看绑定教师名下已发布(READY)的机器人列表。"""
+    # 权限检查：只能查自己的，教师/管理员可查任意学生
+    if "admin" not in actor.roles and "teacher" not in actor.roles:
+        if actor.user_id != student_id:
+            raise HTTPException(status_code=403, detail="只能查看自己的机器人列表")
+
+    from app.models.user import User
+    student_result = await db.execute(select(User).where(User.id == student_id))
+    student = student_result.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="学生不存在")
+    if not student.teacher_id:
+        return RobotModelListResponse(items=[], total=0)
+
+    stmt = (
+        select(RobotModel)
+        .join(TeacherRobotBinding, TeacherRobotBinding.robot_model_id == RobotModel.id)
+        .where(
+            TeacherRobotBinding.teacher_id == student.teacher_id,
+            RobotModel.status == RobotStatus.READY,
+        )
+    )
+    result = await db.execute(stmt)
+    items = list(result.scalars().all())
+    return RobotModelListResponse(items=items, total=len(items))
