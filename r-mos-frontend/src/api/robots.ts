@@ -84,3 +84,9 @@ export async function toggleVisibility(robotId: number): Promise<RobotModel> {
   const response = await apiClient.put<RobotModel>(`/robots/${robotId}/visibility`)
   return response.data
 }
+
+/** 学生查看可用机器人列表 */
+export async function listStudentRobots(studentId: number): Promise<RobotModelListResponse> {
+  const response = await apiClient.get<RobotModelListResponse>(`/students/${studentId}/robots`)
+  return response.data
+}
