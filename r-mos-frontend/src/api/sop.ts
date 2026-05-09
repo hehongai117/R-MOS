@@ -17,6 +17,7 @@ export interface ListSOPsParams {
     limit?: number
     category?: string
     applicable_model?: string
+    robot_model_id?: number
 }
 
 /**
@@ -24,9 +25,9 @@ export interface ListSOPsParams {
  * 注意：后端实际返回数组格式，这里转换为分页格式以兼容前端组件
  */
 export async function listSOPs(params: ListSOPsParams = {}): Promise<SOPListResponse> {
-    const { skip = 0, limit = 20, category, applicable_model } = params
+    const { skip = 0, limit = 20, category, applicable_model, robot_model_id } = params
     const response = await apiClient.get<SOP[]>('/sops', {
-        params: { skip, limit, category, applicable_model },
+        params: { skip, limit, category, applicable_model, robot_model_id },
     })
     // 后端返回数组，转换为分页格式
     const items = response.data

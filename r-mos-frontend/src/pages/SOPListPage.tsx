@@ -8,9 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { listSOPs } from '@/api/sop';
 import { createTask } from '@/api/task';
 import { SOPListItem } from '@/types/sop';
+import { useRobotContextStore } from '@/store/robotContextStore';
 
 const SOPListPage: React.FC = () => {
   const navigate = useNavigate();
+  const currentRobotId = useRobotContextStore((s) => s.currentRobotId);
   const [loading, setLoading] = useState(false);
   const [sops, setSOPs] = useState<SOPListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -24,6 +26,7 @@ const SOPListPage: React.FC = () => {
       const response = await listSOPs({
         skip: (page - 1) * pageSize,
         limit: pageSize,
+        robot_model_id: currentRobotId ?? undefined,
       });
       setSOPs(response.items);
       setTotal(response.total);
@@ -36,7 +39,7 @@ const SOPListPage: React.FC = () => {
 
   useEffect(() => {
     fetchSOPs();
-  }, [page, pageSize]);
+  }, [page, pageSize, currentRobotId]);
 
   const handleCreateTask = async (sop: SOPListItem) => {
     setCreating(true);

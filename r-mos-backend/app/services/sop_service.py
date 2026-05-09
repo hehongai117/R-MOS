@@ -83,18 +83,22 @@ class SOPService:
         self,
         applicable_model: Optional[str] = None,
         category: Optional[str] = None,
+        robot_model_id: Optional[int] = None,
         skip: int = 0,
         limit: int = 100
     ) -> List[SOP]:
         """查询SOP列表"""
         query = select(SOP)
-        
+
         if applicable_model:
             query = query.where(SOP.applicable_model == applicable_model)
-        
+
         if category:
             query = query.where(SOP.category == category)
-        
+
+        if robot_model_id is not None:
+            query = query.where(SOP.robot_model_id == robot_model_id)
+
         query = query.offset(skip).limit(limit).order_by(SOP.created_at.desc())
         
         result = await self.db.execute(query)

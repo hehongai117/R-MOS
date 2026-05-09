@@ -77,6 +77,7 @@ async def get_sop(
 async def list_sops(
     applicable_model: Optional[str] = Query(None, description="过滤：机器人型号"),
     category: Optional[str] = Query(None, description="过滤：分类"),
+    robot_model_id: Optional[int] = Query(None, description="过滤：机器人型号ID"),
     skip: int = Query(0, ge=0, description="跳过数量"),
     limit: int = Query(100, ge=1, le=500, description="返回数量"),
     db: AsyncSession = Depends(get_db)
@@ -87,6 +88,7 @@ async def list_sops(
         sops = await service.list_sops(
             applicable_model=applicable_model,
             category=category,
+            robot_model_id=robot_model_id,
             skip=skip,
             limit=limit
         )

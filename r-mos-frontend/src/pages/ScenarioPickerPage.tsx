@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dumbbell, Sparkles, Play } from 'lucide-react'
 import { fetchScenarios, type ScenarioItem } from '@/api/scenarios'
+import { useRobotContextStore } from '@/store/robotContextStore'
 
 type Difficulty = 'all' | 'beginner' | 'intermediate' | 'advanced'
 
@@ -26,14 +27,15 @@ export default function ScenarioPickerPage() {
   const [scenarios, setScenarios] = useState<ScenarioItem[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const currentRobotId = useRobotContextStore((s) => s.currentRobotId)
 
   useEffect(() => {
     setLoading(true)
-    fetchScenarios(difficulty)
+    fetchScenarios(difficulty, currentRobotId ?? undefined)
       .then((res) => setScenarios(res.items))
       .catch(() => setScenarios([]))
       .finally(() => setLoading(false))
-  }, [difficulty])
+  }, [difficulty, currentRobotId])
 
   return (
     <div className="space-y-6">

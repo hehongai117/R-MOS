@@ -33,6 +33,7 @@ class ScenarioListResponse(BaseModel):
 async def list_scenarios(
     difficulty: Optional[str] = Query(None, description="难度筛选: beginner/intermediate/advanced"),
     fault_type: Optional[str] = Query(None, description="故障类型筛选"),
+    robot_model_id: Optional[int] = Query(None, description="机器人型号ID筛选"),
     db: AsyncSession = Depends(get_db),
 ):
     """获取可用练习场景列表"""
@@ -46,6 +47,8 @@ async def list_scenarios(
         query = query.where(FaultSOPMapping.difficulty == difficulty)
     if fault_type:
         query = query.where(FaultSOPMapping.fault_type == fault_type)
+    if robot_model_id is not None:
+        query = query.where(FaultSOPMapping.robot_model_id == robot_model_id)
 
     result = await db.execute(query)
     rows = result.all()
