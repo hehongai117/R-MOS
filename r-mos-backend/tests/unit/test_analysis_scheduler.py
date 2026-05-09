@@ -82,3 +82,4 @@ async def test_dispatch_full_runs_all_sub_processors(scheduler, mock_task):
     assert mock_task.status == AnalysisTaskStatus.COMPLETED
     mock_pdf.assert_awaited_once()
     mock_sop.assert_awaited_once()
+    mock_cad.assert_awaited_once()

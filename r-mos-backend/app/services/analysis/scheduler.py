@@ -1,8 +1,13 @@
 """AnalysisScheduler — 从数据库取 AnalysisTask，按类型分发到处理器，管理状态流转。"""
+import logging
 from datetime import datetime, timezone
 from typing import Callable
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
+
+logger = logging.getLogger(__name__)
 
 
 async def process_pdf_extract(task: AnalysisTask, db) -> dict:
@@ -42,27 +47,29 @@ class AnalysisScheduler:
         }
         return mapping[task_type]
 
-    async def dispatch(self, task: AnalysisTask, db) -> None:
+    async def dispatch(self, task: AnalysisTask, db: AsyncSession) -> None:
         """执行任务调度：PENDING → RUNNING，调用处理器，→ COMPLETED/FAILED，commit。"""
         # 1. 标记为 RUNNING 并提交
         task.status = AnalysisTaskStatus.RUNNING
         await db.commit()
-
-        processor = self._get_processor(task.task_type)
+        logger.info("Task %s (type=%s) RUNNING", task.id, task.task_type)
 
         try:
+            processor = self._get_processor(task.task_type)
             result = await processor(task, db)
             task.status = AnalysisTaskStatus.COMPLETED
             task.output_summary = result
             task.completed_at = datetime.now(timezone.utc)
+            logger.info("Task %s COMPLETED", task.id)
         except Exception as e:
             task.status = AnalysisTaskStatus.FAILED
             task.error_message = str(e)
             task.completed_at = datetime.now(timezone.utc)
+            logger.error("Task %s FAILED: %s", task.id, e)
 
         await db.commit()
 
-    async def _process_full(self, task: AnalysisTask, db) -> dict:
+    async def _process_full(self, task: AnalysisTask, db: AsyncSession) -> dict:
         """FULL 类型：依次运行 PDF 提取 → SOP 生成 → CAD 解析。
 
         每个子步骤的异常单独捕获，只在结果中记录 error，整体任务仍然 COMPLETED。
