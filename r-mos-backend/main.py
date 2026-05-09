@@ -6,6 +6,7 @@ R-MOS Backend 应用入口（V2.2完整版）
 - WebSocket路由不添加前缀（直接/ws/robot/status）
 - 必须配置CORS、异常处理、日志中间件
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -26,6 +27,7 @@ from app.core.exceptions import (
 )
 from app.adapters.factory import AdapterFactory
 from app.api.v1 import api_router, websocket_router
+from app.services.analysis.worker import analysis_worker
 
 # 配置日志
 setup_logging()
@@ -56,8 +58,16 @@ async def lifespan(app: FastAPI):
         logger.error(f"Adapter连接失败: {e}")
         raise
     
+    # 启动分析 Worker（后台任务）
+    asyncio.create_task(analysis_worker.start())
+    logger.info("分析 Worker 后台任务已启动")
+
     yield
-    
+
+    # 停止分析 Worker
+    await analysis_worker.stop()
+    logger.info("分析 Worker 已停止")
+
     # 关闭事件
     logger.info("R-MOS Backend 关闭中...")
     await AdapterFactory.close_adapter()
