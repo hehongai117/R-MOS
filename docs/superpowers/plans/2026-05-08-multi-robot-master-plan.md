@@ -13,7 +13,7 @@
 | 0 | 数据模型 + 存储 + 迁移基础 | 10 | 无 | ✅ 已完成 |
 | 1 | 文件上传 + 机器人完整 API | 6 | Phase 0 | ✅ 已完成 |
 | 2 | 教师前端（知识库 + 机器人管理） | 8 | Phase 1 | ✅ 已完成 |
-| 3 | AI 分析管线 | 7 | Phase 1 | ⬚ 未开始 |
+| 3 | AI 分析管线 | 7 | Phase 1 | ✅ 已完成 |
 | 4 | 学生前端（机器人选择 + 上下文切换） | 6 | Phase 2 | ⬚ 未开始 |
 | 5 | 3D 查看器动态加载 | 5 | Phase 1, Phase 4 | ⬚ 未开始 |
 | 6 | 共享市场（授权引用 + 同步） | 5 | Phase 2 | ⬚ 未开始 |
@@ -108,22 +108,33 @@ Phase 0 (✅ 已完成)
 
 ---
 
-## Phase 3: AI 分析管线
+## Phase 3: AI 分析管线 ✅
 
 > **目标:** 上传 PDF 后自动提取 SOP/故障码/知识文档；CAD 文件转 GLB
 > **前置:** Phase 1（上传接口 + AnalysisTask 记录）
 > **可与 Phase 2 并行**
-> **预估 Task:** 7
+> **完成日期:** 2026-05-09
 
 | # | Task | 涉及文件 | 说明 |
 |---|------|---------|------|
-| 3.1 | 分析任务调度器 | `services/analysis/scheduler.py`(新) | 从 pending 队列取任务，按类型分发到不同处理器 |
-| 3.2 | PDF 文档切片器 | `services/analysis/pdf_extractor.py`(新) | PDF → 文本切片 → knowledge_document (generation_status=ai_draft) |
-| 3.3 | SOP 提取器 | `services/analysis/sop_extractor.py`(新) | 从文本中提取维保步骤 → SOP 草稿 (generation_status=ai_draft) |
-| 3.4 | 故障码提取器 | `services/analysis/fault_extractor.py`(新) | 从文本中提取故障码/症状 → fault_sop_mapping 记录 |
-| 3.5 | CAD → GLB 转换器 | `services/analysis/cad_converter.py`(新) | STEP/STP → GLB 转换 (OpenCascade/trimesh)，质量检查 |
-| 3.6 | 装配清单生成器 | `services/analysis/manifest_generator.py`(新) | 解析 GLB 节点树 → assembly_manifest JSON 草稿 |
-| 3.7 | 后台 Worker 启动 | `services/analysis/worker.py`(新), `main.py` | 后台异步任务执行器，状态更新 + 错误处理 |
+| 3.1 ✅ | 分析任务调度器 | `services/analysis/scheduler.py` | 从 pending 队列取任务，按类型分发到不同处理器 |
+| 3.2 ✅ | PDF 文档切片器 | `services/analysis/pdf_extractor.py` | PDF → 文本切片 → knowledge_document (generation_status=ai_draft) |
+| 3.3 ✅ | SOP 提取器 | `services/analysis/sop_extractor.py` | LLM 从文档中提取维保步骤 → SOP + SOPStep 草稿 |
+| 3.4 ✅ | 故障码提取器 | `services/analysis/fault_extractor.py` | LLM 从文档中提取故障码/症状，返回 output_summary |
+| 3.5 ✅ | CAD → GLB 转换器 | `services/analysis/cad_converter.py` | STEP/STP → GLB 转换 (trimesh)，质量检查 |
+| 3.6 ✅ | 装配清单生成器 | `services/analysis/manifest_generator.py` | 解析 GLB 节点树 → assembly_manifest JSON 草稿 |
+| 3.7 ✅ | 后台 Worker 启动 | `services/analysis/worker.py`, `main.py` | 后台异步任务执行器，状态更新 + 错误处理 |
+
+**产出文件:**
+- `r-mos-backend/app/services/analysis/__init__.py`
+- `r-mos-backend/app/services/analysis/scheduler.py`
+- `r-mos-backend/app/services/analysis/pdf_extractor.py`
+- `r-mos-backend/app/services/analysis/sop_extractor.py`
+- `r-mos-backend/app/services/analysis/fault_extractor.py`
+- `r-mos-backend/app/services/analysis/cad_converter.py`
+- `r-mos-backend/app/services/analysis/manifest_generator.py`
+- `r-mos-backend/app/services/analysis/worker.py`
+- `r-mos-backend/main.py` (修改：lifespan 集成 worker)
 
 ---
 

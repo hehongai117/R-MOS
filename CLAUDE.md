@@ -1,5 +1,10 @@
 # R-MOS (Robot Maintenance Operating System)
 
+## AI 协作规范
+
+- **模型分工：** 所有 Plan 编写使用 Opus 模型；所有 Task 执行默认使用 Sonnet 模型；遇到非常复杂的 Task 可切换为 Opus 模型；执行过程中根据任务复杂度自动切换，无需用户干预。
+- **执行方式：** 所有 Phase 下的 Task 全部使用 Subagent-Driven 方式（每个 Task 派发独立 subagent，任务间 review，快速迭代）。
+
 ## Project Context
 
 R-MOS is a full-stack application for robot maintenance training and monitoring. The system uses mock adapters for robot simulation in MVP phase.
@@ -26,7 +31,7 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 | 0 | Data models + storage + migration | 10 | ✅ Done |
 | 1 | File upload + full robot API | 6 | ✅ Done |
 | 2 | Teacher frontend (knowledge + robot mgmt) | 10 | ✅ Done |
-| 3 | AI analysis pipeline | 7 | ⬚ Not started |
+| 3 | AI analysis pipeline | 7 | ✅ Done |
 | 4 | Student frontend (robot selection + context switch) | 6 | ⬚ Not started |
 | 5 | 3D viewer dynamic loading | 5 | ⬚ Not started |
 | 6 | Sharing marketplace | 5 | ⬚ Not started |
