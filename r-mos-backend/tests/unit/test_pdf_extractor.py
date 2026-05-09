@@ -27,6 +27,7 @@ def mock_task():
 async def test_process_creates_knowledge_documents(extractor, mock_task):
     """应为每个 PDF 页面创建 KnowledgeDocument (ai_draft)。"""
     mock_db = AsyncMock()
+    mock_db.add = MagicMock()
     mock_asset = MagicMock(spec=RobotAsset)
     mock_asset.id = 100
     mock_asset.robot_model_id = 10
@@ -56,6 +57,7 @@ async def test_process_creates_knowledge_documents(extractor, mock_task):
 async def test_process_no_pdf_assets(extractor, mock_task):
     """没有 PDF 资产时应返回 documents_created=0。"""
     mock_db = AsyncMock()
+    mock_db.add = MagicMock()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_db.execute = AsyncMock(return_value=mock_result)

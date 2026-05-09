@@ -72,6 +72,7 @@ class PdfExtractor:
                     doc_type="manual",
                     generation_status="ai_draft",
                     robot_model_id=task.robot_model_id,
+                    status="PENDING",
                 )
                 db.add(doc)
                 documents_created += 1
