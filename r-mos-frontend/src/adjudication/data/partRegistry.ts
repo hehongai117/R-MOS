@@ -11,6 +11,10 @@ const MODEL_BASE_URL = import.meta.env.VITE_MODEL_BASE_URL || '/models';
 const ROBOT_BASE = getRobotModelBase('atom01');
 const PARTS_BASE = `${MODEL_BASE_URL}/parts`;
 
+export function getPartRegistryBase(robotId: string = 'atom01'): string {
+    return getRobotModelBase(robotId);
+}
+
 /**
  * Atom01 零件元数据 (从 Atom01Interactive.tsx 迁移并扩展)
  */

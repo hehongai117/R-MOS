@@ -39,6 +39,11 @@ export interface ScrewDetailRecord {
 }
 
 const ROBOT_MODEL_BASE = getRobotModelBase('atom01');
+
+export function getMaintenanceKnowledgeBase(robotId: string = 'atom01'): string {
+    return getRobotModelBase(robotId);
+}
+
 const GROUP_NAMES: Record<CoreGroup, string> = {
     base: '底座',
     torso: '躯干',

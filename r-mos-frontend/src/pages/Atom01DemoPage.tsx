@@ -22,6 +22,7 @@ import {
 import { Atom01Viewer } from '@/components/Viewer3D';
 import { useAtom01AssemblyData } from '@/components/Viewer3D/hooks/useAtom01AssemblyData';
 import { resolveExplodeView } from '@/components/Viewer3D/assemblyManifest';
+import { useRobotContextStore } from '@/store/robotContextStore';
 
 const { Title, Text } = Typography;
 const DEFAULT_VIEW_ID = 'default_view';
@@ -104,6 +105,8 @@ function formatExplodeViewLabel(viewId: string): string {
 }
 
 function Atom01DemoPage() {
+    const currentRobot = useRobotContextStore((s) => s.currentRobot);
+    const robotId = currentRobot ? String(currentRobot.id) : 'atom01';
     const [jointAngles, setJointAngles] = useState<Record<string, number>>({});
     const [faultJoints, setFaultJoints] = useState<string[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<string>('leftLeg');
@@ -112,7 +115,7 @@ function Atom01DemoPage() {
     const [cadExplodeEnabled, setCadExplodeEnabled] = useState(false);
     const [explodeStepIndex, setExplodeStepIndex] = useState(0);
     const [selectedExplodeViewId, setSelectedExplodeViewId] = useState<string>(DEFAULT_VIEW_ID);
-    const { explodeManifest, isLoading: isAssemblyLoading, error: assemblyError } = useAtom01AssemblyData(true);
+    const { explodeManifest, isLoading: isAssemblyLoading, error: assemblyError } = useAtom01AssemblyData(true, robotId);
 
     // 更新单个关节角度
     const updateJoint = useCallback((jointName: string, value: number) => {
@@ -424,6 +427,7 @@ function Atom01DemoPage() {
                         <Atom01Viewer
                             width="100%"
                             height="100%"
+                            robotId={robotId}
                             cameraPosition={viewerPosition}
                             cameraProjection={viewerProjection}
                             cameraTarget={viewerTarget}

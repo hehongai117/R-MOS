@@ -79,6 +79,7 @@ import {
 } from '@/adjudication';
 import { useSOPSceneSync } from '@/adjudication/ui/useSOPSceneSync';
 import { scoringEngine } from '@/adjudication/core/scoringEngine';
+import { useRobotContextStore } from '@/store/robotContextStore';
 
 const { Title, Text } = Typography;
 const EXAM_DURATION_MS = 60 * 60 * 1000;
@@ -244,6 +245,8 @@ const LoadingFallback = () => (
 );
 
 function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
+    const currentRobot = useRobotContextStore((s) => s.currentRobot);
+    const robotId = currentRobot ? String(currentRobot.id) : 'atom01';
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const sopParam = searchParams.get('sop');
@@ -1390,6 +1393,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                                     ) : (
                                         <>
                                             <Atom01Interactive
+                                                robotId={robotId}
                                                 scale={viewerModelScale}
                                                 position={[0, 0.5, 0]}
                                                 explodeAmount={effectiveExplodeAmount}

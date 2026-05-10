@@ -23,6 +23,7 @@ import type { SOP } from '@/types/sop'
 import type { Task } from '@/types/task'
 import { resolveTargetPart, resolveToolLabel } from '@/teaching/utils/ghostHand'
 import { formatTeachingError } from '@/teaching/utils/api'
+import { useRobotContextStore } from '@/store/robotContextStore'
 
 const GhostToolMarker = ({ targetPart }: { targetPart?: string | null }) => {
   if (!targetPart) return null
@@ -45,6 +46,8 @@ const 三维加载占位 = () => (
 )
 
 const TeachingAttemptPage = () => {
+  const currentRobot = useRobotContextStore((s) => s.currentRobot);
+  const robotId = currentRobot ? String(currentRobot.id) : 'atom01';
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
@@ -202,6 +205,7 @@ const TeachingAttemptPage = () => {
                 <directionalLight position={[4, 6, 3]} intensity={0.8} />
                 <Suspense fallback={<三维加载占位 />}>
                   <Atom01Interactive
+                    robotId={robotId}
                     selectedPart={targetPart}
                     hoveredPart={null}
                   />
