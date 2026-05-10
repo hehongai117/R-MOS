@@ -18,29 +18,9 @@ import { useGLTF } from '@react-three/drei';
 import { getRobotModelBase } from '../../config/robots';
 import * as THREE from 'three';
 
-// GLB 模型路径
-const MODEL_BASE_PATH = getRobotModelBase('atom01');
-
-// Link 名称列表
-const LINK_NAMES = [
-    'base_link', 'torso_link',
-    'left_thigh_yaw_link', 'left_thigh_roll_link', 'left_thigh_pitch_link',
-    'left_knee_link', 'left_ankle_pitch_link', 'left_ankle_roll_link',
-    'right_thigh_yaw_link', 'right_thigh_roll_link', 'right_thigh_pitch_link',
-    'right_knee_link', 'right_ankle_pitch_link', 'right_ankle_roll_link',
-    'left_arm_pitch_link', 'left_arm_roll_link', 'left_arm_yaw_link',
-    'left_elbow_pitch_link', 'left_elbow_yaw_link',
-    'right_arm_pitch_link', 'right_arm_roll_link', 'right_arm_yaw_link',
-    'right_elbow_pitch_link', 'right_elbow_yaw_link',
-];
-
-// 预加载 GLB 文件
-LINK_NAMES.forEach(name => {
-    useGLTF.preload(`${MODEL_BASE_PATH}/${name}.glb`);
-});
-
 // Props 接口
 export interface Atom01ModelProps {
+    robotId?: string;
     jointAngles?: Record<string, number>;
     faultJoints?: string[];
     highlightLinks?: string[];
@@ -51,11 +31,12 @@ export interface Atom01ModelProps {
 // 单个 Link 组件
 const LinkMesh: React.FC<{
     name: string;
+    modelBasePath: string;
     isFault?: boolean;
     isHighlighted?: boolean;
-}> = ({ name, isFault = false, isHighlighted = false }) => {
+}> = ({ name, modelBasePath, isFault = false, isHighlighted = false }) => {
     const meshRef = useRef<THREE.Group>(null);
-    const { scene } = useGLTF(`${MODEL_BASE_PATH}/${name}.glb`);
+    const { scene } = useGLTF(`${modelBasePath}/${name}.glb`);
 
     const clonedScene = useMemo(() => {
         const cloned = scene.clone();
@@ -130,12 +111,14 @@ const JOINTS: Record<string, { axis: [number, number, number] }> = {
 
 // 主模型组件
 export const Atom01Model: React.FC<Atom01ModelProps> = ({
+    robotId = 'atom01',
     jointAngles = {},
     faultJoints = [],
     highlightLinks = [],
     scale = 1,
     position = [0, 0, 0],
 }) => {
+    const modelBasePath = useMemo(() => getRobotModelBase(robotId), [robotId]);
     const groupRef = useRef<THREE.Group>(null);
     const jointRefs = useRef<Record<string, THREE.Group | null>>({});
 
@@ -164,14 +147,14 @@ export const Atom01Model: React.FC<Atom01ModelProps> = ({
             <group rotation={[-Math.PI / 2, 0, 0]}>
                 {/* Base Link */}
                 <group>
-                    <LinkMesh name="base_link" isFault={isFault('base_link')} isHighlighted={isHighlighted('base_link')} />
+                    <LinkMesh name="base_link" isFault={isFault('base_link')} isHighlighted={isHighlighted('base_link')} modelBasePath={modelBasePath} />
 
                     {/* Torso - xyz="-0.028 0 0.067" from URDF */}
                     <group
                         ref={el => jointRefs.current['torso_joint'] = el}
                         position={[-0.028, 0, 0.067]}
                     >
-                        <LinkMesh name="torso_link" isFault={isFault('torso_link')} isHighlighted={isHighlighted('torso_link')} />
+                        <LinkMesh name="torso_link" isFault={isFault('torso_link')} isHighlighted={isHighlighted('torso_link')} modelBasePath={modelBasePath} />
 
                         {/* === 左臂链 === */}
                         {/* left_arm_pitch_joint: xyz="0 0.122 0.206" */}
@@ -179,31 +162,31 @@ export const Atom01Model: React.FC<Atom01ModelProps> = ({
                             ref={el => jointRefs.current['left_arm_pitch_joint'] = el}
                             position={[0, 0.122, 0.206]}
                         >
-                            <LinkMesh name="left_arm_pitch_link" isFault={isFault('left_arm_pitch_link')} isHighlighted={isHighlighted('left_arm_pitch_link')} />
+                            <LinkMesh name="left_arm_pitch_link" isFault={isFault('left_arm_pitch_link')} isHighlighted={isHighlighted('left_arm_pitch_link')} modelBasePath={modelBasePath} />
                             {/* left_arm_roll_joint: xyz="0.02 0.056 0" */}
                             <group
                                 ref={el => jointRefs.current['left_arm_roll_joint'] = el}
                                 position={[0.02, 0.056, 0]}
                             >
-                                <LinkMesh name="left_arm_roll_link" isFault={isFault('left_arm_roll_link')} isHighlighted={isHighlighted('left_arm_roll_link')} />
+                                <LinkMesh name="left_arm_roll_link" isFault={isFault('left_arm_roll_link')} isHighlighted={isHighlighted('left_arm_roll_link')} modelBasePath={modelBasePath} />
                                 {/* left_arm_yaw_joint: xyz="-0.02 0 -0.05" */}
                                 <group
                                     ref={el => jointRefs.current['left_arm_yaw_joint'] = el}
                                     position={[-0.02, 0, -0.05]}
                                 >
-                                    <LinkMesh name="left_arm_yaw_link" isFault={isFault('left_arm_yaw_link')} isHighlighted={isHighlighted('left_arm_yaw_link')} />
+                                    <LinkMesh name="left_arm_yaw_link" isFault={isFault('left_arm_yaw_link')} isHighlighted={isHighlighted('left_arm_yaw_link')} modelBasePath={modelBasePath} />
                                     {/* left_elbow_pitch_joint: xyz="0 0.02 -0.189" */}
                                     <group
                                         ref={el => jointRefs.current['left_elbow_pitch_joint'] = el}
                                         position={[0, 0.02, -0.189]}
                                     >
-                                        <LinkMesh name="left_elbow_pitch_link" isFault={isFault('left_elbow_pitch_link')} isHighlighted={isHighlighted('left_elbow_pitch_link')} />
+                                        <LinkMesh name="left_elbow_pitch_link" isFault={isFault('left_elbow_pitch_link')} isHighlighted={isHighlighted('left_elbow_pitch_link')} modelBasePath={modelBasePath} />
                                         {/* left_elbow_yaw_joint: xyz="0.05 -0.02 0" */}
                                         <group
                                             ref={el => jointRefs.current['left_elbow_yaw_joint'] = el}
                                             position={[0.05, -0.02, 0]}
                                         >
-                                            <LinkMesh name="left_elbow_yaw_link" isFault={isFault('left_elbow_yaw_link')} isHighlighted={isHighlighted('left_elbow_yaw_link')} />
+                                            <LinkMesh name="left_elbow_yaw_link" isFault={isFault('left_elbow_yaw_link')} isHighlighted={isHighlighted('left_elbow_yaw_link')} modelBasePath={modelBasePath} />
                                         </group>
                                     </group>
                                 </group>
@@ -216,31 +199,31 @@ export const Atom01Model: React.FC<Atom01ModelProps> = ({
                             ref={el => jointRefs.current['right_arm_pitch_joint'] = el}
                             position={[0, -0.122, 0.206]}
                         >
-                            <LinkMesh name="right_arm_pitch_link" isFault={isFault('right_arm_pitch_link')} isHighlighted={isHighlighted('right_arm_pitch_link')} />
+                            <LinkMesh name="right_arm_pitch_link" isFault={isFault('right_arm_pitch_link')} isHighlighted={isHighlighted('right_arm_pitch_link')} modelBasePath={modelBasePath} />
                             {/* right_arm_roll_joint: xyz="0.02 -0.056 0" */}
                             <group
                                 ref={el => jointRefs.current['right_arm_roll_joint'] = el}
                                 position={[0.02, -0.056, 0]}
                             >
-                                <LinkMesh name="right_arm_roll_link" isFault={isFault('right_arm_roll_link')} isHighlighted={isHighlighted('right_arm_roll_link')} />
+                                <LinkMesh name="right_arm_roll_link" isFault={isFault('right_arm_roll_link')} isHighlighted={isHighlighted('right_arm_roll_link')} modelBasePath={modelBasePath} />
                                 {/* right_arm_yaw_joint: xyz="-0.02 0 -0.05" */}
                                 <group
                                     ref={el => jointRefs.current['right_arm_yaw_joint'] = el}
                                     position={[-0.02, 0, -0.05]}
                                 >
-                                    <LinkMesh name="right_arm_yaw_link" isFault={isFault('right_arm_yaw_link')} isHighlighted={isHighlighted('right_arm_yaw_link')} />
+                                    <LinkMesh name="right_arm_yaw_link" isFault={isFault('right_arm_yaw_link')} isHighlighted={isHighlighted('right_arm_yaw_link')} modelBasePath={modelBasePath} />
                                     {/* right_elbow_pitch_joint: xyz="0 -0.02 -0.189" */}
                                     <group
                                         ref={el => jointRefs.current['right_elbow_pitch_joint'] = el}
                                         position={[0, -0.02, -0.189]}
                                     >
-                                        <LinkMesh name="right_elbow_pitch_link" isFault={isFault('right_elbow_pitch_link')} isHighlighted={isHighlighted('right_elbow_pitch_link')} />
+                                        <LinkMesh name="right_elbow_pitch_link" isFault={isFault('right_elbow_pitch_link')} isHighlighted={isHighlighted('right_elbow_pitch_link')} modelBasePath={modelBasePath} />
                                         {/* right_elbow_yaw_joint: xyz="0.05 0.02 0" */}
                                         <group
                                             ref={el => jointRefs.current['right_elbow_yaw_joint'] = el}
                                             position={[0.05, 0.02, 0]}
                                         >
-                                            <LinkMesh name="right_elbow_yaw_link" isFault={isFault('right_elbow_yaw_link')} isHighlighted={isHighlighted('right_elbow_yaw_link')} />
+                                            <LinkMesh name="right_elbow_yaw_link" isFault={isFault('right_elbow_yaw_link')} isHighlighted={isHighlighted('right_elbow_yaw_link')} modelBasePath={modelBasePath} />
                                         </group>
                                     </group>
                                 </group>
@@ -254,32 +237,32 @@ export const Atom01Model: React.FC<Atom01ModelProps> = ({
                         ref={el => jointRefs.current['left_thigh_yaw_joint'] = el}
                         position={[-0.071, 0.0725, -0.052]}
                     >
-                        <LinkMesh name="left_thigh_yaw_link" isFault={isFault('left_thigh_yaw_link')} isHighlighted={isHighlighted('left_thigh_yaw_link')} />
+                        <LinkMesh name="left_thigh_yaw_link" isFault={isFault('left_thigh_yaw_link')} isHighlighted={isHighlighted('left_thigh_yaw_link')} modelBasePath={modelBasePath} />
                         <group
                             ref={el => jointRefs.current['left_thigh_roll_joint'] = el}
                             position={[-0.018, 0, -0.072]}
                         >
-                            <LinkMesh name="left_thigh_roll_link" isFault={isFault('left_thigh_roll_link')} isHighlighted={isHighlighted('left_thigh_roll_link')} />
+                            <LinkMesh name="left_thigh_roll_link" isFault={isFault('left_thigh_roll_link')} isHighlighted={isHighlighted('left_thigh_roll_link')} modelBasePath={modelBasePath} />
                             <group
                                 ref={el => jointRefs.current['left_thigh_pitch_joint'] = el}
                                 position={[0.061, 0.021, -0.035]}
                             >
-                                <LinkMesh name="left_thigh_pitch_link" isFault={isFault('left_thigh_pitch_link')} isHighlighted={isHighlighted('left_thigh_pitch_link')} />
+                                <LinkMesh name="left_thigh_pitch_link" isFault={isFault('left_thigh_pitch_link')} isHighlighted={isHighlighted('left_thigh_pitch_link')} modelBasePath={modelBasePath} />
                                 <group
                                     ref={el => jointRefs.current['left_knee_joint'] = el}
                                     position={[0, 0, -0.25]}
                                 >
-                                    <LinkMesh name="left_knee_link" isFault={isFault('left_knee_link')} isHighlighted={isHighlighted('left_knee_link')} />
+                                    <LinkMesh name="left_knee_link" isFault={isFault('left_knee_link')} isHighlighted={isHighlighted('left_knee_link')} modelBasePath={modelBasePath} />
                                     <group
                                         ref={el => jointRefs.current['left_ankle_pitch_joint'] = el}
                                         position={[0, -0.021, -0.3]}
                                     >
-                                        <LinkMesh name="left_ankle_pitch_link" isFault={isFault('left_ankle_pitch_link')} isHighlighted={isHighlighted('left_ankle_pitch_link')} />
+                                        <LinkMesh name="left_ankle_pitch_link" isFault={isFault('left_ankle_pitch_link')} isHighlighted={isHighlighted('left_ankle_pitch_link')} modelBasePath={modelBasePath} />
                                         <group
                                             ref={el => jointRefs.current['left_ankle_roll_joint'] = el}
                                             position={[0, 0, 0]}
                                         >
-                                            <LinkMesh name="left_ankle_roll_link" isFault={isFault('left_ankle_roll_link')} isHighlighted={isHighlighted('left_ankle_roll_link')} />
+                                            <LinkMesh name="left_ankle_roll_link" isFault={isFault('left_ankle_roll_link')} isHighlighted={isHighlighted('left_ankle_roll_link')} modelBasePath={modelBasePath} />
                                         </group>
                                     </group>
                                 </group>
@@ -293,32 +276,32 @@ export const Atom01Model: React.FC<Atom01ModelProps> = ({
                         ref={el => jointRefs.current['right_thigh_yaw_joint'] = el}
                         position={[-0.071, -0.0725, -0.052]}
                     >
-                        <LinkMesh name="right_thigh_yaw_link" isFault={isFault('right_thigh_yaw_link')} isHighlighted={isHighlighted('right_thigh_yaw_link')} />
+                        <LinkMesh name="right_thigh_yaw_link" isFault={isFault('right_thigh_yaw_link')} isHighlighted={isHighlighted('right_thigh_yaw_link')} modelBasePath={modelBasePath} />
                         <group
                             ref={el => jointRefs.current['right_thigh_roll_joint'] = el}
                             position={[-0.019, 0, -0.072]}
                         >
-                            <LinkMesh name="right_thigh_roll_link" isFault={isFault('right_thigh_roll_link')} isHighlighted={isHighlighted('right_thigh_roll_link')} />
+                            <LinkMesh name="right_thigh_roll_link" isFault={isFault('right_thigh_roll_link')} isHighlighted={isHighlighted('right_thigh_roll_link')} modelBasePath={modelBasePath} />
                             <group
                                 ref={el => jointRefs.current['right_thigh_pitch_joint'] = el}
                                 position={[0.062, -0.021, -0.036]}
                             >
-                                <LinkMesh name="right_thigh_pitch_link" isFault={isFault('right_thigh_pitch_link')} isHighlighted={isHighlighted('right_thigh_pitch_link')} />
+                                <LinkMesh name="right_thigh_pitch_link" isFault={isFault('right_thigh_pitch_link')} isHighlighted={isHighlighted('right_thigh_pitch_link')} modelBasePath={modelBasePath} />
                                 <group
                                     ref={el => jointRefs.current['right_knee_joint'] = el}
                                     position={[0, 0, -0.25]}
                                 >
-                                    <LinkMesh name="right_knee_link" isFault={isFault('right_knee_link')} isHighlighted={isHighlighted('right_knee_link')} />
+                                    <LinkMesh name="right_knee_link" isFault={isFault('right_knee_link')} isHighlighted={isHighlighted('right_knee_link')} modelBasePath={modelBasePath} />
                                     <group
                                         ref={el => jointRefs.current['right_ankle_pitch_joint'] = el}
                                         position={[0, 0.021, -0.3]}
                                     >
-                                        <LinkMesh name="right_ankle_pitch_link" isFault={isFault('right_ankle_pitch_link')} isHighlighted={isHighlighted('right_ankle_pitch_link')} />
+                                        <LinkMesh name="right_ankle_pitch_link" isFault={isFault('right_ankle_pitch_link')} isHighlighted={isHighlighted('right_ankle_pitch_link')} modelBasePath={modelBasePath} />
                                         <group
                                             ref={el => jointRefs.current['right_ankle_roll_joint'] = el}
                                             position={[0, 0, 0]}
                                         >
-                                            <LinkMesh name="right_ankle_roll_link" isFault={isFault('right_ankle_roll_link')} isHighlighted={isHighlighted('right_ankle_roll_link')} />
+                                            <LinkMesh name="right_ankle_roll_link" isFault={isFault('right_ankle_roll_link')} isHighlighted={isHighlighted('right_ankle_roll_link')} modelBasePath={modelBasePath} />
                                         </group>
                                     </group>
                                 </group>

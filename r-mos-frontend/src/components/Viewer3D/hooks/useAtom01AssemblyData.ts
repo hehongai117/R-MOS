@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { getRobotModelBase } from '@/config/robots'
 import {
@@ -11,8 +11,6 @@ import {
   type ExplodeManifest,
 } from '@/components/Viewer3D/assemblyManifest'
 import type { ViewerTreeAdapter } from '@/components/Viewer3D/runtimeManifest'
-
-const ATOM01_MODEL_BASE = getRobotModelBase('atom01')
 
 export interface Atom01AssemblyAdapter {
   robotId: string
@@ -72,7 +70,8 @@ export function createStaticAssemblyAdapter(manifest: AssemblyManifest): Atom01A
   }
 }
 
-export function useAtom01AssemblyData(enabled = true): UseAtom01AssemblyDataResult {
+export function useAtom01AssemblyData(enabled = true, robotId = 'atom01'): UseAtom01AssemblyDataResult {
+  const modelBase = useMemo(() => getRobotModelBase(robotId), [robotId])
   const [adapter, setAdapter] = useState<Atom01AssemblyAdapter | null>(null)
   const [explodeManifest, setExplodeManifest] = useState<ExplodeManifest | null>(null)
   const [isLoading, setIsLoading] = useState(enabled)
@@ -97,8 +96,8 @@ export function useAtom01AssemblyData(enabled = true): UseAtom01AssemblyDataResu
 
       try {
         const [assemblyRaw, explodeRaw] = await Promise.all([
-          fetchJson(`${ATOM01_MODEL_BASE}/assembly_manifest.json`),
-          fetchJson(`${ATOM01_MODEL_BASE}/explode_manifest.json`),
+          fetchJson(`${modelBase}/assembly_manifest.json`),
+          fetchJson(`${modelBase}/explode_manifest.json`),
         ])
 
         if (disposed) return
@@ -124,7 +123,7 @@ export function useAtom01AssemblyData(enabled = true): UseAtom01AssemblyDataResu
     return () => {
       disposed = true
     }
-  }, [enabled])
+  }, [enabled, robotId, modelBase])
 
   return {
     adapter,

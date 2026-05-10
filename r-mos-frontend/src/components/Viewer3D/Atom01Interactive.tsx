@@ -17,9 +17,6 @@ import { getExplodePartsForLink, CATEGORY_COLORS, REFERENCE_NODE_IDS, type Detai
 import { useAtom01AssemblyData } from './hooks/useAtom01AssemblyData';
 import { Atom01AssemblyRenderer } from './Atom01AssemblyRenderer';
 
-// GLB 模型路径
-const MODEL_BASE_PATH = getRobotModelBase('atom01');
-
 // 零件信息接口
 export interface PartInfo {
     name: string;
@@ -121,13 +118,9 @@ const LINK_SUBPART_TUNING: Partial<Record<string, LinkSubPartTuning>> = {
 const SUBPART_OUTLIER_ABS_MAX_DIM = 3.5;
 const CORE_OUTLIER_ABS_MAX_DIM = 6.0;
 
-// 预加载 GLB 文件
-LINK_NAMES.forEach(name => {
-    useGLTF.preload(`${MODEL_BASE_PATH}/${name}.glb`);
-});
-
 // Props 接口
 export interface Atom01InteractiveProps {
+    robotId?: string;
     jointAngles?: Record<string, number>;
     faultJoints?: string[];
     explodeAmount?: number;  // 爆炸程度 0~1
@@ -536,6 +529,7 @@ const EXPLODE_OFFSETS: Record<string, [number, number, number]> = {
 // 单个可交互 Link 组件
 const InteractiveLinkMesh: React.FC<{
     name: string;
+    modelBasePath: string;
     isFault?: boolean;
     isHovered?: boolean;
     isSelected?: boolean;
@@ -553,6 +547,7 @@ const InteractiveLinkMesh: React.FC<{
     preferAssemblyView?: boolean; // 装配树已覆盖时，降低旧主模型的遮挡感
 }> = ({
     name,
+    modelBasePath,
     isFault = false,
     isHovered = false,
     isSelected = false,
@@ -570,7 +565,7 @@ const InteractiveLinkMesh: React.FC<{
     preferAssemblyView = false,
 }) => {
         const meshRef = useRef<THREE.Group>(null);
-        const { scene } = useGLTF(`${MODEL_BASE_PATH}/${name}.glb`);
+        const { scene } = useGLTF(`${modelBasePath}/${name}.glb`);
         const isolationVisualMode = showSubParts && explodeAmount > 0;
 
     const clonedScene = useMemo(() => {
@@ -766,6 +761,7 @@ const JOINTS: Record<string, { axis: [number, number, number] }> = {
 
 // 主模型组件
 export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
+    robotId = 'atom01',
     jointAngles = {},
     faultJoints = [],
     explodeAmount = 0,
@@ -794,6 +790,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
     fullscreenMode = false,
     onVisibleBoundsChange,
 }) => {
+    const modelBasePath = useMemo(() => getRobotModelBase(robotId), [robotId]);
     const groupRef = useRef<THREE.Group>(null);
     const jointRefs = useRef<Record<string, THREE.Group | null>>({});
     const [internalHovered, setInternalHovered] = useState<string | null>(null);
@@ -869,7 +866,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
 
     // 是否启用子零件替换（explode > 0 且 showSubParts 开启）
     const subPartsActive = showSubParts && explodeAmount > 0;
-    const { adapter: assemblyAdapter, explodeManifest: assemblyExplodeManifest } = useAtom01AssemblyData(subPartsActive);
+    const { adapter: assemblyAdapter, explodeManifest: assemblyExplodeManifest } = useAtom01AssemblyData(subPartsActive, robotId);
     const subPartBaseOpacity = smoothstep(0.12, 0.42, explodeAmount);
     const singleLinkIsolation = visibleSet.size === 1 && isolationLevel <= 1;
     const suppressMainLinkOffset = visibleSet.size === 1 && subPartsActive;
@@ -960,6 +957,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
             <React.Fragment key={name}>
                 <InteractiveLinkMesh
                     name={name}
+                    modelBasePath={modelBasePath}
                     isFault={isFault(name)}
                     isHovered={isClickable && currentHovered === name}
                     isSelected={isClickable && currentSelected === name}

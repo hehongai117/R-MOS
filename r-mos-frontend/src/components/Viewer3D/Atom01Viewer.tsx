@@ -55,6 +55,7 @@ export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
     highlightLinks,
     scale,
     position,
+    robotId,
 }) => {
     const canvasCamera = cameraProjection === 'orthographic'
         ? { position: cameraPosition, zoom: 170, near: 0.01, far: 100 }
@@ -92,6 +93,7 @@ export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
                 <Suspense fallback={<LoadingFallback />}>
                     {interactiveMode ? (
                         <Atom01Interactive
+                            robotId={robotId}
                             faultJoints={faultJoints}
                             jointAngles={jointAngles}
                             explodeAmount={explodeAmount}
@@ -103,6 +105,7 @@ export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
                         />
                     ) : (
                         <Atom01Model
+                            robotId={robotId}
                             faultJoints={faultJoints}
                             highlightLinks={highlightLinks}
                             jointAngles={jointAngles}
