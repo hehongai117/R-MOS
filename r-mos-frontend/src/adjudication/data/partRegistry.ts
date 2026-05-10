@@ -8,7 +8,6 @@ import { getRobotModelBase } from '../../config/robots';
 import { FOOT_SCREW_INSTANCES, TORSO_SCREW_INSTANCES } from './screwInstances';
 
 const MODEL_BASE_URL = import.meta.env.VITE_MODEL_BASE_URL || '/models';
-const ROBOT_BASE = getRobotModelBase('atom01');
 const PARTS_BASE = `${MODEL_BASE_URL}/parts`;
 
 export function getPartRegistryBase(robotId: string = 'atom01'): string {
@@ -18,6 +17,7 @@ export function getPartRegistryBase(robotId: string = 'atom01'): string {
 /**
  * Atom01 零件元数据 (从 Atom01Interactive.tsx 迁移并扩展)
  */
+const ROBOT_BASE = getPartRegistryBase();  // uses default 'atom01'
 export const PART_REGISTRY: Record<string, Part> = {
     // ============================================================
     // 基座

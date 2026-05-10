@@ -38,11 +38,11 @@ export interface ScrewDetailRecord {
     torque: number | null;
 }
 
-const ROBOT_MODEL_BASE = getRobotModelBase('atom01');
-
 export function getMaintenanceKnowledgeBase(robotId: string = 'atom01'): string {
     return getRobotModelBase(robotId);
 }
+
+const ROBOT_MODEL_BASE = getMaintenanceKnowledgeBase(); // uses default 'atom01'
 
 const GROUP_NAMES: Record<CoreGroup, string> = {
     base: '底座',
