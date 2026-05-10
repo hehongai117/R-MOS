@@ -11,12 +11,24 @@ vi.mock('@/hooks/useWebSocket', () => ({
   useWebSocket: useWebSocketMock,
 }))
 
+vi.mock('@/store/robotContextStore', () => ({
+  useRobotContextStore: vi.fn((selector: (state: { currentRobot: { id: number; name: string; manufacturer: string } | null; currentRobotId: number | null }) => unknown) => {
+    const state = {
+      currentRobot: { id: 1, name: 'ATOM01', manufacturer: 'Test' },
+      currentRobotId: 1,
+    }
+    return selector(state)
+  }),
+}))
+
 vi.mock('@/components/Viewer3D/Atom01Viewer', () => ({
   default: ({
+    robotId: _robotId,
     jointAngles = {},
     faultJoints = [],
     highlightLinks = [],
   }: {
+    robotId?: string
     jointAngles?: Record<string, number>
     faultJoints?: string[]
     highlightLinks?: string[]

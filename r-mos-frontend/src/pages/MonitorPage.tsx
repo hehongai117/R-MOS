@@ -9,6 +9,7 @@ import Atom01Viewer from '@/components/Viewer3D/Atom01Viewer'
 import { Button } from '@/components/ui/button'
 import { useWebSocket, type JointState } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
+import { useRobotContextStore } from '@/store/robotContextStore'
 
 type MonitorJointMeta = {
   atomJoint: string
@@ -222,6 +223,8 @@ function MonitorJointRow({ joint, onClick }: { joint: JointState; onClick?: () =
 
 function MonitorPage() {
   const navigate = useNavigate()
+  const currentRobot = useRobotContextStore((s) => s.currentRobot)
+  const robotId = currentRobot ? String(currentRobot.id) : 'atom01'
 
   const {
     isConnected,
@@ -352,6 +355,16 @@ function MonitorPage() {
     status,
     retryCount,
   })
+
+  if (!currentRobot) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+        <WifiOff className="mb-4 h-12 w-12 opacity-30" />
+        <h2 className="text-lg font-medium text-text-primary mb-2">未选择机器人</h2>
+        <p className="text-sm">请先在首页选择一台机器人，再进入监控面板。</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -522,6 +535,7 @@ function MonitorPage() {
               <div className="overflow-hidden rounded-xl border border-border-subtle bg-[#08101f]">
                 <Viewer3DErrorBoundary>
                   <Atom01Viewer
+                    robotId={robotId}
                     width="100%"
                     height={460}
                     backgroundColor="#08101f"
