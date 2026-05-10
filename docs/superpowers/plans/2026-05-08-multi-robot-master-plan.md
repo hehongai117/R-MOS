@@ -2,7 +2,7 @@
 
 > **设计文档:** `docs/superpowers/specs/2026-05-07-multi-robot-platform-design.md`
 > **创建日期:** 2026-05-08
-> **最后更新:** 2026-05-10
+> **最后更新:** 2026-05-10 (Phase 5 完成)
 
 ---
 
@@ -15,10 +15,10 @@
 | 2 | 教师前端（知识库 + 机器人管理） | 8 | Phase 1 | ✅ 已完成 |
 | 3 | AI 分析管线 | 7 | Phase 1 | ✅ 已完成 |
 | 4 | 学生前端（机器人选择 + 上下文切换） | 6 | Phase 2 | ✅ 已完成 |
-| 5 | 3D 查看器动态加载 | 5 | Phase 1, Phase 4 | ⬚ 未开始 |
+| 5 | 3D 查看器动态加载 | 5 | Phase 1, Phase 4 | ✅ 已完成（5.1-5.4，5.5 延后） |
 | 6 | 共享市场（授权引用 + 同步） | 5 | Phase 2 | ⬚ 未开始 |
 
-**总计:** 47 Tasks（Phase 0-2 已完成 24，剩余 23）
+**总计:** 47 Tasks（Phase 0-5 已完成 42，剩余 5：Phase 6）
 
 ---
 
@@ -155,19 +155,26 @@ Phase 0 (✅ 已完成)
 
 ---
 
-## Phase 5: 3D 查看器动态加载
+## Phase 5: 3D 查看器动态加载 ✅
 
 > **目标:** 3D 查看器从 API 动态加载模型，替代硬编码 atom01 路径
 > **前置:** Phase 1（资产 API）+ Phase 4（机器人上下文）
-> **预估 Task:** 5
+> **详细计划:** `docs/superpowers/plans/2026-05-10-multi-robot-phase5.md`
 
-| # | Task | 涉及文件 | 说明 |
-|---|------|---------|------|
-| 5.1 | 动态 manifest 加载 | `config/robots.ts`, 3D 组件 | 从 API 获取 assembly_manifest 替代静态 import |
-| 5.2 | GLB 模型动态加载 | 3D 查看器组件 | 从 `/robots/{id}/assets/` 加载 GLB 替代 `public/models/` |
-| 5.3 | 加载状态与错误处理 | 3D 查看器组件 | 加载进度条、模型不存在兜底、加载失败提示 |
-| 5.4 | 监控面板适配 | `pages/MonitorPage.tsx` | 关节配置 + 监控点位按 robot_model_id 动态加载 |
-| 5.5 | 删除硬编码 atom01 静态文件 | `public/models/` | 迁移验证通过后删除 1.6GB 静态文件，项目瘦身 |
+| # | Task | 状态 |
+|---|------|------|
+| 5.1 | Atom01Model/Viewer/Interactive 接受 robotId prop | ✅ |
+| 5.2 | 加载状态与错误处理 UI 组件（DynamicModelLoader） | ✅ |
+| 5.3 | 页面集成 — 所有消费者注入 robotId | ✅ |
+| 5.4 | MonitorPage 动态适配 + 空状态兜底 | ✅ |
+| 5.5 | 删除 atom01 静态文件 | ⏳ 延后（需先在 DB 注册 atom01 为 RobotModel） |
+
+**产出文件:**
+- `src/components/Viewer3D/DynamicModelLoader.tsx` — 加载进度条 + 错误兜底 + 空状态 UI
+- 5 个 3D 组件（Atom01Model/Viewer/Interactive/useAtom01AssemblyData/ModelPreloader）支持 robotId prop
+- 5 个页面（Atom01DemoPage/SOPMaintenancePage/TeachingAttemptPage/MonitorPage + partRegistry/maintenanceKnowledge）从 robotContextStore 获取 robotId
+
+**Task 5.5 延后说明:** 删除静态文件需要 atom01 在数据库中有 RobotModel 记录（数字 ID），资产通过 API 可访问。当前 fallback `'atom01'` 走 STATIC_ROBOT_CATALOG 静态路径，直接删除会导致 404。建议作为独立数据迁移任务处理。
 
 ---
 
