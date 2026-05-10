@@ -10,14 +10,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Atom01Model, Atom01ModelProps } from './Atom01Model';
 import Atom01Interactive, { type Atom01InteractiveProps } from './Atom01Interactive';
-
-// 加载指示器
-const LoadingFallback = () => (
-    <mesh>
-        <boxGeometry args={[0.5, 0.5, 0.5]} />
-        <meshStandardMaterial color="#4fc3f7" wireframe />
-    </mesh>
-);
+import { ModelLoadingFallback } from './DynamicModelLoader';
 
 export interface Atom01ViewerProps extends Atom01ModelProps {
     width?: string | number;
@@ -90,7 +83,7 @@ export const Atom01Viewer: React.FC<Atom01ViewerProps> = ({
                 )}
 
                 {/* 机器人模型 */}
-                <Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<ModelLoadingFallback />}>
                     {interactiveMode ? (
                         <Atom01Interactive
                             robotId={robotId}
