@@ -2,7 +2,7 @@
 
 > **设计文档:** `docs/superpowers/specs/2026-05-07-multi-robot-platform-design.md`
 > **创建日期:** 2026-05-08
-> **最后更新:** 2026-05-10 (Phase 5 完成)
+> **最后更新:** 2026-05-14 (Phase 6 完成，全部 Phase 完成)
 
 ---
 
@@ -16,9 +16,9 @@
 | 3 | AI 分析管线 | 7 | Phase 1 | ✅ 已完成 |
 | 4 | 学生前端（机器人选择 + 上下文切换） | 6 | Phase 2 | ✅ 已完成 |
 | 5 | 3D 查看器动态加载 | 5 | Phase 1, Phase 4 | ✅ 已完成（5.1-5.4，5.5 延后） |
-| 6 | 共享市场（授权引用 + 同步） | 5 | Phase 2 | ⬚ 未开始 |
+| 6 | 共享市场（授权引用 + 同步） | 5 | Phase 2 | ✅ 已完成 |
 
-**总计:** 47 Tasks（Phase 0-5 已完成 42，剩余 5：Phase 6）
+**总计:** 47 Tasks（全部完成）
 
 ---
 
@@ -178,20 +178,31 @@ Phase 0 (✅ 已完成)
 
 ---
 
-## Phase 6: 共享市场（授权引用 + 同步）
+## Phase 6: 共享市场（授权引用 + 同步） ✅
 
 > **目标:** 教师浏览共享库、一键引用其他教师的机器人、源头更新自动同步
 > **前置:** Phase 2（教师前端 + 共享状态 API）
-> **可与 Phase 4/5 并行**
-> **预估 Task:** 5
+> **完成日期:** 2026-05-14
+> **详细计划:** `docs/superpowers/plans/2026-05-12-multi-robot-phase6.md`
 
-| # | Task | 涉及文件 | 说明 |
-|---|------|---------|------|
-| 6.1 | 共享库 API | `robots.py` | `GET /robots/shared` 浏览共享库，支持品牌/型号搜索 |
-| 6.2 | 引用绑定 API | `robots.py` | `POST /robots/{id}/bind` 创建 shared_ref 绑定，`DELETE` 取消 |
-| 6.3 | 共享库浏览页面 | `pages/SharedRobotsPage.tsx`(新) | 卡片式浏览共享机器人，3D 预览、SOP 列表 |
-| 6.4 | 引用管理 UI | 集成到知识库页面 | 引用标记 (🔗)、取消引用、同步状态显示 |
-| 6.5 | 同步与权限保障 | 服务层 | 引用方只读、源头更新自动可见、owner 删除时级联处理 |
+| # | Task | 状态 |
+|---|------|------|
+| 6.1 | 共享库 API + 引用绑定 API | ✅ |
+| 6.2 | 前端类型 + API 客户端 + Store 扩展 | ✅ |
+| 6.3 | 共享库浏览页面 + 路由注册 | ✅ |
+| 6.4 | 引用管理 UI（RobotSidebar 标记 + 只读模式） | ✅ |
+| 6.5 | 同步与权限保障（级联删除 + 私有化清理） | ✅ |
+
+**产出文件:**
+- `r-mos-backend/app/schemas/robot_model.py` — SharedRobotResponse + binding_type 字段
+- `r-mos-backend/app/api/v1/endpoints/robots.py` — GET /shared, POST/DELETE /bind, list_robots 返回 binding_type, visibility 切换清理
+- `r-mos-frontend/src/pages/SharedRobotsPage.tsx` — 共享库浏览页面
+- `r-mos-frontend/src/types/robotModel.ts` — SharedRobotModel 类型
+- `r-mos-frontend/src/api/robots.ts` — 3 个新 API 函数
+- `r-mos-frontend/src/store/robotStore.ts` — unbindRobot action
+- `r-mos-frontend/src/components/knowledge/RobotSidebar.tsx` — 🔗 标记
+- `r-mos-frontend/src/pages/KnowledgePage.tsx` — 引用方只读 UI
+- `r-mos-frontend/src/App.tsx` — /shared-robots 路由
 
 ---
 
