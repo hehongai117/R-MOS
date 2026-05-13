@@ -385,6 +385,68 @@ async def set_visibility(
     return robot
 
 
+@router.post("/{robot_id}/bind", status_code=status.HTTP_201_CREATED)
+async def bind_shared_robot(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """引用一个共享机器人到自己名下。"""
+    _require_teacher_or_admin(actor)
+
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if not robot:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+    if robot.visibility != RobotVisibility.SHARED:
+        raise HTTPException(status_code=400, detail="该机器人未设为共享，无法引用")
+
+    if robot.owner_teacher_id == actor.user_id:
+        raise HTTPException(status_code=400, detail="不能引用自己创建的机器人")
+
+    existing = await db.execute(
+        select(TeacherRobotBinding).where(
+            TeacherRobotBinding.teacher_id == actor.user_id,
+            TeacherRobotBinding.robot_model_id == robot_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="已经引用过该机器人")
+
+    binding = TeacherRobotBinding(
+        teacher_id=actor.user_id,
+        robot_model_id=robot_id,
+        binding_type="shared_ref",
+    )
+    db.add(binding)
+    await db.commit()
+    return {"detail": "引用成功"}
+
+
+@router.delete("/{robot_id}/bind", status_code=status.HTTP_204_NO_CONTENT)
+async def unbind_shared_robot(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """取消引用一个共享机器人。"""
+    _require_teacher_or_admin(actor)
+
+    result = await db.execute(
+        select(TeacherRobotBinding).where(
+            TeacherRobotBinding.teacher_id == actor.user_id,
+            TeacherRobotBinding.robot_model_id == robot_id,
+            TeacherRobotBinding.binding_type == "shared_ref",
+        )
+    )
+    binding = result.scalar_one_or_none()
+    if not binding:
+        raise HTTPException(status_code=404, detail="未找到引用关系")
+
+    await db.delete(binding)
+    await db.commit()
+
+
 @router.get("/{robot_id}/assets/{file_path:path}")
 async def get_robot_asset(
     robot_id: int,
