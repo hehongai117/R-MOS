@@ -54,3 +54,27 @@ class RobotAssetResponse(BaseModel):
 class FileUploadResponse(BaseModel):
     uploaded: List[RobotAssetResponse]
     failed: List[dict]  # {"filename": str, "error": str}
+
+
+class SharedRobotResponse(BaseModel):
+    """共享库浏览 — 含 owner 名称和当前用户是否已引用。"""
+    id: int
+    brand: str
+    model_name: str
+    version: str
+    owner_teacher_id: Optional[int] = None
+    owner_name: Optional[str] = None
+    visibility: str
+    status: str
+    description: Optional[str] = None
+    thumbnail_path: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    is_bound: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class SharedRobotListResponse(BaseModel):
+    items: List[SharedRobotResponse]
+    total: int
