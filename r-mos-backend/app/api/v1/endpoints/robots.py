@@ -1,6 +1,6 @@
 """Robot model CRUD API endpoints."""
 import os
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -19,6 +19,8 @@ from app.schemas.robot_model import (
     RobotModelListResponse,
     RobotAssetResponse,
     FileUploadResponse,
+    SharedRobotResponse,
+    SharedRobotListResponse,
 )
 from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
 from app.schemas.analysis_task import AnalysisTaskResponse, AnalysisTaskListResponse
@@ -80,6 +82,59 @@ async def list_robots(
     result = await db.execute(stmt)
     items = list(result.scalars().all())
     return RobotModelListResponse(items=items, total=len(items))
+
+
+@router.get("/shared", response_model=SharedRobotListResponse)
+async def list_shared_robots(
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    """浏览共享机器人库（任何已登录教师可访问）。"""
+    _require_teacher_or_admin(actor)
+
+    stmt = select(RobotModel).where(
+        RobotModel.visibility == RobotVisibility.SHARED,
+        RobotModel.status == RobotStatus.READY,
+    )
+
+    if search:
+        search_pattern = f"%{search}%"
+        stmt = stmt.where(
+            (RobotModel.brand.ilike(search_pattern)) | (RobotModel.model_name.ilike(search_pattern))
+        )
+
+    stmt = stmt.order_by(RobotModel.updated_at.desc())
+    result = await db.execute(stmt)
+    robots = list(result.scalars().all())
+
+    binding_result = await db.execute(
+        select(TeacherRobotBinding.robot_model_id).where(
+            TeacherRobotBinding.teacher_id == actor.user_id,
+        )
+    )
+    bound_ids = {row[0] for row in binding_result.all()}
+
+    items = []
+    for robot in robots:
+        item = SharedRobotResponse(
+            id=robot.id,
+            brand=robot.brand,
+            model_name=robot.model_name,
+            version=robot.version,
+            owner_teacher_id=robot.owner_teacher_id,
+            owner_name=None,
+            visibility=robot.visibility.value if hasattr(robot.visibility, 'value') else robot.visibility,
+            status=robot.status.value if hasattr(robot.status, 'value') else robot.status,
+            description=robot.description,
+            thumbnail_path=robot.thumbnail_path,
+            created_at=robot.created_at,
+            updated_at=robot.updated_at,
+            is_bound=robot.id in bound_ids,
+        )
+        items.append(item)
+
+    return SharedRobotListResponse(items=items, total=len(items))
 
 
 @router.get("/{robot_id}", response_model=RobotModelResponse)
