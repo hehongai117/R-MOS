@@ -30,6 +30,7 @@ const TeachingEvidencePage = lazy(() => import('@/teaching/pages/TeachingEvidenc
 const TeacherMonitorPage = lazy(() => import('@/teaching/pages/TeacherMonitorPage'))
 const TeacherStudentsPage = lazy(() => import('@/teaching/pages/TeacherStudentsPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+const SharedRobotsPage = lazy(() => import('@/pages/SharedRobotsPage'))
 
 function DefaultRouteRedirect() {
   const defaultRoute =
@@ -105,6 +106,7 @@ function App() {
 
                 <Route path="sops" element={withSuspense(withRoles(<SOPListPage />, ['teacher', 'admin']))} />
                 <Route path="knowledge" element={withSuspense(withRoles(<KnowledgePage />, ['teacher', 'admin']))} />
+                <Route path="shared-robots" element={withSuspense(withRoles(<SharedRobotsPage />, ['teacher', 'admin']))} />
                 <Route path="monitor" element={withSuspense(<MonitorPage />)} />
                 <Route path="maintenance" element={withSuspense(<SOPMaintenancePage />)} />
                 <Route path="atom01" element={withSuspense(<Atom01DemoPage />)} />
