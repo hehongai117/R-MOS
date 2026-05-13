@@ -98,3 +98,26 @@ export function isOwnedRobot(robot: RobotModel, userId: number | undefined): boo
 export function canPublish(robot: RobotModel): boolean {
   return robot.status === 'draft' || robot.status === 'ready'
 }
+
+/** 共享库机器人 — 含 owner 信息和引用状态 */
+export interface SharedRobotModel {
+  id: number
+  brand: string
+  model_name: string
+  version: string
+  owner_teacher_id: number | null
+  owner_name: string | null
+  visibility: RobotVisibility
+  status: RobotModelStatus
+  description: string | null
+  thumbnail_path: string | null
+  created_at: string
+  updated_at: string
+  is_bound: boolean
+}
+
+/** 共享库列表响应 */
+export interface SharedRobotListResponse {
+  items: SharedRobotModel[]
+  total: number
+}

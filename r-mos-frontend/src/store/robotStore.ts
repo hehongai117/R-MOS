@@ -30,6 +30,8 @@ interface RobotState {
   togglePublish: (id: number) => Promise<void>
   /** 切换共享状态 */
   toggleVisibility: (id: number) => Promise<void>
+  /** 取消引用共享机器人 */
+  unbindRobot: (id: number) => Promise<void>
   /** 用新数据替换列表中的一条记录 */
   _replaceRobot: (updated: RobotModel) => void
 }
@@ -93,6 +95,18 @@ export const useRobotStore = create<RobotState>((set, get) => ({
   async toggleVisibility(id) {
     const updated = await toggleVisibility(id)
     get()._replaceRobot(updated)
+  },
+
+  async unbindRobot(id) {
+    const { unbindSharedRobot } = await import('@/api/robots')
+    await unbindSharedRobot(id)
+    set((state) => {
+      const robots = state.robots.filter((r) => r.id !== id)
+      return {
+        robots,
+        selectedRobotId: state.selectedRobotId === id ? (robots[0]?.id ?? null) : state.selectedRobotId,
+      }
+    })
   },
 
   _replaceRobot(updated) {

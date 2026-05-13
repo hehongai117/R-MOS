@@ -7,6 +7,7 @@ import type {
   RobotModelCreateRequest,
   RobotModelListResponse,
   RobotModelUpdateRequest,
+  SharedRobotListResponse,
 } from '@/types/robotModel'
 
 /** 列出当前教师名下的机器人 */
@@ -89,4 +90,21 @@ export async function toggleVisibility(robotId: number): Promise<RobotModel> {
 export async function listStudentRobots(studentId: number): Promise<RobotModelListResponse> {
   const response = await apiClient.get<RobotModelListResponse>(`/students/${studentId}/robots`)
   return response.data
+}
+
+/** 浏览共享机器人库 */
+export async function listSharedRobots(search?: string): Promise<SharedRobotListResponse> {
+  const params = search ? { search } : {}
+  const response = await apiClient.get<SharedRobotListResponse>('/robots/shared', { params })
+  return response.data
+}
+
+/** 引用共享机器人 */
+export async function bindSharedRobot(robotId: number): Promise<void> {
+  await apiClient.post(`/robots/${robotId}/bind`)
+}
+
+/** 取消引用共享机器人 */
+export async function unbindSharedRobot(robotId: number): Promise<void> {
+  await apiClient.delete(`/robots/${robotId}/bind`)
 }
