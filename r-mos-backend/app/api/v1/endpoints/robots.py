@@ -3,7 +3,7 @@ import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -382,6 +382,13 @@ async def set_visibility(
 
     if robot.visibility == RobotVisibility.SHARED:
         robot.visibility = RobotVisibility.PRIVATE
+        # 清理所有 shared_ref 绑定
+        await db.execute(
+            delete(TeacherRobotBinding).where(
+                TeacherRobotBinding.robot_model_id == robot_id,
+                TeacherRobotBinding.binding_type == "shared_ref",
+            )
+        )
     else:
         robot.visibility = RobotVisibility.SHARED
 
