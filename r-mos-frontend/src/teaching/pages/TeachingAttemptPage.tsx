@@ -47,7 +47,7 @@ const 三维加载占位 = () => (
 
 const TeachingAttemptPage = () => {
   const currentRobot = useRobotContextStore((s) => s.currentRobot);
-  const robotId = currentRobot ? String(currentRobot.id) : 'atom01';
+  const robotId = currentRobot ? String(currentRobot.id) : null;
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
@@ -204,11 +204,13 @@ const TeachingAttemptPage = () => {
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[4, 6, 3]} intensity={0.8} />
                 <Suspense fallback={<三维加载占位 />}>
-                  <Atom01Interactive
-                    robotId={robotId}
-                    selectedPart={targetPart}
-                    hoveredPart={null}
-                  />
+                  {robotId && (
+                    <Atom01Interactive
+                      robotId={robotId}
+                      selectedPart={targetPart}
+                      hoveredPart={null}
+                    />
+                  )}
                   <GhostToolMarker targetPart={targetPart} />
                   <CameraController focusTarget={targetPart} />
                   <OrbitControls enablePan enableZoom />

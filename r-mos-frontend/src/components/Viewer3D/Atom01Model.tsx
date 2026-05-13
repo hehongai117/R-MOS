@@ -20,7 +20,7 @@ import * as THREE from 'three';
 
 // Props 接口
 export interface Atom01ModelProps {
-    robotId?: string;
+    robotId: string;
     jointAngles?: Record<string, number>;
     faultJoints?: string[];
     highlightLinks?: string[];
@@ -111,7 +111,7 @@ const JOINTS: Record<string, { axis: [number, number, number] }> = {
 
 // 主模型组件
 export const Atom01Model: React.FC<Atom01ModelProps> = ({
-    robotId = 'atom01',
+    robotId,
     jointAngles = {},
     faultJoints = [],
     highlightLinks = [],

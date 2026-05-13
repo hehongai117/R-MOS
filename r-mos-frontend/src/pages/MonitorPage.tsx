@@ -224,7 +224,7 @@ function MonitorJointRow({ joint, onClick }: { joint: JointState; onClick?: () =
 function MonitorPage() {
   const navigate = useNavigate()
   const currentRobot = useRobotContextStore((s) => s.currentRobot)
-  const robotId = currentRobot ? String(currentRobot.id) : 'atom01'
+  const robotId = currentRobot ? String(currentRobot.id) : null
 
   const {
     isConnected,
@@ -534,15 +534,21 @@ function MonitorPage() {
 
               <div className="overflow-hidden rounded-xl border border-border-subtle bg-[#08101f]">
                 <Viewer3DErrorBoundary>
-                  <Atom01Viewer
-                    robotId={robotId}
-                    width="100%"
-                    height={460}
-                    backgroundColor="#08101f"
-                    jointAngles={jointAngles}
-                    faultJoints={faultJoints}
-                    highlightLinks={highlightLinks}
-                  />
+                  {robotId ? (
+                    <Atom01Viewer
+                      robotId={robotId}
+                      width="100%"
+                      height={460}
+                      backgroundColor="#08101f"
+                      jointAngles={jointAngles}
+                      faultJoints={faultJoints}
+                      highlightLinks={highlightLinks}
+                    />
+                  ) : (
+                    <div style={{ height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4fc3f7', fontSize: 14 }}>
+                      请先选择机器人
+                    </div>
+                  )}
                 </Viewer3DErrorBoundary>
               </div>
 

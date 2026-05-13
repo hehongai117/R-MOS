@@ -38,11 +38,9 @@ export interface ScrewDetailRecord {
     torque: number | null;
 }
 
-export function getMaintenanceKnowledgeBase(robotId: string = 'atom01'): string {
+export function getMaintenanceKnowledgeBase(robotId: string): string {
     return getRobotModelBase(robotId);
 }
-
-const ROBOT_MODEL_BASE = getMaintenanceKnowledgeBase(); // uses default 'atom01'
 
 const GROUP_NAMES: Record<CoreGroup, string> = {
     base: '底座',
@@ -195,17 +193,18 @@ export function getDetailPartSelection(selection: DetailPartSelection): DetailPa
     return parts[selection.partIndex] ?? null;
 }
 
-export function getCorePartDetailRecord(partName: string): PartDetailRecord | null {
+export function getCorePartDetailRecord(partName: string, robotId?: string): PartDetailRecord | null {
     const part = PART_METADATA[partName];
     if (!part) return null;
 
+    const robotModelBase = robotId ? getMaintenanceKnowledgeBase(robotId) : '';
     const detailCount = DETAIL_PARTS_MAP[partName]?.length ?? 0;
     return {
         id: part.name,
         level: 'core',
         displayName: part.displayName,
         categoryLabel: '核心总成',
-        modelPath: `${ROBOT_MODEL_BASE}/${part.name}.glb`,
+        modelPath: robotModelBase ? `${robotModelBase}/${part.name}.glb` : '',
         parentDisplayName: GROUP_NAMES[part.group],
         maintenancePoints: GROUP_MAINTENANCE_HINTS[part.group],
         summary: `该核心件隶属${GROUP_NAMES[part.group]}，下挂 ${detailCount} 个细节零件，维保时建议先核对紧固状态再执行动作校验。`,

@@ -106,7 +106,7 @@ function formatExplodeViewLabel(viewId: string): string {
 
 function Atom01DemoPage() {
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
-    const robotId = currentRobot ? String(currentRobot.id) : 'atom01';
+    const robotId = currentRobot ? String(currentRobot.id) : null;
     const [jointAngles, setJointAngles] = useState<Record<string, number>>({});
     const [faultJoints, setFaultJoints] = useState<string[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<string>('leftLeg');
@@ -115,7 +115,7 @@ function Atom01DemoPage() {
     const [cadExplodeEnabled, setCadExplodeEnabled] = useState(false);
     const [explodeStepIndex, setExplodeStepIndex] = useState(0);
     const [selectedExplodeViewId, setSelectedExplodeViewId] = useState<string>(DEFAULT_VIEW_ID);
-    const { explodeManifest, isLoading: isAssemblyLoading, error: assemblyError } = useAtom01AssemblyData(true, robotId);
+    const { explodeManifest, isLoading: isAssemblyLoading, error: assemblyError } = useAtom01AssemblyData(true, robotId ?? undefined);
 
     // 更新单个关节角度
     const updateJoint = useCallback((jointName: string, value: number) => {
@@ -424,23 +424,29 @@ function Atom01DemoPage() {
                             </Space>
                         }
                     >
-                        <Atom01Viewer
-                            width="100%"
-                            height="100%"
-                            robotId={robotId}
-                            cameraPosition={viewerPosition}
-                            cameraProjection={viewerProjection}
-                            cameraTarget={viewerTarget}
-                            explodeAmount={authoredExplodeActive ? 1 : 0}
-                            explodeStepIndex={authoredExplodeActive ? explodeStepIndex : null}
-                            interactiveMode={true}
-                            jointAngles={jointAngles}
-                            faultJoints={faultJoints}
-                            scale={2}
-                            showGrid={true}
-                            showSubParts={authoredExplodeActive}
-                            subPartEnabledNames={focusedAssemblyNode ? [focusedAssemblyNode] : undefined}
-                        />
+                        {robotId ? (
+                            <Atom01Viewer
+                                width="100%"
+                                height="100%"
+                                robotId={robotId}
+                                cameraPosition={viewerPosition}
+                                cameraProjection={viewerProjection}
+                                cameraTarget={viewerTarget}
+                                explodeAmount={authoredExplodeActive ? 1 : 0}
+                                explodeStepIndex={authoredExplodeActive ? explodeStepIndex : null}
+                                interactiveMode={true}
+                                jointAngles={jointAngles}
+                                faultJoints={faultJoints}
+                                scale={2}
+                                showGrid={true}
+                                showSubParts={authoredExplodeActive}
+                                subPartEnabledNames={focusedAssemblyNode ? [focusedAssemblyNode] : undefined}
+                            />
+                        ) : (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4fc3f7', fontSize: 14 }}>
+                                请先选择机器人
+                            </div>
+                        )}
                     </Card>
                 </Col>
             </Row>

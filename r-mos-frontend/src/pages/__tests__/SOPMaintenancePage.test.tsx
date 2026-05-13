@@ -284,7 +284,7 @@ describe('SOPMaintenancePage', () => {
   })
 
   it('keeps atom01 maintenance workbench as a dedicated full page without the project draft entry', () => {
-    render(<SOPMaintenancePage workspaceVariant="atom01" />)
+    render(<SOPMaintenancePage workspaceVariant="demo" />)
 
     expect(screen.getByRole('heading', { name: 'ATOM01 维保工作台' })).toBeTruthy()
     expect(screen.queryByText('步骤导航、3D 操作区和工具要求统一在同一工作台内处理')).toBeNull()

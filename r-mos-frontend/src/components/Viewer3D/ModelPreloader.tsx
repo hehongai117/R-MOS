@@ -61,7 +61,7 @@ export function preloadAllParts(
  * 预加载主模型（24 个 robot link）
  * 这些通常在页面加载时就会用到，但可以提前触发。
  */
-export function preloadRobotModel(robotId = 'atom01'): void {
+export function preloadRobotModel(robotId: string): void {
     const ROBOT_BASE = getRobotModelBase(robotId);
     const links = [
         'base_link', 'torso_link',

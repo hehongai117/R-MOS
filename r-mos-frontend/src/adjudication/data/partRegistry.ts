@@ -10,15 +10,17 @@ import { FOOT_SCREW_INSTANCES, TORSO_SCREW_INSTANCES } from './screwInstances';
 const MODEL_BASE_URL = import.meta.env.VITE_MODEL_BASE_URL || '/models';
 const PARTS_BASE = `${MODEL_BASE_URL}/parts`;
 
-export function getPartRegistryBase(robotId: string = 'atom01'): string {
+export function getPartRegistryBase(robotId: string): string {
     return getRobotModelBase(robotId);
 }
 
 /**
- * Atom01 零件元数据 (从 Atom01Interactive.tsx 迁移并扩展)
+ * Atom01 零件元数据工厂函数 (从 Atom01Interactive.tsx 迁移并扩展)
+ * 根据传入的 robotId 动态生成零件注册表（modelPath 指向 API 路径）
  */
-const ROBOT_BASE = getPartRegistryBase();  // uses default 'atom01'
-export const PART_REGISTRY: Record<string, Part> = {
+export function buildPartRegistry(robotId: string): Record<string, Part> {
+    const ROBOT_BASE = getPartRegistryBase(robotId);
+    return {
     // ============================================================
     // 基座
     // ============================================================
@@ -336,14 +338,34 @@ export const PART_REGISTRY: Record<string, Part> = {
         localPosition: [0, -0.01, 0],
         localRotation: [0, 0, 0],
     },
-};
+    };
+}
 
 /**
- * 全量零件注册表（包含螺丝实例）
- * 作为逻辑层唯一数据源
+ * @deprecated Use buildPartSchemaRegistry(robotId) instead.
+ * This constant is kept for backward compatibility of non-modelPath uses.
+ * Note: modelPath values will be empty strings until migrated.
+ */
+export const PART_REGISTRY: Record<string, Part> = {};
+
+/**
+ * 全量零件注册表工厂（包含螺丝实例）
+ * 传入 robotId 以生成正确的 modelPath
+ */
+export function buildPartSchemaRegistry(robotId: string): Record<string, Part> {
+    return {
+        ...buildPartRegistry(robotId),
+        ...FOOT_SCREW_INSTANCES,
+        ...TORSO_SCREW_INSTANCES,
+    };
+}
+
+/**
+ * @deprecated Use buildPartSchemaRegistry(robotId) instead.
+ * Kept for structural (non-modelPath) lookups in the adjudication engine.
  */
 export const PART_SCHEMA_REGISTRY: Record<string, Part> = {
-    ...PART_REGISTRY,
+    ...buildPartRegistry(''),
     ...FOOT_SCREW_INSTANCES,
     ...TORSO_SCREW_INSTANCES,
 };

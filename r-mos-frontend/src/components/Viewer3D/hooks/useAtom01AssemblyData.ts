@@ -70,17 +70,17 @@ export function createStaticAssemblyAdapter(manifest: AssemblyManifest): Atom01A
   }
 }
 
-export function useAtom01AssemblyData(enabled = true, robotId = 'atom01'): UseAtom01AssemblyDataResult {
-  const modelBase = useMemo(() => getRobotModelBase(robotId), [robotId])
+export function useAtom01AssemblyData(enabled = true, robotId?: string): UseAtom01AssemblyDataResult {
+  const modelBase = useMemo(() => robotId ? getRobotModelBase(robotId) : null, [robotId])
   const [adapter, setAdapter] = useState<Atom01AssemblyAdapter | null>(null)
   const [explodeManifest, setExplodeManifest] = useState<ExplodeManifest | null>(null)
-  const [isLoading, setIsLoading] = useState(enabled)
+  const [isLoading, setIsLoading] = useState(enabled && !!robotId)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     let disposed = false
 
-    if (!enabled) {
+    if (!enabled || !robotId || !modelBase) {
       setAdapter(null)
       setExplodeManifest(null)
       setError(null)

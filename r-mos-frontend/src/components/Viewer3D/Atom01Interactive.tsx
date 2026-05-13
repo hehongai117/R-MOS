@@ -120,7 +120,7 @@ const CORE_OUTLIER_ABS_MAX_DIM = 6.0;
 
 // Props 接口
 export interface Atom01InteractiveProps {
-    robotId?: string;
+    robotId: string;
     jointAngles?: Record<string, number>;
     faultJoints?: string[];
     explodeAmount?: number;  // 爆炸程度 0~1
@@ -761,7 +761,7 @@ const JOINTS: Record<string, { axis: [number, number, number] }> = {
 
 // 主模型组件
 export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
-    robotId = 'atom01',
+    robotId,
     jointAngles = {},
     faultJoints = [],
     explodeAmount = 0,

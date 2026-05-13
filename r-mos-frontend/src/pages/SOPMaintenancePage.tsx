@@ -202,7 +202,7 @@ const REMAINING_CORE_LINKS = [
     'right_ankle_roll_link',
 ] as const;
 
-type WorkspaceVariant = 'runtime' | 'atom01';
+type WorkspaceVariant = 'runtime' | 'demo';
 type MaintenanceLayoutMode = 'execution' | 'inspector' | 'full';
 
 interface WorkspaceChrome {
@@ -217,7 +217,7 @@ const WORKSPACE_CHROME: Record<WorkspaceVariant, WorkspaceChrome> = {
         breadcrumb: ['维保端', 'SOP 工作台'],
         showDraftEntry: true,
     },
-    atom01: {
+    demo: {
         title: 'ATOM01 维保工作台',
         breadcrumb: ['工作台', 'ATOM01 维保工作台'],
         showDraftEntry: false,
@@ -246,12 +246,12 @@ const LoadingFallback = () => (
 
 function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
-    const robotId = currentRobot ? String(currentRobot.id) : 'atom01';
+    const robotId = currentRobot ? String(currentRobot.id) : null;
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const sopParam = searchParams.get('sop');
     const workspaceChrome = WORKSPACE_CHROME[workspaceVariant];
-    const effectiveLayoutMode: MaintenanceLayoutMode = workspaceVariant === 'atom01' ? 'full' : (layoutMode ?? 'execution');
+    const effectiveLayoutMode: MaintenanceLayoutMode = workspaceVariant === 'demo' ? 'full' : (layoutMode ?? 'execution');
     const showExecutionRail = effectiveLayoutMode !== 'inspector';
     const showInspectorRail = effectiveLayoutMode !== 'execution';
     const [explodeAmount, setExplodeAmount] = useState(0);
@@ -369,8 +369,8 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         };
     }, [l2TargetLink, l2SelectedPartIdx]);
     const selectedCoreDetailRecord = useMemo(
-        () => (selectedPart ? getCorePartDetailRecord(selectedPart.name) : null),
-        [selectedPart],
+        () => (selectedPart ? getCorePartDetailRecord(selectedPart.name, robotId ?? undefined) : null),
+        [selectedPart, robotId],
     );
     const selectedDetailRecord = useMemo(
         () => (selectedDetailSelection ? getDetailPartDetailRecord(selectedDetailSelection) : null),
@@ -485,7 +485,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         return () => clearInterval(timer);
     }, [operationMode, examSummaryReport, examRemainingMs]);
     const runtimeSopScript = useMemo(() => {
-        if (workspaceVariant === 'atom01' || !runtimeDraft) {
+        if (workspaceVariant === 'demo' || !runtimeDraft) {
             return null;
         }
         return buildRuntimeSopScript(runtimeDraft);
@@ -536,7 +536,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     }, []);
 
     useEffect(() => {
-        if (workspaceVariant === 'atom01') {
+        if (workspaceVariant === 'demo') {
             setRuntimeDraft(null);
             setRuntimeManifest(null);
             setRuntimeTargetIds([]);
@@ -1390,7 +1390,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                                             assetPath={runtimePreviewAssetPath}
                                             onVisibleBoundsChange={handleVisibleBoundsChange}
                                         />
-                                    ) : (
+                                    ) : robotId ? (
                                         <>
                                             <Atom01Interactive
                                                 robotId={robotId}
@@ -1423,7 +1423,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                                                 visible={showDetailParts}
                                             />
                                         </>
-                                    )}
+                                    ) : null}
                                 </Suspense>
 
                                 {/* 拆卸动画演示 */}
