@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 const assemblyState = vi.hoisted(() => ({
   explodeManifest: {
     version: '2026-03-13',
-    robotId: 'atom01',
+    robotId: '1',
     views: [
       {
         id: 'torso_service_view',
@@ -97,6 +97,11 @@ vi.mock('@/components/Viewer3D/hooks/useAtom01AssemblyData', () => ({
     isLoading: false,
     error: null,
   }),
+}))
+
+vi.mock('@/store/robotContextStore', () => ({
+  useRobotContextStore: (selector: (s: { currentRobot: { id: number } | null }) => unknown) =>
+    selector({ currentRobot: { id: 1 } }),
 }))
 
 import Atom01DemoPage from '@/pages/Atom01DemoPage'

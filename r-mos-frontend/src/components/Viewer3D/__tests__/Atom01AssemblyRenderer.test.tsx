@@ -17,7 +17,7 @@ vi.mock('@react-three/drei', () => ({
 
 function buildAdapter(): Atom01AssemblyAdapter {
   return {
-    robotId: 'atom01',
+    robotId: '1',
     label: 'ATOM01',
     tree: {
       rootNodeIds: ['base_link'],
