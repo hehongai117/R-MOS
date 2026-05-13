@@ -30,6 +30,7 @@ class RobotModelResponse(BaseModel):
     thumbnail_path: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    binding_type: Optional[str] = None  # owner / shared_ref，教师列表接口填充
 
     model_config = {"from_attributes": True}
 

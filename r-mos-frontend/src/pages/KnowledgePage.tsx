@@ -59,7 +59,7 @@ const KnowledgePage = () => {
   const canManageKnowledge = role === 'teacher' || role === 'admin'
 
   // Robot store
-  const { robots, selectedRobotId, isLoading: robotsLoading, fetchRobots, selectRobot, addRobot, togglePublish, toggleVisibility } = useRobotStore((state) => state)
+  const { robots, selectedRobotId, isLoading: robotsLoading, fetchRobots, selectRobot, addRobot, togglePublish, toggleVisibility, unbindRobot } = useRobotStore((state) => state)
   const selectedRobot = useSelectedRobot()
 
   // Add robot dialog state
@@ -507,8 +507,8 @@ const KnowledgePage = () => {
           </SectionCard>
         ),
       },
-      // File upload tab (teacher/admin with selected robot)
-      ...(selectedRobotId !== null
+      // File upload tab (teacher/admin with selected robot, owner only)
+      ...(selectedRobotId !== null && selectedRobot?.binding_type !== 'shared_ref'
         ? [
             {
               key: 'upload',
@@ -583,12 +583,29 @@ const KnowledgePage = () => {
             {selectedRobot.version ? (
               <span className="ml-1 text-text-muted">v{selectedRobot.version}</span>
             ) : null}
+            {selectedRobot.binding_type === 'shared_ref' ? (
+              <span className="ml-2 text-xs text-blue-500">🔗 引用</span>
+            ) : null}
           </div>
-          <PublishControl
-            robot={selectedRobot}
-            onPublish={() => void togglePublish(selectedRobot.id)}
-            onToggleVisibility={() => void toggleVisibility(selectedRobot.id)}
-          />
+          {selectedRobot.binding_type === 'shared_ref' ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void unbindRobot(selectedRobot.id).then(() => {
+                  message.success('已取消引用')
+                })
+              }}
+            >
+              取消引用
+            </Button>
+          ) : (
+            <PublishControl
+              robot={selectedRobot}
+              onPublish={() => void togglePublish(selectedRobot.id)}
+              onToggleVisibility={() => void toggleVisibility(selectedRobot.id)}
+            />
+          )}
         </div>
       ) : null}
 

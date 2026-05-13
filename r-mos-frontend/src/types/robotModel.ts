@@ -29,6 +29,7 @@ export interface RobotModel {
   thumbnail_path: string | null
   created_at: string
   updated_at: string
+  binding_type?: BindingType
 }
 
 /** 机器人列表响应 */

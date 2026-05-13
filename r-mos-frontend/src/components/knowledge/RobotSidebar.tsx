@@ -55,7 +55,12 @@ export function RobotSidebar({ robots, selectedRobotId, loading, onSelect, onAdd
                   )}
                   onClick={() => onSelect(robot.id)}
                 >
-                  <span className="truncate text-sm font-medium">{robot.model_name}</span>
+                  <span className="truncate text-sm font-medium">
+                    {robot.model_name}
+                    {robot.binding_type === 'shared_ref' ? (
+                      <span className="ml-1 text-xs" title="引用自共享库">🔗</span>
+                    ) : null}
+                  </span>
                   <span className="mt-0.5 flex items-center gap-2 text-xs">
                     <span className="text-text-muted">{robot.brand}</span>
                     <span className={statusCfg.className}>{statusCfg.label}</span>

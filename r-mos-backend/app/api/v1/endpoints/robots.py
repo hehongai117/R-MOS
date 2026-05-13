@@ -75,12 +75,17 @@ async def list_robots(
     """列出当前教师名下的机器人（自有 + 引用）。"""
     _require_teacher_or_admin(actor)
     stmt = (
-        select(RobotModel)
+        select(RobotModel, TeacherRobotBinding.binding_type)
         .join(TeacherRobotBinding, TeacherRobotBinding.robot_model_id == RobotModel.id)
         .where(TeacherRobotBinding.teacher_id == actor.user_id)
     )
     result = await db.execute(stmt)
-    items = list(result.scalars().all())
+    rows = result.all()
+    items = []
+    for robot, binding_type in rows:
+        resp = RobotModelResponse.model_validate(robot)
+        resp.binding_type = binding_type
+        items.append(resp)
     return RobotModelListResponse(items=items, total=len(items))
 
 
