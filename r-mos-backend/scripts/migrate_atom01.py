@@ -105,14 +105,9 @@ async def main():
         else:
             print(f"Robot models already migrated or source not found: {src_robot}")
 
-        if src_parts.exists() and not (dest_dir / "models" / "parts").exists():
-            dest_parts = dest_dir / "models" / "parts"
-            print(f"Copying parts catalog: {src_parts} -> {dest_parts}")
-            print("This may take a while (1.6GB)...")
-            shutil.copytree(src_parts, dest_parts)
-            print("Parts catalog copied")
-        else:
-            print(f"Parts already migrated or source not found: {src_parts}")
+        # Note: public/models/parts/ (1.6GB shared parts catalog) is NOT
+        # robot-specific. It stays in public/ and is served as static assets.
+        # Only atom01's robot GLBs + manifests are migrated here.
 
         # 5. Register assets in DB
         async with async_session() as db2:
@@ -138,8 +133,8 @@ async def main():
         print(f"Assets directory: {dest_dir}")
         print(f"\nNext steps:")
         print(f"  1. Verify: ls {dest_dir}/models/")
-        print(f"  2. After verification, delete: rm -rf {FRONTEND_MODELS}/robots/atom01 {FRONTEND_MODELS}/parts")
-        print(f"  3. Update .gitignore to include /data/robot-assets/")
+        print(f"  2. After verification, delete: rm -rf {FRONTEND_MODELS}/robots/atom01")
+        print(f"  3. The parts/ directory (1.6GB) stays in public/ as shared assets")
 
 
 if __name__ == "__main__":
