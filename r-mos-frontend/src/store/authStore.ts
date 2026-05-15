@@ -13,6 +13,7 @@ export interface AuthUser {
   guidance_mode?: GuidanceMode
   welcome_summary?: string | null
   unfinished_session?: Record<string, unknown> | null
+  onboarding_completed?: boolean
 }
 
 interface Credentials {
@@ -27,6 +28,7 @@ export interface AuthTokenResponse {
   default_route: string
   welcome_summary?: string | null
   unfinished_session?: Record<string, unknown> | null
+  onboarding_completed?: boolean
 }
 
 interface PreferenceResponse {
@@ -50,6 +52,15 @@ interface AuthState {
   logout: (options?: LogoutOptions) => Promise<void>
   initFromStorage: () => Promise<void>
   applySession: (payload: AuthTokenResponse, email?: string) => Promise<void>
+  register: (data: {
+    email: string
+    password: string
+    full_name?: string
+    role: string
+    school_name: string
+    teacher_id?: number
+  }) => Promise<string>
+  setUser: (user: AuthUser) => void
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
@@ -61,6 +72,7 @@ export const AUTH_STORAGE_KEYS = {
   role: 'rmos_role',
   defaultRoute: 'rmos_default_route',
   email: 'rmos_user_email',
+  onboardingCompleted: 'rmos_onboarding_completed',
   legacyAccessToken: 'access_token',
   legacyRefreshToken: 'refresh_token',
 } as const
@@ -88,6 +100,7 @@ function persistSession(payload: AuthTokenResponse, email?: string) {
   if (email) {
     localStorage.setItem(AUTH_STORAGE_KEYS.email, email)
   }
+  localStorage.setItem(AUTH_STORAGE_KEYS.onboardingCompleted, String(payload.onboarding_completed ?? true))
 }
 
 function clearSessionStorage() {
@@ -96,6 +109,7 @@ function clearSessionStorage() {
   localStorage.removeItem(AUTH_STORAGE_KEYS.role)
   localStorage.removeItem(AUTH_STORAGE_KEYS.defaultRoute)
   localStorage.removeItem(AUTH_STORAGE_KEYS.email)
+  localStorage.removeItem(AUTH_STORAGE_KEYS.onboardingCompleted)
   localStorage.removeItem(AUTH_STORAGE_KEYS.legacyAccessToken)
   localStorage.removeItem(AUTH_STORAGE_KEYS.legacyRefreshToken)
 }
@@ -120,6 +134,7 @@ function readStoredSession() {
   const role = localStorage.getItem(AUTH_STORAGE_KEYS.role)
   const defaultRoute = localStorage.getItem(AUTH_STORAGE_KEYS.defaultRoute)
   const email = localStorage.getItem(AUTH_STORAGE_KEYS.email) ?? undefined
+  const onboardingCompleted = localStorage.getItem(AUTH_STORAGE_KEYS.onboardingCompleted)
 
   if (!accessToken || !refreshToken || !isUserRole(role) || !defaultRoute) {
     return null
@@ -131,6 +146,7 @@ function readStoredSession() {
     role,
     defaultRoute,
     email,
+    onboardingCompleted: onboardingCompleted !== 'false',
   }
 }
 
@@ -162,6 +178,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       role: payload.role,
       welcome_summary: payload.welcome_summary ?? null,
       unfinished_session: payload.unfinished_session ?? null,
+      onboarding_completed: payload.onboarding_completed ?? true,
     }
 
     set({
@@ -195,6 +212,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ isLoading: false })
     }
+  },
+  async register(data) {
+    set({ isLoading: true })
+    try {
+      const response = await authHttp.post('/auth/register', data)
+      const payload = response.data
+      await get().applySession(payload, data.email)
+      return payload.default_route
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+  setUser(user) {
+    set({ user })
   },
   async logout(options) {
     const shouldRedirect = options?.redirect !== false
@@ -254,6 +285,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: {
           email: stored.email,
           role: stored.role,
+          onboarding_completed: stored.onboardingCompleted,
         },
         accessToken: stored.accessToken,
         refreshToken: stored.refreshToken,
