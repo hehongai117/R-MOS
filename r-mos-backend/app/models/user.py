@@ -26,6 +26,8 @@ class User(Base, TimestampMixin):
     teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)  # 导师ID
     class_id = Column(Integer, nullable=True, index=True)  # 所属班级ID
     hint_level = Column(Integer, nullable=False, default=3)  # 提示级别 1-5
+    school_name = Column(String(200), nullable=True)  # 学校全称，关联 schools.name
+    onboarding_completed = Column(Boolean, default=True, nullable=False)  # 教师 onboarding 完成标记
 
     # 关系
     teacher = relationship("User", remote_side=[id], backref="students")

@@ -44,6 +44,7 @@ from app.models.teaching import (
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.models.robot_asset import RobotAsset, AssetType
 from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
+from app.models.school import School  # noqa: F401
 
 __all__ = [
     # Base
@@ -130,4 +131,6 @@ __all__ = [
     "AnalysisTask",
     "AnalysisTaskType",
     "AnalysisTaskStatus",
+    # School whitelist
+    "School",
 ]
