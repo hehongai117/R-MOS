@@ -17,6 +17,8 @@ class ChatContext:
     current_step_description: Optional[str] = None
     fault_type: Optional[str] = None
     hint_level: int = 3  # 1=方向, 2=关键提示, 3=详细步骤
+    robot_model_id: Optional[int] = None   # 全局对话：当前选中的机器人型号
+    extra_context: Optional[str] = None    # 全局对话：附加上下文信息
 
 
 @dataclass
@@ -58,7 +60,23 @@ class AIAssistantService:
         return ChatResponse(reply=reply, hint_level_used=context.hint_level)
 
     def _build_system_prompt(self, context: ChatContext) -> str:
-        """构建带上下文的 system prompt"""
+        """构建带上下文的 system prompt。
+
+        - 有 sop_id：SOP 练习辅导模式（原有逻辑）
+        - 无 sop_id：通用维保助手模式
+        """
+        if context.sop_id is None:
+            # 通用维保助手模式
+            parts = [
+                "你是 R-MOS 机器人维保智能助手。"
+                "回答用户关于机器人维修、保养、故障排除的问题。"
+                "回答简洁专业，必要时列出步骤。"
+            ]
+            if context.extra_context:
+                parts.append(f"\n上下文信息：{context.extra_context}")
+            return "\n".join(parts)
+
+        # SOP 练习辅导模式（原有逻辑）
         parts = [self._system_prompt]
 
         if context.sop_title:

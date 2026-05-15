@@ -28,6 +28,8 @@ class AIChatRequest(BaseModel):
     fault_type: Optional[str] = None
     hint_level: int = Field(default=3, ge=1, le=3)
     history: List[ChatMessageInput] = Field(default_factory=list)
+    robot_model_id: Optional[int] = None   # 全局对话：当前选中的机器人型号
+    context: Optional[str] = None          # 全局对话：附加上下文信息
 
 
 class AIChatResponse(BaseModel):
@@ -37,7 +39,7 @@ class AIChatResponse(BaseModel):
 
 @router.post("/ai-assistant/chat", response_model=AIChatResponse, tags=["ai-assistant"])
 async def chat_with_assistant(request: AIChatRequest):
-    """与 AI 助手对话 — SOP 练习中学生提问入口"""
+    """与 AI 助手对话 — 支持 SOP 练习辅导和全局通用维保问答两种模式"""
     context = ChatContext(
         sop_id=request.sop_id,
         sop_title=request.sop_title,
@@ -45,6 +47,8 @@ async def chat_with_assistant(request: AIChatRequest):
         current_step_description=request.current_step_description,
         fault_type=request.fault_type,
         hint_level=request.hint_level,
+        robot_model_id=request.robot_model_id,
+        extra_context=request.context,
     )
     history = [
         ServiceChatMessage(role=m.role, content=m.content)
