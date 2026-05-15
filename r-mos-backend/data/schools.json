@@ -1,0 +1,13 @@
+[
+  {"name": "北京大学", "province": "北京市"},
+  {"name": "清华大学", "province": "北京市"},
+  {"name": "北京理工大学", "province": "北京市"},
+  {"name": "北京航空航天大学", "province": "北京市"},
+  {"name": "上海交通大学", "province": "上海市"},
+  {"name": "复旦大学", "province": "上海市"},
+  {"name": "浙江大学", "province": "浙江省"},
+  {"name": "南京大学", "province": "江苏省"},
+  {"name": "哈尔滨工业大学", "province": "黑龙江省"},
+  {"name": "华中科技大学", "province": "湖北省"},
+  {"name": "R-MOS 演示学校", "province": "北京市"}
+]
