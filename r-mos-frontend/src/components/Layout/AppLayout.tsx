@@ -19,6 +19,8 @@ import {
 import { useEffect } from 'react'
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
+import { GlobalAIChat } from '@/components/AIAssistant/GlobalAIChat'
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -107,6 +109,12 @@ const TEACHER_NAV: NavGroup[] = [
       { label: '维保报告', to: '/reports', icon: BarChart3 },
       { label: '知识库', to: '/knowledge', icon: BookOpen },
       { label: '共享机器人库', to: '/shared-robots', icon: Boxes },
+    ],
+  },
+  {
+    label: 'AI 工具',
+    items: [
+      { label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot },
     ],
   },
 ]
@@ -291,6 +299,7 @@ function RoleLayoutShell({
           <Outlet />
         </div>
       </main>
+      <GlobalAIChat />
     </div>
   )
 }
