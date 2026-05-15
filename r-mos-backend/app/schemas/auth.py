@@ -34,6 +34,9 @@ class RegisterRequest(BaseModel):
     email: str = Field(..., description="用户邮箱")
     password: str = Field(..., description="密码")
     full_name: Optional[str] = Field(default=None, description="用户姓名")
+    role: str = Field(..., description="角色: student 或 teacher")
+    school_name: str = Field(..., description="学校全称（必须在白名单中）")
+    teacher_id: Optional[int] = Field(default=None, description="绑定教师ID（学生必填）")
 
     class Config:
         json_schema_extra = {
@@ -41,6 +44,9 @@ class RegisterRequest(BaseModel):
                 "email": "user@example.com",
                 "password": "StrongPass123",
                 "full_name": "R-MOS User",
+                "role": "student",
+                "school_name": "北京理工大学",
+                "teacher_id": 18,
             }
         }
 
@@ -57,6 +63,7 @@ class TokenResponse(BaseModel):
     default_route: str = Field(..., description="默认跳转路由")
     welcome_summary: Optional[str] = Field(default=None, description="登录欢迎摘要")
     unfinished_session: Optional[dict[str, Any]] = Field(default=None, description="未完成训练会话")
+    onboarding_completed: bool = Field(default=True, description="是否完成 onboarding")
 
     class Config:
         json_schema_extra = {
@@ -66,7 +73,7 @@ class TokenResponse(BaseModel):
                 "token_type": "bearer",
                 "expires_in": 1800,
                 "role": "student",
-                "default_route": "/workbench/training"
+                "default_route": "/dashboard"
             }
         }
 
@@ -78,8 +85,15 @@ class MessageResponse(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    """注册响应。"""
+    """注册响应（含自动登录 token）。"""
 
     user_id: int = Field(..., description="用户ID")
     email: str = Field(..., description="用户邮箱")
     message: str = Field(default="注册成功", description="提示消息")
+    access_token: str = Field(..., description="访问Token")
+    refresh_token: str = Field(..., description="刷新Token")
+    token_type: str = Field(default="bearer", description="Token类型")
+    expires_in: int = Field(..., description="过期时间（秒）")
+    role: str = Field(..., description="用户角色")
+    default_route: str = Field(..., description="默认跳转路由")
+    onboarding_completed: bool = Field(..., description="是否完成 onboarding")
