@@ -32,6 +32,15 @@ export function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) 
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 
+  // 教师未完成 onboarding 时，强制跳转机器人选择页
+  if (
+    user.role === 'teacher' &&
+    user.onboarding_completed === false &&
+    location.pathname !== '/onboarding/robots'
+  ) {
+    return <Navigate to="/onboarding/robots" replace />
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={getStoredDefaultRoute()} replace />
   }

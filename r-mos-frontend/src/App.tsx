@@ -31,6 +31,7 @@ const TeacherMonitorPage = lazy(() => import('@/teaching/pages/TeacherMonitorPag
 const TeacherStudentsPage = lazy(() => import('@/teaching/pages/TeacherStudentsPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const SharedRobotsPage = lazy(() => import('@/pages/SharedRobotsPage'))
+const OnboardingRobotsPage = lazy(() => import('./pages/OnboardingRobotsPage'))
 
 function DefaultRouteRedirect() {
   const defaultRoute =
@@ -72,6 +73,7 @@ function App() {
             <Route path="/register" element={withSuspense(<RegisterPage />)} />
 
             <Route element={<ProtectedRoute />}>
+              <Route path="onboarding/robots" element={withSuspense(<OnboardingRobotsPage />)} />
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<DefaultRouteRedirect />} />
                 <Route
