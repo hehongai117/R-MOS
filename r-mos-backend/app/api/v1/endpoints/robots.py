@@ -1,7 +1,7 @@
 """Robot model CRUD API endpoints."""
 import os
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -459,14 +459,44 @@ async def unbind_shared_robot(
     await db.commit()
 
 
+@router.get("/{robot_id}/assets")
+async def list_robot_assets(
+    robot_id: int,
+    asset_type: Optional[str] = Query(None, description="过滤资产类型: upload_original, model_glb, manifest, thumbnail"),
+    db: AsyncSession = Depends(get_db),
+):
+    """列出机器人的资产文件，支持按 asset_type 过滤。"""
+    query = select(RobotAsset).where(RobotAsset.robot_model_id == robot_id)
+    if asset_type:
+        query = query.where(RobotAsset.asset_type == asset_type)
+    result = await db.execute(query)
+    assets = result.scalars().all()
+    return {
+        "items": [
+            {
+                "id": a.id,
+                "asset_type": a.asset_type.value if hasattr(a.asset_type, "value") else str(a.asset_type),
+                "file_path": a.file_path,
+                "file_name": a.file_path.split("/")[-1],
+                "file_size": a.file_size,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in assets
+        ]
+    }
+
+
 @router.get("/{robot_id}/assets/{file_path:path}")
 async def get_robot_asset(
     robot_id: int,
     file_path: str,
     db: AsyncSession = Depends(get_db),
-    actor: ActorContext = Depends(get_current_actor),
 ):
-    """获取机器人资产文件（3D 模型、manifest 等）。"""
+    """获取机器人资产文件（3D 模型、manifest 等）。
+
+    无需认证 — Three.js GLTFLoader 直接 fetch，无法附加 Authorization header。
+    资产文件（GLB/JSON）为非敏感数据。
+    """
     result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
     robot = result.scalar_one_or_none()
     if not robot:
