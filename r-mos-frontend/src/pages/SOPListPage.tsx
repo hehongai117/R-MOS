@@ -82,8 +82,15 @@ const SOPListPage: React.FC = () => {
       dataIndex: 'difficulty_level',
       key: 'difficulty_level',
       render: (level: string) => {
-        const colorMap: Record<string, string> = { low: 'green', medium: 'orange', high: 'red' };
-        return <Tag color={colorMap[level] || 'default'}>{level}</Tag>;
+        const colorMap: Record<string, string> = {
+          L1: 'green', L2: 'cyan', L3: 'blue', L4: 'orange', L5: 'red',
+          low: 'green', medium: 'orange', high: 'red',
+        };
+        const labelMap: Record<string, string> = {
+          L1: 'L1 入门', L2: 'L2 基础', L3: 'L3 中级', L4: 'L4 高级', L5: 'L5 专家',
+          low: '简单', medium: '中等', high: '困难',
+        };
+        return <Tag color={colorMap[level] || 'default'}>{labelMap[level] || level}</Tag>;
       },
     },
     {

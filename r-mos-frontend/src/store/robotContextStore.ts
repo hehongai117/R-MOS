@@ -1,7 +1,7 @@
 // r-mos-frontend/src/store/robotContextStore.ts
 import { create } from 'zustand'
 
-import { listStudentRobots } from '@/api/robots'
+import { listRobots, listStudentRobots } from '@/api/robots'
 import type { RobotModel } from '@/types/robotModel'
 
 const STORAGE_KEY = 'rmos_current_robot_id'
@@ -14,6 +14,8 @@ interface RobotContextState {
 
   /** 加载学生可用机器人列表 */
   fetchAvailableRobots: (studentId: number) => Promise<void>
+  /** 加载教师名下的机器人列表 */
+  fetchTeacherRobots: () => Promise<void>
   /** 设置当前机器人 */
   setCurrentRobot: (robot: RobotModel) => void
   /** 清除上下文（登出时） */
@@ -46,6 +48,37 @@ export const useRobotContextStore = create<RobotContextState>((set, _get) => ({
         current = robots.find((r) => r.id === storedId) ?? null
       }
       if (!current && robots.length === 1) {
+        current = robots[0]
+      }
+
+      set({
+        availableRobots: robots,
+        currentRobot: current,
+        currentRobotId: current?.id ?? null,
+      })
+
+      if (current) {
+        localStorage.setItem(STORAGE_KEY, String(current.id))
+      }
+    } catch {
+      set({ availableRobots: [] })
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  async fetchTeacherRobots() {
+    set({ isLoading: true })
+    try {
+      const res = await listRobots()
+      const robots = res.items
+
+      const storedId = getStoredRobotId()
+      let current: RobotModel | null = null
+      if (storedId) {
+        current = robots.find((r) => r.id === storedId) ?? null
+      }
+      if (!current && robots.length > 0) {
         current = robots[0]
       }
 

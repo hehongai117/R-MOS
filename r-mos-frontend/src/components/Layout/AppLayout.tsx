@@ -16,6 +16,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -105,40 +106,14 @@ const TEACHER_NAV: NavGroup[] = [
     items: [
       { label: '维保报告', to: '/reports', icon: BarChart3 },
       { label: '知识库', to: '/knowledge', icon: BookOpen },
+      { label: '共享机器人库', to: '/shared-robots', icon: Boxes },
     ],
   },
 ]
 
 const ADMIN_NAV: NavGroup[] = [
-  {
-    label: '概览',
-    items: [
-      { label: '系统概览', to: '/admin/console', icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: '教学管理',
-    items: [
-      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-      { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
-      { label: '学员档案', to: '/teacher/students', icon: Users },
-    ],
-  },
-  {
-    label: 'SOP & 工具',
-    items: [
-      { label: 'SOP 管理', to: '/sops', icon: FileText },
-      { label: '3D 展示', to: '/atom01', icon: Boxes },
-      { label: '实时监控', to: '/monitor', icon: Activity },
-    ],
-  },
-  {
-    label: '记录',
-    items: [
-      { label: '维保报告', to: '/reports', icon: BarChart3 },
-      { label: '知识库', to: '/knowledge', icon: BookOpen },
-    ],
-  },
+  { label: '概览', items: [{ label: '系统概览', to: '/admin/console', icon: LayoutDashboard }] },
+  ...TEACHER_NAV,
 ]
 
 const LAYOUT_CONFIG: Record<UserRole, LayoutConfig> = {
@@ -287,8 +262,8 @@ function RoleLayoutShell({
       </aside>
 
       <main className="ml-[220px] flex-1 overflow-auto">
-        {/* 学生角色且有多台机器人时显示顶部机器人切换栏 */}
-        {role === 'student' && availableRobots.length > 1 && (
+        {/* 有多台机器人时显示顶部机器人切换栏 */}
+        {availableRobots.length > 1 && (
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border-subtle bg-bg-surface/95 px-6 py-2 backdrop-blur">
             <Bot className="h-4 w-4 text-text-muted" />
             <span className="text-xs text-text-secondary">当前机器人:</span>
@@ -322,6 +297,18 @@ function RoleLayoutShell({
 
 function AppLayout() {
   const user = useAuthStore((state) => state.user)
+  const fetchAvailableRobots = useRobotContextStore((s) => s.fetchAvailableRobots)
+  const fetchTeacherRobots = useRobotContextStore((s) => s.fetchTeacherRobots)
+
+  // 在 Layout 级别加载机器人上下文，确保所有子页面都能获取 currentRobot
+  useEffect(() => {
+    if (!user?.user_id) return
+    if (user.role === 'student') {
+      fetchAvailableRobots(user.user_id)
+    } else if (user.role === 'teacher' || user.role === 'admin') {
+      fetchTeacherRobots()
+    }
+  }, [user?.user_id, user?.role, fetchAvailableRobots, fetchTeacherRobots])
 
   if (!user) {
     return <Navigate to="/login" replace />
