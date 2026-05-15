@@ -49,12 +49,9 @@ async def create_sop(
     }
     ```
     """
-    try:
-        service = SOPService(db)
-        sop = await service.create_sop(request)
-        return sop
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    service = SOPService(db)
+    sop = await service.create_sop(request)
+    return sop
 
 
 @router.get("/sops/{sop_id}", response_model=SOPResponse, tags=["SOPs"])
@@ -69,11 +66,9 @@ async def get_sop(
         return sop
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/sops", response_model=List[SOPResponse], tags=["SOPs"])
+@router.get("/sops", tags=["SOPs"])
 async def list_sops(
     applicable_model: Optional[str] = Query(None, description="过滤：机器人型号"),
     category: Optional[str] = Query(None, description="过滤：分类"),
@@ -82,19 +77,15 @@ async def list_sops(
     limit: int = Query(100, ge=1, le=500, description="返回数量"),
     db: AsyncSession = Depends(get_db)
 ):
-    """查询SOP列表"""
-    try:
-        service = SOPService(db)
-        sops = await service.list_sops(
-            applicable_model=applicable_model,
-            category=category,
-            robot_model_id=robot_model_id,
-            skip=skip,
-            limit=limit
-        )
-        return sops
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """查询SOP列表，返回分页格式 {items, total}"""
+    service = SOPService(db)
+    return await service.list_sops(
+        applicable_model=applicable_model,
+        category=category,
+        robot_model_id=robot_model_id,
+        skip=skip,
+        limit=limit
+    )
 
 
 @router.get("/sops/{sop_id}/delete-impact", response_model=SOPDeleteWarning, tags=["SOPs"])
@@ -133,8 +124,6 @@ async def check_sop_delete_impact(
         return warning
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/sops/{sop_id}", response_model=SOPDeleteResponse, tags=["SOPs"])
@@ -197,8 +186,3 @@ async def delete_sop(
         return result
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except BusinessRuleViolation:
-        # 重要：不要catch BusinessRuleViolation，让FastAPI的异常处理器处理
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

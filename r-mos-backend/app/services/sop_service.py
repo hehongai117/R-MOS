@@ -86,8 +86,24 @@ class SOPService:
         robot_model_id: Optional[int] = None,
         skip: int = 0,
         limit: int = 100
-    ) -> List[SOP]:
-        """查询SOP列表"""
+    ) -> Dict[str, Any]:
+        """查询SOP列表，返回分页格式 {"items": [...], "total": N}"""
+        # 构建 count 查询
+        count_query = select(func.count()).select_from(SOP)
+
+        if applicable_model:
+            count_query = count_query.where(SOP.applicable_model == applicable_model)
+
+        if category:
+            count_query = count_query.where(SOP.category == category)
+
+        if robot_model_id is not None:
+            count_query = count_query.where(SOP.robot_model_id == robot_model_id)
+
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar_one()
+
+        # 构建数据查询
         query = select(SOP)
 
         if applicable_model:
@@ -99,10 +115,12 @@ class SOPService:
         if robot_model_id is not None:
             query = query.where(SOP.robot_model_id == robot_model_id)
 
-        query = query.offset(skip).limit(limit).order_by(SOP.created_at.desc())
-        
+        query = query.order_by(SOP.created_at.desc()).offset(skip).limit(limit)
+
         result = await self.db.execute(query)
-        return result.scalars().all()
+        sops = result.scalars().all()
+
+        return {"items": sops, "total": total}
     
     async def delete_sop(
         self,
