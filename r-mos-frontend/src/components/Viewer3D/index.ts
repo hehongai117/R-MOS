@@ -9,4 +9,5 @@ export { default as Atom01Interactive, PART_METADATA } from './Atom01Interactive
 export type { PartInfo, Atom01InteractiveProps } from './Atom01Interactive';
 export { useRobotData } from './hooks/useRobotData';
 export * from './constants';
+export { RobotGLBViewer } from './RobotGLBViewer';
 
