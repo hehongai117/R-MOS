@@ -20,9 +20,33 @@ import {
     SettingOutlined,
 } from '@ant-design/icons';
 import { Atom01Viewer } from '@/components/Viewer3D';
+import { RobotGLBViewer } from '@/components/Viewer3D/RobotGLBViewer';
 import { useAtom01AssemblyData } from '@/components/Viewer3D/hooks/useAtom01AssemblyData';
 import { resolveExplodeView } from '@/components/Viewer3D/assemblyManifest';
 import { useRobotContextStore } from '@/store/robotContextStore';
+import { API_BASE_URL } from '@/api/client';
+
+function useHasAssemblyManifest(robotId: number | null): { hasManifest: boolean; isChecking: boolean } {
+    const [hasManifest, setHasManifest] = useState(false);
+    const [isChecking, setIsChecking] = useState(true);
+
+    useEffect(() => {
+        if (!robotId) {
+            setHasManifest(false);
+            setIsChecking(false);
+            return;
+        }
+        setIsChecking(true);
+        fetch(`${API_BASE_URL}/api/v1/robots/${robotId}/assets/manifests/assembly_manifest.json`, { method: 'HEAD' })
+            .then((res) => {
+                setHasManifest(res.ok);
+            })
+            .catch(() => setHasManifest(false))
+            .finally(() => setIsChecking(false));
+    }, [robotId]);
+
+    return { hasManifest, isChecking };
+}
 
 const { Title, Text } = Typography;
 const DEFAULT_VIEW_ID = 'default_view';
@@ -106,7 +130,9 @@ function formatExplodeViewLabel(viewId: string): string {
 
 function Atom01DemoPage() {
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
+    const currentRobotId = useRobotContextStore((s) => s.currentRobotId);
     const robotId = currentRobot ? String(currentRobot.id) : null;
+    const { hasManifest, isChecking } = useHasAssemblyManifest(currentRobotId);
     const [jointAngles, setJointAngles] = useState<Record<string, number>>({});
     const [faultJoints, setFaultJoints] = useState<string[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<string>('leftLeg');
@@ -244,7 +270,7 @@ function Atom01DemoPage() {
             }}>
                 <Title level={3} style={{ margin: 0 }}>
                     <RobotOutlined style={{ marginRight: 8 }} />
-                    Atom01 机器人 3D 展示
+                    {currentRobot ? `${currentRobot.model_name} 3D 展示` : '机器人 3D 展示'}
                 </Title>
                 <Space>
                     <Tag color="blue">23 自由度</Tag>
@@ -259,8 +285,8 @@ function Atom01DemoPage() {
 
             {/* 主内容区 */}
             <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
-                {/* 左侧：控制面板 */}
-                <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
+                {/* 左侧：控制面板（仅 assembly 模式显示） */}
+                {hasManifest && <Col xs={24} lg={6} style={{ height: '100%', overflowY: 'auto' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
                         {/* 动画控制 */}
                         <Card size="small" title={<><PlayCircleOutlined /> 动画控制</>}>
@@ -409,10 +435,10 @@ function Atom01DemoPage() {
                             </Space>
                         </Card>
                     </Space>
-                </Col>
+                </Col>}
 
                 {/* 中间：3D 视图 */}
-                <Col xs={24} lg={18} style={{ height: '100%' }}>
+                <Col xs={24} lg={hasManifest ? 18 : 24} style={{ height: '100%' }}>
                     <Card
                         size="small"
                         style={{ height: '100%' }}
@@ -424,11 +450,19 @@ function Atom01DemoPage() {
                             </Space>
                         }
                     >
-                        {robotId ? (
+                        {!currentRobotId ? (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4fc3f7', fontSize: 14 }}>
+                                请先选择机器人
+                            </div>
+                        ) : isChecking ? (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8c8c8c', fontSize: 14 }}>
+                                检测 3D 模型中...
+                            </div>
+                        ) : hasManifest ? (
                             <Atom01Viewer
                                 width="100%"
                                 height="100%"
-                                robotId={robotId}
+                                robotId={robotId!}
                                 cameraPosition={viewerPosition}
                                 cameraProjection={viewerProjection}
                                 cameraTarget={viewerTarget}
@@ -443,9 +477,7 @@ function Atom01DemoPage() {
                                 subPartEnabledNames={focusedAssemblyNode ? [focusedAssemblyNode] : undefined}
                             />
                         ) : (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4fc3f7', fontSize: 14 }}>
-                                请先选择机器人
-                            </div>
+                            <RobotGLBViewer robotId={currentRobotId} height="100%" />
                         )}
                     </Card>
                 </Col>
