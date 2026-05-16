@@ -1,8 +1,15 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, Component, type ReactNode } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { AssemblyNode, AssemblyManifest } from './assemblyManifest'
 import type { AssemblyJoint } from './useAssemblyManifest'
+
+/** Catch GLB load failures silently — render nothing instead of crashing. */
+class MeshErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() { return this.state.hasError ? null : this.props.children }
+}
 
 interface ManifestDrivenRendererProps {
   manifest: AssemblyManifest & { joints?: AssemblyJoint[] }
@@ -120,11 +127,13 @@ function AssemblyNodeGroup({
       scale={scale}
     >
       {node.mesh_id && manifest.mesh_catalog[node.mesh_id] && (
-        <LinkMesh
-          meshPath={manifest.mesh_catalog[node.mesh_id]}
-          robotId={robotId}
-          highlighted={isHighlighted}
-        />
+        <MeshErrorBoundary>
+          <LinkMesh
+            meshPath={manifest.mesh_catalog[node.mesh_id]}
+            robotId={robotId}
+            highlighted={isHighlighted}
+          />
+        </MeshErrorBoundary>
       )}
       {node.children.map((childId) => {
         const childNode = nodeMap.get(childId)

@@ -53,7 +53,7 @@ export function useAssemblyManifest(robotId: number | undefined): UseAssemblyMan
       setLoading(true)
       setError(null)
       try {
-        const url = `/api/v1/robots/${rid}/assets/manifests/assembly_manifest.json`
+        const url = `/robots/${rid}/assets/manifests/assembly_manifest.json`
         const res = await apiClient.get<AssemblyManifestWithJoints>(url)
         if (!cancelled) {
           const data = res.data
