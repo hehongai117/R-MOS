@@ -12,7 +12,36 @@ from app.services.storage.file_storage import LocalFileStorage
 
 logger = logging.getLogger(__name__)
 
-CAD_EXTENSIONS = {".step", ".stp", ".stl"}
+CAD_EXTENSIONS = {".step", ".stp", ".stl", ".obj", ".dae"}
+
+
+async def convert_single_cad_to_glb(
+    source_path: str,
+    output_path: str,
+) -> dict:
+    """Convert a single CAD file (STEP/STL/OBJ/DAE) to GLB.
+
+    Args:
+        source_path: Absolute path to source CAD file
+        output_path: Absolute path for output GLB file
+
+    Returns:
+        {"success": True, "file_size": N} or {"success": False, "error": str}
+    """
+    import trimesh
+    from pathlib import Path
+
+    try:
+        loaded = trimesh.load(source_path, force="scene")
+        glb_bytes = loaded.export(file_type="glb")
+
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "wb") as f:
+            f.write(glb_bytes)
+
+        return {"success": True, "file_size": len(glb_bytes)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 GLB_EXTENSIONS = {".glb", ".gltf"}
 MIN_VERTICES = 10
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
