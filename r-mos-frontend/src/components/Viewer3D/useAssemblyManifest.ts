@@ -47,11 +47,13 @@ export function useAssemblyManifest(robotId: number | undefined): UseAssemblyMan
 
     let cancelled = false
 
+    const rid = robotId!
+
     async function fetchManifest() {
       setLoading(true)
       setError(null)
       try {
-        const url = `/api/v1/robots/${robotId}/assets/manifests/assembly_manifest.json`
+        const url = `/api/v1/robots/${rid}/assets/manifests/assembly_manifest.json`
         const res = await apiClient.get<AssemblyManifestWithJoints>(url)
         if (!cancelled) {
           const data = res.data
@@ -59,14 +61,14 @@ export function useAssemblyManifest(robotId: number | undefined): UseAssemblyMan
           if (!data.rootNodeId || !data.nodes || !Array.isArray(data.nodes)) {
             throw new Error('Invalid manifest format')
           }
-          manifestCache.set(robotId, data)
+          manifestCache.set(rid, data)
           setManifest(data)
         }
       } catch (e: any) {
         if (!cancelled) {
           if (e.response?.status === 404) {
             // No manifest — not an error, just means no assembly view
-            manifestCache.set(robotId, null)
+            manifestCache.set(rid, null)
             setManifest(null)
           } else {
             setError(e.message || 'Failed to load manifest')
