@@ -28,6 +28,12 @@ async def process_cad_parse(task: AnalysisTask, db) -> dict:
     return await CadConverter().process(task, db)
 
 
+async def process_assembly_build(task: AnalysisTask, db) -> dict:
+    """Assembly build — URDF parse + mesh convert + manifest generation."""
+    from app.services.analysis.assembly_builder import AssemblyBuilder
+    return await AssemblyBuilder().process(task, db)
+
+
 class AnalysisScheduler:
     """AI 分析任务调度器。
 
@@ -49,28 +55,38 @@ class AnalysisScheduler:
 
     async def dispatch(self, task: AnalysisTask, db: AsyncSession) -> None:
         """执行任务调度：PENDING → RUNNING，调用处理器，→ COMPLETED/FAILED，commit。"""
+        task_id = task.id
+        task_type = task.task_type
+        robot_model_id = task.robot_model_id
+
         # 1. 标记为 RUNNING 并提交
         task.status = AnalysisTaskStatus.RUNNING
         await db.commit()
-        logger.info("Task %s (type=%s) RUNNING", task.id, task.task_type)
+        await db.refresh(task)
+        logger.info("Task %s (type=%s) RUNNING", task_id, task_type)
 
         try:
-            processor = self._get_processor(task.task_type)
+            processor = self._get_processor(task_type)
             result = await processor(task, db)
             task.status = AnalysisTaskStatus.COMPLETED
             task.output_summary = result
             task.completed_at = datetime.now(timezone.utc)
-            logger.info("Task %s COMPLETED", task.id)
+            await db.commit()
+            logger.info("Task %s COMPLETED", task_id)
         except Exception as e:
+            await db.rollback()
+            # Re-fetch task after rollback
+            from sqlalchemy import select
+            res = await db.execute(select(AnalysisTask).where(AnalysisTask.id == task_id))
+            task = res.scalar_one()
             task.status = AnalysisTaskStatus.FAILED
-            task.error_message = str(e)
+            task.error_message = str(e)[:500]
             task.completed_at = datetime.now(timezone.utc)
-            logger.error("Task %s FAILED: %s", task.id, e)
-
-        await db.commit()
+            await db.commit()
+            logger.error("Task %s FAILED: %s", task_id, e)
 
     async def _process_full(self, task: AnalysisTask, db: AsyncSession) -> dict:
-        """FULL 类型：依次运行 PDF 提取 → SOP 生成 → CAD 解析。
+        """FULL 类型：依次运行 PDF 提取 → SOP 生成 → CAD 解析 → 装配构建。
 
         每个子步骤的异常单独捕获，只在结果中记录 error，整体任务仍然 COMPLETED。
         """
@@ -80,6 +96,7 @@ class AnalysisScheduler:
             ("pdf_extract", process_pdf_extract),
             ("sop_generate", process_sop_generate),
             ("cad_parse", process_cad_parse),
+            ("assembly_build", process_assembly_build),
         ]:
             try:
                 step_result = await processor(task, db)
