@@ -20,11 +20,13 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 - **Teaching Features**: Teacher monitoring, approval queues, and skill profiling
 - **Assessment System**: Multi-dimensional scoring and feedback generation
 - **Multi-Robot Platform** (in progress): Teacher uploads robot docs → AI analysis → structured data → student use
+- **Universal 3D Viewer** (done): Manifest-driven 3D renderer with URDF→GLB auto-pipeline
 
 ## Multi-Robot Platform Progress
 
 > Design spec: `docs/superpowers/specs/2026-05-07-multi-robot-platform-design.md`
 > Master plan: `docs/superpowers/plans/2026-05-08-multi-robot-master-plan.md`
+> 3D Viewer plan: `docs/superpowers/plans/2026-05-16-universal-3d-viewer-pipeline.md`
 
 | Phase | Name | Tasks | Status |
 |-------|------|-------|--------|
@@ -55,6 +57,16 @@ When resuming work in a new conversation:
 - `r-mos-backend/app/api/v1/endpoints/robots.py` — Robot CRUD + asset serving API
 - `r-mos-backend/app/services/storage/file_storage.py` — FileStorageBase + LocalFileStorage
 - `r-mos-frontend/src/config/robots.ts` — Dynamic robot catalog config
+
+### Key 3D Viewer Files (Universal Viewer output)
+
+- `r-mos-backend/app/services/analysis/urdf_parser.py` — URDF XML → structured parse result → assembly manifest JSON
+- `r-mos-backend/app/services/analysis/assembly_builder.py` — Orchestrates URDF→mesh convert→manifest pipeline
+- `r-mos-backend/app/services/analysis/scheduler.py` — FULL pipeline now includes assembly_build step
+- `r-mos-frontend/src/components/Viewer3D/UniversalRobotViewer.tsx` — Top-level viewer: manifest → assembly or GLB fallback
+- `r-mos-frontend/src/components/Viewer3D/ManifestDrivenRenderer.tsx` — Recursive scene graph from manifest nodes
+- `r-mos-frontend/src/components/Viewer3D/JointControlPanel.tsx` — Auto-generated joint sliders
+- `r-mos-frontend/src/components/Viewer3D/useAssemblyManifest.ts` — Fetch + cache manifest hook
 
 ## Development
 
