@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { FaultAlertCard, type FaultAlert } from '@/components/Monitor/FaultAlertCard'
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
-import Atom01Viewer from '@/components/Viewer3D/Atom01Viewer'
+import { MonitorRobotViewer } from '@/components/Viewer3D/MonitorRobotViewer'
 import { Button } from '@/components/ui/button'
 import { useWebSocket, type JointState } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
@@ -534,14 +534,11 @@ function MonitorPage() {
 
               <div className="overflow-hidden rounded-xl border border-border-subtle bg-[#08101f]">
                 <Viewer3DErrorBoundary>
-                  {robotId ? (
-                    <Atom01Viewer
-                      robotId={robotId}
-                      width="100%"
+                  {currentRobot ? (
+                    <MonitorRobotViewer
+                      robotId={currentRobot.id}
                       height={460}
-                      backgroundColor="#08101f"
                       jointAngles={jointAngles}
-                      faultJoints={faultJoints}
                       highlightLinks={highlightLinks}
                     />
                   ) : (
