@@ -6,6 +6,37 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 import json
+import os
+
+
+_SYSTEM_PROMPT_FALLBACK = "你是一个专业的机器人维保培训助手"
+_SYSTEM_PROMPT_TEMPLATE_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "data", "config", "prompts", "system_prompt.txt"
+)
+
+
+def _load_system_prompt() -> str:
+    """加载系统提示词，优先级：settings 覆盖 > 模板文件 > 硬编码兜底"""
+    try:
+        from app.core.config import settings
+        default_value = "你是 R-MOS 维保学习助手，帮助学生理解机器人维保操作。"
+        if settings.AI_ASSISTANT_SYSTEM_PROMPT != default_value:
+            return settings.AI_ASSISTANT_SYSTEM_PROMPT
+    except Exception:
+        pass
+
+    try:
+        template_path = os.path.normpath(_SYSTEM_PROMPT_TEMPLATE_PATH)
+        with open(template_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if content:
+                return content
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+
+    return _SYSTEM_PROMPT_FALLBACK
 
 
 class BlockType(str, Enum):
@@ -21,7 +52,7 @@ class BlockType(str, Enum):
 @dataclass
 class SystemPromptBlock:
     """系统提示区块 - 定义智能体角色和行为"""
-    role: str = "你是一个专业的机器人维保培训助手"
+    role: str = field(default_factory=_load_system_prompt)
     domain: str = "机器人维护与操作"
     capabilities: list[str] = field(default_factory=lambda: [
         "提供维保操作指导",
