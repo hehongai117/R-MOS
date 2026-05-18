@@ -261,14 +261,30 @@ export function parseRobotDataManifest(raw: unknown): RobotDataManifest {
   const obj = raw as Record<string, unknown>
   return {
     ...base,
-    parts_registry: (obj.parts_registry as ManifestPartEntry[]) ?? [],
-    screw_instances: (obj.screw_instances as ManifestScrewEntry[]) ?? [],
-    constraints: (obj.constraints as ManifestConstraintEntry[]) ?? [],
-    camera_presets: (obj.camera_presets as Record<string, ManifestCameraPreset>) ?? {},
-    explode_offsets: (obj.explode_offsets as ManifestExplodeOffset[]) ?? [],
-    tools: (obj.tools as ManifestToolEntry[]) ?? [],
-    display_names: (obj.display_names as Record<string, string>) ?? {},
-    overview_config: (obj.overview_config as ManifestOverviewConfig) ?? undefined,
+    parts_registry: Array.isArray(obj.parts_registry)
+      ? (obj.parts_registry as ManifestPartEntry[])
+      : [],
+    screw_instances: Array.isArray(obj.screw_instances)
+      ? (obj.screw_instances as ManifestScrewEntry[])
+      : [],
+    constraints: Array.isArray(obj.constraints)
+      ? (obj.constraints as ManifestConstraintEntry[])
+      : [],
+    camera_presets: (obj.camera_presets && typeof obj.camera_presets === 'object' && !Array.isArray(obj.camera_presets))
+      ? (obj.camera_presets as Record<string, ManifestCameraPreset>)
+      : {},
+    explode_offsets: Array.isArray(obj.explode_offsets)
+      ? (obj.explode_offsets as ManifestExplodeOffset[])
+      : [],
+    tools: Array.isArray(obj.tools)
+      ? (obj.tools as ManifestToolEntry[])
+      : [],
+    display_names: (obj.display_names && typeof obj.display_names === 'object' && !Array.isArray(obj.display_names))
+      ? (obj.display_names as Record<string, string>)
+      : {},
+    overview_config: (obj.overview_config && typeof obj.overview_config === 'object')
+      ? (obj.overview_config as ManifestOverviewConfig)
+      : undefined,
   }
 }
 
