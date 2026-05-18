@@ -6,6 +6,7 @@ import { FaultAlertCard, type FaultAlert } from '@/components/Monitor/FaultAlert
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
 import { MonitorRobotViewer } from '@/components/Viewer3D/MonitorRobotViewer'
+import { useAssemblyManifest } from '@/components/Viewer3D/useAssemblyManifest'
 import { Button } from '@/components/ui/button'
 import { useWebSocket, type JointState } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
@@ -48,6 +49,25 @@ const ATOM01_JOINT_META: Record<string, MonitorJointMeta> = {
 
 function resolveJointMeta(jointId: string): MonitorJointMeta | null {
   return MONITOR_JOINT_MAP[jointId] ?? ATOM01_JOINT_META[jointId] ?? null
+}
+
+/** 从 manifest joints 构建关节元数据 */
+function buildJointMetaFromManifest(
+  manifest: { joints?: Array<{ name: string; type: string; parent_link: string; child_link: string }> } | null,
+  displayNames: Record<string, string>
+): Record<string, MonitorJointMeta> | null {
+  if (!manifest?.joints) return null
+
+  const result: Record<string, MonitorJointMeta> = {}
+  for (const joint of manifest.joints) {
+    if (joint.type === 'fixed') continue
+    result[joint.name] = {
+      atomJoint: joint.name,
+      atomLink: joint.child_link,
+      label: displayNames[joint.child_link] ?? joint.name.replace(/_/g, ' '),
+    }
+  }
+  return result
 }
 
 function formatStatusText({
@@ -226,6 +246,14 @@ function MonitorPage() {
   const currentRobot = useRobotContextStore((s) => s.currentRobot)
   const robotId = currentRobot ? String(currentRobot.id) : null
 
+  const { manifest } = useAssemblyManifest(currentRobot?.id)
+
+  const manifestJointMeta = useMemo(() => {
+    if (!manifest) return null
+    const displayNames = (manifest as any).display_names ?? {}
+    return buildJointMetaFromManifest(manifest, displayNames)
+  }, [manifest])
+
   const {
     isConnected,
     telemetryData,
@@ -248,9 +276,10 @@ function MonitorPage() {
     () =>
       joints.map((joint) => ({
         ...joint,
-        meta: resolveJointMeta(joint.joint_id),
+        meta: manifestJointMeta?.[joint.joint_id]
+          ?? resolveJointMeta(joint.joint_id),
       })),
-    [joints],
+    [joints, manifestJointMeta],
   )
 
   const jointAngles = useMemo(
