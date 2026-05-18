@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     include: [
       "src/adjudication/__tests__/adjudication.vitest.test.ts",
+      "src/adjudication/**/__tests__/**/*.test.{ts,tsx}",
       "src/api/**/__tests__/**/*.test.{ts,tsx}",
       "src/components/**/__tests__/**/*.test.{ts,tsx}",
       "src/pages/**/__tests__/**/*.test.{ts,tsx}",
