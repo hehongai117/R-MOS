@@ -25,6 +25,7 @@ import type { Task } from '@/types/task'
 import { resolveTargetPart, resolveToolLabel } from '@/teaching/utils/ghostHand'
 import { formatTeachingError } from '@/teaching/utils/api'
 import { useRobotContextStore } from '@/store/robotContextStore'
+import { ATTEMPT_STATUS } from '@/config/statusLabels'
 
 const GhostToolMarker = ({ targetPart }: { targetPart?: string | null }) => {
   if (!targetPart) return null
@@ -60,13 +61,6 @@ const TeachingAttemptPage = () => {
   const [executing, setExecuting] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [evidenceReady, setEvidenceReady] = useState(false)
-  const statusLabelMap: Record<string, string> = {
-    in_progress: '进行中',
-    completed: '已完成',
-    graded: '已评分',
-    abandoned: '已放弃',
-  }
-
   const attemptId = Number(id)
 
   const loadAttemptData = async () => {
@@ -193,7 +187,7 @@ const TeachingAttemptPage = () => {
           <Descriptions.Item label="任务编号">{task?.id ?? '未绑定'}</Descriptions.Item>
           <Descriptions.Item label="状态">
             <Tag color={attempt.status === 'completed' ? 'green' : 'blue'}>
-              {statusLabelMap[attempt.status] || attempt.status}
+              {ATTEMPT_STATUS[attempt.status]?.label ?? attempt.status}
             </Tag>
           </Descriptions.Item>
         </Descriptions>
