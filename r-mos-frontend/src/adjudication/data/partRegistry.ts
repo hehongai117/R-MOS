@@ -6,6 +6,40 @@
 import { Part, PartCategory } from '../types/adjudication';
 import { getRobotModelBase } from '../../config/robots';
 import { FOOT_SCREW_INSTANCES, TORSO_SCREW_INSTANCES } from './screwInstances';
+import type { RobotDataManifest } from '@/components/Viewer3D/assemblyManifest';
+import { manifestPartToPart, manifestScrewToPart } from './manifestAdapter';
+
+// ---- Manifest injection layer ----
+let _manifestPartRegistry: Record<string, Part> | null = null;
+let _manifestScrewRegistry: Record<string, Part> | null = null;
+let _manifestPartScrews: Record<string, string[]> | null = null;
+
+/** 从 manifest 注入零件数据（替代硬编码） */
+export function injectManifestPartRegistry(manifest: RobotDataManifest): void {
+    const modelBase = `/api/v1/robots/${manifest.robotId}/assets`;
+    _manifestPartRegistry = {};
+    _manifestScrewRegistry = {};
+    _manifestPartScrews = {};
+
+    for (const entry of manifest.parts_registry ?? []) {
+        _manifestPartRegistry[entry.id] = manifestPartToPart(entry, modelBase);
+    }
+    for (const entry of manifest.screw_instances ?? []) {
+        _manifestScrewRegistry[entry.id] = manifestScrewToPart(entry, modelBase);
+        // Build part→screw mapping
+        if (!_manifestPartScrews[entry.parent_id]) {
+            _manifestPartScrews[entry.parent_id] = [];
+        }
+        _manifestPartScrews[entry.parent_id].push(entry.id);
+    }
+}
+
+/** 清除注入的 manifest 数据 */
+export function clearManifestPartRegistry(): void {
+    _manifestPartRegistry = null;
+    _manifestScrewRegistry = null;
+    _manifestPartScrews = null;
+}
 
 const MODEL_BASE_URL = import.meta.env.VITE_MODEL_BASE_URL || '/models';
 const PARTS_BASE = `${MODEL_BASE_URL}/parts`;
@@ -426,6 +460,10 @@ export const PART_SCREWS_REGISTRY: Record<string, string[]> = {
  * 根据 ID 获取零件信息
  */
 export function getPartById(id: string): Part | undefined {
+    // Check manifest registries first
+    if (_manifestPartRegistry) {
+        return _manifestPartRegistry[id] ?? _manifestScrewRegistry?.[id];
+    }
     return PART_SCHEMA_REGISTRY[id];
 }
 
@@ -433,6 +471,9 @@ export function getPartById(id: string): Part | undefined {
  * 获取零件的螺丝列表
  */
 export function getPartScrews(partId: string): string[] {
+    if (_manifestPartScrews) {
+        return _manifestPartScrews[partId] || [];
+    }
     return PART_SCREWS_REGISTRY[partId] || [];
 }
 
@@ -440,6 +481,10 @@ export function getPartScrews(partId: string): string[] {
  * 获取指定类型的所有零件
  */
 export function getPartsByCategory(category: PartCategory): Part[] {
+    if (_manifestPartRegistry) {
+        const allParts = { ..._manifestPartRegistry, ..._manifestScrewRegistry };
+        return Object.values(allParts).filter(p => p.category === category);
+    }
     return Object.values(PART_SCHEMA_REGISTRY).filter(p => p.category === category);
 }
 
@@ -447,5 +492,11 @@ export function getPartsByCategory(category: PartCategory): Part[] {
  * 获取所有零件 ID 列表
  */
 export function getAllPartIds(): string[] {
+    if (_manifestPartRegistry) {
+        return [
+            ...Object.keys(_manifestPartRegistry),
+            ...Object.keys(_manifestScrewRegistry ?? {}),
+        ];
+    }
     return Object.keys(PART_SCHEMA_REGISTRY);
 }
