@@ -28,7 +28,10 @@ import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import { type DiagnosisActionType, runDiagnosisAction } from '@/api/agent-v2';
 import { DiagnosisPanel, readLatestDiagnosisResult } from '@/components/DiagnosisPanel/DiagnosisPanel';
-import { Atom01Interactive, PartInfo, PART_METADATA } from '@/components/Viewer3D/Atom01Interactive';
+import { Atom01Interactive } from '@/components/Viewer3D/Atom01Interactive';
+import { InteractiveManifestViewer } from '@/components/Viewer3D/InteractiveManifestViewer';
+import { type PartInfo, buildPartMetadata } from '@/components/Viewer3D/manifestPartMetadata';
+import { useAssemblyManifest } from '@/components/Viewer3D/useAssemblyManifest';
 import { CameraController } from '@/components/Viewer3D/CameraController';
 import DisassemblyDemoAdjudicated from '@/components/Viewer3D/DisassemblyDemoAdjudicated';
 import { DisassemblyAnimation } from '@/components/Viewer3D/DisassemblyAnimation';
@@ -247,6 +250,7 @@ const LoadingFallback = () => (
 function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
     const robotId = currentRobot ? String(currentRobot.id) : null;
+    const { manifest } = useAssemblyManifest(currentRobot?.id);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const sopParam = searchParams.get('sop');
@@ -296,7 +300,11 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         { nodeId: null, displayName: '总览' },
     ]);
     const [cameraPreset, setCameraPreset] = useState<CameraPreset>(L0_OVERVIEW_PRESET);
-    const coreModelLinkIds = useMemo(() => Object.keys(PART_METADATA), []);
+    const partMetadata = useMemo((): Record<string, PartInfo> => {
+        if (manifest) return buildPartMetadata(manifest);
+        return {};
+    }, [manifest]);
+    const coreModelLinkIds = useMemo(() => Object.keys(partMetadata), [partMetadata]);
 
     // 隔离集合（根据选中的 overview node 计算）
     const isolationSets = useMemo(() => {
@@ -391,14 +399,14 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             label: '上半身核心件',
             options: UPPER_BODY_CORE_LINKS.map((linkName) => ({
                 value: linkName,
-                label: PART_METADATA[linkName]?.displayName ?? getLinkDisplayName(linkName),
+                label: partMetadata[linkName]?.displayName ?? getLinkDisplayName(linkName),
             })),
         },
         {
             label: '下半身与底座核心件',
             options: REMAINING_CORE_LINKS.map((linkName) => ({
                 value: linkName,
-                label: PART_METADATA[linkName]?.displayName ?? getLinkDisplayName(linkName),
+                label: partMetadata[linkName]?.displayName ?? getLinkDisplayName(linkName),
             })),
         },
     ]), []);
@@ -575,7 +583,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         setViewState('ISOLATED');
         setIsolationLevel(1);
         setSelectedOverviewNode(overviewNodeId);
-        const displayName = PART_METADATA[overviewNodeId]?.displayName ?? getLinkDisplayName(overviewNodeId);
+        const displayName = partMetadata[overviewNodeId]?.displayName ?? getLinkDisplayName(overviewNodeId);
         setBreadcrumbPath([
             { nodeId: null, displayName: '总览' },
             { nodeId: overviewNodeId, displayName },
@@ -764,7 +772,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         }
 
         if (intent.targetPart) {
-            const part = PART_METADATA[intent.targetPart];
+            const part = partMetadata[intent.targetPart];
             if (part) {
                 if (viewState === 'OVERVIEW' || selectedOverviewNode !== intent.targetPart) {
                     enterIsolation(intent.targetPart);
@@ -789,7 +797,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             setRuntimeSelectedAssetPath(assetPaths[0] ?? runtimeManifest.parts[0] ?? null);
         }
         if (partName) {
-            const part = PART_METADATA[partName];
+            const part = partMetadata[partName];
             if (part) {
                 if (viewState === 'OVERVIEW' || selectedOverviewNode !== partName) {
                     enterIsolation(partName);
@@ -898,7 +906,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
 
     // 获取当前零件的所有同组零件
     const getGroupParts = (group: string) => {
-        return Object.values(PART_METADATA).filter(p => p.group === group);
+        return Object.values(partMetadata).filter(p => p.group === group);
     };
 
     const headerViewModeControl = (
@@ -1131,7 +1139,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                             type={isCurrent ? 'primary' : 'default'}
                             block
                             onClick={() => {
-                                const part = PART_METADATA[linkName];
+                                const part = partMetadata[linkName];
                                 if (part) {
                                     handlePartSelect(part);
                                     return;
@@ -1390,6 +1398,28 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                                             assetPath={runtimePreviewAssetPath}
                                             onVisibleBoundsChange={handleVisibleBoundsChange}
                                         />
+                                    ) : manifest && currentRobot ? (
+                                        <>
+                                            <InteractiveManifestViewer
+                                                manifest={manifest}
+                                                robotId={currentRobot.id}
+                                                explodeDistance={effectiveExplodeAmount}
+                                                visiblePartNames={visibleLinks}
+                                                clickablePartNames={clickableLinks}
+                                                fadedPartNames={fadedLinks}
+                                                fadeOpacity={isFullscreen ? 0.12 : 0.15}
+                                                onPartHover={handlePartHover}
+                                                onPartSelect={handlePartSelect}
+                                                onPartDoubleClick={handlePartDoubleClick}
+                                                hoveredPart={hoveredPart?.name}
+                                                selectedPart={selectedPart?.name}
+                                                highlightLinks={[]}
+                                            />
+                                            <DetailParts
+                                                selectedLink={selectedPart?.name ?? null}
+                                                visible={showDetailParts}
+                                            />
+                                        </>
                                     ) : robotId ? (
                                         <>
                                             <Atom01Interactive
