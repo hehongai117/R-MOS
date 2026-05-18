@@ -205,6 +205,36 @@ const REMAINING_CORE_LINKS = [
     'right_ankle_roll_link',
 ] as const;
 
+/** 从 manifest 装配组派生上身/下身分组 */
+function buildLinkGroupsFromManifest(
+  manifest: { overview_config?: { assembly_groups?: Record<string, { display_name: string; child_links: string[]; explode_dir: number[] }> } } | null
+): {
+  upperLinks: readonly string[];
+  lowerLinks: readonly string[];
+  groupNames: Record<string, string>;
+} | null {
+  const groups = (manifest as any)?.overview_config?.assembly_groups
+  if (!groups) return null
+
+  const upperGroupKeys = ['torso_link', 'left_arm_yaw_link', 'left_elbow_yaw_link', 'right_arm_yaw_link', 'right_elbow_yaw_link']
+  const lowerGroupKeys = ['base_link', 'left_thigh_pitch_link', 'left_knee_link', 'left_ankle_roll_link', 'right_thigh_pitch_link', 'right_knee_link', 'right_ankle_roll_link']
+
+  const upperLinks: string[] = []
+  const lowerLinks: string[] = []
+  const groupNames: Record<string, string> = {}
+
+  for (const [key, group] of Object.entries(groups) as [string, { display_name: string; child_links: string[] }][]) {
+    groupNames[key] = group.display_name
+    if (upperGroupKeys.includes(key)) {
+      upperLinks.push(...group.child_links)
+    } else if (lowerGroupKeys.includes(key)) {
+      lowerLinks.push(...group.child_links)
+    }
+  }
+
+  return { upperLinks, lowerLinks, groupNames }
+}
+
 type WorkspaceVariant = 'runtime' | 'demo';
 type MaintenanceLayoutMode = 'execution' | 'inspector' | 'full';
 
@@ -251,10 +281,20 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
     const robotId = currentRobot ? String(currentRobot.id) : null;
     const { manifest } = useAssemblyManifest(currentRobot?.id);
+    const manifestLinkGroups = useMemo(
+        () => buildLinkGroupsFromManifest(manifest as any),
+        [manifest]
+    )
+    const upperLinks = manifestLinkGroups?.upperLinks ?? UPPER_BODY_CORE_LINKS
+    const lowerLinks = manifestLinkGroups?.lowerLinks ?? REMAINING_CORE_LINKS
+    const groupNames = manifestLinkGroups?.groupNames ?? GROUP_NAMES
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const sopParam = searchParams.get('sop');
     const workspaceChrome = WORKSPACE_CHROME[workspaceVariant];
+    const workspaceTitle = workspaceVariant === 'demo' && currentRobot
+        ? `${currentRobot.model_name} 维保工作台`
+        : workspaceChrome.title;
     const effectiveLayoutMode: MaintenanceLayoutMode = workspaceVariant === 'demo' ? 'full' : (layoutMode ?? 'execution');
     const showExecutionRail = effectiveLayoutMode !== 'inspector';
     const showInspectorRail = effectiveLayoutMode !== 'execution';
@@ -397,19 +437,19 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const corePartQuickSelectOptions = useMemo(() => ([
         {
             label: '上半身核心件',
-            options: UPPER_BODY_CORE_LINKS.map((linkName) => ({
+            options: upperLinks.map((linkName) => ({
                 value: linkName,
                 label: partMetadata[linkName]?.displayName ?? getLinkDisplayName(linkName),
             })),
         },
         {
             label: '下半身与底座核心件',
-            options: REMAINING_CORE_LINKS.map((linkName) => ({
+            options: lowerLinks.map((linkName) => ({
                 value: linkName,
                 label: partMetadata[linkName]?.displayName ?? getLinkDisplayName(linkName),
             })),
         },
-    ]), []);
+    ]), [upperLinks, lowerLinks, partMetadata]);
     const diagnosisSnapshot = useMemo(() => readLatestDiagnosisResult(), []);
     const latestDiagnosisTraceId = diagnosisSnapshot?.traceId;
 
@@ -1050,7 +1090,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             {selectedPart && (
                 <Card
                     size="small"
-                    title={`${GROUP_NAMES[selectedPart.group]} 零件列表`}
+                    title={`${groupNames[selectedPart.group]} 零件列表`}
                 >
                     <Space direction="vertical" style={{ width: '100%' }} size="small">
                         {getGroupParts(selectedPart.group).map(part => (
@@ -1257,7 +1297,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
             <SOPMaintenanceHeader
                 viewModeControl={headerViewModeControl}
-                title={workspaceChrome.title}
+                title={workspaceTitle}
                 breadcrumb={workspaceChrome.breadcrumb}
             />
 
