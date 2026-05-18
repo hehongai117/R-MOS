@@ -5,9 +5,73 @@ Mock机器人适配器（V2.2完整版）
 import math
 import random
 import asyncio
+import logging
+from pathlib import Path
 from typing import List, Dict, Optional, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 from .base import BaseRobotAdapter
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# 默认故障参数（当 YAML 文件不可用时的兜底）
+# ---------------------------------------------------------------------------
+_DEFAULT_FAULT_EFFECTS: Dict[str, Dict] = {
+    "E001_OVERHEAT": {
+        "temperature_increase": 30.0,
+        "torque_multiplier": 0.7,
+        "position_noise": 0.3,
+    },
+    "E002_STALL": {
+        "velocity_multiplier": 0.0,
+        "position_frozen": True,
+    },
+    "E003_VOLTAGE_DROP": {
+        "battery_drain": 50.0,
+        "torque_multiplier": 0.5,
+    },
+    "E004_SENSOR_FAILURE": {
+        "sensor_noise": True,
+    },
+    "E005_JOINT_LOOSE": {
+        "position_noise": 0.5,
+        "torque_multiplier": 0.3,
+    },
+}
+
+_DEFAULT_SENSOR_DEFAULTS: Dict[str, float] = {
+    "imu_gravity_z": 9.8,
+    "imu_noise_stddev": 0.2,
+    "voltage_main": 24.0,
+    "voltage_logic": 5.0,
+    "pressure_baseline": 100.0,
+    "pressure_noise_stddev": 10.0,
+    "battery_drain_rate": 0.1,
+}
+
+# ---------------------------------------------------------------------------
+# 从 YAML 加载配置（模块级，只加载一次）
+# ---------------------------------------------------------------------------
+_MOCK_CONFIG_PATH = Path(__file__).parent.parent.parent / "data" / "config" / "mock_faults.yaml"
+
+def _load_mock_config() -> tuple[Dict[str, Dict], Dict[str, float]]:
+    """从 YAML 加载故障参数和传感器默认值；文件不存在时返回内置默认值。"""
+    try:
+        import yaml  # noqa: PLC0415 — 仅在需要时导入
+        with open(_MOCK_CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        fault_effects = data.get("fault_effects", _DEFAULT_FAULT_EFFECTS)
+        sensor_defaults = data.get("sensor_defaults", _DEFAULT_SENSOR_DEFAULTS)
+        logger.debug("已从 %s 加载 mock 故障参数", _MOCK_CONFIG_PATH)
+        return fault_effects, sensor_defaults
+    except FileNotFoundError:
+        logger.warning("未找到 mock_faults.yaml，使用内置默认参数（路径：%s）", _MOCK_CONFIG_PATH)
+        return _DEFAULT_FAULT_EFFECTS, _DEFAULT_SENSOR_DEFAULTS
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("加载 mock_faults.yaml 失败（%s），使用内置默认参数", exc)
+        return _DEFAULT_FAULT_EFFECTS, _DEFAULT_SENSOR_DEFAULTS
+
+_FAULT_EFFECTS, _SENSOR_DEFAULTS = _load_mock_config()
 
 if TYPE_CHECKING:
     from app.services.simulation.fault_scenarios import GradualFault
@@ -55,29 +119,8 @@ class MockRobotAdapter(BaseRobotAdapter):
         # Demo 模式：渐进式故障（随时间 ramp up，惰性导入避免循环引用）
         self._gradual_faults: List["GradualFault"] = []
         
-        # 故障影响配置（V2.2完整定义）
-        self._fault_effects = {
-            "E001_OVERHEAT": {
-                "temperature_increase": 30.0,
-                "torque_multiplier": 0.7,
-                "position_noise": 0.3
-            },
-            "E002_STALL": {
-                "velocity_multiplier": 0.0,
-                "position_frozen": True
-            },
-            "E003_VOLTAGE_DROP": {
-                "battery_drain": 50.0,
-                "torque_multiplier": 0.5
-            },
-            "E004_SENSOR_FAILURE": {
-                "sensor_noise": True
-            },
-            "E005_JOINT_LOOSE": {
-                "position_noise": 0.5,
-                "torque_multiplier": 0.3
-            }
-        }
+        # 故障影响配置（从 YAML 加载，含内置兜底）
+        self._fault_effects = _FAULT_EFFECTS
         
         # 生成关节列表
         joint_count = self._config.get("joint_count", 10)
@@ -153,7 +196,7 @@ class MockRobotAdapter(BaseRobotAdapter):
                 if self._emergency_stopped
                 else (RobotStatus.ONLINE if not self._active_faults else RobotStatus.ERROR)
             ),
-            last_update=datetime.utcnow()
+            last_update=datetime.now(timezone.utc)
         )
     
     async def get_robot_structure(self) -> RobotStructure:
@@ -273,7 +316,7 @@ class MockRobotAdapter(BaseRobotAdapter):
             raise ConnectionError("Adapter not connected")
         
         # 基础传感器数据
-        battery = self._battery_level_override if self._battery_level_override is not None else 100.0 - (self._simulation_time * 0.1)  # 随时间缓慢降低
+        battery = self._battery_level_override if self._battery_level_override is not None else 100.0 - (self._simulation_time * _SENSOR_DEFAULTS["battery_drain_rate"])  # 随时间缓慢降低
         battery = max(0.0, min(100.0, battery))
         
         temperature = self._base_temperature + math.sin(self._simulation_time * 0.1) * 5.0
@@ -295,15 +338,26 @@ class MockRobotAdapter(BaseRobotAdapter):
         
         battery = max(0.0, min(100.0, battery))
         
+        sd = _SENSOR_DEFAULTS
         return SensorData(
             imu=IMUData(
-                acceleration={"x": random.gauss(0, 0.1), "y": random.gauss(0, 0.1), "z": 9.8 + random.gauss(0, 0.2)},
-                angular_velocity={"x": random.gauss(0, 0.05), "y": random.gauss(0, 0.05), "z": random.gauss(0, 0.05)}
+                acceleration={
+                    "x": random.gauss(0, 0.1),
+                    "y": random.gauss(0, 0.1),
+                    "z": sd["imu_gravity_z"] + random.gauss(0, sd["imu_noise_stddev"]),
+                },
+                angular_velocity={"x": random.gauss(0, 0.05), "y": random.gauss(0, 0.05), "z": random.gauss(0, 0.05)},
             ),
             battery=battery,
             temperature=temperature,
-            voltage={"main": 24.0 + random.gauss(0, 0.5), "logic": 5.0 + random.gauss(0, 0.1)},
-            pressure={"foot_left": 100.0 + random.gauss(0, 10.0), "foot_right": 100.0 + random.gauss(0, 10.0)}
+            voltage={
+                "main": sd["voltage_main"] + random.gauss(0, 0.5),
+                "logic": sd["voltage_logic"] + random.gauss(0, 0.1),
+            },
+            pressure={
+                "foot_left": sd["pressure_baseline"] + random.gauss(0, sd["pressure_noise_stddev"]),
+                "foot_right": sd["pressure_baseline"] + random.gauss(0, sd["pressure_noise_stddev"]),
+            },
         )
     
     async def inject_fault(
@@ -333,7 +387,7 @@ class MockRobotAdapter(BaseRobotAdapter):
             fault_code=fault_code,
             target_part=target_part,
             severity=severity,
-            injected_at=datetime.utcnow(),
+            injected_at=datetime.now(timezone.utc),
             message=f"故障 {fault_code} 已注入到 {target_part}"
         )
     
