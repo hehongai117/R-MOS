@@ -44,6 +44,8 @@ class SOPBase(BaseModel):
     category: Optional[str] = Field(None, description="分类")
     difficulty_level: str = Field("medium", description="难度等级：low/medium/high")
     estimated_time: Optional[int] = Field(None, description="预估时长（秒）")
+    version: Optional[str] = Field(None, max_length=20, description="SOP版本号")
+    target_module: Optional[str] = Field(None, max_length=100, description="目标维护模块")
 
 class SOPCreate(SOPBase):
     """创建SOP（来自拆包B，包含嵌套steps）"""

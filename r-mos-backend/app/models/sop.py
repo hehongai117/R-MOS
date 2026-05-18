@@ -22,6 +22,8 @@ class SOP(Base, TimestampMixin):
     category = Column(String(50), nullable=True, comment="分类")
     difficulty_level = Column(String(20), default="medium", comment="难度等级：low/medium/high")
     estimated_time = Column(Integer, nullable=True, comment="预估时长（秒）")
+    version = Column(String(20), nullable=True, comment="SOP版本号")
+    target_module = Column(String(100), nullable=True, comment="目标维护模块")
     robot_model_id = Column(
         Integer, ForeignKey("robot_models.id", ondelete="SET NULL"),
         nullable=True, index=True, comment="关联机器人型号 ID",
