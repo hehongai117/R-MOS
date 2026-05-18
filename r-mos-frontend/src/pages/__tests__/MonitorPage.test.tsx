@@ -21,26 +21,27 @@ vi.mock('@/store/robotContextStore', () => ({
   }),
 }))
 
-vi.mock('@/components/Viewer3D/Atom01Viewer', () => ({
-  default: ({
+vi.mock('@/components/Viewer3D/MonitorRobotViewer', () => ({
+  MonitorRobotViewer: ({
     robotId: _robotId,
     jointAngles = {},
-    faultJoints = [],
     highlightLinks = [],
   }: {
-    robotId?: string
+    robotId?: number
     jointAngles?: Record<string, number>
-    faultJoints?: string[]
     highlightLinks?: string[]
   }) => (
     <div
-      data-fault-joints={faultJoints.join(',')}
       data-highlight-links={highlightLinks.join(',')}
       data-joint-count={Object.keys(jointAngles).length}
       data-right-knee={jointAngles.right_knee_joint?.toFixed(4) ?? 'unset'}
       data-testid="atom01-monitor-viewer"
     />
   ),
+}))
+
+vi.mock('@/components/Viewer3D/useAssemblyManifest', () => ({
+  useAssemblyManifest: () => ({ manifest: null, loading: false, error: null, hasManifest: false }),
 }))
 
 import MonitorPage from '@/pages/MonitorPage'
@@ -138,7 +139,6 @@ describe('MonitorPage', () => {
 
     const viewer = screen.getByTestId('atom01-monitor-viewer')
     expect(viewer.getAttribute('data-right-knee')).toBe('0.1234')
-    expect(viewer.getAttribute('data-fault-joints')).toContain('right_knee_joint')
     expect(viewer.getAttribute('data-highlight-links')).toContain('right_knee_link')
     expect(Number(viewer.getAttribute('data-joint-count'))).toBeGreaterThan(0)
   })
