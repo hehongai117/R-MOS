@@ -8,7 +8,8 @@ import { PlayCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { CameraController } from '@/components/Viewer3D/CameraController'
-import { Atom01Interactive } from '@/components/Viewer3D/Atom01Interactive'
+import { InteractiveManifestViewer } from '@/components/Viewer3D/InteractiveManifestViewer'
+import { useAssemblyManifest } from '@/components/Viewer3D/useAssemblyManifest'
 import { PART_FOCUS_POSITIONS } from '@/hooks/useCameraFocus'
 import { executeStep, getTask, startTask } from '@/api/task'
 import {
@@ -47,7 +48,7 @@ const 三维加载占位 = () => (
 
 const TeachingAttemptPage = () => {
   const currentRobot = useRobotContextStore((s) => s.currentRobot);
-  const robotId = currentRobot ? String(currentRobot.id) : null;
+  const { manifest } = useAssemblyManifest(currentRobot?.id);
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
@@ -204,9 +205,10 @@ const TeachingAttemptPage = () => {
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[4, 6, 3]} intensity={0.8} />
                 <Suspense fallback={<三维加载占位 />}>
-                  {robotId && (
-                    <Atom01Interactive
-                      robotId={robotId}
+                  {manifest && currentRobot && (
+                    <InteractiveManifestViewer
+                      manifest={manifest}
+                      robotId={currentRobot.id}
                       selectedPart={targetPart}
                       hoveredPart={null}
                     />
