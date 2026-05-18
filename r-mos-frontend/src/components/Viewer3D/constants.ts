@@ -211,7 +211,7 @@ export const SCENE_CONFIG = {
 
 export const WS_CONFIG = {
     /** WebSocket 地址 */
-    url: 'ws://localhost:8000/ws/robot/status',
+    url: `${import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000'}/ws/robot/status`,
     /** 重连间隔（毫秒） */
     reconnectInterval: 5000,
     /** 最大重连次数 */
