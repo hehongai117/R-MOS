@@ -11,6 +11,7 @@
  */
 
 import { OVERVIEW_NODE_IDS, REFERENCE_NODE_IDS, DETAIL_PARTS_MAP, type DetailPart } from './partsManifest';
+import type { RobotDataManifest } from './assemblyManifest';
 
 // ============================================================
 // 1. L0 overview_node → 后代 link 映射
@@ -232,4 +233,48 @@ export function getL2CameraPreset(linkName: string): CameraPreset {
     }
     // fallback
     return { position: [0.5, 0.5, 0.5], target: [0, 0.3, 0], fov: 40 };
+}
+
+// ============================================================
+// 5. Manifest-driven 函数（manifest 优先，硬编码数据兜底）
+// ============================================================
+
+/** 从 manifest 构建装配组（替代硬编码 ASSEMBLY_GROUPS） */
+export function buildAssemblyGroupsFromManifest(
+    manifest: RobotDataManifest
+): Record<string, { displayName: string; childLinks: string[]; explodeDir: [number, number, number] }> {
+    const groups = manifest.overview_config?.assembly_groups;
+    if (!groups) return ASSEMBLY_GROUPS; // fallback
+
+    const result: Record<string, { displayName: string; childLinks: string[]; explodeDir: [number, number, number] }> = {};
+    for (const [key, val] of Object.entries(groups)) {
+        result[key] = {
+            displayName: val.display_name,
+            childLinks: val.child_links,
+            explodeDir: val.explode_dir as [number, number, number],
+        };
+    }
+    return result;
+}
+
+/** 从 manifest 获取 L1 相机预设（替代硬编码 L1_CAMERA_PRESETS） */
+export function getCameraPresetFromManifest(
+    manifest: RobotDataManifest,
+    nodeId: string
+): CameraPreset | null {
+    const preset = manifest.camera_presets?.[nodeId];
+    if (!preset) return null;
+    return {
+        position: preset.position as [number, number, number],
+        target: preset.target as [number, number, number],
+        fov: preset.fov,
+    };
+}
+
+/** 从 manifest 获取显示名（替代硬编码 readableNames） */
+export function getDisplayNameFromManifest(
+    manifest: RobotDataManifest,
+    nodeId: string
+): string {
+    return manifest.display_names?.[nodeId] ?? nodeId.replace(/_/g, ' ');
 }
