@@ -459,6 +459,23 @@ async def unbind_shared_robot(
     await db.commit()
 
 
+@router.get("/{robot_id}/tools")
+async def get_robot_tools(
+    robot_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取机器人工具列表（从 assembly_manifest.json 中读取）。"""
+    import json
+    from pathlib import Path
+
+    manifest_path = Path("data/robot-assets") / str(robot_id) / "manifests" / "assembly_manifest.json"
+    if not manifest_path.exists():
+        return {"robot_id": robot_id, "tools": []}
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    return {"robot_id": robot_id, "tools": manifest.get("tools", [])}
+
+
 @router.get("/{robot_id}/assets")
 async def list_robot_assets(
     robot_id: int,
