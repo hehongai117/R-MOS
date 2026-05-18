@@ -4,6 +4,7 @@ import {
   buildAssemblyIndex,
   parseAssemblyManifest,
   parseExplodeManifest,
+  parseRobotDataManifest,
 } from '@/components/Viewer3D/assemblyManifest'
 
 const MOCK_ASSEMBLY_RAW = {
@@ -296,5 +297,27 @@ describe('assemblyManifest', () => {
         fastener_instances: [],
       }),
     ).toThrow('assembly node broken-node is missing transform')
+  })
+})
+
+describe('parseRobotDataManifest', () => {
+  it('parses extended manifest with parts_registry', () => {
+    const raw = {
+      ...MOCK_ASSEMBLY_RAW,
+      parts_registry: [{ id: 'base', category: 'frame', bom_code: 'TEST-BASE-001', display_name: 'Base', parent_id: null, mesh_id: null, local_position: [0,0,0], local_rotation: [0,0,0], group: 'base' }],
+    }
+    const result = parseRobotDataManifest(raw)
+    expect(result.parts_registry).toHaveLength(1)
+    expect(result.parts_registry![0].bom_code).toBe('TEST-BASE-001')
+  })
+
+  it('provides empty defaults for missing extended fields', () => {
+    const result = parseRobotDataManifest(MOCK_ASSEMBLY_RAW)
+    expect(result.parts_registry).toEqual([])
+    expect(result.screw_instances).toEqual([])
+    expect(result.constraints).toEqual([])
+    expect(result.tools).toEqual([])
+    expect(result.camera_presets).toEqual({})
+    expect(result.display_names).toEqual({})
   })
 })

@@ -68,6 +68,89 @@ export interface AssemblyIndex {
   childrenByParent: Record<string, string[]>
 }
 
+// ---- Robot Data Manifest 扩展类型 ----
+
+export interface ManifestPartEntry {
+  id: string
+  category: string              // 'frame' | 'cover' | 'screw' | 'motor' | 'pcb' | ...
+  bom_code: string              // 'ATOM-01-BASE-001'
+  display_name: string          // '髋部底座'
+  parent_id: string | null
+  mesh_id: string | null        // 引用 mesh_catalog
+  local_position: Vec3
+  local_rotation: Vec3           // euler angles
+  group: string | null          // 'base' | 'torso' | 'left_arm' | ...
+}
+
+export interface ManifestScrewEntry {
+  id: string
+  bom_code: string
+  parent_id: string             // 所属零件 ID
+  position: Vec3
+  axis: Vec3
+  spec: {
+    type: string                // 'M4×10'
+    pitch: number
+    thread_length: number
+    required_tool: string       // 'hex_3'
+    torque_nm: number
+  }
+}
+
+export interface ManifestConstraintEntry {
+  id: string
+  type: 'fastened_by' | 'covered_by' | 'blocked_by'
+  constrained_part: string
+  constraining_part: string
+  params: Record<string, unknown>
+  release_condition: {
+    type: string
+    required_actions: string[]
+  }
+}
+
+export interface ManifestCameraPreset {
+  position: Vec3
+  target: Vec3
+  fov: number
+}
+
+export interface ManifestExplodeOffset {
+  node_id: string
+  direction: Vec3
+  distance: number
+}
+
+export interface ManifestToolEntry {
+  id: string
+  name: string
+  type: string                  // 'hex_key' | 'torque_wrench' | 'pliers'
+  size: string
+  description: string
+}
+
+export interface ManifestOverviewConfig {
+  overview_nodes: string[]
+  reference_set: string[]
+  assembly_groups: Record<string, {
+    display_name: string
+    child_links: string[]
+    explode_dir: Vec3
+  }>
+}
+
+/** 完整的机器人数据清单 — 扩展 AssemblyManifest */
+export interface RobotDataManifest extends AssemblyManifest {
+  parts_registry?: ManifestPartEntry[]
+  screw_instances?: ManifestScrewEntry[]
+  constraints?: ManifestConstraintEntry[]
+  camera_presets?: Record<string, ManifestCameraPreset>
+  explode_offsets?: ManifestExplodeOffset[]
+  tools?: ManifestToolEntry[]
+  display_names?: Record<string, string>
+  overview_config?: ManifestOverviewConfig
+}
+
 function expectRecord(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} must be an object`)
@@ -170,6 +253,22 @@ export function parseAssemblyManifest(rawValue: unknown): AssemblyManifest {
       : (() => {
         throw new Error('assembly manifest fastener_instances must be an array')
       })(),
+  }
+}
+
+export function parseRobotDataManifest(raw: unknown): RobotDataManifest {
+  const base = parseAssemblyManifest(raw)
+  const obj = raw as Record<string, unknown>
+  return {
+    ...base,
+    parts_registry: (obj.parts_registry as ManifestPartEntry[]) ?? [],
+    screw_instances: (obj.screw_instances as ManifestScrewEntry[]) ?? [],
+    constraints: (obj.constraints as ManifestConstraintEntry[]) ?? [],
+    camera_presets: (obj.camera_presets as Record<string, ManifestCameraPreset>) ?? {},
+    explode_offsets: (obj.explode_offsets as ManifestExplodeOffset[]) ?? [],
+    tools: (obj.tools as ManifestToolEntry[]) ?? [],
+    display_names: (obj.display_names as Record<string, string>) ?? {},
+    overview_config: (obj.overview_config as ManifestOverviewConfig) ?? undefined,
   }
 }
 
