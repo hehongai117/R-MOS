@@ -75,7 +75,7 @@ const STUDENT_NAV: NavGroup[] = [
     items: [
       { label: '维保报告', to: '/reports', icon: FileText },
       { label: '我的技能', to: '/student/skills', icon: BarChart3 },
-      { label: '3D 展示', to: '/atom01', icon: Boxes },
+      { label: '3D 展示', to: '/3d-viewer', icon: Boxes },
     ],
   },
   {
@@ -99,7 +99,7 @@ const TEACHER_NAV: NavGroup[] = [
     label: 'SOP & 工具',
     items: [
       { label: 'SOP 管理', to: '/sops', icon: FileText },
-      { label: '3D 展示', to: '/atom01', icon: Boxes },
+      { label: '3D 展示', to: '/3d-viewer', icon: Boxes },
       { label: '实时监控', to: '/monitor', icon: Activity },
     ],
   },

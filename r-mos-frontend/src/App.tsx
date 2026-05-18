@@ -1,9 +1,8 @@
 import { App as AntdApp } from 'antd'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import AppLayout from '@/components/Layout/AppLayout'
-import { AuthProvider } from '@/components/auth/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
 import { PageSkeleton } from '@/components/ui/skeleton'
@@ -63,8 +62,10 @@ function withSuspense(element: JSX.Element) {
 }
 
 function App() {
+  const initFromStorage = useAuthStore((state) => state.initFromStorage)
+  useEffect(() => { void initFromStorage() }, [initFromStorage])
+
   return (
-    <AuthProvider>
       <BrowserRouter>
         <AntdApp>
           <Toaster />
@@ -111,7 +112,7 @@ function App() {
                 <Route path="shared-robots" element={withSuspense(withRoles(<SharedRobotsPage />, ['teacher', 'admin']))} />
                 <Route path="monitor" element={withSuspense(<MonitorPage />)} />
                 <Route path="maintenance" element={withSuspense(<SOPMaintenancePage />)} />
-                <Route path="atom01" element={withSuspense(<Atom01DemoPage />)} />
+                <Route path="3d-viewer" element={withSuspense(<Atom01DemoPage />)} />
                 <Route
                   path="teaching/assignments"
                   element={withSuspense(withRoles(<TeachingAssignmentsPage />, ['teacher', 'admin']))}
@@ -139,7 +140,6 @@ function App() {
           </Routes>
         </AntdApp>
       </BrowserRouter>
-    </AuthProvider>
   )
 }
 
