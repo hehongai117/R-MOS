@@ -6,6 +6,7 @@ import { debounce } from 'lodash-es'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { BRAND_NAME, COPYRIGHT_LINE } from '@/config/brand'
 import { useAuthStore } from '@/store/authStore'
 import { searchSchools, listSchoolTeachers, type SchoolItem, type TeacherItem } from '@/api/schools'
 
@@ -138,7 +139,7 @@ function RegisterPage() {
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="font-mono text-xl font-bold text-primary">R-MOS</p>
+              <p className="font-mono text-xl font-bold text-primary">{BRAND_NAME}</p>
               <p className="text-xs text-text-muted">Robot Maintenance OS</p>
             </div>
           </div>
@@ -333,7 +334,7 @@ function RegisterPage() {
         </div>
 
         <div className="border-t border-border-subtle px-10 py-3 text-center text-xs text-text-muted">
-          © 2026 R-MOS · v0.2.0
+          {COPYRIGHT_LINE}
         </div>
       </div>
     </div>

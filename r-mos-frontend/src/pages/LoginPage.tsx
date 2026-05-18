@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { BRAND_NAME, COPYRIGHT_LINE, APP_VERSION } from '@/config/brand'
 import { useAuthStore } from '@/store/authStore'
 
 /* ── animated grid background ── */
@@ -106,7 +107,7 @@ function LoginPage() {
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="font-mono text-xl font-bold text-primary">R-MOS</p>
+                <p className="font-mono text-xl font-bold text-primary">{BRAND_NAME}</p>
                 <p className="text-xs text-text-muted">Robot Maintenance OS</p>
               </div>
             </div>
@@ -139,7 +140,7 @@ function LoginPage() {
           </div>
 
           <div className="pt-6 text-xs text-text-muted">
-            © 2026 R-MOS · v0.2.0
+            {COPYRIGHT_LINE}
           </div>
         </div>
 
@@ -149,7 +150,7 @@ function LoginPage() {
           <div className="mb-8 md:hidden">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary" />
-              <span className="font-mono text-xl font-bold text-primary">R-MOS</span>
+              <span className="font-mono text-xl font-bold text-primary">{BRAND_NAME}</span>
             </div>
             <p className="mt-1 text-sm text-text-secondary">机器人维护操作系统</p>
           </div>
@@ -213,7 +214,7 @@ function LoginPage() {
           </div>
 
           <div className="mt-8 text-right text-xs text-text-muted md:hidden">
-            v0.2.0
+            v{APP_VERSION}
           </div>
         </div>
       </div>

@@ -9,6 +9,7 @@ import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { GlobalAIChat } from '@/components/AIAssistant/GlobalAIChat'
 import { LAYOUT_CONFIG, type NavItem, type NavGroup } from '@/config/nav'
+import { BRAND_NAME } from '@/config/brand'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -103,7 +104,7 @@ function RoleLayoutShell({
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="truncate font-mono text-sm text-text-primary">R-MOS</p>
+            <p className="truncate font-mono text-sm text-text-primary">{BRAND_NAME}</p>
             <p className="truncate text-[11px] uppercase tracking-[0.24em] text-text-muted">
               Robotics OS
             </p>
