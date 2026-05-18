@@ -138,3 +138,36 @@ class SOPListResponse(BaseModel):
     """SOP列表响应（拆包C新增，分页容器）"""
     total: int = Field(..., description="总数量")
     items: List[SOPListItem] = Field(..., description="SOP列表")
+
+
+# Phase 2: SOP adjudication format
+DIFFICULTY_MAP = {"low": "beginner", "medium": "intermediate", "high": "advanced"}
+
+class SOPAdjudicationStepResponse(BaseModel):
+    stepId: str
+    stepIndex: int
+    title: str
+    description: str
+    action: str
+    targetParts: List[str] = Field(default_factory=list)
+    requiredTool: Optional[str] = None
+    preconditions: List[Dict[str, Any]] = Field(default_factory=list)
+    validations: List[Dict[str, Any]] = Field(default_factory=list)
+    failureReasons: List[Dict[str, Any]] = Field(default_factory=list)
+    onSuccess: Dict[str, Any] = Field(default_factory=dict)
+    onFailure: Dict[str, Any] = Field(default_factory=dict)
+    isIrreversible: bool = False
+    fatalOnFailure: bool = False
+
+class SOPAdjudicationResponse(BaseModel):
+    sopId: str
+    title: str
+    version: str
+    targetModule: str
+    estimatedTime: int
+    difficulty: str
+    steps: List[SOPAdjudicationStepResponse]
+
+class SOPAdjudicationListResponse(BaseModel):
+    total: int
+    items: List[SOPAdjudicationResponse]

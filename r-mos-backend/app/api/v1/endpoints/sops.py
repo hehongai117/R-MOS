@@ -10,7 +10,8 @@ from app.schemas.sop import (
     SOPCreate,
     SOPResponse,
     SOPDeleteWarning,
-    SOPDeleteResponse
+    SOPDeleteResponse,
+    SOPAdjudicationListResponse,
 )
 from app.services.sop_service import SOPService
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
@@ -52,6 +53,29 @@ async def create_sop(
     service = SOPService(db)
     sop = await service.create_sop(request)
     return sop
+
+
+@router.get("/sops/adjudication", response_model=SOPAdjudicationListResponse, tags=["SOPs"])
+async def list_sops_adjudication(
+    robot_model_id: Optional[int] = Query(None, description="过滤：机器人型号ID"),
+    applicable_model: Optional[str] = Query(None, description="过滤：机器人型号"),
+    category: Optional[str] = Query(None, description="过滤：分类"),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取SOP裁决格式列表（Phase 2）
+
+    返回前端 SOPScriptAdjudication 格式的SOP数据，用于裁决脚本引擎。
+
+    - difficulty 映射：low→beginner, medium→intermediate, high→advanced
+    - sopId 格式：sop-db-{id}
+    - stepId 格式：step-{id}
+    """
+    service = SOPService(db)
+    return await service.list_adjudication_sops(
+        robot_model_id=robot_model_id,
+        applicable_model=applicable_model,
+        category=category,
+    )
 
 
 @router.get("/sops/{sop_id}", response_model=SOPResponse, tags=["SOPs"])
