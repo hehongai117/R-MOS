@@ -60,7 +60,6 @@ import {
     ScrewInfo,
 } from '@/components/Maintenance';
 import { SOPPlayerAdjudicated, type SOPActionEvent } from '@/components/Maintenance/SOPPlayerAdjudicated';
-import { ALL_SOP_SCRIPTS } from '@/data/sopScripts';
 import {
     getCorePartDetailRecord,
     getDetailPartDetailRecord,
@@ -83,6 +82,7 @@ import {
 import { useSOPSceneSync } from '@/adjudication/ui/useSOPSceneSync';
 import { scoringEngine } from '@/adjudication/core/scoringEngine';
 import { useRobotContextStore } from '@/store/robotContextStore';
+import { useSOPScripts } from '@/hooks/useSOPScripts';
 
 const { Title, Text } = Typography;
 const EXAM_DURATION_MS = 60 * 60 * 1000;
@@ -279,6 +279,7 @@ const LoadingFallback = () => (
 
 function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
+    const { scripts: apiSopScripts } = useSOPScripts(currentRobot?.id);
     const robotId = currentRobot ? String(currentRobot.id) : null;
     const { manifest } = useAssemblyManifest(currentRobot?.id);
     const manifestLinkGroups = useMemo(
@@ -540,10 +541,10 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     }, [runtimeDraft, workspaceVariant]);
     const availableSopScripts = useMemo(() => {
         if (!runtimeSopScript) {
-            return ALL_SOP_SCRIPTS;
+            return apiSopScripts;
         }
         return [runtimeSopScript];
-    }, [runtimeSopScript]);
+    }, [runtimeSopScript, apiSopScripts]);
     const runtimeResolvedAssetPaths = useMemo(() => {
         if (!runtimeManifest) {
             return [];
