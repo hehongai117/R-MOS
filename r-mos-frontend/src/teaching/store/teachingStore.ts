@@ -53,7 +53,7 @@ export const useTeachingStore = create<TeachingStoreState>((set) => ({
         title: `${assignment.title}-任务`,
         sop_id: assignment.sopId,
         user_id: studentId,
-        pass_score: 70,
+        pass_score: (assignment.scoringPolicy as Record<string, number> | null)?.pass_score ?? 70,
       }
       const task = await createTask(taskPayload)
       await startTask(task.id)
