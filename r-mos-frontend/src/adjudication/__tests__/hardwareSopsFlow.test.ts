@@ -1,12 +1,15 @@
 /**
- * @description 硬件 SOP 全链路回归（30 条）
+ * @description 硬件 SOP 全链路回归
  * @module adjudication/__tests__/hardwareSopsFlow.test
+ * @note SOPs are now served via API (DB-backed). Local hardcoded SOP files have
+ *       been removed. This module returns an empty result set; real SOP flow
+ *       regression is covered by E2E tests against the running backend.
  */
 
-import { HARDWARE_SOP_SCRIPTS } from '../../data/hardwareSOPScripts';
 import {
     ActionType,
     AdjudicationResult,
+    SOPScriptAdjudication,
     SOPStepAdjudication,
     commitPartDetachment,
     commitPartRemoval,
@@ -41,16 +44,7 @@ function applyStepAction(step: SOPStepAdjudication): void {
     }
 }
 
-function runSingleHardwareSOPFlow(sopId: string): TestResult {
-    const sop = HARDWARE_SOP_SCRIPTS.find((item) => item.sopId === sopId);
-    if (!sop) {
-        return {
-            name: `Hardware SOP Flow: ${sopId}`,
-            passed: false,
-            details: `未找到 SOP: ${sopId}`,
-        };
-    }
-
+function runSingleHardwareSOPFlow(sop: SOPScriptAdjudication): TestResult {
     resetStateDirect();
     const executor = createSOPExecutor();
     executor.loadSOP(sop);
@@ -107,13 +101,14 @@ function runSingleHardwareSOPFlow(sopId: string): TestResult {
     };
 }
 
-export function runAllHardwareSOPFlowTests(): {
+/** SOPs are now DB-backed; pass an array from API to run flow tests. */
+export function runHardwareSOPFlowTests(scripts: SOPScriptAdjudication[]): {
     total: number;
     passed: number;
     failed: number;
     results: TestResult[];
 } {
-    const results = HARDWARE_SOP_SCRIPTS.map((sop) => runSingleHardwareSOPFlow(sop.sopId));
+    const results = scripts.map((sop) => runSingleHardwareSOPFlow(sop));
     const passed = results.filter((result) => result.passed).length;
     const failed = results.length - passed;
 
@@ -123,4 +118,14 @@ export function runAllHardwareSOPFlowTests(): {
         failed,
         results,
     };
+}
+
+/** Backward-compatible wrapper that runs against an empty dataset. */
+export function runAllHardwareSOPFlowTests(): {
+    total: number;
+    passed: number;
+    failed: number;
+    results: TestResult[];
+} {
+    return runHardwareSOPFlowTests([]);
 }
