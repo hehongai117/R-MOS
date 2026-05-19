@@ -1,6 +1,7 @@
 import { PART_METADATA, type PartInfo } from '@/components/Viewer3D/Atom01Interactive';
 import { getLinkDisplayName } from '@/components/Viewer3D/assemblyTree';
 import { CATEGORY_NAMES, DETAIL_PARTS_MAP, type DetailPart } from '@/components/Viewer3D/partsManifest';
+import { type RobotDataManifest } from '@/components/Viewer3D/assemblyManifest';
 import { getRobotModelBase } from '@/config/robots';
 import {
     SCREWS,
@@ -9,6 +10,50 @@ import {
     getToolById,
     type Screw,
 } from './toolData';
+
+// ---- Manifest injection layer ----
+
+let _manifestDisplayNames: Record<string, string> | null = null;
+let _manifestTools: Array<{ tool_id: string; display_name: string; category: string }> | null = null;
+
+/**
+ * Inject manifest-derived knowledge so that lookup functions prefer manifest
+ * data over hardcoded fallbacks. Call this whenever a RobotDataManifest loads.
+ * Safe to call multiple times — each call replaces the previous cache.
+ */
+export function injectManifestKnowledge(manifest: RobotDataManifest): void {
+    _manifestDisplayNames = manifest.display_names
+        ? { ...manifest.display_names }
+        : null;
+
+    if (manifest.tools && manifest.tools.length > 0) {
+        _manifestTools = manifest.tools.map((t) => ({
+            tool_id: t.id,
+            display_name: t.name,
+            category: t.type,
+        }));
+    } else {
+        _manifestTools = null;
+    }
+}
+
+/**
+ * Clear the manifest cache. After this call all lookup functions fall back
+ * to hardcoded data again (useful for testing or robot context switches).
+ */
+export function clearManifestKnowledge(): void {
+    _manifestDisplayNames = null;
+    _manifestTools = null;
+}
+
+/**
+ * Returns injected manifest tool entries, or null if no manifest has been
+ * injected. Consumers can use this to resolve tool display names from the
+ * manifest before falling back to toolData.ts.
+ */
+export function getManifestTools(): Array<{ tool_id: string; display_name: string; category: string }> | null {
+    return _manifestTools;
+}
 
 type CoreGroup = PartInfo['group'];
 
@@ -199,10 +244,15 @@ export function getCorePartDetailRecord(partName: string, robotId?: string): Par
 
     const robotModelBase = robotId ? getMaintenanceKnowledgeBase(robotId) : '';
     const detailCount = DETAIL_PARTS_MAP[partName]?.length ?? 0;
+
+    // Prefer manifest display name when available
+    const manifestDisplayName = _manifestDisplayNames?.[partName] ?? null;
+    const displayName = manifestDisplayName ?? part.displayName;
+
     return {
         id: part.name,
         level: 'core',
-        displayName: part.displayName,
+        displayName,
         categoryLabel: '核心总成',
         modelPath: robotModelBase ? `${robotModelBase}/${part.name}.glb` : '',
         parentDisplayName: GROUP_NAMES[part.group],
