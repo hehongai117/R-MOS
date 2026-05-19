@@ -21,6 +21,7 @@ export default defineConfig({
       "src/store/**/__tests__/**/*.test.{ts,tsx}",
       "src/types/**/__tests__/**/*.test.{ts,tsx}",
       "src/config/**/__tests__/**/*.test.{ts,tsx}",
+      "src/hooks/**/__tests__/**/*.test.{ts,tsx}",
     ],
     environment: "jsdom",
     globals: true,
