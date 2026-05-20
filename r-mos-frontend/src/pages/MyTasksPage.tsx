@@ -63,7 +63,7 @@ export default function MyTasksPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-sm text-text-muted">暂无任务记录，开始一次练习吧！</p>
-            <Button className="mt-4" onClick={() => navigate('/scenarios')}>
+            <Button type="button" className="mt-4" onClick={() => navigate('/scenarios')}>
               <Play className="mr-2 h-4 w-4" />
               去练习
             </Button>
@@ -75,7 +75,11 @@ export default function MyTasksPage() {
             const config = STATUS_CONFIG[task.status]
             const StatusIcon = config.icon
             return (
-              <Card key={task.id} className="transition-colors hover:border-primary/30">
+              <Card
+                key={task.id}
+                className="cursor-pointer transition-colors hover:border-primary/30"
+                onClick={() => navigate(`/maintenance?execution_id=${task.id}`)}
+              >
                 <CardContent className="flex items-center justify-between py-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
