@@ -1216,20 +1216,26 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     默认收起，避免打断执行；展开后可切换到其他 SOP。
                 </Text>
-                {isSopListExpanded ? availableSopScripts.map((sop) => {
-                    const isActive = sop.sopId === linkedSOPId;
-                    return (
-                        <Button
-                            key={`sop-link-${sop.sopId}`}
-                            size="small"
-                            type={isActive ? 'primary' : 'default'}
-                            block
-                            onClick={() => setLinkedSOPId(sop.sopId)}
-                        >
-                            {sop.title}
-                        </Button>
-                    );
-                }) : null}
+                {isSopListExpanded ? (
+                    availableSopScripts.length > 0 ? availableSopScripts.map((sop) => {
+                        const isActive = sop.sopId === linkedSOPId;
+                        return (
+                            <Button
+                                key={`sop-link-${sop.sopId}`}
+                                size="small"
+                                type={isActive ? 'primary' : 'default'}
+                                block
+                                onClick={() => setLinkedSOPId(sop.sopId)}
+                            >
+                                {sop.title}
+                            </Button>
+                        );
+                    }) : (
+                        <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', display: 'block' }}>
+                            暂无可用 SOP，请先选择机器人或联系教师配置。
+                        </Text>
+                    )
+                ) : null}
                 {sopSceneSync.state.selectedSopId && (
                     <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
                         <Space wrap>
