@@ -157,7 +157,7 @@ function RoleLayoutShell({
 
       <main className="ml-[220px] flex-1 overflow-auto">
         {/* 有多台机器人时显示顶部机器人切换栏 */}
-        {availableRobots.length > 1 && (
+        {availableRobots.length >= 1 && (
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border-subtle bg-bg-surface/95 px-6 py-2 backdrop-blur">
             <Bot className="h-4 w-4 text-text-muted" />
             <span className="text-xs text-text-secondary">当前机器人:</span>

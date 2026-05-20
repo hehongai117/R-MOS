@@ -11,6 +11,7 @@ interface RobotContextState {
   currentRobot: RobotModel | null
   availableRobots: RobotModel[]
   isLoading: boolean
+  error: string | null
 
   /** 加载学生可用机器人列表 */
   fetchAvailableRobots: (studentId: number) => Promise<void>
@@ -34,9 +35,10 @@ export const useRobotContextStore = create<RobotContextState>((set, _get) => ({
   currentRobot: null,
   availableRobots: [],
   isLoading: false,
+  error: null,
 
   async fetchAvailableRobots(studentId: number) {
-    set({ isLoading: true })
+    set({ isLoading: true, error: null })
     try {
       const res = await listStudentRobots(studentId)
       const robots = res.items
@@ -60,15 +62,15 @@ export const useRobotContextStore = create<RobotContextState>((set, _get) => ({
       if (current) {
         localStorage.setItem(STORAGE_KEY, String(current.id))
       }
-    } catch {
-      set({ availableRobots: [] })
+    } catch (err) {
+      set({ availableRobots: [], error: err instanceof Error ? err.message : '加载机器人列表失败' })
     } finally {
       set({ isLoading: false })
     }
   },
 
   async fetchTeacherRobots() {
-    set({ isLoading: true })
+    set({ isLoading: true, error: null })
     try {
       const res = await listRobots()
       const robots = res.items
@@ -91,8 +93,8 @@ export const useRobotContextStore = create<RobotContextState>((set, _get) => ({
       if (current) {
         localStorage.setItem(STORAGE_KEY, String(current.id))
       }
-    } catch {
-      set({ availableRobots: [] })
+    } catch (err) {
+      set({ availableRobots: [], error: err instanceof Error ? err.message : '加载机器人列表失败' })
     } finally {
       set({ isLoading: false })
     }
