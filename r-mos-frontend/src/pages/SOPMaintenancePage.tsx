@@ -954,12 +954,12 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         <div className="flex flex-wrap items-center justify-end gap-2">
             {workspaceChrome.showDraftEntry ? (
                 <Space wrap>
-                    <Button onClick={() => navigate('/maintenance/project-draft')}>
+                    <Button onClick={() => navigate('/maintenance?view=project-draft')}>
                         项目草案页
                     </Button>
                     <Button
                         type={effectiveLayoutMode === 'execution' ? 'primary' : 'default'}
-                        onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance/inspector' : '/maintenance')}
+                        onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance?view=inspector' : '/maintenance')}
                     >
                         {effectiveLayoutMode === 'execution' ? '打开检视页' : '返回执行页'}
                     </Button>
