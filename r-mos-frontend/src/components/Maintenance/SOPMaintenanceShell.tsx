@@ -40,6 +40,7 @@ interface SOPMaintenanceLeftRailProps {
   sopListContent: ReactNode
   toolSelectorContent: ReactNode
   sopPlayerContent: ReactNode
+  robotModelName?: string
 }
 
 interface SOPMaintenanceExamOverlayProps {
@@ -136,6 +137,7 @@ export function SOPMaintenanceLeftRail({
   sopListContent,
   toolSelectorContent,
   sopPlayerContent,
+  robotModelName,
 }: SOPMaintenanceLeftRailProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -145,9 +147,11 @@ export function SOPMaintenanceLeftRail({
       >
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="rounded bg-primary/10 px-2 py-1 font-mono text-xs text-primary">
-              ATOM-01
-            </span>
+            {robotModelName ? (
+              <span className="rounded bg-primary/10 px-2 py-1 font-mono text-xs text-primary">
+                {robotModelName}
+              </span>
+            ) : null}
             <StatusBadge label={difficultyLabel} status="pending" />
           </div>
           <div className="space-y-2">

@@ -251,8 +251,8 @@ const WORKSPACE_CHROME: Record<WorkspaceVariant, WorkspaceChrome> = {
         showDraftEntry: true,
     },
     demo: {
-        title: 'ATOM01 维保工作台',
-        breadcrumb: ['工作台', 'ATOM01 维保工作台'],
+        title: '维保工作台',
+        breadcrumb: ['工作台', '维保工作台'],
         showDraftEntry: false,
     },
 };
@@ -1312,6 +1312,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                 {showExecutionRail ? (
                     <Col xs={24} lg={effectiveLayoutMode === 'full' ? 6 : 8} style={{ height: '100%', overflowY: 'auto' }}>
                         <SOPMaintenanceLeftRail
+                            robotModelName={currentRobot?.model_name}
                             sopTitle={activeSopScript?.title ?? 'SOP 步骤导航'}
                             difficultyLabel={activeSopScript?.difficulty ?? 'normal'}
                             currentStepTitle={sopSceneSync.state.currentStepTitle}
