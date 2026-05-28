@@ -425,9 +425,7 @@ const KnowledgePage = () => {
                     ? availableRobots.map((r) => (
                         <Option key={r.id} value={r.model_name}>{r.model_name}</Option>
                       ))
-                    : <>
-                        <Option value="ATOM01">ATOM01</Option>
-                      </>
+                    : <Option value="" disabled>暂无可用机器人</Option>
                   }
                 </Select>
                 <Button size="sm" type="button" onClick={() => void handleSearch()}>
@@ -498,9 +496,7 @@ const KnowledgePage = () => {
                       ? availableRobots.map((r) => (
                           <Option key={r.id} value={r.model_name}>{r.model_name}</Option>
                         ))
-                      : <>
-                          <Option value="ATOM01">ATOM01</Option>
-                        </>
+                      : <Option value="" disabled>暂无可用机器人</Option>
                     }
                   </Select>
                 </Form.Item>
