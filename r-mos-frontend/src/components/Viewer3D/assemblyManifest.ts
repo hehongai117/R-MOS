@@ -139,8 +139,16 @@ export interface ManifestOverviewConfig {
   }>
 }
 
+export interface ManifestJointEntry {
+  name: string
+  type: string                    // 'revolute' | 'fixed' | 'continuous' | ...
+  parent_link: string
+  child_link: string
+}
+
 /** 完整的机器人数据清单 — 扩展 AssemblyManifest */
 export interface RobotDataManifest extends AssemblyManifest {
+  joints?: ManifestJointEntry[]
   parts_registry?: ManifestPartEntry[]
   screw_instances?: ManifestScrewEntry[]
   constraints?: ManifestConstraintEntry[]

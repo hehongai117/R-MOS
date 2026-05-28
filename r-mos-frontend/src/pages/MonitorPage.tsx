@@ -33,22 +33,8 @@ const MONITOR_JOINT_MAP: Record<string, MonitorJointMeta> = {
   neck: { atomJoint: 'torso_joint', atomLink: 'torso_link', label: '躯干姿态' },
 }
 
-const ATOM01_JOINT_META: Record<string, MonitorJointMeta> = {
-  torso_joint: { atomJoint: 'torso_joint', atomLink: 'torso_link', label: '躯干姿态' },
-  left_thigh_pitch_joint: { atomJoint: 'left_thigh_pitch_joint', atomLink: 'left_thigh_pitch_link', label: '左髋关节' },
-  right_thigh_pitch_joint: { atomJoint: 'right_thigh_pitch_joint', atomLink: 'right_thigh_pitch_link', label: '右髋关节' },
-  left_knee_joint: { atomJoint: 'left_knee_joint', atomLink: 'left_knee_link', label: '左膝关节' },
-  right_knee_joint: { atomJoint: 'right_knee_joint', atomLink: 'right_knee_link', label: '右膝关节' },
-  left_ankle_pitch_joint: { atomJoint: 'left_ankle_pitch_joint', atomLink: 'left_ankle_pitch_link', label: '左踝关节' },
-  right_ankle_pitch_joint: { atomJoint: 'right_ankle_pitch_joint', atomLink: 'right_ankle_pitch_link', label: '右踝关节' },
-  left_arm_pitch_joint: { atomJoint: 'left_arm_pitch_joint', atomLink: 'left_arm_pitch_link', label: '左肩关节' },
-  right_arm_pitch_joint: { atomJoint: 'right_arm_pitch_joint', atomLink: 'right_arm_pitch_link', label: '右肩关节' },
-  left_elbow_pitch_joint: { atomJoint: 'left_elbow_pitch_joint', atomLink: 'left_elbow_pitch_link', label: '左肘关节' },
-  right_elbow_pitch_joint: { atomJoint: 'right_elbow_pitch_joint', atomLink: 'right_elbow_pitch_link', label: '右肘关节' },
-}
-
 function resolveJointMeta(jointId: string): MonitorJointMeta | null {
-  return MONITOR_JOINT_MAP[jointId] ?? ATOM01_JOINT_META[jointId] ?? null
+  return MONITOR_JOINT_MAP[jointId] ?? null
 }
 
 /** 从 manifest joints 构建关节元数据 */
@@ -250,7 +236,7 @@ function MonitorPage() {
 
   const manifestJointMeta = useMemo(() => {
     if (!manifest) return null
-    const displayNames = (manifest as any).display_names ?? {}
+    const displayNames = manifest.display_names ?? {}
     return buildJointMetaFromManifest(manifest, displayNames)
   }, [manifest])
 
