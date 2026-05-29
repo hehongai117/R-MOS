@@ -135,7 +135,15 @@ class MockRobotAdapter(BaseRobotAdapter):
         self._simulation_task: Optional[asyncio.Task] = None
     
     def _generate_joints(self, count: int) -> List[str]:
-        """生成模拟关节列表"""
+        """生成模拟关节列表
+
+        优先使用 config["joint_names"]；若未提供则 fallback 到硬编码列表（截取前 count 个）。
+        """
+        # 优先使用 config 中的关节名称列表
+        if self._config.get("joint_names"):
+            return list(self._config["joint_names"])
+
+        # Fallback：硬编码 14 个关节，按 count 截取
         joint_types = [
             "knee_right", "knee_left",
             "hip_right", "hip_left",
@@ -188,8 +196,8 @@ class MockRobotAdapter(BaseRobotAdapter):
             raise ConnectionError("Adapter not connected")
             
         return RobotInfo(
-            robot_id="mock_robot_001",
-            model="MOCK_HUMANOID_V1",
+            robot_id=self._config.get("robot_id", "mock_robot_001"),
+            model=self._config.get("model_name", "MOCK_HUMANOID_V1"),
             firmware_version="1.0.0-mock",
             runtime_status=(
                 RobotStatus.MAINTENANCE
