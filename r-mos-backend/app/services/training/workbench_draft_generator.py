@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,12 +29,14 @@ class TrainingWorkbenchDraftGenerator:
         *,
         user_id: int,
         robot_model: str,
+        robot_id: int | None = None,
         task_summary: str,
         focus_prompt: str,
     ) -> dict:
+        link_names, display_names = self._load_robot_manifest(robot_id)
         llm_pref = await self._get_llm_preference(user_id)
         response = await llm_router.chat(
-            messages=[{"role": "user", "content": self._build_prompt(robot_model, task_summary, focus_prompt)}],
+            messages=[{"role": "user", "content": self._build_prompt(robot_model, task_summary, focus_prompt, link_names=link_names)}],
             provider=self._map_provider(llm_pref["provider"]),
             model=llm_pref["model"],
             temperature=0.4,
@@ -50,8 +53,36 @@ class TrainingWorkbenchDraftGenerator:
                 task_summary=task_summary,
                 focus_prompt=focus_prompt,
                 llm_text=normalized_content,
+                link_names=link_names,
+                display_names=display_names,
             )
-        return self._normalize_payload(payload, robot_model=robot_model, task_summary=task_summary)
+        return self._normalize_payload(
+            payload,
+            robot_model=robot_model,
+            task_summary=task_summary,
+            link_names=link_names,
+            display_names=display_names,
+        )
+
+    @staticmethod
+    def _load_robot_manifest(robot_id: int | None) -> tuple[list[str], dict[str, str]]:
+        """从 assembly_manifest.json 加载 link 名称和 display_names。"""
+        if not robot_id:
+            return [], {}
+        manifest_path = Path("data/robot-assets") / str(robot_id) / "manifests" / "assembly_manifest.json"
+        if not manifest_path.exists():
+            return [], {}
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            nodes = data.get("nodes", [])
+            link_names = [
+                n["link_name"] for n in nodes
+                if n.get("link_name") and n.get("mesh_id")
+            ]
+            display_names = data.get("display_names", {})
+            return link_names, display_names
+        except (json.JSONDecodeError, KeyError):
+            return [], {}
 
     async def _get_llm_preference(self, user_id: int) -> dict[str, str]:
         pref = await self.preference_service.get_or_create_preference(user_id)
@@ -82,7 +113,11 @@ class TrainingWorkbenchDraftGenerator:
         return LLMProvider.OPENAI
 
     @staticmethod
-    def _build_prompt(robot_model: str, task_summary: str, focus_prompt: str) -> str:
+    def _build_prompt(robot_model: str, task_summary: str, focus_prompt: str, *, link_names: list[str] | None = None) -> str:
+        link_hint = ""
+        if link_names:
+            link_csv = "、".join(link_names[:10])
+            link_hint = f"\n5. 请优先使用这些 link 名称作为 model_targets：{link_csv}。"
         return f"""
 你是机器人训练编排助手。请为训练工作台生成一个可直接展示的训练草案。
 
@@ -130,8 +165,7 @@ JSON 结构必须满足：
 1. 生成 3 到 5 个步骤。
 2. 每个步骤至少 2 个工具，其中至少 1 个关键工具。
 3. 文案使用中文，适合训练场景。
-4. 重点体现步骤编排、工具确认、证据上传、AI 提示。
-5. 如果是 ATOM01，请优先使用这些 link 名称作为 model_targets：torso_link、left_knee_link、right_knee_link、left_ankle_pitch_link、right_ankle_pitch_link、left_arm_pitch_link、right_arm_pitch_link。
+4. 重点体现步骤编排、工具确认、证据上传、AI 提示。{link_hint}
         """.strip()
 
     @staticmethod
@@ -153,8 +187,11 @@ JSON 结构必须满足：
         task_summary: str,
         focus_prompt: str,
         llm_text: str,
+        link_names: list[str] | None = None,
+        display_names: dict[str, str] | None = None,
     ) -> dict:
         assistant_text = llm_text.strip() or "请先确认现场安全、工具状态与证据留存要求。"
+        first_link = link_names[0] if link_names else "base_link"
         return {
             "project": {
                 "title": f"{robot_model} {task_summary}",
@@ -166,7 +203,7 @@ JSON 结构必须满足：
                     "title": "步骤 1: 准备工位",
                     "instruction": "确认断电挂牌、PPE 穿戴和工位清洁，建立本次训练的安全基线。",
                     "evidence_hint": "上传工位全景和断电挂牌照片。",
-                    "model_targets": ["torso_link"],
+                    "model_targets": [first_link],
                     "tools": [
                         {"name": "绝缘手套", "spec": "A级绝缘", "is_critical": True},
                         {"name": "扭矩扳手", "spec": "5-25Nm", "is_critical": True},
@@ -175,9 +212,9 @@ JSON 结构必须满足：
                 {
                     "id": "draft_disassemble",
                     "title": "步骤 2: 执行拆装",
-                    "instruction": f"围绕“{task_summary}”执行核心操作，逐项确认工具和零件状态。",
+                    "instruction": f'围绕\u201c{task_summary}\u201d执行核心操作，逐项确认工具和零件状态。',
                     "evidence_hint": "上传关键拆装动作照片与零件摆位截图。",
-                    "model_targets": [self._default_focus_target(task_summary)],
+                    "model_targets": [self._default_focus_target(task_summary, display_names=display_names, link_names=link_names)],
                     "tools": [
                         {"name": "六角扳手", "spec": "4mm", "is_critical": True},
                         {"name": "零件托盘", "spec": "分区托盘", "is_critical": False},
@@ -188,7 +225,7 @@ JSON 结构必须满足：
                     "title": "步骤 3: 复核与提交",
                     "instruction": "复核扭矩、部件复位和风险点，整理证据后准备提交裁决。",
                     "evidence_hint": "上传复位结果、工具回收和最终状态截图。",
-                    "model_targets": [self._default_focus_target(task_summary)],
+                    "model_targets": [self._default_focus_target(task_summary, display_names=display_names, link_names=link_names)],
                     "tools": [
                         {"name": "检查记录卡", "spec": "电子/纸质", "is_critical": False},
                         {"name": "检修灯", "spec": "无频闪", "is_critical": False},
@@ -201,13 +238,21 @@ JSON 结构必须满足：
             ],
         }
 
-    def _normalize_payload(self, payload: dict, *, robot_model: str, task_summary: str) -> dict:
+    def _normalize_payload(
+        self,
+        payload: dict,
+        *,
+        robot_model: str,
+        task_summary: str,
+        link_names: list[str] | None = None,
+        display_names: dict[str, str] | None = None,
+    ) -> dict:
         project_payload = payload.get("project") or {}
         steps_payload = payload.get("steps") or []
         messages_payload = payload.get("messages") or []
         draft_session_id = f"draft-session-{uuid4().hex[:8]}"
         draft_project_id = f"draft-project-{uuid4().hex[:8]}"
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         steps: list[dict] = []
         for index, raw_step in enumerate(steps_payload):
@@ -237,6 +282,8 @@ JSON 结构必须满足：
                         title=str(raw_step.get("title") or ""),
                         instruction=str(raw_step.get("instruction") or ""),
                         task_summary=task_summary,
+                        link_names=link_names,
+                        display_names=display_names,
                     ),
                     "tools": tools,
                 }
@@ -269,20 +316,20 @@ JSON 结构必须满足：
         }
 
     @staticmethod
-    def _default_focus_target(task_summary: str) -> str:
-        mapping = {
-            "髋": "left_thigh_pitch_link",
-            "膝": "left_knee_link",
-            "踝": "left_ankle_pitch_link",
-            "肩": "left_arm_pitch_link",
-            "肘": "left_elbow_pitch_link",
-            "腕": "left_elbow_yaw_link",
-            "关节电机盖": "left_knee_link",
-        }
-        for keyword, target in mapping.items():
-            if keyword in task_summary:
-                return target
-        return "torso_link"
+    def _default_focus_target(
+        task_summary: str,
+        *,
+        display_names: dict[str, str] | None = None,
+        link_names: list[str] | None = None,
+    ) -> str:
+        # 使用 manifest display_names（倒排：中文名 → link_id）
+        if display_names:
+            for link_id, chinese_name in display_names.items():
+                if chinese_name and chinese_name in task_summary:
+                    return link_id
+        if link_names:
+            return link_names[0]
+        return "base_link"
 
     def _normalize_model_targets(
         self,
@@ -291,15 +338,18 @@ JSON 结构必须满足：
         title: str,
         instruction: str,
         task_summary: str,
+        link_names: list[str] | None = None,
+        display_names: dict[str, str] | None = None,
     ) -> list[str]:
         if isinstance(raw_targets, list):
             targets = [str(item).strip() for item in raw_targets if str(item).strip()]
             if targets:
                 return targets
 
+        first_link = link_names[0] if link_names else "base_link"
         combined = f"{title} {instruction} {task_summary}"
         if any(keyword in combined for keyword in ("准备", "工位", "断电", "安全")):
-            return ["torso_link"]
+            return [first_link]
         if any(keyword in combined for keyword in ("线缆", "接头", "连接")):
-            return ["torso_link", self._default_focus_target(task_summary)]
-        return [self._default_focus_target(task_summary)]
+            return [first_link, self._default_focus_target(task_summary, display_names=display_names, link_names=link_names)]
+        return [self._default_focus_target(task_summary, display_names=display_names, link_names=link_names)]
