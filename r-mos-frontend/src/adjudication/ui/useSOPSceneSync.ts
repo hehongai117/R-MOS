@@ -44,6 +44,11 @@ const DEFAULT_STATE: SOPSceneSyncState = {
     intent: DEFAULT_INTENT,
 };
 
+/**
+ * @deprecated 硬编码的 SOP 模块→默认零件映射。
+ * 请改用 buildModuleDefaultParts(manifest) 从机器人数据清单动态推导。
+ * 当 manifest 可用时，此表仅作 fallback 兜底。
+ */
 const SOP_MODULE_DEFAULT_PART: Record<string, string> = {
     torso: 'torso_link',
     left_arm: 'left_arm_pitch_link',
@@ -52,6 +57,41 @@ const SOP_MODULE_DEFAULT_PART: Record<string, string> = {
     right_leg: 'right_thigh_pitch_link',
     base: 'base_link',
 };
+
+/**
+ * 从 manifest 的 overview_config.assembly_groups 动态推导 SOP 模块默认零件映射。
+ *
+ * 每个分组的 child_links[0] 即为该模块的默认高亮零件。
+ * 分组 key（link ID）通过正则归一化为简短模块名（如 left_arm_yaw_link → left_arm）。
+ *
+ * @returns 映射表，若 manifest 无分组信息则返回 null（调用方应 fallback 到硬编码表）
+ */
+export function buildModuleDefaultParts(
+    manifest: { overview_config?: { assembly_groups?: Record<string, { child_links: string[] }> } } | null
+): Record<string, string> | null {
+    const groups = manifest?.overview_config?.assembly_groups;
+    if (!groups) return null;
+
+    const result: Record<string, string> = {};
+    for (const [groupKey, group] of Object.entries(groups)) {
+        if (group.child_links.length === 0) continue;
+        // 从 group key（link ID）推断简短模块名
+        const shortName = groupKey
+            .replace(/_yaw_link$|_pitch_link$|_roll_link$|_link$/, '')  // 去掉 joint/link 后缀
+            .replace(/^(left|right)_thigh.*/, '$1_leg')                  // left_thigh → left_leg
+            .replace(/^(left|right)_knee.*/, '$1_leg')                   // left_knee → left_leg
+            .replace(/^(left|right)_ankle.*/, '$1_leg')                  // left_ankle → left_leg
+            .replace(/^(left|right)_elbow.*/, '$1_arm')                  // left_elbow → left_arm
+            .replace(/^(left|right)_arm.*/, '$1_arm');                   // left_arm_yaw → left_arm
+        if (shortName) {
+            // 先到先得：同一 shortName 只保留第一个分组的默认零件
+            if (!(shortName in result)) {
+                result[shortName] = group.child_links[0];
+            }
+        }
+    }
+    return Object.keys(result).length > 0 ? result : null;
+}
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
