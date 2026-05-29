@@ -16,8 +16,10 @@ class MockLLMResponse:
 # --- Pre-written response templates ---
 
 
-def _make_diagnosis_response(robot_model: str = "机器人") -> MockLLMResponse:
+def _make_diagnosis_response(robot_model: str = "机器人", affected_joint: str = "knee_left") -> MockLLMResponse:
     sop_name = f"{robot_model} 左膝关节轴承更换"
+    joint_upper = affected_joint.upper()
+    affected_parts = [f"{affected_joint}_bearing", f"{affected_joint}_joint"]
     return MockLLMResponse(
         text=(
             "## 故障诊断报告\n\n"
@@ -41,13 +43,13 @@ def _make_diagnosis_response(robot_model: str = "机器人") -> MockLLMResponse:
         ),
         diagnosis={
             "fault_type": "bearing_wear",
-            "joint": "KNEE_LEFT",
+            "joint": joint_upper,
             "severity": "high",
             "confidence": 0.92,
             "primary_hypothesis": {
                 "name": "左膝关节轴承磨损",
                 "confidence": 0.92,
-                "affected_parts": ["left_knee_bearing", "left_knee_joint"],
+                "affected_parts": affected_parts,
                 "evidence": [
                     {"type": "temperature", "desc": "温度异常升高 35→65°C"},
                     {"type": "torque", "desc": "扭矩周期性波动 ±2.1Nm"},
@@ -58,7 +60,7 @@ def _make_diagnosis_response(robot_model: str = "机器人") -> MockLLMResponse:
                 {
                     "name": "润滑油不足",
                     "confidence": 0.15,
-                    "affected_parts": ["left_knee_joint"],
+                    "affected_parts": [f"{affected_joint}_joint"],
                 }
             ],
             "reasoning": "温度-扭矩-电流三维关联指向轴承机械磨损，排除润滑不足（润滑不足通常不会导致如此快速的温升）",
@@ -69,9 +71,9 @@ def _make_diagnosis_response(robot_model: str = "机器人") -> MockLLMResponse:
             ],
         },
         citations=[
-            {"type": "sensor", "desc": "左膝温度 35→65°C（30s 内）", "source": "KNEE_LEFT.temperature"},
-            {"type": "sensor", "desc": "左膝扭矩波动 ±2.1Nm", "source": "KNEE_LEFT.torque"},
-            {"type": "sensor", "desc": "左膝电流 2.0→2.8A", "source": "KNEE_LEFT.current"},
+            {"type": "sensor", "desc": "左膝温度 35→65°C（30s 内）", "source": f"{joint_upper}.temperature"},
+            {"type": "sensor", "desc": "左膝扭矩波动 ±2.1Nm", "source": f"{joint_upper}.torque"},
+            {"type": "sensor", "desc": "左膝电流 2.0→2.8A", "source": f"{joint_upper}.current"},
             {"type": "history", "desc": "上次维保距今 180 天，超出建议周期", "source": "maintenance_log"},
         ],
         sop_recommendation={
@@ -139,6 +141,18 @@ DEFAULT_RESPONSE = MockLLMResponse(
 )
 
 
+def _get_first_available_joint() -> str:
+    """从 fault_scenarios 模块获取第一个可用关节名，避免循环依赖时 fallback 默认值"""
+    try:
+        from app.services.simulation.fault_scenarios import FAULT_SCENARIOS
+        for scenario in FAULT_SCENARIOS.values():
+            if scenario.affected_joints:
+                return scenario.affected_joints[0]
+    except Exception:
+        pass
+    return "knee_left"
+
+
 def match_intent(message: str, robot_model: str = "机器人") -> MockLLMResponse:
     """Match user message to a pre-written response based on keywords."""
     msg = message.lower().strip()
@@ -148,7 +162,7 @@ def match_intent(message: str, robot_model: str = "机器人") -> MockLLMRespons
     explain_kw = r"为什么|解释|原因|机理|详解|怎么.*回事"
 
     if re.search(diagnosis_kw, msg):
-        return _make_diagnosis_response(robot_model)
+        return _make_diagnosis_response(robot_model, _get_first_available_joint())
     if re.search(sop_kw, msg):
         return _make_sop_response(robot_model)
     if re.search(explain_kw, msg):

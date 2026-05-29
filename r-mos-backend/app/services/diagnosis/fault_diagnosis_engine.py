@@ -363,7 +363,7 @@ class FaultDiagnosisEngine:
             "fault_code": "E001_OVERHEAT",
             "fault_name": "温度过高",
             "confidence": 0.85,
-            "affected_parts": ["knee_right"],
+            "affected_parts": ["<affected_joint_id>"],
             "possible_causes": ["长时间高负载运行", "散热系统故障"],
             "evidence": {{}}
         }}

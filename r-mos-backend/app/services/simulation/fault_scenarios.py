@@ -1,6 +1,7 @@
 """Fault scenario definitions for 3 polished cases."""
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 
@@ -40,12 +41,33 @@ class ActiveFault:
         return effects
 
 
+def _load_scenario_overrides() -> dict:
+    """从 mock_faults.yaml 加载故障场景的 affected_joints"""
+    config_path = Path("data/config/mock_faults.yaml")
+    try:
+        import yaml
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        return config.get("fault_scenarios", {})
+    except (FileNotFoundError, Exception):
+        return {}
+
+
+_SCENARIO_OVERRIDES = _load_scenario_overrides()
+
+
+def _get_affected_joints(fault_key: str, default: list[str]) -> list[str]:
+    """从 YAML 覆盖中获取 affected_joints，不存在则 fallback 到硬编码默认值"""
+    override = _SCENARIO_OVERRIDES.get(fault_key, {})
+    return override.get("affected_joints", default)
+
+
 FAULT_SCENARIOS: dict[str, FaultScenario] = {
     "E001_OVERHEAT": FaultScenario(
         fault_type="E001_OVERHEAT",
         name="关节过热",
         difficulty="beginner",
-        affected_joints=["waist"],
+        affected_joints=_get_affected_joints("E001_OVERHEAT", ["waist"]),
         telemetry_effects={
             "temperature_increase": 35.0,  # 40°C base + 35 = 75°C threshold
             "torque_noise": 0.5,
@@ -57,7 +79,7 @@ FAULT_SCENARIOS: dict[str, FaultScenario] = {
         fault_type="E005_LOOSE",
         name="关节松动",
         difficulty="intermediate",
-        affected_joints=["elbow"],
+        affected_joints=_get_affected_joints("E005_LOOSE", ["elbow"]),
         telemetry_effects={
             "position_error_increase": 0.14,  # 0.01 base + 0.14 = 0.15 rad
             "vibration_increase": 2.0,
@@ -69,7 +91,7 @@ FAULT_SCENARIOS: dict[str, FaultScenario] = {
         fault_type="E003_VOLTAGE_DROP",
         name="电压跌落+过热联动",
         difficulty="advanced",
-        affected_joints=["shoulder", "elbow"],
+        affected_joints=_get_affected_joints("E003_VOLTAGE_DROP", ["shoulder", "elbow"]),
         telemetry_effects={
             "voltage_drop": 5.0,  # 24V - 5 = 19V
             "temperature_increase": 25.0,  # secondary effect on affected joints

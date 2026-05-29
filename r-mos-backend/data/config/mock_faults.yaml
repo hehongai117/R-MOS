@@ -23,3 +23,11 @@ sensor_defaults:
   pressure_baseline: 100.0
   pressure_noise_stddev: 10.0
   battery_drain_rate: 0.1
+
+fault_scenarios:
+  E001_OVERHEAT:
+    affected_joints: ["waist"]
+  E005_LOOSE:
+    affected_joints: ["elbow"]
+  E003_VOLTAGE_DROP:
+    affected_joints: ["shoulder", "elbow"]
