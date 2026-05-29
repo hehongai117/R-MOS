@@ -73,7 +73,7 @@ export interface AssemblyIndex {
 export interface ManifestPartEntry {
   id: string
   category: string              // 'frame' | 'cover' | 'screw' | 'motor' | 'pcb' | ...
-  bom_code: string              // 'ATOM-01-BASE-001'
+  bom_code: string              // e.g. 'BASE-001'
   display_name: string          // '髋部底座'
   parent_id: string | null
   mesh_id: string | null        // 引用 mesh_catalog

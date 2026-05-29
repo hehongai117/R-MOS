@@ -572,7 +572,7 @@ function MonitorPage() {
                   绿色高亮代表当前重点观测部位。
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-xs text-text-muted">
-                  若关节未映射到 ATOM01，会仍保留在右侧明细区。
+                  若关节未映射到当前机器人，会仍保留在右侧明细区。
                 </div>
               </div>
             </div>
