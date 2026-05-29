@@ -78,7 +78,10 @@ import {
     SOPScriptAdjudication,
     SOPStepAdjudication,
     useAdjudicationStore,
+    injectManifestPartRegistry,
+    clearManifestPartRegistry,
 } from '@/adjudication';
+import type { RobotDataManifest } from '@/components/Viewer3D/assemblyManifest';
 import { useSOPSceneSync } from '@/adjudication/ui/useSOPSceneSync';
 import { scoringEngine } from '@/adjudication/core/scoringEngine';
 import { useRobotContextStore } from '@/store/robotContextStore';
@@ -282,6 +285,15 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const { scripts: apiSopScripts } = useSOPScripts(currentRobot?.id);
     const robotId = currentRobot ? String(currentRobot.id) : null;
     const { manifest } = useAssemblyManifest(currentRobot?.id);
+
+    useEffect(() => {
+        const m = manifest as RobotDataManifest | null;
+        if (m?.parts_registry) {
+            injectManifestPartRegistry(m);
+        }
+        return () => { clearManifestPartRegistry(); };
+    }, [manifest]);
+
     const manifestLinkGroups = useMemo(
         () => buildLinkGroupsFromManifest(manifest as any),
         [manifest]
