@@ -17,6 +17,8 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { getRobotModelBase } from '../../config/robots';
 import * as THREE from 'three';
+import type { RobotDataManifest } from './assemblyManifest';
+import { buildJointAxisMap } from './manifestHelpers';
 
 // Props 接口
 export interface Atom01ModelProps {
@@ -26,6 +28,8 @@ export interface Atom01ModelProps {
     highlightLinks?: string[];
     scale?: number;
     position?: [number, number, number];
+    /** Optional manifest data; when provided, joint axes are read from it (falls back to hardcoded JOINTS). */
+    manifest?: RobotDataManifest | null;
 }
 
 // 单个 Link 组件
@@ -82,7 +86,10 @@ const LinkMesh: React.FC<{
     );
 };
 
-// 关节定义
+/**
+ * @deprecated Hardcoded fallback — use buildJointAxisMap(manifest) when manifest is available.
+ * Kept to ensure joint animation works without a manifest.
+ */
 const JOINTS: Record<string, { axis: [number, number, number] }> = {
     'torso_joint': { axis: [0, 0, 1] },
     'left_thigh_yaw_joint': { axis: [-0.5, 0, -0.866] },
@@ -109,6 +116,11 @@ const JOINTS: Record<string, { axis: [number, number, number] }> = {
     'right_elbow_yaw_joint': { axis: [0, 0, -1] },
 };
 
+/** Flattened fallback: same data as JOINTS but in the format returned by buildJointAxisMap. */
+const JOINTS_AXIS_FALLBACK: Record<string, [number, number, number]> = Object.fromEntries(
+    Object.entries(JOINTS).map(([k, v]) => [k, v.axis])
+);
+
 // 主模型组件
 export const Atom01Model: React.FC<Atom01ModelProps> = ({
     robotId,
@@ -117,21 +129,28 @@ export const Atom01Model: React.FC<Atom01ModelProps> = ({
     highlightLinks = [],
     scale = 1,
     position = [0, 0, 0],
+    manifest,
 }) => {
     const modelBasePath = useMemo(() => getRobotModelBase(robotId), [robotId]);
     const groupRef = useRef<THREE.Group>(null);
     const jointRefs = useRef<Record<string, THREE.Group | null>>({});
 
+    // Manifest-driven joint axis map; falls back to hardcoded JOINTS when manifest unavailable.
+    const jointAxisMap = useMemo(
+        () => ({ ...JOINTS_AXIS_FALLBACK, ...buildJointAxisMap(manifest) }),
+        [manifest],
+    );
+
     useEffect(() => {
-        Object.entries(JOINTS).forEach(([jointName, joint]) => {
+        Object.entries(jointAxisMap).forEach(([jointName, axisVec]) => {
             const jointGroup = jointRefs.current[jointName];
             if (jointGroup && jointAngles[jointName] !== undefined) {
                 const angle = jointAngles[jointName];
-                const axis = new THREE.Vector3(...joint.axis).normalize();
+                const axis = new THREE.Vector3(...axisVec).normalize();
                 jointGroup.setRotationFromAxisAngle(axis, angle);
             }
         });
-    }, [jointAngles]);
+    }, [jointAngles, jointAxisMap]);
 
     const isFault = (linkName: string) => {
         return faultJoints.some(joint => {

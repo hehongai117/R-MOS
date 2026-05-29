@@ -16,6 +16,8 @@ import * as THREE from 'three';
 import { getExplodePartsForLink, CATEGORY_COLORS, REFERENCE_NODE_IDS, type DetailPart } from './partsManifest';
 import { useAtom01AssemblyData } from './hooks/useAtom01AssemblyData';
 import { Atom01AssemblyRenderer } from './Atom01AssemblyRenderer';
+import type { RobotDataManifest } from './assemblyManifest';
+import { buildJointAxisMap } from './manifestHelpers';
 
 // 零件信息接口
 export interface PartInfo {
@@ -148,6 +150,8 @@ export interface Atom01InteractiveProps {
     subPartEnabledNames?: string[];  // 仅这些 link 渲染子零件
     fullscreenMode?: boolean;
     onVisibleBoundsChange?: (bounds: { center: [number, number, number]; radius: number }) => void;
+    /** Optional manifest data; when provided, joint axes are read from it (falls back to hardcoded JOINTS). */
+    manifest?: RobotDataManifest | null;
 }
 
 // ============================================================
@@ -732,7 +736,10 @@ const InteractiveLinkMesh: React.FC<{
         );
     };
 
-// 关节定义
+/**
+ * @deprecated Hardcoded fallback — use buildJointAxisMap(manifest) when manifest is available.
+ * Kept to ensure joint animation works without a manifest.
+ */
 const JOINTS: Record<string, { axis: [number, number, number] }> = {
     'torso_joint': { axis: [0, 0, 1] },
     'left_thigh_yaw_joint': { axis: [-0.5, 0, -0.866] },
@@ -758,6 +765,11 @@ const JOINTS: Record<string, { axis: [number, number, number] }> = {
     'right_elbow_pitch_joint': { axis: [0, 1, 0] },
     'right_elbow_yaw_joint': { axis: [0, 0, -1] },
 };
+
+/** Flattened fallback: same data as JOINTS but in the format returned by buildJointAxisMap. */
+const JOINTS_AXIS_FALLBACK: Record<string, [number, number, number]> = Object.fromEntries(
+    Object.entries(JOINTS).map(([k, v]) => [k, v.axis])
+);
 
 // 主模型组件
 export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
@@ -789,12 +801,19 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
     subPartEnabledNames,
     fullscreenMode = false,
     onVisibleBoundsChange,
+    manifest,
 }) => {
     const modelBasePath = useMemo(() => getRobotModelBase(robotId), [robotId]);
     const groupRef = useRef<THREE.Group>(null);
     const jointRefs = useRef<Record<string, THREE.Group | null>>({});
     const [internalHovered, setInternalHovered] = useState<string | null>(null);
     const [internalSelected, setInternalSelected] = useState<string | null>(null);
+
+    // Manifest-driven joint axis map; falls back to hardcoded JOINTS when manifest unavailable.
+    const jointAxisMap = useMemo(
+        () => ({ ...JOINTS_AXIS_FALLBACK, ...buildJointAxisMap(manifest) }),
+        [manifest],
+    );
 
     // 使用外部状态或内部状态
     const currentHovered = hoveredPart !== undefined ? hoveredPart : internalHovered;
@@ -821,15 +840,15 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
     );
 
     useEffect(() => {
-        Object.entries(JOINTS).forEach(([jointName, joint]) => {
+        Object.entries(jointAxisMap).forEach(([jointName, axisVec]) => {
             const jointGroup = jointRefs.current[jointName];
             if (jointGroup && jointAngles[jointName] !== undefined) {
                 const angle = jointAngles[jointName];
-                const axis = new THREE.Vector3(...joint.axis).normalize();
+                const axis = new THREE.Vector3(...axisVec).normalize();
                 jointGroup.setRotationFromAxisAngle(axis, angle);
             }
         });
-    }, [jointAngles]);
+    }, [jointAngles, jointAxisMap]);
 
     const isFault = (linkName: string) => {
         return faultJoints.some(joint => {

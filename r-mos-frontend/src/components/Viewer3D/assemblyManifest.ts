@@ -144,6 +144,8 @@ export interface ManifestJointEntry {
   type: string                    // 'revolute' | 'fixed' | 'continuous' | ...
   parent_link: string
   child_link: string
+  axis?: [number, number, number]
+  limits?: { lower: number; upper: number }
 }
 
 /** 完整的机器人数据清单 — 扩展 AssemblyManifest */
