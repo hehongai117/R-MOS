@@ -34,7 +34,7 @@ export function buildCoreLinkList(
   manifest: RobotDataManifest | null | undefined
 ): string[] {
   if (!manifest?.nodes) return [];
-  return Object.keys(manifest.nodes);
+  return manifest.nodes.map((node) => node.id);
 }
 
 /**
@@ -45,4 +45,83 @@ export function buildDisplayNameMap(
   manifest: RobotDataManifest | null | undefined
 ): Record<string, string> {
   return manifest?.display_names ?? {};
+}
+
+// ---- buildPartMetadata ----
+
+type PartGroup = 'base' | 'torso' | 'left_arm' | 'right_arm' | 'left_leg' | 'right_leg';
+type PartMeta = { name: string; displayName: string; group: PartGroup; jointName?: string };
+
+/** Infer a part group from the link ID when assembly_groups data is unavailable. */
+function inferGroupFromLinkId(linkId: string): PartGroup {
+  if (linkId.startsWith('left_arm') || linkId.startsWith('left_elbow')) return 'left_arm';
+  if (linkId.startsWith('right_arm') || linkId.startsWith('right_elbow')) return 'right_arm';
+  if (
+    linkId.startsWith('left_thigh') ||
+    linkId.startsWith('left_knee') ||
+    linkId.startsWith('left_ankle')
+  ) return 'left_leg';
+  if (
+    linkId.startsWith('right_thigh') ||
+    linkId.startsWith('right_knee') ||
+    linkId.startsWith('right_ankle')
+  ) return 'right_leg';
+  if (linkId.includes('torso')) return 'torso';
+  return 'base';
+}
+
+/**
+ * Build a PartMeta map from the manifest's display_names, joints, and assembly_groups.
+ * Returns null when the manifest has no display_names (caller should use its own fallback).
+ */
+export function buildPartMetadata(
+  manifest: RobotDataManifest | null | undefined
+): Record<string, PartMeta> | null {
+  if (!manifest?.display_names) return null;
+
+  const displayNames = manifest.display_names;
+  const groups = manifest.overview_config?.assembly_groups;
+  const joints = manifest.joints;
+
+  // Build link → group reverse lookup from assembly_groups
+  const linkToGroup: Record<string, PartGroup> = {};
+  if (groups) {
+    for (const [groupKey, group] of Object.entries(groups)) {
+      // Normalise group key: strip trailing _link, _pitch, _yaw, _roll suffixes
+      let normKey = groupKey
+        .replace(/_link$/, '')
+        .replace(/_(pitch|yaw|roll)$/, '');
+      // Validate it is one of the known groups, otherwise infer per-link
+      const knownGroups: PartGroup[] = ['base', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'];
+      const resolvedGroup = knownGroups.includes(normKey as PartGroup)
+        ? (normKey as PartGroup)
+        : null;
+      for (const childLink of group.child_links) {
+        linkToGroup[childLink] = resolvedGroup ?? inferGroupFromLinkId(childLink);
+      }
+    }
+  }
+
+  // Build link → joint name for non-fixed joints
+  const linkToJoint: Record<string, string> = {};
+  if (joints) {
+    for (const joint of joints) {
+      if (joint.type !== 'fixed') {
+        linkToJoint[joint.child_link] = joint.name;
+      }
+    }
+  }
+
+  // Build the result record
+  const result: Record<string, PartMeta> = {};
+  for (const [linkId, displayName] of Object.entries(displayNames)) {
+    result[linkId] = {
+      name: linkId,
+      displayName,
+      group: linkToGroup[linkId] ?? inferGroupFromLinkId(linkId),
+      jointName: linkToJoint[linkId],
+    };
+  }
+
+  return result;
 }

@@ -17,7 +17,7 @@ import { getExplodePartsForLink, CATEGORY_COLORS, REFERENCE_NODE_IDS, type Detai
 import { useAtom01AssemblyData } from './hooks/useAtom01AssemblyData';
 import { Atom01AssemblyRenderer } from './Atom01AssemblyRenderer';
 import type { RobotDataManifest } from './assemblyManifest';
-import { buildJointAxisMap } from './manifestHelpers';
+import { buildJointAxisMap, buildPartMetadata } from './manifestHelpers';
 
 // 零件信息接口
 export interface PartInfo {
@@ -27,7 +27,10 @@ export interface PartInfo {
     jointName?: string;
 }
 
-// 零件元数据
+/**
+ * @deprecated Hardcoded fallback — use buildPartMetadata(manifest) when manifest is available.
+ * Kept to ensure part metadata works without a manifest.
+ */
 const PART_METADATA: Record<string, PartInfo> = {
     'base_link': { name: 'base_link', displayName: '髋部底座', group: 'base' },
     'torso_link': { name: 'torso_link', displayName: '躯干', group: 'torso', jointName: 'torso_joint' },
@@ -55,8 +58,7 @@ const PART_METADATA: Record<string, PartInfo> = {
     'right_elbow_yaw_link': { name: 'right_elbow_yaw_link', displayName: '右前臂', group: 'right_arm', jointName: 'right_elbow_yaw_joint' },
 };
 
-// Link 名称列表
-const LINK_NAMES = Object.keys(PART_METADATA);
+// LINK_NAMES was derived from PART_METADATA; now replaced by dynamicLinkNames inside the component.
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
@@ -815,16 +817,25 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
         [manifest],
     );
 
+    // Manifest-driven part metadata; merges hardcoded fallback with manifest data.
+    const partMetadata = useMemo(
+        () => ({ ...PART_METADATA, ...(buildPartMetadata(manifest) ?? {}) }),
+        [manifest],
+    );
+
+    // Dynamic link names derived from the merged partMetadata.
+    const dynamicLinkNames = useMemo(() => Object.keys(partMetadata), [partMetadata]);
+
     // 使用外部状态或内部状态
     const currentHovered = hoveredPart !== undefined ? hoveredPart : internalHovered;
     const currentSelected = selectedPart !== undefined ? selectedPart : internalSelected;
     const visibleSet = useMemo(
-        () => new Set((visiblePartNames && visiblePartNames.length > 0) ? visiblePartNames : LINK_NAMES),
-        [visiblePartNames],
+        () => new Set((visiblePartNames && visiblePartNames.length > 0) ? visiblePartNames : dynamicLinkNames),
+        [visiblePartNames, dynamicLinkNames],
     );
     const clickableSet = useMemo(
-        () => new Set((clickablePartNames && clickablePartNames.length > 0) ? clickablePartNames : LINK_NAMES),
-        [clickablePartNames],
+        () => new Set((clickablePartNames && clickablePartNames.length > 0) ? clickablePartNames : dynamicLinkNames),
+        [clickablePartNames, dynamicLinkNames],
     );
     const referenceSet = useMemo(
         () => new Set((referencePartNames && referencePartNames.length > 0) ? referencePartNames : REFERENCE_NODE_IDS),
@@ -835,8 +846,8 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
         [fadedPartNames],
     );
     const subPartEnabledSet = useMemo(
-        () => new Set((subPartEnabledNames && subPartEnabledNames.length > 0) ? subPartEnabledNames : LINK_NAMES),
-        [subPartEnabledNames],
+        () => new Set((subPartEnabledNames && subPartEnabledNames.length > 0) ? subPartEnabledNames : dynamicLinkNames),
+        [subPartEnabledNames, dynamicLinkNames],
     );
 
     useEffect(() => {
@@ -860,8 +871,8 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
     const handlePointerOver = useCallback((partName: string) => (e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();
         setInternalHovered(partName);
-        onPartHover?.(PART_METADATA[partName] || null);
-    }, [onPartHover]);
+        onPartHover?.(partMetadata[partName] || null);
+    }, [onPartHover, partMetadata]);
 
     const handlePointerOut = useCallback(() => {
         setInternalHovered(null);
@@ -872,16 +883,16 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
         e.stopPropagation();
         const newSelected = currentSelected === partName ? null : partName;
         setInternalSelected(newSelected);
-        onPartSelect?.(newSelected ? PART_METADATA[newSelected] : null);
-    }, [currentSelected, onPartSelect]);
+        onPartSelect?.(newSelected ? partMetadata[newSelected] : null);
+    }, [currentSelected, onPartSelect, partMetadata]);
 
     const handleDoubleClick = useCallback((partName: string) => (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
-        const part = PART_METADATA[partName];
+        const part = partMetadata[partName];
         if (part) {
             onPartDoubleClick?.(part);
         }
-    }, [onPartDoubleClick]);
+    }, [onPartDoubleClick, partMetadata]);
 
     // 是否启用子零件替换（explode > 0 且 showSubParts 开启）
     const subPartsActive = showSubParts && explodeAmount > 0;
