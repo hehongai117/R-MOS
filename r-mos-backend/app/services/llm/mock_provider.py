@@ -15,92 +15,98 @@ class MockLLMResponse:
 
 # --- Pre-written response templates ---
 
-DIAGNOSIS_RESPONSE = MockLLMResponse(
-    text=(
-        "## 故障诊断报告\n\n"
-        "**故障类型：** 左膝关节轴承磨损\n\n"
-        "**严重程度：** 中高风险 (需尽快维保)\n\n"
-        "**置信度：** 92%\n\n"
-        "### 分析过程\n\n"
-        "通过对传感器数据的多维度关联分析，我发现以下异常模式：\n\n"
-        "1. **温度异常** — 左膝关节温度从正常基线 35°C 持续升高至 65°C，"
-        "升温速率约 1°C/s，符合轴承摩擦过热的典型特征\n"
-        "2. **扭矩波动** — 同期扭矩数据出现 ±2.1Nm 的周期性波动，"
-        "表明关节内部存在不规则机械阻力\n"
-        "3. **电流上升** — 驱动电流从 2.0A 上升至 2.8A，"
-        "与温度升高呈正相关，说明电机在补偿额外摩擦负荷\n\n"
-        "### 根因判定\n\n"
-        "综合以上证据，判定根因为**左膝关节主轴承磨损**，导致滚珠与滚道之间"
-        "间隙增大，运转时产生异常摩擦热。若不及时处理，可能导致轴承卡死或"
-        "关节结构损伤。\n\n"
-        "### 建议\n\n"
-        "建议立即执行 **SOP: ATOM-01 左膝关节轴承更换**，预计耗时约 45 分钟。"
-    ),
-    diagnosis={
-        "fault_type": "bearing_wear",
-        "joint": "KNEE_LEFT",
-        "severity": "high",
-        "confidence": 0.92,
-        "primary_hypothesis": {
-            "name": "左膝关节轴承磨损",
+
+def _make_diagnosis_response(robot_model: str = "机器人") -> MockLLMResponse:
+    sop_name = f"{robot_model} 左膝关节轴承更换"
+    return MockLLMResponse(
+        text=(
+            "## 故障诊断报告\n\n"
+            "**故障类型：** 左膝关节轴承磨损\n\n"
+            "**严重程度：** 中高风险 (需尽快维保)\n\n"
+            "**置信度：** 92%\n\n"
+            "### 分析过程\n\n"
+            "通过对传感器数据的多维度关联分析，我发现以下异常模式：\n\n"
+            "1. **温度异常** — 左膝关节温度从正常基线 35°C 持续升高至 65°C，"
+            "升温速率约 1°C/s，符合轴承摩擦过热的典型特征\n"
+            "2. **扭矩波动** — 同期扭矩数据出现 ±2.1Nm 的周期性波动，"
+            "表明关节内部存在不规则机械阻力\n"
+            "3. **电流上升** — 驱动电流从 2.0A 上升至 2.8A，"
+            "与温度升高呈正相关，说明电机在补偿额外摩擦负荷\n\n"
+            "### 根因判定\n\n"
+            "综合以上证据，判定根因为**左膝关节主轴承磨损**，导致滚珠与滚道之间"
+            "间隙增大，运转时产生异常摩擦热。若不及时处理，可能导致轴承卡死或"
+            "关节结构损伤。\n\n"
+            "### 建议\n\n"
+            f"建议立即执行 **SOP: {sop_name}**，预计耗时约 45 分钟。"
+        ),
+        diagnosis={
+            "fault_type": "bearing_wear",
+            "joint": "KNEE_LEFT",
+            "severity": "high",
             "confidence": 0.92,
-            "affected_parts": ["left_knee_bearing", "left_knee_joint"],
-            "evidence": [
-                {"type": "temperature", "desc": "温度异常升高 35→65°C"},
-                {"type": "torque", "desc": "扭矩周期性波动 ±2.1Nm"},
-                {"type": "current", "desc": "驱动电流上升 2.0→2.8A"},
+            "primary_hypothesis": {
+                "name": "左膝关节轴承磨损",
+                "confidence": 0.92,
+                "affected_parts": ["left_knee_bearing", "left_knee_joint"],
+                "evidence": [
+                    {"type": "temperature", "desc": "温度异常升高 35→65°C"},
+                    {"type": "torque", "desc": "扭矩周期性波动 ±2.1Nm"},
+                    {"type": "current", "desc": "驱动电流上升 2.0→2.8A"},
+                ],
+            },
+            "alternative_hypotheses": [
+                {
+                    "name": "润滑油不足",
+                    "confidence": 0.15,
+                    "affected_parts": ["left_knee_joint"],
+                }
+            ],
+            "reasoning": "温度-扭矩-电流三维关联指向轴承机械磨损，排除润滑不足（润滑不足通常不会导致如此快速的温升）",
+            "recommended_actions": [
+                "立即停机，防止轴承卡死",
+                "执行左膄关节轴承更换 SOP",
+                "更换后进行 30 分钟空载磨合测试",
             ],
         },
-        "alternative_hypotheses": [
-            {
-                "name": "润滑油不足",
-                "confidence": 0.15,
-                "affected_parts": ["left_knee_joint"],
-            }
+        citations=[
+            {"type": "sensor", "desc": "左膝温度 35→65°C（30s 内）", "source": "KNEE_LEFT.temperature"},
+            {"type": "sensor", "desc": "左膝扭矩波动 ±2.1Nm", "source": "KNEE_LEFT.torque"},
+            {"type": "sensor", "desc": "左膝电流 2.0→2.8A", "source": "KNEE_LEFT.current"},
+            {"type": "history", "desc": "上次维保距今 180 天，超出建议周期", "source": "maintenance_log"},
         ],
-        "reasoning": "温度-扭矩-电流三维关联指向轴承机械磨损，排除润滑不足（润滑不足通常不会导致如此快速的温升）",
-        "recommended_actions": [
-            "立即停机，防止轴承卡死",
-            "执行左膝关节轴承更换 SOP",
-            "更换后进行 30 分钟空载磨合测试",
-        ],
-    },
-    citations=[
-        {"type": "sensor", "desc": "左膝温度 35→65°C（30s 内）", "source": "KNEE_LEFT.temperature"},
-        {"type": "sensor", "desc": "左膝扭矩波动 ±2.1Nm", "source": "KNEE_LEFT.torque"},
-        {"type": "sensor", "desc": "左膝电流 2.0→2.8A", "source": "KNEE_LEFT.current"},
-        {"type": "history", "desc": "上次维保距今 180 天，超出建议周期", "source": "maintenance_log"},
-    ],
-    sop_recommendation={
-        "sop_id": "knee-bearing-replace",
-        "sop_name": "ATOM-01 左膝关节轴承更换",
-        "estimated_time": "45 分钟",
-        "steps_count": 6,
-    },
-)
+        sop_recommendation={
+            "sop_id": "knee-bearing-replace",
+            "sop_name": sop_name,
+            "estimated_time": "45 分钟",
+            "steps_count": 6,
+        },
+    )
 
-SOP_GENERATION_RESPONSE = MockLLMResponse(
-    text=(
-        "## 维保方案已生成\n\n"
-        "根据诊断结果，我已为您生成针对性维保方案：\n\n"
-        "**SOP: ATOM-01 左膝关节轴承更换** (6 步)\n\n"
-        "| 步骤 | 操作 | 预计时间 |\n"
-        "|------|------|----------|\n"
-        "| 01 | 安全确认 — 断电并确认维保隔离 | 3 分钟 |\n"
-        "| 02 | 工具准备 — 确认扳手、轴承拔取器、润滑剂就位 | 5 分钟 |\n"
-        "| 03 | 外壳拆卸 — 拆卸左膝关节保护外壳 (4 颗 M3 螺丝) | 8 分钟 |\n"
-        "| 04 | 轴承定位 — 定位磨损轴承，记录磨损状态 | 5 分钟 |\n"
-        "| 05 | 轴承更换 — 拔取旧轴承，安装新轴承，涂润滑剂 | 15 分钟 |\n"
-        "| 06 | 回装验证 — 回装外壳，通电，关节活动度测试 | 9 分钟 |\n\n"
-        "点击下方 **开始维保** 按钮，进入 3D 引导式维保工作台。"
-    ),
-    sop_recommendation={
-        "sop_id": "knee-bearing-replace",
-        "sop_name": "ATOM-01 左膝关节轴承更换",
-        "estimated_time": "45 分钟",
-        "steps_count": 6,
-    },
-)
+
+def _make_sop_response(robot_model: str = "机器人") -> MockLLMResponse:
+    sop_name = f"{robot_model} 左膝关节轴承更换"
+    return MockLLMResponse(
+        text=(
+            "## 维保方案已生成\n\n"
+            "根据诊断结果，我已为您生成针对性维保方案：\n\n"
+            f"**SOP: {sop_name}** (6 步)\n\n"
+            "| 步骤 | 操作 | 预计时间 |\n"
+            "|------|------|----------|\n"
+            "| 01 | 安全确认 — 断电并确认维保隔离 | 3 分钟 |\n"
+            "| 02 | 工具准备 — 确认扳手、轴承拔取器、润滑剂就位 | 5 分钟 |\n"
+            "| 03 | 外壳拆卸 — 拆卸左膝关节保护外壳 (4 颗 M3 螺丝) | 8 分钟 |\n"
+            "| 04 | 轴承定位 — 定位磨损轴承，记录磨损状态 | 5 分钟 |\n"
+            "| 05 | 轴承更换 — 拔取旧轴承，安装新轴承，涂润滑剂 | 15 分钟 |\n"
+            "| 06 | 回装验证 — 回装外壳，通电，关节活动度测试 | 9 分钟 |\n\n"
+            "点击下方 **开始维保** 按钮，进入 3D 引导式维保工作台。"
+        ),
+        sop_recommendation={
+            "sop_id": "knee-bearing-replace",
+            "sop_name": sop_name,
+            "estimated_time": "45 分钟",
+            "steps_count": 6,
+        },
+    )
 
 EXPLANATION_RESPONSE = MockLLMResponse(
     text=(
@@ -133,7 +139,7 @@ DEFAULT_RESPONSE = MockLLMResponse(
 )
 
 
-def match_intent(message: str) -> MockLLMResponse:
+def match_intent(message: str, robot_model: str = "机器人") -> MockLLMResponse:
     """Match user message to a pre-written response based on keywords."""
     msg = message.lower().strip()
 
@@ -142,9 +148,9 @@ def match_intent(message: str) -> MockLLMResponse:
     explain_kw = r"为什么|解释|原因|机理|详解|怎么.*回事"
 
     if re.search(diagnosis_kw, msg):
-        return DIAGNOSIS_RESPONSE
+        return _make_diagnosis_response(robot_model)
     if re.search(sop_kw, msg):
-        return SOP_GENERATION_RESPONSE
+        return _make_sop_response(robot_model)
     if re.search(explain_kw, msg):
         return EXPLANATION_RESPONSE
     return DEFAULT_RESPONSE
