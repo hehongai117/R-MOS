@@ -111,7 +111,8 @@ class ProjectGenerateResponse(BaseModel):
 class WorkbenchDraftRequest(BaseModel):
     """训练工作台空态草案生成请求。"""
 
-    robot_model: str = Field(default="ATOM01", min_length=1)
+    robot_model: str = Field(min_length=1)
+    robot_id: int | None = None
     task_summary: str = Field(default="关节电机盖拆装", min_length=1)
     focus_prompt: str = Field(default="强调工具确认、证据留存与 AI 提示", min_length=1)
 
@@ -375,6 +376,7 @@ async def generate_training_workbench_draft(
         payload = await TrainingWorkbenchDraftGenerator(db).generate(
             user_id=actor.user_id,
             robot_model=request.robot_model,
+            robot_id=request.robot_id,
             task_summary=request.task_summary,
             focus_prompt=request.focus_prompt,
         )
@@ -483,38 +485,33 @@ async def create_session(
     db: AsyncSession = Depends(get_db)
 ):
     """UF-06-b-1: 创建训练会话"""
-    try:
-        service = SessionService(db)
-        session_id = await service.create_session(
-            user_id=request.user_id,
-            project_id=request.project_id,
-            project_snapshot=request.project_snapshot,
-            ab_group=request.ab_group,
-        )
+    service = SessionService(db)
+    session_id = await service.create_session(
+        user_id=request.user_id,
+        project_id=request.project_id,
+        project_snapshot=request.project_snapshot,
+        ab_group=request.ab_group,
+    )
 
-        # 获取创建后的会话
-        session = await service.get_session(session_id)
-        if not session:
-            raise HTTPException(status_code=500, detail="Failed to create session")
+    # 获取创建后的会话
+    session = await service.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=500, detail="Failed to create session")
 
-        return SessionResponse(
-            session_id=session.session_id,
-            project_id=session.project_id,
-            user_id=session.user_id,
-            status=session.status,
-            current_step=session.current_step,
-            score=session.score,
-            total_duration=session.total_duration,
-            submit_type=session.submit_type,
-            started_at=session.started_at,
-            paused_at=session.paused_at,
-            submitted_at=session.submitted_at,
-            project_snapshot=session.project_snapshot,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return SessionResponse(
+        session_id=session.session_id,
+        project_id=session.project_id,
+        user_id=session.user_id,
+        status=session.status,
+        current_step=session.current_step,
+        score=session.score,
+        total_duration=session.total_duration,
+        submit_type=session.submit_type,
+        started_at=session.started_at,
+        paused_at=session.paused_at,
+        submitted_at=session.submitted_at,
+        project_snapshot=session.project_snapshot,
+    )
 
 
 @router.get(
@@ -798,22 +795,19 @@ async def update_step(
     """UF-06-b-2: 更新步骤记录"""
     service = SessionService(db)
 
-    try:
-        record_id = await service.update_step(
-            session_id=session_id,
-            step_id=request.step_id,
-            step_index=request.step_index,
-            status=request.status,
-            attempt_count=request.attempt_count,
-            tools_confirmed=request.tools_confirmed,
-            evidence=request.evidence,
-            verdict_result=request.verdict_result,
-            duration_sec=request.duration_sec,
-        )
+    record_id = await service.update_step(
+        session_id=session_id,
+        step_id=request.step_id,
+        step_index=request.step_index,
+        status=request.status,
+        attempt_count=request.attempt_count,
+        tools_confirmed=request.tools_confirmed,
+        evidence=request.evidence,
+        verdict_result=request.verdict_result,
+        duration_sec=request.duration_sec,
+    )
 
-        return {"record_id": record_id, "session_id": session_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"record_id": record_id, "session_id": session_id}
 
 
 @router.get(
