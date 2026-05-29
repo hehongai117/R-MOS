@@ -77,13 +77,13 @@ const calculateBackoff = (retryCount: number): number => {
   return delay + jitter;
 };
 
-export const useWebSocket = (): UseWebSocketResult => {
+export const useWebSocket = (robotId?: number | string | null): UseWebSocketResult => {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [telemetryData, setTelemetryData] = useState<TelemetryMessage['payload'] | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   const [isDataStale, setIsDataStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const retryCountRef = useRef(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
@@ -108,7 +108,9 @@ export const useWebSocket = (): UseWebSocketResult => {
   const connect = useCallback(() => {
     try {
       setStatus('connecting');
-      const wsUrl = `${WS_BASE_URL}/ws/robot/status`;
+      const wsUrl = robotId
+        ? `${WS_BASE_URL}/ws/robot/${robotId}/status`
+        : `${WS_BASE_URL}/ws/robot/status`;
       console.log('[WS] 正在连接:', wsUrl);
 
       const ws = new WebSocket(wsUrl);
@@ -118,7 +120,7 @@ export const useWebSocket = (): UseWebSocketResult => {
         console.log('[WS] 连接成功');
         setStatus('connected');
         setError(null);
-        setRetryCount(0);
+        retryCountRef.current = 0;
         setIsDataStale(false);
         message.success('实时监控已连接');
       };
@@ -156,11 +158,11 @@ export const useWebSocket = (): UseWebSocketResult => {
         setIsDataStale(true);
 
         // 指数退避重连
-        if (retryCount < WS_MAX_RETRIES) {
-          const delay = calculateBackoff(retryCount);
-          console.log(`[WS] 将在 ${Math.round(delay / 1000)}s 后重连 (${retryCount + 1}/${WS_MAX_RETRIES})`);
+        if (retryCountRef.current < WS_MAX_RETRIES) {
+          const delay = calculateBackoff(retryCountRef.current);
+          console.log(`[WS] 将在 ${Math.round(delay / 1000)}s 后重连 (${retryCountRef.current + 1}/${WS_MAX_RETRIES})`);
           setStatus('reconnecting');
-          setRetryCount(prev => prev + 1);
+          retryCountRef.current += 1;
 
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
@@ -176,7 +178,7 @@ export const useWebSocket = (): UseWebSocketResult => {
       setError('WebSocket初始化失败');
       setStatus('failed');
     }
-  }, [retryCount]);
+  }, [robotId]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -190,7 +192,7 @@ export const useWebSocket = (): UseWebSocketResult => {
 
   const reconnect = useCallback(() => {
     disconnect();
-    setRetryCount(0);
+    retryCountRef.current = 0;
     setError(null);
     connect();
   }, [disconnect, connect]);
@@ -207,7 +209,7 @@ export const useWebSocket = (): UseWebSocketResult => {
     telemetryData,
     lastUpdateTime,
     error,
-    retryCount,
+    retryCount: retryCountRef.current,
     reconnect,
   };
 };

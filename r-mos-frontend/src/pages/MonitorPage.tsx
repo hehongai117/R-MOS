@@ -255,7 +255,7 @@ function MonitorPage() {
     retryCount,
     reconnect,
     lastUpdateTime,
-  } = useWebSocket()
+  } = useWebSocket(robotId)
 
   const batteryLevel = telemetryData?.sensors?.battery ?? null
   const joints = telemetryData?.joints ?? []
