@@ -1,6 +1,6 @@
 import { PART_METADATA, type PartInfo } from '@/components/Viewer3D/Atom01Interactive';
 import { getLinkDisplayName } from '@/components/Viewer3D/assemblyTree';
-import { CATEGORY_NAMES, DETAIL_PARTS_MAP, type DetailPart } from '@/components/Viewer3D/partsManifest';
+import { CATEGORY_NAMES, getDetailPartsMap, type DetailPart } from '@/components/Viewer3D/partsManifest';
 import { type RobotDataManifest } from '@/components/Viewer3D/assemblyManifest';
 import { getRobotModelBase } from '@/config/robots';
 import {
@@ -233,7 +233,7 @@ function mapScrewRecord(
 }
 
 export function getDetailPartSelection(selection: DetailPartSelection): DetailPart | null {
-    const parts = DETAIL_PARTS_MAP[selection.linkName];
+    const parts = getDetailPartsMap()[selection.linkName];
     if (!parts) return null;
     return parts[selection.partIndex] ?? null;
 }
@@ -243,7 +243,7 @@ export function getCorePartDetailRecord(partName: string, robotId?: string): Par
     if (!part) return null;
 
     const robotModelBase = robotId ? getMaintenanceKnowledgeBase(robotId) : '';
-    const detailCount = DETAIL_PARTS_MAP[partName]?.length ?? 0;
+    const detailCount = getDetailPartsMap()[partName]?.length ?? 0;
 
     // Prefer manifest display name when available
     const manifestDisplayName = _manifestDisplayNames?.[partName] ?? null;

@@ -10,7 +10,7 @@
  * 白名单：纯数据层，规格 §12.1 允许新增。
  */
 
-import { OVERVIEW_NODE_IDS, REFERENCE_NODE_IDS, DETAIL_PARTS_MAP, type DetailPart } from './partsManifest';
+import { OVERVIEW_NODE_IDS, REFERENCE_NODE_IDS, getDetailPartsMap, type DetailPart } from './partsManifest';
 import type { RobotDataManifest } from './assemblyManifest';
 
 // ============================================================
@@ -126,12 +126,12 @@ export function getIsolationSets(selectedNodeId: string): {
 
 /** 获取某 link 的 detail parts 列表 */
 export function getLinkDetailParts(linkName: string): DetailPart[] {
-    return DETAIL_PARTS_MAP[linkName] ?? [];
+    return getDetailPartsMap()[linkName] ?? [];
 }
 
 /** 判断 link 是否有子零件（用于 L1→L2 钻入判断） */
 export function linkHasDetailParts(linkName: string): boolean {
-    return (DETAIL_PARTS_MAP[linkName]?.length ?? 0) > 0;
+    return (getDetailPartsMap()[linkName]?.length ?? 0) > 0;
 }
 
 /** 获取 link 的显示名称（从 PART_METADATA 或 fallback） */

@@ -13,6 +13,8 @@
  */
 import { PART_SCREWS } from '../../data/toolData';
 import overviewNodes from './overview_nodes.json';
+import type { RobotDataManifest } from './assemblyManifest';
+import { buildCoreLinkList, buildDisplayNameMap } from './manifestHelpers';
 
 export type DetailPartCategory =
     | 'frame'
@@ -85,6 +87,9 @@ export function isOverviewNode(nodeId: string): boolean {
     return OVERVIEW_NODE_IDS.includes(nodeId);
 }
 
+/**
+ * @deprecated Use getCoreLinks() instead.
+ */
 const CORE_LINKS = [
     'base_link',
     'torso_link',
@@ -114,6 +119,9 @@ const CORE_LINKS = [
 
 type CoreLinkName = typeof CORE_LINKS[number];
 
+/**
+ * @deprecated Use getDisplayNames() instead.
+ */
 const CORE_LINK_DISPLAY_NAMES: Record<CoreLinkName, string> = {
     base_link: '底座',
     torso_link: '躯干',
@@ -314,7 +322,8 @@ const EXTRA_LINK_PARTS: Partial<Record<CoreLinkName, DetailPart[]>> = {
 };
 
 function buildFrameParts(link: CoreLinkName): DetailPart[] {
-    const baseName = CORE_LINK_DISPLAY_NAMES[link];
+    const displayNames = getDisplayNames();
+    const baseName = displayNames[link] ?? CORE_LINK_DISPLAY_NAMES[link] ?? link;
     return FRAME_SUFFIXES.map((suffix, idx) => ({
         displayName: `${baseName}${FRAME_SLOT_NAMES[idx]}`,
         path: `frames/${link}${suffix}.glb`,
@@ -357,15 +366,53 @@ function buildLinkDetailParts(link: CoreLinkName): DetailPart[] {
     ]);
 }
 
+// ---- Manifest injection layer ----
+
+let _manifestCoreLinks: string[] | null = null;
+let _manifestDisplayNames: Record<string, string> | null = null;
+
+/** 从 manifest 注入核心链接列表和显示名 */
+export function injectManifestViewerData(manifest: RobotDataManifest): void {
+    _manifestCoreLinks = buildCoreLinkList(manifest);
+    _manifestDisplayNames = buildDisplayNameMap(manifest);
+}
+
+/** 清除注入数据 */
+export function clearManifestViewerData(): void {
+    _manifestCoreLinks = null;
+    _manifestDisplayNames = null;
+}
+
+/** 获取核心链接列表（优先 manifest，fallback 硬编码） */
+export function getCoreLinks(): readonly string[] {
+    return _manifestCoreLinks ?? CORE_LINKS;
+}
+
+/** 获取显示名映射（优先 manifest，fallback 硬编码） */
+export function getDisplayNames(): Record<string, string> {
+    return _manifestDisplayNames ?? CORE_LINK_DISPLAY_NAMES;
+}
+
+/** 获取每个核心 link 对应的细节子零件列表（懒计算，优先 manifest）。
+ *  替代顶层常量 DETAIL_PARTS_MAP，确保 manifest 注入后能拿到最新数据。
+ */
+export function getDetailPartsMap(): Record<string, DetailPart[]> {
+    return getCoreLinks().reduce((acc, link) => {
+        acc[link] = buildLinkDetailParts(link as CoreLinkName);
+        return acc;
+    }, {} as Record<string, DetailPart[]>);
+}
+
 /**
  * 每个核心 link 对应的细节子零件列表。
  * 数据来源：
  *  - link 主模型（frames/{link}.glb 系列）
  *  - 机械目录中的盖板/连杆/标定件/电子件
  *  - 工具库定义的螺丝规格映射
+ * @deprecated Use getDetailPartsMap() for manifest-aware lazy computation.
  */
-export const DETAIL_PARTS_MAP: Record<string, DetailPart[]> = CORE_LINKS.reduce((acc, link) => {
-    acc[link] = buildLinkDetailParts(link);
+export const DETAIL_PARTS_MAP: Record<string, DetailPart[]> = getCoreLinks().reduce((acc, link) => {
+    acc[link] = buildLinkDetailParts(link as CoreLinkName);
     return acc;
 }, {} as Record<string, DetailPart[]>);
 
@@ -428,14 +475,14 @@ export function isCoreCategory(category: DetailPart['category']): boolean {
 
 /** 过滤出某 link 下的核心零件 */
 export function getCorePartsForLink(linkName: string): DetailPart[] {
-    const parts = DETAIL_PARTS_MAP[linkName];
+    const parts = getDetailPartsMap()[linkName];
     if (!parts) return [];
     return parts.filter((p) => isCoreCategory(p.category));
 }
 
 /** 过滤出某 link 下的非核心零件 */
 export function getNonCorePartsForLink(linkName: string): DetailPart[] {
-    const parts = DETAIL_PARTS_MAP[linkName];
+    const parts = getDetailPartsMap()[linkName];
     if (!parts) return [];
     return parts.filter((p) => !isCoreCategory(p.category));
 }
@@ -455,7 +502,7 @@ interface ExplodeOptions {
  */
 export function getExplodePartsForLink(linkName: string, options: ExplodeOptions = {}): DetailPart[] {
     const includeSecondary = options.includeSecondary ?? false;
-    const parts = DETAIL_PARTS_MAP[linkName];
+    const parts = getDetailPartsMap()[linkName];
     if (!parts) return [];
 
     const filtered = parts.filter((part) => !(linkName === 'base_link' && part.path === 'frames/base_link.glb'));
@@ -469,16 +516,28 @@ export function getExplodePartsForLink(linkName: string, options: ExplodeOptions
 
 const PARTS_BASE = '/models/parts';
 
-/** 预先计算所有爆炸图子零件的 URL（用于预加载） */
+/**
+ * 预先计算所有爆炸图子零件的 URL（用于预加载）。
+ * @deprecated Use getAllExplodePartUrls() for manifest-aware computation.
+ */
 export const ALL_EXPLODE_PART_URLS: string[] = Array.from(new Set(
     Object.keys(DETAIL_PARTS_MAP)
         .flatMap((link) => getExplodePartsForLink(link))
         .map((part) => `${PARTS_BASE}/${part.path}`),
 ));
 
+/** 获取所有爆炸图子零件的 URL（manifest 驱动，用于预加载） */
+export function getAllExplodePartUrls(): string[] {
+    return Array.from(new Set(
+        Object.keys(getDetailPartsMap())
+            .flatMap((link) => getExplodePartsForLink(link))
+            .map((part) => `${PARTS_BASE}/${part.path}`),
+    ));
+}
+
 /** 获取细节件对应的动作目标（若有） */
 export function getDetailPartActionTarget(linkName: string, partIndex: number): string | null {
-    const detailPart = DETAIL_PARTS_MAP[linkName]?.[partIndex];
+    const detailPart = getDetailPartsMap()[linkName]?.[partIndex];
     if (!detailPart) return null;
     return detailPart.actionTarget ?? null;
 }
