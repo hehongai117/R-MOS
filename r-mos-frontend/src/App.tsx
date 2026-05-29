@@ -1,15 +1,15 @@
 import { App as AntdApp } from 'antd'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import AppLayout from '@/components/Layout/AppLayout'
-import { AuthProvider } from '@/components/auth/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
 import { PageSkeleton } from '@/components/ui/skeleton'
 import LoginPage from '@/pages/LoginPage'
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
 import { AUTH_STORAGE_KEYS, type UserRole, useAuthStore } from '@/store/authStore'
+import { getAllowedRoles } from '@/config/routes'
 
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const UserSettingsPage = lazy(() => import('@/pages/UserSettingsPage'))
@@ -63,8 +63,10 @@ function withSuspense(element: JSX.Element) {
 }
 
 function App() {
+  const initFromStorage = useAuthStore((state) => state.initFromStorage)
+  useEffect(() => { void initFromStorage() }, [initFromStorage])
+
   return (
-    <AuthProvider>
       <BrowserRouter>
         <AntdApp>
           <Toaster />
@@ -78,60 +80,60 @@ function App() {
                 <Route index element={<DefaultRouteRedirect />} />
                 <Route
                   path="dashboard"
-                  element={withSuspense(withRoles(<DashboardPage />, ['student']))}
+                  element={withSuspense(withRoles(<DashboardPage />, getAllowedRoles('dashboard')))}
                 />
 
                 <Route
                   path="my-tasks"
-                  element={withSuspense(withRoles(<MyTasksPage />, ['student']))}
+                  element={withSuspense(withRoles(<MyTasksPage />, getAllowedRoles('my-tasks')))}
                 />
                 <Route
                   path="scenarios"
-                  element={withSuspense(withRoles(<ScenarioPickerPage />, ['student']))}
+                  element={withSuspense(withRoles(<ScenarioPickerPage />, getAllowedRoles('scenarios')))}
                 />
                 <Route
                   path="student/skills"
-                  element={withSuspense(withRoles(<StudentSkillsPage />, ['student']))}
+                  element={withSuspense(withRoles(<StudentSkillsPage />, getAllowedRoles('student/skills')))}
                 />
                 <Route
                   path="workbench/teaching"
-                  element={withSuspense(withRoles(<TeacherMonitorPage />, ['teacher', 'admin']))}
+                  element={withSuspense(withRoles(<TeacherMonitorPage />, getAllowedRoles('workbench/teaching')))}
                 />
                 <Route
                   path="teacher/students"
-                  element={withSuspense(withRoles(<TeacherStudentsPage />, ['teacher', 'admin']))}
+                  element={withSuspense(withRoles(<TeacherStudentsPage />, getAllowedRoles('teacher/students')))}
                 />
                 <Route
                   path="admin/console"
-                  element={withSuspense(withRoles(<AdminDashboardPage />, ['admin']))}
+                  element={withSuspense(withRoles(<AdminDashboardPage />, getAllowedRoles('admin/console')))}
                 />
 
-                <Route path="sops" element={withSuspense(withRoles(<SOPListPage />, ['teacher', 'admin']))} />
-                <Route path="knowledge" element={withSuspense(withRoles(<KnowledgePage />, ['teacher', 'admin']))} />
-                <Route path="shared-robots" element={withSuspense(withRoles(<SharedRobotsPage />, ['teacher', 'admin']))} />
-                <Route path="monitor" element={withSuspense(<MonitorPage />)} />
-                <Route path="maintenance" element={withSuspense(<SOPMaintenancePage />)} />
-                <Route path="atom01" element={withSuspense(<Atom01DemoPage />)} />
+                <Route path="sops" element={withSuspense(withRoles(<SOPListPage />, getAllowedRoles('sops')))} />
+                <Route path="knowledge" element={withSuspense(withRoles(<KnowledgePage />, getAllowedRoles('knowledge')))} />
+                <Route path="shared-robots" element={withSuspense(withRoles(<SharedRobotsPage />, getAllowedRoles('shared-robots')))} />
+                <Route path="monitor" element={withSuspense(withRoles(<MonitorPage />, getAllowedRoles('monitor')))} />
+                <Route path="maintenance" element={withSuspense(withRoles(<SOPMaintenancePage />, getAllowedRoles('maintenance')))} />
+                <Route path="3d-viewer" element={withSuspense(withRoles(<Atom01DemoPage />, getAllowedRoles('3d-viewer')))} />
                 <Route
                   path="teaching/assignments"
-                  element={withSuspense(withRoles(<TeachingAssignmentsPage />, ['teacher', 'admin']))}
+                  element={withSuspense(withRoles(<TeachingAssignmentsPage />, getAllowedRoles('teaching/assignments')))}
                 />
                 <Route
                   path="teaching/attempts/:id"
-                  element={withSuspense(withRoles(<TeachingAttemptPage />, ['teacher', 'admin']))}
+                  element={withSuspense(withRoles(<TeachingAttemptPage />, getAllowedRoles('teaching/attempts/:id')))}
                 />
                 <Route
                   path="teaching/attempts/:id/evidence"
-                  element={withSuspense(withRoles(<TeachingEvidencePage />, ['teacher', 'admin']))}
+                  element={withSuspense(withRoles(<TeachingEvidencePage />, getAllowedRoles('teaching/attempts/:id/evidence')))}
                 />
                 <Route
                   path="teaching/attempts/:id/diagnosis"
-                  element={withSuspense(withRoles(<TeachingDiagnosisPage />, ['teacher', 'admin']))}
+                  element={withSuspense(withRoles(<TeachingDiagnosisPage />, getAllowedRoles('teaching/attempts/:id/diagnosis')))}
                 />
-                <Route path="agent/workbench" element={withSuspense(<AgentWorkbenchPage />)} />
-                <Route path="settings" element={withSuspense(<UserSettingsPage />)} />
-                <Route path="reports" element={withSuspense(<ReportPage />)} />
-                <Route path="reports/:taskId" element={withSuspense(<ReportPage />)} />
+                <Route path="agent/workbench" element={withSuspense(withRoles(<AgentWorkbenchPage />, getAllowedRoles('agent/workbench')))} />
+                <Route path="settings" element={withSuspense(withRoles(<UserSettingsPage />, getAllowedRoles('settings')))} />
+                <Route path="reports" element={withSuspense(withRoles(<ReportPage />, getAllowedRoles('reports')))} />
+                <Route path="reports/:taskId" element={withSuspense(withRoles(<ReportPage />, getAllowedRoles('reports/:taskId')))} />
               </Route>
             </Route>
 
@@ -139,7 +141,6 @@ function App() {
           </Routes>
         </AntdApp>
       </BrowserRouter>
-    </AuthProvider>
   )
 }
 

@@ -2,23 +2,27 @@
  * SOP列表页
  */
 import React, { useEffect, useState } from 'react';
-import { Button, Table, Tag, Space, message } from 'antd';
-import { PlusOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { Button, Table, Tag, Space, message, Modal, Form, Input, Select, InputNumber } from 'antd';
+import { PlusOutlined, PlayCircleOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { listSOPs } from '@/api/sop';
+import { listSOPs, createSOP } from '@/api/sop';
 import { createTask } from '@/api/task';
-import { SOPListItem } from '@/types/sop';
+import { SOPListItem, SOPCreateRequest } from '@/types/sop';
 import { useRobotContextStore } from '@/store/robotContextStore';
 
 const SOPListPage: React.FC = () => {
   const navigate = useNavigate();
   const currentRobotId = useRobotContextStore((s) => s.currentRobotId);
+  const currentRobot = useRobotContextStore((s) => s.currentRobot);
   const [loading, setLoading] = useState(false);
   const [sops, setSOPs] = useState<SOPListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [creating, setCreating] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form] = Form.useForm();
 
   const fetchSOPs = async () => {
     setLoading(true);
@@ -50,12 +54,44 @@ const SOPListPage: React.FC = () => {
         sop_id: sop.id,
       });
       message.success('任务创建成功');
-      // 导航到任务执行页
-      navigate(`/tasks/${task.id}`);
+      navigate(`/maintenance?sop=${sop.id}`);
     } catch (error) {
       message.error('创建任务失败');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleCreateSOP = async (values: any) => {
+    setSubmitting(true);
+    try {
+      const payload: SOPCreateRequest = {
+        name: values.name,
+        description: values.description,
+        applicable_model: currentRobot?.model_name ?? '',
+        robot_model_id: currentRobotId ?? undefined,
+        category: values.category,
+        difficulty_level: values.difficulty_level,
+        estimated_time: values.estimated_time ? values.estimated_time * 60 : undefined,
+        steps: (values.steps || []).map((step: any, index: number) => ({
+          step_index: index + 1,
+          title: step.title,
+          description: step.description || '',
+          expected_action: step.expected_action || 'manual',
+          is_critical: step.is_critical ?? false,
+          timeout_seconds: step.timeout_seconds ?? 300,
+          allow_skip: step.allow_skip ?? false,
+        })),
+      };
+      await createSOP(payload);
+      message.success('SOP 创建成功');
+      setCreateModalOpen(false);
+      form.resetFields();
+      fetchSOPs();
+    } catch {
+      message.error('创建 SOP 失败');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -126,7 +162,7 @@ const SOPListPage: React.FC = () => {
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h2>标准操作流程（SOP）</h2>
-        <Button type="primary" icon={<PlusOutlined />}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
           创建SOP
         </Button>
       </div>
@@ -146,6 +182,64 @@ const SOPListPage: React.FC = () => {
           },
         }}
       />
+
+      <Modal
+        title="创建 SOP"
+        open={createModalOpen}
+        onCancel={() => { setCreateModalOpen(false); form.resetFields(); }}
+        onOk={() => form.submit()}
+        confirmLoading={submitting}
+        okText="创建"
+        cancelText="取消"
+        width={720}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical" onFinish={handleCreateSOP}>
+          <Form.Item name="name" label="SOP 名称" rules={[{ required: true, message: '请输入 SOP 名称' }]}>
+            <Input placeholder="例如：左膝关节润滑保养" />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea rows={2} placeholder="SOP 简要描述" />
+          </Form.Item>
+          <Space style={{ width: '100%' }} size="large">
+            <Form.Item name="category" label="分类">
+              <Input placeholder="例如：保养" style={{ width: 200 }} />
+            </Form.Item>
+            <Form.Item name="difficulty_level" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
+              <Select placeholder="选择难度" style={{ width: 160 }}>
+                <Select.Option value="low">简单</Select.Option>
+                <Select.Option value="medium">中等</Select.Option>
+                <Select.Option value="high">困难</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="estimated_time" label="预估时长（分钟）">
+              <InputNumber min={1} max={600} placeholder="30" style={{ width: 140 }} />
+            </Form.Item>
+          </Space>
+
+          <Form.List name="steps">
+            {(fields, { add, remove }) => (
+              <>
+                <div style={{ marginBottom: 8, fontWeight: 500 }}>步骤列表</div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="start">
+                    <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true, message: '步骤标题' }]}>
+                      <Input placeholder={`步骤 ${name + 1} 标题`} style={{ width: 200 }} />
+                    </Form.Item>
+                    <Form.Item {...restField} name={[name, 'description']}>
+                      <Input placeholder="步骤描述" style={{ width: 300 }} />
+                    </Form.Item>
+                    <MinusCircleOutlined onClick={() => remove(name)} style={{ marginTop: 8 }} />
+                  </Space>
+                ))}
+                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                  添加步骤
+                </Button>
+              </>
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
     </div>
   );
 };

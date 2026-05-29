@@ -1,0 +1,25 @@
+fault_effects:
+  E001_OVERHEAT:
+    temperature_increase: 30.0
+    torque_multiplier: 0.7
+    position_noise: 0.3
+  E002_STALL:
+    velocity_multiplier: 0.0
+    position_frozen: true
+  E003_VOLTAGE_DROP:
+    battery_drain: 50.0
+    torque_multiplier: 0.5
+  E004_SENSOR_FAILURE:
+    sensor_noise: true
+  E005_JOINT_LOOSE:
+    position_noise: 0.5
+    torque_multiplier: 0.3
+
+sensor_defaults:
+  imu_gravity_z: 9.8
+  imu_noise_stddev: 0.2
+  voltage_main: 24.0
+  voltage_logic: 5.0
+  pressure_baseline: 100.0
+  pressure_noise_stddev: 10.0
+  battery_drain_rate: 0.1

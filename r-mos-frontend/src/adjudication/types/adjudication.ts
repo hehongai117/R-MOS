@@ -26,7 +26,7 @@ export enum PartCategory {
 export interface Part {
   id: string;                           // 唯一标识
   category: PartCategory;               // 类型
-  bomCode: string;                      // BOM 编码 (ATOM-01-xxx)
+  bomCode: string;                      // BOM 编码
   displayName: string;                  // 显示名称
   modelPath: string;                    // GLB 模型路径
   

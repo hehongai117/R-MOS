@@ -17,42 +17,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
 import type { Assignment, AssignmentAttempt, TeachingClass } from '@/types/teaching'
+import { formatDateTime } from '@/utils/format'
+import { ATTEMPT_STATUS, ATTEMPT_STATUS_FALLBACK } from '@/config/statusLabels'
 
 const POLL_INTERVAL_MS = 10000
 
 function attemptStatusLabel(status: AssignmentAttempt['status']) {
-  if (status === 'in_progress') {
-    return '训练中'
-  }
-  if (status === 'completed') {
-    return '已完成'
-  }
-  if (status === 'graded') {
-    return '已评分'
-  }
-  return '已放弃'
+  return (ATTEMPT_STATUS[status] ?? ATTEMPT_STATUS_FALLBACK).label
 }
 
 function attemptStatusTone(status: AssignmentAttempt['status']) {
-  if (status === 'in_progress') {
-    return 'active'
-  }
-  if (status === 'completed' || status === 'graded') {
-    return 'success'
-  }
-  return 'warning'
-}
-
-function formatDateTime(value?: string) {
-  if (!value) {
-    return '暂无'
-  }
-  return new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return (ATTEMPT_STATUS[status] ?? ATTEMPT_STATUS_FALLBACK).variant
 }
 
 function TeacherMonitorPage() {

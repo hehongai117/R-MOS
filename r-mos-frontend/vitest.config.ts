@@ -12,13 +12,18 @@ export default defineConfig({
   },
   test: {
     include: [
+      "src/__tests__/**/*.test.{ts,tsx}",
       "src/adjudication/__tests__/adjudication.vitest.test.ts",
+      "src/adjudication/**/__tests__/**/*.test.{ts,tsx}",
       "src/api/**/__tests__/**/*.test.{ts,tsx}",
       "src/components/**/__tests__/**/*.test.{ts,tsx}",
       "src/pages/**/__tests__/**/*.test.{ts,tsx}",
       "src/teaching/**/__tests__/**/*.test.{ts,tsx}",
       "src/store/**/__tests__/**/*.test.{ts,tsx}",
       "src/types/**/__tests__/**/*.test.{ts,tsx}",
+      "src/config/**/__tests__/**/*.test.{ts,tsx}",
+      "src/hooks/**/__tests__/**/*.test.{ts,tsx}",
+      "src/data/**/__tests__/**/*.test.{ts,tsx}",
     ],
     environment: "jsdom",
     globals: true,

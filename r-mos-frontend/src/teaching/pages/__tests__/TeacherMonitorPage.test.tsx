@@ -95,7 +95,7 @@ describe('TeacherMonitorPage', () => {
         await waitFor(() => {
             expect(screen.getByText('已完成')).toBeTruthy()
         })
-        expect(screen.getByText('训练中')).toBeTruthy()
+        expect(screen.getByText('进行中')).toBeTruthy()
     })
 
     it('shows empty state when no attempts', async () => {

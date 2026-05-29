@@ -9,6 +9,7 @@
 import { useRef, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { ManifestCameraPreset } from '@/components/Viewer3D/assemblyManifest';
 
 export interface FocusTarget {
     position: [number, number, number];
@@ -43,14 +44,40 @@ export const PART_FOCUS_POSITIONS: Record<string, FocusTarget> = {
     'right_ankle_roll_link': { position: [-0.1, -0.75, 0], distance: 0.5 },
 };
 
+/** 从 manifest 相机预设构建焦点位置 */
+export function buildFocusPositionsFromPresets(
+  presets: Record<string, ManifestCameraPreset>
+): Record<string, FocusTarget> {
+  const result: Record<string, FocusTarget> = {}
+  for (const [key, preset] of Object.entries(presets)) {
+    if (key === 'L0_overview') continue  // skip overview preset
+    // Calculate distance from position to target
+    const dx = preset.position[0] - preset.target[0]
+    const dy = preset.position[1] - preset.target[1]
+    const dz = preset.position[2] - preset.target[2]
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz)
+    result[key] = {
+      position: preset.target as [number, number, number],
+      distance: Math.max(0.3, distance),
+    }
+  }
+  return result
+}
+
 export interface UseCameraFocusOptions {
     smoothness?: number;  // 平滑度，0-1，默认 0.05
     defaultDistance?: number;
+    /** 从 manifest 注入的相机预设，优先于硬编码 PART_FOCUS_POSITIONS */
+    cameraPresets?: Record<string, ManifestCameraPreset>;
 }
 
 export function useCameraFocus(options: UseCameraFocusOptions = {}) {
-    const { smoothness = 0.05, defaultDistance = 0.8 } = options;
+    const { smoothness = 0.05, defaultDistance = 0.8, cameraPresets } = options;
     const { camera } = useThree();
+
+    const focusPositions = cameraPresets
+        ? buildFocusPositionsFromPresets(cameraPresets)
+        : PART_FOCUS_POSITIONS;
 
     const targetPosition = useRef<THREE.Vector3 | null>(null);
     const targetLookAt = useRef<THREE.Vector3 | null>(null);
@@ -58,7 +85,7 @@ export function useCameraFocus(options: UseCameraFocusOptions = {}) {
 
     // 开始聚焦动画
     const focusOnPart = useCallback((partName: string) => {
-        const focusConfig = PART_FOCUS_POSITIONS[partName];
+        const focusConfig = focusPositions[partName];
         if (!focusConfig) return;
 
         const [x, y, z] = focusConfig.position;
@@ -76,7 +103,7 @@ export function useCameraFocus(options: UseCameraFocusOptions = {}) {
             .addVectors(targetLookAt.current, direction.multiplyScalar(distance));
 
         isAnimating.current = true;
-    }, [camera, defaultDistance]);
+    }, [camera, defaultDistance, focusPositions]);
 
     // 重置视角
     const resetView = useCallback(() => {

@@ -52,6 +52,8 @@ vi.mock('@/api/client', () => ({
     post: clientPostMock,
     patch: vi.fn(),
   },
+  API_ROOT: 'http://localhost:8000/api/v1',
+  API_BASE_URL: 'http://localhost:8000',
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -173,23 +175,27 @@ vi.mock('@/components/Maintenance/SOPPlayerAdjudicated', () => ({
   ),
 }))
 
-vi.mock('@/data/sopScripts', () => ({
-  ALL_SOP_SCRIPTS: [
-    {
-      sopId: 'sop-1',
-      title: '更换肘关节模组',
-      difficulty: 'hard',
-      steps: [
-        {
-          stepId: 'step-1',
-          title: '拆卸外壳',
-          description: '断电后拆除保护罩',
-          onFailure: { action: 'block' },
-          failureReasons: [{ severity: 'critical' }],
-        },
-      ],
-    },
-  ],
+vi.mock('@/hooks/useSOPScripts', () => ({
+  useSOPScripts: () => ({
+    scripts: [
+      {
+        sopId: 'sop-1',
+        title: '更换肘关节模组',
+        difficulty: 'hard',
+        steps: [
+          {
+            stepId: 'step-1',
+            title: '拆卸外壳',
+            description: '断电后拆除保护罩',
+            onFailure: { action: 'block' },
+            failureReasons: [{ severity: 'critical' }],
+          },
+        ],
+      },
+    ],
+    loading: false,
+    fromApi: true,
+  }),
 }))
 
 vi.mock('@/data/maintenanceKnowledge', () => ({

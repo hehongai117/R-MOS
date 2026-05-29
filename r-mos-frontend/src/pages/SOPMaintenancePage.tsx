@@ -60,7 +60,6 @@ import {
     ScrewInfo,
 } from '@/components/Maintenance';
 import { SOPPlayerAdjudicated, type SOPActionEvent } from '@/components/Maintenance/SOPPlayerAdjudicated';
-import { ALL_SOP_SCRIPTS } from '@/data/sopScripts';
 import {
     getCorePartDetailRecord,
     getDetailPartDetailRecord,
@@ -79,10 +78,14 @@ import {
     SOPScriptAdjudication,
     SOPStepAdjudication,
     useAdjudicationStore,
+    injectManifestPartRegistry,
+    clearManifestPartRegistry,
 } from '@/adjudication';
+import type { RobotDataManifest } from '@/components/Viewer3D/assemblyManifest';
 import { useSOPSceneSync } from '@/adjudication/ui/useSOPSceneSync';
 import { scoringEngine } from '@/adjudication/core/scoringEngine';
 import { useRobotContextStore } from '@/store/robotContextStore';
+import { useSOPScripts } from '@/hooks/useSOPScripts';
 
 const { Title, Text } = Typography;
 const EXAM_DURATION_MS = 60 * 60 * 1000;
@@ -205,6 +208,36 @@ const REMAINING_CORE_LINKS = [
     'right_ankle_roll_link',
 ] as const;
 
+/** 从 manifest 装配组派生上身/下身分组 */
+function buildLinkGroupsFromManifest(
+  manifest: { overview_config?: { assembly_groups?: Record<string, { display_name: string; child_links: string[]; explode_dir: number[] }> } } | null
+): {
+  upperLinks: readonly string[];
+  lowerLinks: readonly string[];
+  groupNames: Record<string, string>;
+} | null {
+  const groups = (manifest as any)?.overview_config?.assembly_groups
+  if (!groups) return null
+
+  const upperGroupKeys = ['torso_link', 'left_arm_yaw_link', 'left_elbow_yaw_link', 'right_arm_yaw_link', 'right_elbow_yaw_link']
+  const lowerGroupKeys = ['base_link', 'left_thigh_pitch_link', 'left_knee_link', 'left_ankle_roll_link', 'right_thigh_pitch_link', 'right_knee_link', 'right_ankle_roll_link']
+
+  const upperLinks: string[] = []
+  const lowerLinks: string[] = []
+  const groupNames: Record<string, string> = {}
+
+  for (const [key, group] of Object.entries(groups) as [string, { display_name: string; child_links: string[] }][]) {
+    groupNames[key] = group.display_name
+    if (upperGroupKeys.includes(key)) {
+      upperLinks.push(...group.child_links)
+    } else if (lowerGroupKeys.includes(key)) {
+      lowerLinks.push(...group.child_links)
+    }
+  }
+
+  return { upperLinks, lowerLinks, groupNames }
+}
+
 type WorkspaceVariant = 'runtime' | 'demo';
 type MaintenanceLayoutMode = 'execution' | 'inspector' | 'full';
 
@@ -221,8 +254,8 @@ const WORKSPACE_CHROME: Record<WorkspaceVariant, WorkspaceChrome> = {
         showDraftEntry: true,
     },
     demo: {
-        title: 'ATOM01 维保工作台',
-        breadcrumb: ['工作台', 'ATOM01 维保工作台'],
+        title: '维保工作台',
+        breadcrumb: ['工作台', '维保工作台'],
         showDraftEntry: false,
     },
 };
@@ -249,12 +282,32 @@ const LoadingFallback = () => (
 
 function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMaintenancePageProps) {
     const currentRobot = useRobotContextStore((s) => s.currentRobot);
+    const { scripts: apiSopScripts } = useSOPScripts(currentRobot?.id);
     const robotId = currentRobot ? String(currentRobot.id) : null;
     const { manifest } = useAssemblyManifest(currentRobot?.id);
+
+    useEffect(() => {
+        const m = manifest as RobotDataManifest | null;
+        if (m?.parts_registry) {
+            injectManifestPartRegistry(m);
+        }
+        return () => { clearManifestPartRegistry(); };
+    }, [manifest]);
+
+    const manifestLinkGroups = useMemo(
+        () => buildLinkGroupsFromManifest(manifest as any),
+        [manifest]
+    )
+    const upperLinks = manifestLinkGroups?.upperLinks ?? UPPER_BODY_CORE_LINKS
+    const lowerLinks = manifestLinkGroups?.lowerLinks ?? REMAINING_CORE_LINKS
+    const groupNames = manifestLinkGroups?.groupNames ?? GROUP_NAMES
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const sopParam = searchParams.get('sop');
     const workspaceChrome = WORKSPACE_CHROME[workspaceVariant];
+    const workspaceTitle = workspaceVariant === 'demo' && currentRobot
+        ? `${currentRobot.model_name} 维保工作台`
+        : workspaceChrome.title;
     const effectiveLayoutMode: MaintenanceLayoutMode = workspaceVariant === 'demo' ? 'full' : (layoutMode ?? 'execution');
     const showExecutionRail = effectiveLayoutMode !== 'inspector';
     const showInspectorRail = effectiveLayoutMode !== 'execution';
@@ -397,19 +450,19 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     const corePartQuickSelectOptions = useMemo(() => ([
         {
             label: '上半身核心件',
-            options: UPPER_BODY_CORE_LINKS.map((linkName) => ({
+            options: upperLinks.map((linkName) => ({
                 value: linkName,
                 label: partMetadata[linkName]?.displayName ?? getLinkDisplayName(linkName),
             })),
         },
         {
             label: '下半身与底座核心件',
-            options: REMAINING_CORE_LINKS.map((linkName) => ({
+            options: lowerLinks.map((linkName) => ({
                 value: linkName,
                 label: partMetadata[linkName]?.displayName ?? getLinkDisplayName(linkName),
             })),
         },
-    ]), []);
+    ]), [upperLinks, lowerLinks, partMetadata]);
     const diagnosisSnapshot = useMemo(() => readLatestDiagnosisResult(), []);
     const latestDiagnosisTraceId = diagnosisSnapshot?.traceId;
 
@@ -500,10 +553,10 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
     }, [runtimeDraft, workspaceVariant]);
     const availableSopScripts = useMemo(() => {
         if (!runtimeSopScript) {
-            return ALL_SOP_SCRIPTS;
+            return apiSopScripts;
         }
         return [runtimeSopScript];
-    }, [runtimeSopScript]);
+    }, [runtimeSopScript, apiSopScripts]);
     const runtimeResolvedAssetPaths = useMemo(() => {
         if (!runtimeManifest) {
             return [];
@@ -913,12 +966,12 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         <div className="flex flex-wrap items-center justify-end gap-2">
             {workspaceChrome.showDraftEntry ? (
                 <Space wrap>
-                    <Button onClick={() => navigate('/maintenance/project-draft')}>
+                    <Button onClick={() => navigate('/maintenance?view=project-draft')}>
                         项目草案页
                     </Button>
                     <Button
                         type={effectiveLayoutMode === 'execution' ? 'primary' : 'default'}
-                        onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance/inspector' : '/maintenance')}
+                        onClick={() => navigate(effectiveLayoutMode === 'execution' ? '/maintenance?view=inspector' : '/maintenance')}
                     >
                         {effectiveLayoutMode === 'execution' ? '打开检视页' : '返回执行页'}
                     </Button>
@@ -1050,7 +1103,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
             {selectedPart && (
                 <Card
                     size="small"
-                    title={`${GROUP_NAMES[selectedPart.group]} 零件列表`}
+                    title={`${groupNames[selectedPart.group]} 零件列表`}
                 >
                     <Space direction="vertical" style={{ width: '100%' }} size="small">
                         {getGroupParts(selectedPart.group).map(part => (
@@ -1175,20 +1228,26 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     默认收起，避免打断执行；展开后可切换到其他 SOP。
                 </Text>
-                {isSopListExpanded ? availableSopScripts.map((sop) => {
-                    const isActive = sop.sopId === linkedSOPId;
-                    return (
-                        <Button
-                            key={`sop-link-${sop.sopId}`}
-                            size="small"
-                            type={isActive ? 'primary' : 'default'}
-                            block
-                            onClick={() => setLinkedSOPId(sop.sopId)}
-                        >
-                            {sop.title}
-                        </Button>
-                    );
-                }) : null}
+                {isSopListExpanded ? (
+                    availableSopScripts.length > 0 ? availableSopScripts.map((sop) => {
+                        const isActive = sop.sopId === linkedSOPId;
+                        return (
+                            <Button
+                                key={`sop-link-${sop.sopId}`}
+                                size="small"
+                                type={isActive ? 'primary' : 'default'}
+                                block
+                                onClick={() => setLinkedSOPId(sop.sopId)}
+                            >
+                                {sop.title}
+                            </Button>
+                        );
+                    }) : (
+                        <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', display: 'block' }}>
+                            暂无可用 SOP，请先选择机器人或联系教师配置。
+                        </Text>
+                    )
+                ) : null}
                 {sopSceneSync.state.selectedSopId && (
                     <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(24, 144, 255, 0.08)' }}>
                         <Space wrap>
@@ -1257,7 +1316,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
             <SOPMaintenanceHeader
                 viewModeControl={headerViewModeControl}
-                title={workspaceChrome.title}
+                title={workspaceTitle}
                 breadcrumb={workspaceChrome.breadcrumb}
             />
 
@@ -1265,6 +1324,7 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                 {showExecutionRail ? (
                     <Col xs={24} lg={effectiveLayoutMode === 'full' ? 6 : 8} style={{ height: '100%', overflowY: 'auto' }}>
                         <SOPMaintenanceLeftRail
+                            robotModelName={currentRobot?.model_name}
                             sopTitle={activeSopScript?.title ?? 'SOP 步骤导航'}
                             difficultyLabel={activeSopScript?.difficulty ?? 'normal'}
                             currentStepTitle={sopSceneSync.state.currentStepTitle}

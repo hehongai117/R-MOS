@@ -9,17 +9,15 @@ export * from './types/adjudication';
 // 数据模块导出
 export {
     PART_REGISTRY,
-    PART_SCREWS_REGISTRY,
     getPartById,
     getPartScrews,
     getPartsByCategory,
     getAllPartIds,
+    injectManifestPartRegistry,
+    clearManifestPartRegistry,
 } from './data/partRegistry';
 
 export {
-    FOOT_SCREW_INSTANCES,
-    TORSO_SCREW_INSTANCES,
-    ALL_SCREW_INSTANCES,
     getScrewInstance,
     getAllScrewIds,
     getScrewsByParent,

@@ -157,23 +157,27 @@ vi.mock('@/components/Maintenance/SOPPlayerAdjudicated', () => ({
   SOPPlayerAdjudicated: () => <div>SOPPlayerStub</div>,
 }))
 
-vi.mock('@/data/sopScripts', () => ({
-  ALL_SOP_SCRIPTS: [
-    {
-      sopId: 'sop-1',
-      title: '更换肘关节模组',
-      difficulty: 'hard',
-      steps: [
-        {
-          stepId: 'step-1',
-          title: '拆卸外壳',
-          description: '断电后拆除保护罩',
-          onFailure: { action: 'block' },
-          failureReasons: [{ severity: 'critical' }],
-        },
-      ],
-    },
-  ],
+vi.mock('@/hooks/useSOPScripts', () => ({
+  useSOPScripts: () => ({
+    scripts: [
+      {
+        sopId: 'sop-1',
+        title: '更换肘关节模组',
+        difficulty: 'hard',
+        steps: [
+          {
+            stepId: 'step-1',
+            title: '拆卸外壳',
+            description: '断电后拆除保护罩',
+            onFailure: { action: 'block' },
+            failureReasons: [{ severity: 'critical' }],
+          },
+        ],
+      },
+    ],
+    loading: false,
+    fromApi: true,
+  }),
 }))
 
 vi.mock('@/data/maintenanceKnowledge', () => ({
@@ -286,7 +290,7 @@ describe('SOPMaintenancePage', () => {
   it('keeps atom01 maintenance workbench as a dedicated full page without the project draft entry', () => {
     render(<SOPMaintenancePage workspaceVariant="demo" />)
 
-    expect(screen.getByRole('heading', { name: 'ATOM01 维保工作台' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '维保工作台' })).toBeTruthy()
     expect(screen.queryByText('步骤导航、3D 操作区和工具要求统一在同一工作台内处理')).toBeNull()
     expect(screen.queryByText('项目草案入口')).toBeNull()
     expect(screen.queryByRole('button', { name: '进入项目草案页' })).toBeNull()

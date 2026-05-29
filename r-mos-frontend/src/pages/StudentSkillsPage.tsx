@@ -1,5 +1,6 @@
 import { BarChart3, Flame, History, Sparkles, Lightbulb } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Spin } from 'antd'
 
 import {
@@ -18,34 +19,7 @@ import { TrainingTimeline } from '@/components/training/TrainingTimeline'
 import { WeakStepHeatmap } from '@/components/training/WeakStepHeatmap'
 import { Progress } from '@/components/ui/progress'
 import { useAuthStore } from '@/store/authStore'
-
-const STEP_NAME_MAP: Record<string, string> = {
-  prepare_station: '准备工位',
-  motor_cover_remove: '拆解电机盖',
-  align_reducer: '校准减速器',
-  final_check: '最终复核',
-}
-
-function formatHours(seconds?: number | null) {
-  if (!seconds) {
-    return '0h'
-  }
-
-  return `${(seconds / 3600).toFixed(1)}h`
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) {
-    return '暂无'
-  }
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDateTime, formatHours, STEP_NAME_MAP } from '@/utils/format'
 
 function dimensionRows(profile: SkillProfileResponse) {
   return [
@@ -59,6 +33,7 @@ function dimensionRows(profile: SkillProfileResponse) {
 
 function StudentSkillsPage() {
   const userId = useAuthStore((state) => state.user?.user_id)
+  const navigate = useNavigate()
 
   const [profile, setProfile] = useState<SkillProfileResponse | null>(null)
   const [weakSteps, setWeakSteps] = useState<WeakStepResponse[]>([])
@@ -244,7 +219,13 @@ function StudentSkillsPage() {
       />
 
       {activeSession ? (
-        <div className="glass-card flex items-center justify-between rounded-xl px-5 py-4">
+        <div
+          className="glass-card flex cursor-pointer items-center justify-between rounded-xl px-5 py-4 transition-colors hover:border-primary/30"
+          onClick={() => navigate(`/maintenance?execution_id=${activeSession.session_id}`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/maintenance?execution_id=${activeSession.session_id}`) }}
+        >
           <div>
             <div className="text-sm text-text-primary">继续未完成训练</div>
             <div className="mt-1 text-xs text-text-muted">

@@ -1,21 +1,15 @@
-import { AlertCircle, CheckCircle2, Clock, Loader2, Zap } from 'lucide-react'
+import { Loader2, Zap } from 'lucide-react'
 import { Empty } from 'antd'
 
 import { Button } from '@/components/ui/button'
 import type { AnalysisTask, AnalysisTaskStatus } from '@/types/robotModel'
+import { ANALYSIS_STATUS, ANALYSIS_STATUS_FALLBACK } from '@/config/statusLabels'
 
 interface AnalysisStatusPanelProps {
   tasks: AnalysisTask[]
   loading: boolean
   onTrigger: () => void
   canTrigger?: boolean
-}
-
-const STATUS_MAP: Record<AnalysisTaskStatus, { label: string; icon: typeof Clock; className: string }> = {
-  pending: { label: '等待中', icon: Clock, className: 'text-text-muted' },
-  running: { label: '运行中', icon: Loader2, className: 'text-blue-500' },
-  completed: { label: '已完成', icon: CheckCircle2, className: 'text-green-500' },
-  failed: { label: '失败', icon: AlertCircle, className: 'text-red-500' },
 }
 
 export function AnalysisStatusPanel({ tasks, loading, onTrigger, canTrigger = false }: AnalysisStatusPanelProps) {
@@ -44,7 +38,7 @@ export function AnalysisStatusPanel({ tasks, loading, onTrigger, canTrigger = fa
       ) : (
         <div className="space-y-2">
           {tasks.map((task) => {
-            const cfg = STATUS_MAP[task.status as AnalysisTaskStatus] ?? STATUS_MAP.pending
+            const cfg = ANALYSIS_STATUS[task.status as AnalysisTaskStatus] ?? ANALYSIS_STATUS_FALLBACK
             const Icon = cfg.icon
             return (
               <div

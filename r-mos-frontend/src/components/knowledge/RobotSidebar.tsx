@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import type { RobotModel, RobotModelStatus } from '@/types/robotModel'
+import { ROBOT_MODEL_STATUS, ROBOT_MODEL_STATUS_FALLBACK } from '@/config/statusLabels'
 
 interface RobotSidebarProps {
   robots: RobotModel[]
@@ -11,12 +12,6 @@ interface RobotSidebarProps {
   loading: boolean
   onSelect: (robotId: number) => void
   onAdd: () => void
-}
-
-const STATUS_CONFIG: Record<RobotModelStatus, { label: string; className: string }> = {
-  draft: { label: '草稿', className: 'text-text-muted' },
-  analyzing: { label: '分析中', className: 'text-blue-500' },
-  ready: { label: '已发布', className: 'text-green-500' },
 }
 
 export function RobotSidebar({ robots, selectedRobotId, loading, onSelect, onAdd }: RobotSidebarProps) {
@@ -42,7 +37,7 @@ export function RobotSidebar({ robots, selectedRobotId, loading, onSelect, onAdd
           <div className="space-y-0.5 p-2">
             {robots.map((robot) => {
               const isSelected = robot.id === selectedRobotId
-              const statusCfg = STATUS_CONFIG[robot.status as RobotModelStatus] ?? STATUS_CONFIG.draft
+              const statusCfg = ROBOT_MODEL_STATUS[robot.status as RobotModelStatus] ?? ROBOT_MODEL_STATUS_FALLBACK
               return (
                 <button
                   key={robot.id}

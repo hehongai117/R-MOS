@@ -9,7 +9,7 @@ import logging
 
 from app.models.sop import SOP, SOPStep
 from app.models.task import Task
-from app.schemas.sop import SOPCreate, SOPDeleteWarning, SOPDeleteResponse
+from app.schemas.sop import SOPCreate, SOPDeleteWarning, SOPDeleteResponse, DIFFICULTY_MAP, SOPAdjudicationStepResponse, SOPAdjudicationResponse, SOPAdjudicationListResponse
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -251,6 +251,82 @@ class SOPService:
             force_required=True
         )
     
+    def _sop_to_adjudication(self, sop: SOP) -> SOPAdjudicationResponse:
+        """将DB SOP对象转换为裁决格式"""
+        sorted_steps = sorted(sop.steps, key=lambda s: s.step_index)
+        adj_steps = []
+        for i, step in enumerate(sorted_steps):
+            action_params = step.action_params or {}
+            validation_rules = step.validation_rules or {}
+
+            # Determine nextStepId from ordering
+            next_step = sorted_steps[i + 1] if i + 1 < len(sorted_steps) else None
+            next_step_id = f"step-{next_step.id}" if next_step else None
+
+            on_success = action_params.get("onSuccess", {})
+            if not on_success and next_step_id:
+                on_success = {"nextStepId": next_step_id}
+
+            on_failure = action_params.get("onFailure", {})
+
+            target_parts = action_params.get("targetParts", [])
+            if not target_parts and step.target_part:
+                target_parts = [step.target_part]
+
+            required_tool = action_params.get("requiredTool")
+            if not required_tool and step.tools_required:
+                required_tool = step.tools_required[0] if step.tools_required else None
+
+            adj_steps.append(SOPAdjudicationStepResponse(
+                stepId=f"step-{step.id}",
+                stepIndex=step.step_index,
+                title=step.title,
+                description=step.description,
+                action=step.expected_action,
+                targetParts=target_parts,
+                requiredTool=required_tool,
+                preconditions=action_params.get("preconditions", []),
+                validations=validation_rules.get("validations", []),
+                failureReasons=validation_rules.get("failureReasons", []),
+                onSuccess=on_success,
+                onFailure=on_failure,
+                isIrreversible=action_params.get("isIrreversible", False),
+                fatalOnFailure=step.is_critical,
+            ))
+
+        return SOPAdjudicationResponse(
+            sopId=f"sop-db-{sop.id}",
+            title=sop.name,
+            version=sop.version or "1.0",
+            targetModule=sop.target_module or sop.category or "general",
+            estimatedTime=sop.estimated_time or 0,
+            difficulty=DIFFICULTY_MAP.get(sop.difficulty_level, "intermediate"),
+            steps=adj_steps,
+        )
+
+    async def list_adjudication_sops(
+        self,
+        robot_model_id: Optional[int] = None,
+        applicable_model: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> SOPAdjudicationListResponse:
+        """查询SOP列表并转换为裁决格式"""
+        query = select(SOP).options(selectinload(SOP.steps))
+
+        if robot_model_id is not None:
+            query = query.where(SOP.robot_model_id == robot_model_id)
+        if applicable_model:
+            query = query.where(SOP.applicable_model == applicable_model)
+        if category:
+            query = query.where(SOP.category == category)
+
+        query = query.order_by(SOP.created_at.desc())
+        result = await self.db.execute(query)
+        sops = result.scalars().all()
+
+        items = [self._sop_to_adjudication(sop) for sop in sops]
+        return SOPAdjudicationListResponse(total=len(items), items=items)
+
     async def _get_affected_tasks(self, sop_id: int) -> List[Task]:
         """内部方法：查询关联的Task列表"""
         result = await self.db.execute(

@@ -1,25 +1,15 @@
 import {
-  Activity,
-  BarChart3,
-  BookOpen,
   Bot,
-  Boxes,
-  ClipboardList,
-  Dumbbell,
-  FileText,
-  LayoutDashboard,
   LogOut,
-  Monitor,
   Settings,
   Sparkles,
-  Users,
-  Wrench,
-  type LucideIcon,
 } from 'lucide-react'
 import { useEffect } from 'react'
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { GlobalAIChat } from '@/components/AIAssistant/GlobalAIChat'
+import { LAYOUT_CONFIG, type NavItem, type NavGroup } from '@/config/nav'
+import { BRAND_NAME } from '@/config/brand'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -37,110 +27,6 @@ import { cn } from '@/lib/utils'
 import { type UserRole, useAuthStore } from '@/store/authStore'
 import { useRobotContextStore } from '@/store/robotContextStore'
 
-interface NavItem {
-  label: string
-  to: string
-  icon: LucideIcon
-}
-
-interface NavGroup {
-  label: string
-  items: NavItem[]
-}
-
-interface LayoutConfig {
-  badgeLabel: string
-  badgeVariant: 'default' | 'success' | 'destructive'
-  navGroups: NavGroup[]
-}
-
-const STUDENT_NAV: NavGroup[] = [
-  {
-    label: '练习中心',
-    items: [
-      { label: '学习进度', to: '/dashboard', icon: BarChart3 },
-      { label: '我的任务', to: '/my-tasks', icon: ClipboardList },
-      { label: '自主练习', to: '/scenarios', icon: Dumbbell },
-    ],
-  },
-  {
-    label: '维保操作',
-    items: [
-      { label: '实时监控', to: '/monitor', icon: Activity },
-      { label: '维保练习', to: '/maintenance', icon: Wrench },
-    ],
-  },
-  {
-    label: '学习成长',
-    items: [
-      { label: '维保报告', to: '/reports', icon: FileText },
-      { label: '我的技能', to: '/student/skills', icon: BarChart3 },
-      { label: '3D 展示', to: '/atom01', icon: Boxes },
-    ],
-  },
-  {
-    label: '进阶工具',
-    items: [
-      { label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot },
-    ],
-  },
-]
-
-const TEACHER_NAV: NavGroup[] = [
-  {
-    label: '教学管理',
-    items: [
-      { label: '班级监控台', to: '/workbench/teaching', icon: Monitor },
-      { label: '作业管理', to: '/teaching/assignments', icon: ClipboardList },
-      { label: '学员档案', to: '/teacher/students', icon: Users },
-    ],
-  },
-  {
-    label: 'SOP & 工具',
-    items: [
-      { label: 'SOP 管理', to: '/sops', icon: FileText },
-      { label: '3D 展示', to: '/atom01', icon: Boxes },
-      { label: '实时监控', to: '/monitor', icon: Activity },
-    ],
-  },
-  {
-    label: '记录',
-    items: [
-      { label: '维保报告', to: '/reports', icon: BarChart3 },
-      { label: '知识库', to: '/knowledge', icon: BookOpen },
-      { label: '共享机器人库', to: '/shared-robots', icon: Boxes },
-    ],
-  },
-  {
-    label: 'AI 工具',
-    items: [
-      { label: 'AI 诊断工作台', to: '/agent/workbench', icon: Bot },
-    ],
-  },
-]
-
-const ADMIN_NAV: NavGroup[] = [
-  { label: '概览', items: [{ label: '系统概览', to: '/admin/console', icon: LayoutDashboard }] },
-  ...TEACHER_NAV,
-]
-
-const LAYOUT_CONFIG: Record<UserRole, LayoutConfig> = {
-  student: {
-    badgeLabel: '学员',
-    badgeVariant: 'default',
-    navGroups: STUDENT_NAV,
-  },
-  teacher: {
-    badgeLabel: '教师',
-    badgeVariant: 'success',
-    navGroups: TEACHER_NAV,
-  },
-  admin: {
-    badgeLabel: '管理员',
-    badgeVariant: 'destructive',
-    navGroups: ADMIN_NAV,
-  },
-}
 
 function getDisplayName(fullName?: string, email?: string) {
   return fullName?.trim() || email || '未命名用户'
@@ -218,7 +104,7 @@ function RoleLayoutShell({
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="truncate font-mono text-sm text-text-primary">R-MOS</p>
+            <p className="truncate font-mono text-sm text-text-primary">{BRAND_NAME}</p>
             <p className="truncate text-[11px] uppercase tracking-[0.24em] text-text-muted">
               Robotics OS
             </p>
@@ -271,7 +157,7 @@ function RoleLayoutShell({
 
       <main className="ml-[220px] flex-1 overflow-auto">
         {/* 有多台机器人时显示顶部机器人切换栏 */}
-        {availableRobots.length > 1 && (
+        {availableRobots.length >= 1 && (
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border-subtle bg-bg-surface/95 px-6 py-2 backdrop-blur">
             <Bot className="h-4 w-4 text-text-muted" />
             <span className="text-xs text-text-secondary">当前机器人:</span>

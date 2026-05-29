@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuthStore } from '@/store/authStore'
+import { useRobotContextStore } from '@/store/robotContextStore'
 import { useRobotStore, useSelectedRobot } from '@/store/robotStore'
 import type { AnalysisTask, RobotModelCreateRequest } from '@/types/robotModel'
 import type { RobotProjectSummary, RobotProjectUploadJob } from '@/types/robotKnowledge'
@@ -57,6 +58,7 @@ function uploadStatusTone(status: string) {
 const KnowledgePage = () => {
   const role = useAuthStore((state) => state.user?.role ?? 'student')
   const canManageKnowledge = role === 'teacher' || role === 'admin'
+  const availableRobots = useRobotContextStore((s) => s.availableRobots)
 
   // Robot store
   const { robots, selectedRobotId, isLoading: robotsLoading, fetchRobots, selectRobot, addRobot, togglePublish, toggleVisibility, unbindRobot } = useRobotStore((state) => state)
@@ -419,9 +421,12 @@ const KnowledgePage = () => {
                   value={selectedDevice}
                   onChange={setSelectedDevice}
                 >
-                  <Option value="ATOM01">ATOM01</Option>
-                  <Option value="ATOM02">ATOM02</Option>
-                  <Option value="ATOM03">ATOM03</Option>
+                  {availableRobots.length > 0
+                    ? availableRobots.map((r) => (
+                        <Option key={r.id} value={r.model_name}>{r.model_name}</Option>
+                      ))
+                    : <Option value="" disabled>暂无可用机器人</Option>
+                  }
                 </Select>
                 <Button size="sm" type="button" onClick={() => void handleSearch()}>
                   <Search className="h-4 w-4" />
@@ -487,9 +492,12 @@ const KnowledgePage = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <Form.Item label="适用设备" name="device_model">
                   <Select allowClear placeholder="选择适用设备">
-                    <Option value="ATOM01">ATOM01</Option>
-                    <Option value="ATOM02">ATOM02</Option>
-                    <Option value="ATOM03">ATOM03</Option>
+                    {availableRobots.length > 0
+                      ? availableRobots.map((r) => (
+                          <Option key={r.id} value={r.model_name}>{r.model_name}</Option>
+                        ))
+                      : <Option value="" disabled>暂无可用机器人</Option>
+                    }
                   </Select>
                 </Form.Item>
                 <Form.Item initialValue="R1" label="风险等级" name="risk_level">

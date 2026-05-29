@@ -53,7 +53,7 @@ describe('AppLayout', () => {
     expect(screen.getByRole('link', { name: 'AI 诊断工作台' }).getAttribute('href')).toBe('/agent/workbench')
     expect(screen.getByRole('link', { name: '维保练习' }).getAttribute('href')).toBe('/maintenance')
     expect(screen.getByRole('link', { name: '我的技能' }).getAttribute('href')).toBe('/student/skills')
-    expect(screen.getByRole('link', { name: '3D 展示' }).getAttribute('href')).toBe('/atom01')
+    expect(screen.getByRole('link', { name: '3D 展示' }).getAttribute('href')).toBe('/3d-viewer')
   })
 
   it('shows teacher nav with teaching management and tools', () => {

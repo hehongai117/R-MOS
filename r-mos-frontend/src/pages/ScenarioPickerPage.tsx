@@ -96,6 +96,7 @@ export default function ScenarioPickerPage() {
                 </div>
                 <p className="text-xs text-text-muted">故障类型: {scenario.fault_type}</p>
                 <Button
+                  type="button"
                   size="sm"
                   className="w-full"
                   onClick={() => navigate(`/maintenance?sop_id=${scenario.sop_id}`)}

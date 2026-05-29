@@ -360,8 +360,8 @@ function buildLinkDetailParts(link: CoreLinkName): DetailPart[] {
 /**
  * 每个核心 link 对应的细节子零件列表。
  * 数据来源：
- *  - atom01 link 主模型（frames/{link}.glb 系列）
- *  - ATOM01 机械目录中的盖板/连杆/标定件/电子件
+ *  - link 主模型（frames/{link}.glb 系列）
+ *  - 机械目录中的盖板/连杆/标定件/电子件
  *  - 工具库定义的螺丝规格映射
  */
 export const DETAIL_PARTS_MAP: Record<string, DetailPart[]> = CORE_LINKS.reduce((acc, link) => {

@@ -6,6 +6,7 @@ import { FaultAlertCard, type FaultAlert } from '@/components/Monitor/FaultAlert
 
 import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary'
 import { MonitorRobotViewer } from '@/components/Viewer3D/MonitorRobotViewer'
+import { useAssemblyManifest } from '@/components/Viewer3D/useAssemblyManifest'
 import { Button } from '@/components/ui/button'
 import { useWebSocket, type JointState } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
@@ -32,22 +33,27 @@ const MONITOR_JOINT_MAP: Record<string, MonitorJointMeta> = {
   neck: { atomJoint: 'torso_joint', atomLink: 'torso_link', label: '躯干姿态' },
 }
 
-const ATOM01_JOINT_META: Record<string, MonitorJointMeta> = {
-  torso_joint: { atomJoint: 'torso_joint', atomLink: 'torso_link', label: '躯干姿态' },
-  left_thigh_pitch_joint: { atomJoint: 'left_thigh_pitch_joint', atomLink: 'left_thigh_pitch_link', label: '左髋关节' },
-  right_thigh_pitch_joint: { atomJoint: 'right_thigh_pitch_joint', atomLink: 'right_thigh_pitch_link', label: '右髋关节' },
-  left_knee_joint: { atomJoint: 'left_knee_joint', atomLink: 'left_knee_link', label: '左膝关节' },
-  right_knee_joint: { atomJoint: 'right_knee_joint', atomLink: 'right_knee_link', label: '右膝关节' },
-  left_ankle_pitch_joint: { atomJoint: 'left_ankle_pitch_joint', atomLink: 'left_ankle_pitch_link', label: '左踝关节' },
-  right_ankle_pitch_joint: { atomJoint: 'right_ankle_pitch_joint', atomLink: 'right_ankle_pitch_link', label: '右踝关节' },
-  left_arm_pitch_joint: { atomJoint: 'left_arm_pitch_joint', atomLink: 'left_arm_pitch_link', label: '左肩关节' },
-  right_arm_pitch_joint: { atomJoint: 'right_arm_pitch_joint', atomLink: 'right_arm_pitch_link', label: '右肩关节' },
-  left_elbow_pitch_joint: { atomJoint: 'left_elbow_pitch_joint', atomLink: 'left_elbow_pitch_link', label: '左肘关节' },
-  right_elbow_pitch_joint: { atomJoint: 'right_elbow_pitch_joint', atomLink: 'right_elbow_pitch_link', label: '右肘关节' },
+function resolveJointMeta(jointId: string): MonitorJointMeta | null {
+  return MONITOR_JOINT_MAP[jointId] ?? null
 }
 
-function resolveJointMeta(jointId: string): MonitorJointMeta | null {
-  return MONITOR_JOINT_MAP[jointId] ?? ATOM01_JOINT_META[jointId] ?? null
+/** 从 manifest joints 构建关节元数据 */
+function buildJointMetaFromManifest(
+  manifest: { joints?: Array<{ name: string; type: string; parent_link: string; child_link: string }> } | null,
+  displayNames: Record<string, string>
+): Record<string, MonitorJointMeta> | null {
+  if (!manifest?.joints) return null
+
+  const result: Record<string, MonitorJointMeta> = {}
+  for (const joint of manifest.joints) {
+    if (joint.type === 'fixed') continue
+    result[joint.name] = {
+      atomJoint: joint.name,
+      atomLink: joint.child_link,
+      label: displayNames[joint.child_link] ?? joint.name.replace(/_/g, ' '),
+    }
+  }
+  return result
 }
 
 function formatStatusText({
@@ -226,6 +232,14 @@ function MonitorPage() {
   const currentRobot = useRobotContextStore((s) => s.currentRobot)
   const robotId = currentRobot ? String(currentRobot.id) : null
 
+  const { manifest } = useAssemblyManifest(currentRobot?.id)
+
+  const manifestJointMeta = useMemo(() => {
+    if (!manifest) return null
+    const displayNames = manifest.display_names ?? {}
+    return buildJointMetaFromManifest(manifest, displayNames)
+  }, [manifest])
+
   const {
     isConnected,
     telemetryData,
@@ -248,9 +262,10 @@ function MonitorPage() {
     () =>
       joints.map((joint) => ({
         ...joint,
-        meta: resolveJointMeta(joint.joint_id),
+        meta: manifestJointMeta?.[joint.joint_id]
+          ?? resolveJointMeta(joint.joint_id),
       })),
-    [joints],
+    [joints, manifestJointMeta],
   )
 
   const jointAngles = useMemo(
@@ -557,7 +572,7 @@ function MonitorPage() {
                   绿色高亮代表当前重点观测部位。
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-xs text-text-muted">
-                  若关节未映射到 ATOM01，会仍保留在右侧明细区。
+                  若关节未映射到当前机器人，会仍保留在右侧明细区。
                 </div>
               </div>
             </div>

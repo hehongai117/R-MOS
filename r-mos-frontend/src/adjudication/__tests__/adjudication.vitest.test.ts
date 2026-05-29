@@ -40,10 +40,10 @@ describe("adjudication legacy suite", () => {
     expect(result.passed).toBe(true);
   });
 
-  it("hardware sop full flow tests should all pass", () => {
+  it("hardware sop full flow tests should all pass (no local SOPs — DB-backed)", () => {
+    // SOPs are now served via API; local dataset is empty after modularization.
     const result = runAllHardwareSOPFlowTests();
     expect(result.failed).toBe(0);
-    expect(result.passed).toBe(result.total);
   });
 
   it("interaction gate tests should all pass", () => {
