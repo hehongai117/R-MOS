@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Bot, Send, X, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAIAssistantStore } from '@/store/aiAssistantStore'
+import { useRobotContextStore } from '@/store/robotContextStore'
 import { sendAIChat, type ChatMessagePayload } from '@/api/aiAssistant'
 import { ChatMessage } from './ChatMessage'
 
@@ -24,6 +25,7 @@ export function AIAssistantPanel({
 }: AIAssistantPanelProps) {
   const { isOpen, messages, isLoading, toggle, close, addMessage, setLoading } =
     useAIAssistantStore()
+  const currentRobot = useRobotContextStore(s => s.currentRobot)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -55,6 +57,7 @@ export function AIAssistantPanel({
         fault_type: faultType,
         hint_level: hintLevel,
         history,
+        robot_id: currentRobot?.id,
       })
       addMessage('assistant', response.reply)
     } catch {

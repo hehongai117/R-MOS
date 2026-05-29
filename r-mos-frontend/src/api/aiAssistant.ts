@@ -14,6 +14,7 @@ export interface AIChatRequest {
   fault_type?: string
   hint_level?: number
   history?: ChatMessagePayload[]
+  robot_id?: number
 }
 
 export interface AIChatResponse {
