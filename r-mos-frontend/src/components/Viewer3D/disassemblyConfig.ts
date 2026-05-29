@@ -5,6 +5,9 @@
  * 螺丝位置基于各 link 接合处推算，后续可通过 SOP 数据精确定义。
  */
 
+import type { RobotDataManifest } from './assemblyManifest';
+import { buildDisassemblyConfig } from './manifestHelpers';
+
 /** 螺丝动画配置 */
 export interface ScrewAnimConfig {
     /** 唯一 ID */
@@ -54,6 +57,9 @@ export const ANIM_TIMING = {
  *
  * 按拆卸顺序排列。位置基于各 link 接合处推算。
  * 实际螺丝位置可后续通过 SOP 数据精确校准。
+ *
+ * @deprecated 优先使用 getScrewSequence(manifest)，该函数会从 manifest 读取数据，
+ * 仅在 manifest 未加载时才回退到此硬编码常量。
  */
 export const SCREW_SEQUENCE: ScrewAnimConfig[] = [
     // ---- 躯干固定螺丝 ----
@@ -150,6 +156,9 @@ export const SCREW_SEQUENCE: ScrewAnimConfig[] = [
 /**
  * 零件分离序列（按拆卸顺序排列）
  * 偏移量复用 Atom01Interactive 中的 EXPLODE_OFFSETS，放大到完全分离。
+ *
+ * @deprecated 优先使用 getPartSequence(manifest)，该函数会从 manifest 读取数据，
+ * 仅在 manifest 未加载时才回退到此硬编码常量。
  */
 export const PART_SEQUENCE: PartAnimConfig[] = [
     // 先拆外围部件，再拆核心
@@ -224,4 +233,18 @@ export function getPartProgress(globalTime: number, partIndex: number): number {
     if (localTime < 0) return -1;
     if (localTime >= ANIM_TIMING.PART_DURATION) return 1;
     return localTime / ANIM_TIMING.PART_DURATION;
+}
+
+/**
+ * 获取螺丝拆卸序列：优先从 manifest 读取，manifest 未加载时回退到硬编码常量。
+ */
+export function getScrewSequence(manifest?: RobotDataManifest | null): ScrewAnimConfig[] {
+    return buildDisassemblyConfig(manifest)?.screwSequence ?? SCREW_SEQUENCE;
+}
+
+/**
+ * 获取零件分离序列：优先从 manifest 读取，manifest 未加载时回退到硬编码常量。
+ */
+export function getPartSequence(manifest?: RobotDataManifest | null): PartAnimConfig[] {
+    return buildDisassemblyConfig(manifest)?.partSequence ?? PART_SEQUENCE;
 }

@@ -7,7 +7,6 @@
  */
 
 import type { RobotDataManifest } from './assemblyManifest';
-import type { ScrewAnimConfig, PartAnimConfig } from './disassemblyConfig';
 
 // Re-export DetailPart type shape for helpers (avoid circular import by using inline type)
 type DetailPartLike = { displayName: string; path: string; category: string; actionTarget?: string };
@@ -158,18 +157,39 @@ export function buildPartMetadata(
   return result;
 }
 
+// Inline types to avoid circular import with disassemblyConfig.ts
+type ScrewAnimConfigLike = {
+  id: string
+  glbPath: string
+  position: [number, number, number]
+  axis: [number, number, number]
+  extractDistance: number
+  rotations: number
+  parentLink: string
+  label: string
+}
+
+type PartAnimConfigLike = {
+  linkName: string
+  detachOffset: [number, number, number]
+  label: string
+}
+
 /**
  * Build disassembly config (screw sequence + part sequence) from the manifest.
  * Returns null when the manifest has no disassembly_config (caller should fall back
  * to the hardcoded SCREW_SEQUENCE / PART_SEQUENCE constants).
+ *
+ * The returned types are structurally compatible with ScrewAnimConfig and PartAnimConfig
+ * from disassemblyConfig.ts (no circular import needed).
  */
 export function buildDisassemblyConfig(
   manifest: RobotDataManifest | null | undefined,
-): { screwSequence: ScrewAnimConfig[]; partSequence: PartAnimConfig[] } | null {
+): { screwSequence: ScrewAnimConfigLike[]; partSequence: PartAnimConfigLike[] } | null {
   const dc = manifest?.disassembly_config;
   if (!dc) return null;
 
-  const screwSequence: ScrewAnimConfig[] = (dc.screw_sequence ?? []).map((s) => ({
+  const screwSequence: ScrewAnimConfigLike[] = (dc.screw_sequence ?? []).map((s) => ({
     id: s.id,
     glbPath: s.glbPath,
     position: s.position,
@@ -180,7 +200,7 @@ export function buildDisassemblyConfig(
     label: s.label,
   }));
 
-  const partSequence: PartAnimConfig[] = (dc.part_sequence ?? []).map((p) => ({
+  const partSequence: PartAnimConfigLike[] = (dc.part_sequence ?? []).map((p) => ({
     linkName: p.id,
     detachOffset: p.direction,
     label: p.label,
