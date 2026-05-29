@@ -58,22 +58,34 @@ export function preloadAllParts(
 }
 
 /**
- * 预加载主模型（24 个 robot link）
- * 这些通常在页面加载时就会用到，但可以提前触发。
+ * @deprecated 硬编码的 ATOM-01 link 名称列表。
+ * 请通过 manifest 数据（assemblyManifest.json 中的 nodes）动态获取 link 列表，
+ * 并通过 `preloadRobotModel(robotId, linkNames)` 的 `linkNames` 参数传入。
+ * 待 T1.2 的 `getCoreLinks()` 就绪后，此列表将被移除。
  */
-export function preloadRobotModel(robotId: string): void {
+const HARDCODED_ATOM01_LINKS: string[] = [
+    'base_link', 'torso_link',
+    'left_arm_pitch_link', 'left_arm_roll_link', 'left_arm_yaw_link',
+    'left_elbow_pitch_link', 'left_elbow_yaw_link',
+    'right_arm_pitch_link', 'right_arm_roll_link', 'right_arm_yaw_link',
+    'right_elbow_pitch_link', 'right_elbow_yaw_link',
+    'left_thigh_yaw_link', 'left_thigh_roll_link', 'left_thigh_pitch_link',
+    'left_knee_link', 'left_ankle_pitch_link', 'left_ankle_roll_link',
+    'right_thigh_yaw_link', 'right_thigh_roll_link', 'right_thigh_pitch_link',
+    'right_knee_link', 'right_ankle_pitch_link', 'right_ankle_roll_link',
+];
+
+/**
+ * 预加载主模型的 robot link GLB 文件。
+ * 这些通常在页面加载时就会用到，但可以提前触发。
+ *
+ * @param robotId - 机器人 ID，用于解析 GLB base URL
+ * @param linkNames - 可选的 link 名称列表。若提供，使用该列表（manifest 驱动）；
+ *   若未提供，fallback 到已废弃的 {@link HARDCODED_ATOM01_LINKS} 硬编码列表。
+ */
+export function preloadRobotModel(robotId: string, linkNames?: string[]): void {
     const ROBOT_BASE = getRobotModelBase(robotId);
-    const links = [
-        'base_link', 'torso_link',
-        'left_arm_pitch_link', 'left_arm_roll_link', 'left_arm_yaw_link',
-        'left_elbow_pitch_link', 'left_elbow_yaw_link',
-        'right_arm_pitch_link', 'right_arm_roll_link', 'right_arm_yaw_link',
-        'right_elbow_pitch_link', 'right_elbow_yaw_link',
-        'left_thigh_yaw_link', 'left_thigh_roll_link', 'left_thigh_pitch_link',
-        'left_knee_link', 'left_ankle_pitch_link', 'left_ankle_roll_link',
-        'right_thigh_yaw_link', 'right_thigh_roll_link', 'right_thigh_pitch_link',
-        'right_knee_link', 'right_ankle_pitch_link', 'right_ankle_roll_link',
-    ];
+    const links = linkNames ?? HARDCODED_ATOM01_LINKS;
 
     links.forEach((name) => {
         try {

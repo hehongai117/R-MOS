@@ -18,6 +18,12 @@ type MonitorJointMeta = {
   label: string
 }
 
+/**
+ * @deprecated 硬编码的 ATOM-01 关节映射表。
+ * 请通过 `buildJointMetaFromManifest()` 从 assembly manifest 动态构建关节元数据。
+ * 组件中 `manifestJointMeta` 已优先使用，此表仅作为 manifest 未就绪时的 fallback。
+ * 待 manifest 数据稳定覆盖所有机器人后，此表将被移除。
+ */
 const MONITOR_JOINT_MAP: Record<string, MonitorJointMeta> = {
   knee_left: { atomJoint: 'left_knee_joint', atomLink: 'left_knee_link', label: '左膝关节' },
   knee_right: { atomJoint: 'right_knee_joint', atomLink: 'right_knee_link', label: '右膝关节' },
