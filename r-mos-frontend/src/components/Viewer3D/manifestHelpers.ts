@@ -7,6 +7,10 @@
  */
 
 import type { RobotDataManifest } from './assemblyManifest';
+import type { ScrewAnimConfig, PartAnimConfig } from './disassemblyConfig';
+
+// Re-export DetailPart type shape for helpers (avoid circular import by using inline type)
+type DetailPartLike = { displayName: string; path: string; category: string; actionTarget?: string };
 
 /**
  * Build a joint-axis map from manifest joints.
@@ -45,6 +49,18 @@ export function buildDisplayNameMap(
   manifest: RobotDataManifest | null | undefined
 ): Record<string, string> {
   return manifest?.display_names ?? {};
+}
+
+/**
+ * Build a detail parts map from the manifest's detail_parts field.
+ * Returns null when the manifest has no detail_parts (caller should use its own fallback).
+ * The returned map has the same shape as the hardcoded EXTRA_LINK_PARTS / DetailPart[].
+ */
+export function buildDetailPartsMap(
+  manifest: RobotDataManifest | null | undefined
+): Record<string, DetailPartLike[]> | null {
+  if (!manifest?.detail_parts) return null;
+  return manifest.detail_parts as Record<string, DetailPartLike[]>;
 }
 
 /**
@@ -140,4 +156,35 @@ export function buildPartMetadata(
   }
 
   return result;
+}
+
+/**
+ * Build disassembly config (screw sequence + part sequence) from the manifest.
+ * Returns null when the manifest has no disassembly_config (caller should fall back
+ * to the hardcoded SCREW_SEQUENCE / PART_SEQUENCE constants).
+ */
+export function buildDisassemblyConfig(
+  manifest: RobotDataManifest | null | undefined,
+): { screwSequence: ScrewAnimConfig[]; partSequence: PartAnimConfig[] } | null {
+  const dc = manifest?.disassembly_config;
+  if (!dc) return null;
+
+  const screwSequence: ScrewAnimConfig[] = (dc.screw_sequence ?? []).map((s) => ({
+    id: s.id,
+    glbPath: s.glbPath,
+    position: s.position,
+    axis: s.axis,
+    extractDistance: s.extractDistance,
+    rotations: s.rotations,
+    parentLink: s.parentLink,
+    label: s.label,
+  }));
+
+  const partSequence: PartAnimConfig[] = (dc.part_sequence ?? []).map((p) => ({
+    linkName: p.id,
+    detachOffset: p.direction,
+    label: p.label,
+  }));
+
+  return { screwSequence, partSequence };
 }

@@ -1893,5 +1893,268 @@
     { "node_id": "right_knee_link", "offset": [0, -0.4, -0.7] },
     { "node_id": "right_ankle_pitch_link", "offset": [0, -0.5, -1.0] },
     { "node_id": "right_ankle_roll_link", "offset": [0, -0.55, -1.3] }
-  ]
+  ],
+  "detail_parts": {
+    "base_link": [
+      { "displayName": "髋关节固定座", "path": "frames/髋关节固定.glb", "category": "frame" },
+      { "displayName": "髋夹板", "path": "frames/髋夹板.glb", "category": "frame" },
+      { "displayName": "腰部支撑件", "path": "frames/腰部支撑.glb", "category": "frame" },
+      { "displayName": "电池底盖", "path": "frames/电池底盖.glb", "category": "frame" },
+      { "displayName": "腰部标定件", "path": "calibration/腰部标定件数量1.glb", "category": "calibration" }
+    ],
+    "torso_link": [
+      { "displayName": "胸腔前后夹板", "path": "frames/胸腔前后夹板.glb", "category": "frame", "actionTarget": "frame_torso_chest" },
+      { "displayName": "胸腔后夹板", "path": "frames/胸腔夹板后.glb", "category": "frame" },
+      { "displayName": "胸腔前盖", "path": "frames/胸腔胸部.glb", "category": "frame" },
+      { "displayName": "胸腔下盖", "path": "frames/胸腔腹部.glb", "category": "frame" },
+      { "displayName": "胸腔后背下盖", "path": "frames/胸腔后背下部.glb", "category": "frame" },
+      { "displayName": "腰部下盖", "path": "frames/腰部下册.glb", "category": "frame" },
+      { "displayName": "侧板横板", "path": "misc/侧板横板.glb", "category": "misc" },
+      { "displayName": "躯干电机", "path": "misc/LB22SA2M1_M10.glb", "category": "electronics", "actionTarget": "torso_motor" },
+      { "displayName": "主控板", "path": "misc/OPI_5PLUS_PCBA.glb", "category": "electronics", "actionTarget": "torso_pcb_main" },
+      { "displayName": "PCB 载板", "path": "misc/PCB载板.glb", "category": "electronics" },
+      { "displayName": "IMU 载板", "path": "misc/IMU载板.glb", "category": "electronics" },
+      { "displayName": "扩展板", "path": "misc/3D_PCB7_2025_07_10.glb", "category": "electronics" },
+      { "displayName": "提手", "path": "misc/把手.glb", "category": "misc" },
+      { "displayName": "电池仓", "path": "misc/电池盒粗略尺寸.glb", "category": "misc" }
+    ],
+    "left_arm_pitch_link": [
+      { "displayName": "肩部壳体", "path": "frames/肩膀.glb", "category": "frame" },
+      { "displayName": "肩部固定件", "path": "frames/肩部固定件数量2.glb", "category": "frame" },
+      { "displayName": "限位销", "path": "misc/限位销.glb", "category": "misc" }
+    ],
+    "left_arm_roll_link": [
+      { "displayName": "肩部壳体（副）", "path": "frames/肩膀_1.glb", "category": "frame" },
+      { "displayName": "肩部固定件（副）", "path": "frames/肩部固定件数量2_1.glb", "category": "frame" },
+      { "displayName": "输出法兰连杆", "path": "frames/输出法兰连杆.glb", "category": "frame" },
+      { "displayName": "限位销（副）", "path": "misc/限位销_1.glb", "category": "misc" }
+    ],
+    "left_arm_yaw_link": [
+      { "displayName": "大臂上部前壳", "path": "misc/大臂上部前侧.glb", "category": "misc" },
+      { "displayName": "大臂上部后壳", "path": "misc/大臂上部后侧.glb", "category": "misc" },
+      { "displayName": "大臂下部外壳", "path": "misc/大臂下部外侧.glb", "category": "misc" },
+      { "displayName": "大臂下部内壳", "path": "misc/大臂下部里侧.glb", "category": "misc" },
+      { "displayName": "大臂根部前壳", "path": "misc/大臂根部前侧.glb", "category": "misc" },
+      { "displayName": "大臂根部后壳", "path": "misc/大臂根部后侧.glb", "category": "misc" }
+    ],
+    "left_elbow_pitch_link": [
+      { "displayName": "通用连接件", "path": "frames/通用连接件.glb", "category": "frame" },
+      { "displayName": "扩孔法兰", "path": "frames/通用连接件扩孔法兰.glb", "category": "frame" },
+      { "displayName": "肘部标定件", "path": "calibration/肘部标定件数量2.glb", "category": "calibration" }
+    ],
+    "left_elbow_yaw_link": [
+      { "displayName": "小臂外壳", "path": "misc/小臂外侧.glb", "category": "misc" },
+      { "displayName": "小臂内壳", "path": "misc/小臂里侧.glb", "category": "misc" },
+      { "displayName": "手部球形件", "path": "misc/手部球型.glb", "category": "misc" },
+      { "displayName": "输出法兰连杆（副）", "path": "frames/输出法兰连杆_1.glb", "category": "frame" }
+    ],
+    "right_arm_pitch_link": [
+      { "displayName": "肩部壳体", "path": "frames/肩膀_2.glb", "category": "frame" },
+      { "displayName": "肩部固定件", "path": "frames/肩部固定件数量2_2.glb", "category": "frame" },
+      { "displayName": "限位销", "path": "misc/限位销_2.glb", "category": "misc" }
+    ],
+    "right_arm_roll_link": [
+      { "displayName": "肩部壳体（副）", "path": "frames/肩膀_3.glb", "category": "frame" },
+      { "displayName": "肩部固定件（副）", "path": "frames/肩部固定件数量2_3.glb", "category": "frame" },
+      { "displayName": "输出法兰连杆", "path": "frames/输出法兰连杆_2.glb", "category": "frame" },
+      { "displayName": "限位销（副）", "path": "misc/限位销_3.glb", "category": "misc" }
+    ],
+    "right_arm_yaw_link": [
+      { "displayName": "大臂上部前壳", "path": "misc/大臂上部前侧_1.glb", "category": "misc" },
+      { "displayName": "大臂上部后壳", "path": "misc/大臂上部后侧_1.glb", "category": "misc" },
+      { "displayName": "大臂下部外壳", "path": "misc/大臂下部外侧_1.glb", "category": "misc" },
+      { "displayName": "大臂下部内壳", "path": "misc/大臂下部里侧_1.glb", "category": "misc" },
+      { "displayName": "大臂根部前壳", "path": "misc/大臂根部前侧_1.glb", "category": "misc" },
+      { "displayName": "大臂根部后壳", "path": "misc/大臂根部后侧_1.glb", "category": "misc" }
+    ],
+    "right_elbow_pitch_link": [
+      { "displayName": "通用连接件", "path": "frames/通用连接件_1.glb", "category": "frame" },
+      { "displayName": "扩孔法兰", "path": "frames/通用连接件扩孔法兰_1.glb", "category": "frame" },
+      { "displayName": "肘部标定件", "path": "calibration/肘部标定件数量2_1.glb", "category": "calibration" }
+    ],
+    "right_elbow_yaw_link": [
+      { "displayName": "小臂外壳", "path": "misc/小臂外侧_1.glb", "category": "misc" },
+      { "displayName": "小臂内壳", "path": "misc/小臂里侧_1.glb", "category": "misc" },
+      { "displayName": "手部球形件", "path": "misc/手部球型_1.glb", "category": "misc" },
+      { "displayName": "输出法兰连杆（副）", "path": "frames/输出法兰连杆_3.glb", "category": "frame" }
+    ],
+    "left_thigh_yaw_link": [
+      { "displayName": "髋夹板", "path": "frames/髋夹板_1.glb", "category": "frame" },
+      { "displayName": "髋关节固定座", "path": "frames/髋关节固定_1.glb", "category": "frame" },
+      { "displayName": "大腿根部开孔结构", "path": "frames/大腿根部结构开孔.glb", "category": "frame" }
+    ],
+    "left_thigh_roll_link": [
+      { "displayName": "大腿内侧板", "path": "frames/大腿内侧.glb", "category": "frame" },
+      { "displayName": "长连杆", "path": "frames/长连杆.glb", "category": "frame" },
+      { "displayName": "短连杆", "path": "frames/短连杆.glb", "category": "frame" }
+    ],
+    "left_thigh_pitch_link": [
+      { "displayName": "大腿内侧板（副）", "path": "frames/大腿内侧_1.glb", "category": "frame" },
+      { "displayName": "大腿定位块", "path": "frames/大腿定位块数量2.glb", "category": "calibration" },
+      { "displayName": "大腿后侧标定件", "path": "calibration/大腿后侧标定数量1.glb", "category": "calibration" },
+      { "displayName": "长连杆（副）", "path": "frames/长连杆_1.glb", "category": "frame" }
+    ],
+    "left_knee_link": [
+      { "displayName": "小腿结构件", "path": "frames/小腿.glb", "category": "frame" },
+      { "displayName": "小腿轴承锁", "path": "bearings/小腿轴承锁.glb", "category": "bearing" },
+      { "displayName": "膝盖标定件", "path": "calibration/膝盖标定数量2.glb", "category": "calibration" },
+      { "displayName": "短连杆（副）", "path": "frames/短连杆_1.glb", "category": "frame" }
+    ],
+    "left_ankle_pitch_link": [
+      { "displayName": "脚踝横滚连接件", "path": "frames/脚踝横滚连接件.glb", "category": "frame" },
+      { "displayName": "扩孔法兰", "path": "frames/通用连接件扩孔法兰_2.glb", "category": "frame" },
+      { "displayName": "脚踝标定件", "path": "calibration/脚踝标定数量2.glb", "category": "calibration" }
+    ],
+    "left_ankle_roll_link": [
+      { "displayName": "脚底板", "path": "frames/脚底板.glb", "category": "frame" },
+      { "displayName": "脚底连杆", "path": "frames/脚底连杆.glb", "category": "frame" },
+      { "displayName": "脚掌结构件", "path": "frames/20cm脚.glb", "category": "frame" },
+      { "displayName": "脚底软胶", "path": "frames/软胶_脚底_左.glb", "category": "frame", "actionTarget": "left_foot_rubber" },
+      { "displayName": "脚部标定件", "path": "calibration/脚部标定件数量1.glb", "category": "calibration" }
+    ],
+    "right_thigh_yaw_link": [
+      { "displayName": "髋夹板", "path": "frames/髋夹板_2.glb", "category": "frame" },
+      { "displayName": "髋关节固定座", "path": "frames/髋关节固定_2.glb", "category": "frame" },
+      { "displayName": "大腿根部开孔结构", "path": "frames/大腿根部结构开孔_1.glb", "category": "frame" }
+    ],
+    "right_thigh_roll_link": [
+      { "displayName": "大腿内侧板", "path": "frames/大腿内侧_2.glb", "category": "frame" },
+      { "displayName": "长连杆", "path": "frames/长连杆_2.glb", "category": "frame" },
+      { "displayName": "短连杆", "path": "frames/短连杆_2.glb", "category": "frame" }
+    ],
+    "right_thigh_pitch_link": [
+      { "displayName": "大腿内侧板（副）", "path": "frames/大腿内侧_3.glb", "category": "frame" },
+      { "displayName": "大腿定位块", "path": "frames/大腿定位块数量2_1.glb", "category": "calibration" },
+      { "displayName": "大腿后侧标定件", "path": "calibration/大腿后侧标定数量1_1.glb", "category": "calibration" },
+      { "displayName": "长连杆（副）", "path": "frames/长连杆_3.glb", "category": "frame" }
+    ],
+    "right_knee_link": [
+      { "displayName": "小腿结构件", "path": "frames/小腿_1.glb", "category": "frame" },
+      { "displayName": "小腿轴承锁", "path": "bearings/小腿轴承锁_2.glb", "category": "bearing" },
+      { "displayName": "膝盖标定件", "path": "calibration/膝盖标定数量2_1.glb", "category": "calibration" },
+      { "displayName": "短连杆（副）", "path": "frames/短连杆_3.glb", "category": "frame" }
+    ],
+    "right_ankle_pitch_link": [
+      { "displayName": "脚踝横滚连接件", "path": "frames/脚踝横滚连接件_1.glb", "category": "frame" },
+      { "displayName": "扩孔法兰", "path": "frames/通用连接件扩孔法兰_3.glb", "category": "frame" },
+      { "displayName": "脚踝标定件", "path": "calibration/脚踝标定数量2_1.glb", "category": "calibration" }
+    ],
+    "right_ankle_roll_link": [
+      { "displayName": "脚底板", "path": "frames/脚底板_1.glb", "category": "frame" },
+      { "displayName": "脚底连杆", "path": "frames/脚底连杆_1.glb", "category": "frame" },
+      { "displayName": "脚掌结构件", "path": "frames/20cm脚_3.glb", "category": "frame" },
+      { "displayName": "脚底软胶", "path": "frames/橡胶脚底.glb", "category": "frame", "actionTarget": "right_foot_rubber" },
+      { "displayName": "脚部标定件", "path": "calibration/脚部标定件数量1_1.glb", "category": "calibration" }
+    ]
+  },
+  "disassembly_config": {
+    "screw_sequence": [
+      {
+        "id": "screw_torso_01",
+        "glbPath": "screws/内六角圆柱头螺钉M3x10.glb",
+        "position": [0.04, 0.02, 0.52],
+        "axis": [1, 0, 0],
+        "extractDistance": 0.08,
+        "rotations": 3,
+        "parentLink": "torso_link",
+        "label": "躯干螺丝 1"
+      },
+      {
+        "id": "screw_torso_02",
+        "glbPath": "screws/内六角圆柱头螺钉M3x10.glb",
+        "position": [-0.04, 0.02, 0.52],
+        "axis": [-1, 0, 0],
+        "extractDistance": 0.08,
+        "rotations": 3,
+        "parentLink": "torso_link",
+        "label": "躯干螺丝 2"
+      },
+      {
+        "id": "screw_torso_03",
+        "glbPath": "screws/内六角圆柱头螺钉M3x10.glb",
+        "position": [0.04, -0.02, 0.52],
+        "axis": [1, 0, 0],
+        "extractDistance": 0.08,
+        "rotations": 3,
+        "parentLink": "torso_link",
+        "label": "躯干螺丝 3"
+      },
+      {
+        "id": "screw_torso_04",
+        "glbPath": "screws/内六角圆柱头螺钉M3x10.glb",
+        "position": [-0.04, -0.02, 0.52],
+        "axis": [-1, 0, 0],
+        "extractDistance": 0.08,
+        "rotations": 3,
+        "parentLink": "torso_link",
+        "label": "躯干螺丝 4"
+      },
+      {
+        "id": "screw_left_shoulder_01",
+        "glbPath": "screws/内六角圆柱头螺钉M4x10.glb",
+        "position": [0.03, 0.1, 0.58],
+        "axis": [0, 1, 0],
+        "extractDistance": 0.06,
+        "rotations": 3,
+        "parentLink": "left_arm_pitch_link",
+        "label": "左肩螺丝"
+      },
+      {
+        "id": "screw_right_shoulder_01",
+        "glbPath": "screws/内六角圆柱头螺钉M4x10.glb",
+        "position": [0.03, -0.1, 0.58],
+        "axis": [0, -1, 0],
+        "extractDistance": 0.06,
+        "rotations": 3,
+        "parentLink": "right_arm_pitch_link",
+        "label": "右肩螺丝"
+      },
+      {
+        "id": "screw_left_hip_01",
+        "glbPath": "screws/内六角圆柱头螺钉M4x12.glb",
+        "position": [0.01, 0.06, 0.38],
+        "axis": [0, 1, 0],
+        "extractDistance": 0.06,
+        "rotations": 3,
+        "parentLink": "left_thigh_yaw_link",
+        "label": "左髋螺丝"
+      },
+      {
+        "id": "screw_right_hip_01",
+        "glbPath": "screws/内六角圆柱头螺钉M4x12.glb",
+        "position": [0.01, -0.06, 0.38],
+        "axis": [0, -1, 0],
+        "extractDistance": 0.06,
+        "rotations": 3,
+        "parentLink": "right_thigh_yaw_link",
+        "label": "右髋螺丝"
+      }
+    ],
+    "part_sequence": [
+      { "id": "left_elbow_yaw_link", "parentLink": "left_elbow_yaw_link", "direction": [-0.35, 0.5, -0.1], "distance": 1, "label": "左前臂" },
+      { "id": "right_elbow_yaw_link", "parentLink": "right_elbow_yaw_link", "direction": [-0.35, -0.5, -0.1], "distance": 1, "label": "右前臂" },
+      { "id": "left_elbow_pitch_link", "parentLink": "left_elbow_pitch_link", "direction": [-0.28, 0.42, 0], "distance": 1, "label": "左肘" },
+      { "id": "right_elbow_pitch_link", "parentLink": "right_elbow_pitch_link", "direction": [-0.28, -0.42, 0], "distance": 1, "label": "右肘" },
+      { "id": "left_arm_yaw_link", "parentLink": "left_arm_yaw_link", "direction": [-0.22, 0.35, 0.08], "distance": 1, "label": "左上臂" },
+      { "id": "right_arm_yaw_link", "parentLink": "right_arm_yaw_link", "direction": [-0.22, -0.35, 0.08], "distance": 1, "label": "右上臂" },
+      { "id": "left_arm_roll_link", "parentLink": "left_arm_roll_link", "direction": [-0.18, 0.28, 0.15], "distance": 1, "label": "左肩 Roll" },
+      { "id": "right_arm_roll_link", "parentLink": "right_arm_roll_link", "direction": [-0.18, -0.28, 0.15], "distance": 1, "label": "右肩 Roll" },
+      { "id": "left_arm_pitch_link", "parentLink": "left_arm_pitch_link", "direction": [-0.15, 0.22, 0.18], "distance": 1, "label": "左肩" },
+      { "id": "right_arm_pitch_link", "parentLink": "right_arm_pitch_link", "direction": [-0.15, -0.22, 0.18], "distance": 1, "label": "右肩" },
+      { "id": "torso_link", "parentLink": "torso_link", "direction": [0, 0, 0.25], "distance": 1, "label": "躯干" },
+      { "id": "left_ankle_roll_link", "parentLink": "left_ankle_roll_link", "direction": [0, 0.3, -0.7], "distance": 1, "label": "左脚" },
+      { "id": "right_ankle_roll_link", "parentLink": "right_ankle_roll_link", "direction": [0, -0.3, -0.7], "distance": 1, "label": "右脚" },
+      { "id": "left_ankle_pitch_link", "parentLink": "left_ankle_pitch_link", "direction": [0, 0.28, -0.55], "distance": 1, "label": "左踝" },
+      { "id": "right_ankle_pitch_link", "parentLink": "right_ankle_pitch_link", "direction": [0, -0.28, -0.55], "distance": 1, "label": "右踝" },
+      { "id": "left_knee_link", "parentLink": "left_knee_link", "direction": [0, 0.24, -0.4], "distance": 1, "label": "左膝" },
+      { "id": "right_knee_link", "parentLink": "right_knee_link", "direction": [0, -0.24, -0.4], "distance": 1, "label": "右膝" },
+      { "id": "left_thigh_pitch_link", "parentLink": "left_thigh_pitch_link", "direction": [0, 0.2, -0.25], "distance": 1, "label": "左大腿" },
+      { "id": "right_thigh_pitch_link", "parentLink": "right_thigh_pitch_link", "direction": [0, -0.2, -0.25], "distance": 1, "label": "右大腿" },
+      { "id": "left_thigh_roll_link", "parentLink": "left_thigh_roll_link", "direction": [0, 0.16, -0.15], "distance": 1, "label": "左大腿 Roll" },
+      { "id": "right_thigh_roll_link", "parentLink": "right_thigh_roll_link", "direction": [0, -0.16, -0.15], "distance": 1, "label": "右大腿 Roll" },
+      { "id": "left_thigh_yaw_link", "parentLink": "left_thigh_yaw_link", "direction": [0, 0.12, -0.08], "distance": 1, "label": "左大腿 Yaw" },
+      { "id": "right_thigh_yaw_link", "parentLink": "right_thigh_yaw_link", "direction": [0, -0.12, -0.08], "distance": 1, "label": "右大腿 Yaw" }
+    ]
+  }
+}
 }

@@ -14,7 +14,7 @@
 import { PART_SCREWS } from '../../data/toolData';
 import overviewNodes from './overview_nodes.json';
 import type { RobotDataManifest } from './assemblyManifest';
-import { buildCoreLinkList, buildDisplayNameMap } from './manifestHelpers';
+import { buildCoreLinkList, buildDetailPartsMap, buildDisplayNameMap } from './manifestHelpers';
 
 export type DetailPartCategory =
     | 'frame'
@@ -167,6 +167,11 @@ const SCREW_MODEL_PATH_BY_ID: Record<string, string> = {
     M6x20: 'screws/内六角圆柱头螺钉M6x20.glb',
 };
 
+/**
+ * @deprecated Data has been migrated to assembly_manifest.json detail_parts field.
+ * Use manifest-injected detail parts via injectManifestViewerData() instead.
+ * Kept as fallback for environments without manifest.
+ */
 const EXTRA_LINK_PARTS: Partial<Record<CoreLinkName, DetailPart[]>> = {
     base_link: [
         { displayName: '髋关节固定座', path: 'frames/髋关节固定.glb', category: 'frame' },
@@ -359,9 +364,11 @@ function dedupeParts(parts: DetailPart[]): DetailPart[] {
 }
 
 function buildLinkDetailParts(link: CoreLinkName): DetailPart[] {
+    // Prefer manifest-injected detail_parts over hardcoded EXTRA_LINK_PARTS
+    const extraParts = (_manifestDetailParts?.[link] ?? EXTRA_LINK_PARTS[link]) ?? [];
     return dedupeParts([
         ...buildFrameParts(link),
-        ...(EXTRA_LINK_PARTS[link] ?? []),
+        ...extraParts,
         ...buildScrewParts(link),
     ]);
 }
@@ -370,17 +377,20 @@ function buildLinkDetailParts(link: CoreLinkName): DetailPart[] {
 
 let _manifestCoreLinks: string[] | null = null;
 let _manifestDisplayNames: Record<string, string> | null = null;
+let _manifestDetailParts: Record<string, DetailPart[]> | null = null;
 
-/** 从 manifest 注入核心链接列表和显示名 */
+/** 从 manifest 注入核心链接列表、显示名和细节子零件 */
 export function injectManifestViewerData(manifest: RobotDataManifest): void {
     _manifestCoreLinks = buildCoreLinkList(manifest);
     _manifestDisplayNames = buildDisplayNameMap(manifest);
+    _manifestDetailParts = buildDetailPartsMap(manifest) as Record<string, DetailPart[]> | null;
 }
 
 /** 清除注入数据 */
 export function clearManifestViewerData(): void {
     _manifestCoreLinks = null;
     _manifestDisplayNames = null;
+    _manifestDetailParts = null;
 }
 
 /** 获取核心链接列表（优先 manifest，fallback 硬编码） */

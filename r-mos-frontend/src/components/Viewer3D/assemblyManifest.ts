@@ -147,6 +147,30 @@ export interface ManifestJointEntry {
   limits?: { lower: number; upper: number }
 }
 
+export interface DisassemblyScrewEntry {
+  id: string
+  glbPath: string
+  position: [number, number, number]
+  axis: [number, number, number]
+  extractDistance: number
+  rotations: number
+  parentLink: string
+  label: string
+}
+
+export interface DisassemblyPartEntry {
+  id: string
+  parentLink: string
+  direction: [number, number, number]
+  distance: number
+  label: string
+}
+
+export interface DisassemblyConfig {
+  screw_sequence?: DisassemblyScrewEntry[]
+  part_sequence?: DisassemblyPartEntry[]
+}
+
 /** 完整的机器人数据清单 — 扩展 AssemblyManifest */
 export interface RobotDataManifest extends AssemblyManifest {
   joints?: ManifestJointEntry[]
@@ -158,6 +182,10 @@ export interface RobotDataManifest extends AssemblyManifest {
   tools?: ManifestToolEntry[]
   display_names?: Record<string, string>
   overview_config?: ManifestOverviewConfig
+  /** 每个 link 的细节子零件列表（从 EXTRA_LINK_PARTS 迁移） */
+  detail_parts?: Record<string, Array<{ displayName: string; path: string; category: string; actionTarget?: string }>>
+  /** 拆卸动画序列配置（螺丝抽离 + 零件分离） */
+  disassembly_config?: DisassemblyConfig
 }
 
 function expectRecord(value: unknown, label: string): Record<string, unknown> {
@@ -293,6 +321,12 @@ export function parseRobotDataManifest(raw: unknown): RobotDataManifest {
       : {},
     overview_config: (obj.overview_config && typeof obj.overview_config === 'object')
       ? (obj.overview_config as ManifestOverviewConfig)
+      : undefined,
+    detail_parts: (obj.detail_parts && typeof obj.detail_parts === 'object' && !Array.isArray(obj.detail_parts))
+      ? (obj.detail_parts as Record<string, Array<{ displayName: string; path: string; category: string; actionTarget?: string }>>)
+      : undefined,
+    disassembly_config: (obj.disassembly_config && typeof obj.disassembly_config === 'object' && !Array.isArray(obj.disassembly_config))
+      ? (obj.disassembly_config as DisassemblyConfig)
       : undefined,
   }
 }
