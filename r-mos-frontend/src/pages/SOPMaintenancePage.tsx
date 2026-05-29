@@ -148,7 +148,10 @@ interface BreadcrumbItem {
     displayName: string;
 }
 
-// 分组中文名
+/**
+ * @deprecated 已被 manifest assembly_groups.display_name 替代。
+ * 当 manifest 不可用时作为 fallback。
+ */
 const GROUP_NAMES: Record<string, string> = {
     'base': '底座',
     'torso': '躯干',
@@ -178,6 +181,10 @@ const SOP_EXECUTION_STATE_LABEL: Partial<Record<SOPExecutionState, string>> = {
     [SOPExecutionState.BLOCKED]: '已阻断',
 };
 
+/**
+ * @deprecated 已被 manifest assembly_groups.child_links 替代。
+ * 当 manifest 不可用时作为 fallback。
+ */
 const UPPER_BODY_CORE_LINKS = [
     'torso_link',
     'left_arm_pitch_link',
@@ -192,6 +199,10 @@ const UPPER_BODY_CORE_LINKS = [
     'right_elbow_yaw_link',
 ] as const;
 
+/**
+ * @deprecated 已被 manifest assembly_groups.child_links 替代。
+ * 当 manifest 不可用时作为 fallback。
+ */
 const REMAINING_CORE_LINKS = [
     'base_link',
     'left_thigh_yaw_link',
@@ -208,7 +219,13 @@ const REMAINING_CORE_LINKS = [
     'right_ankle_roll_link',
 ] as const;
 
-/** 从 manifest 装配组派生上身/下身分组 */
+/**
+ * 从 manifest 装配组派生上身/下身分组。
+ *
+ * 分类策略（无需硬编码 key 列表）：
+ * - 按 assembly_groups 顺序将所有组分为两半：前半为上身，后半为下身。
+ * - 适用于任意机器人型号，只要 manifest 遵循"上肢在前、下肢在后"的排列惯例。
+ */
 function buildLinkGroupsFromManifest(
   manifest: { overview_config?: { assembly_groups?: Record<string, { display_name: string; child_links: string[]; explode_dir: number[] }> } } | null
 ): {
@@ -219,21 +236,21 @@ function buildLinkGroupsFromManifest(
   const groups = (manifest as any)?.overview_config?.assembly_groups
   if (!groups) return null
 
-  const upperGroupKeys = ['torso_link', 'left_arm_yaw_link', 'left_elbow_yaw_link', 'right_arm_yaw_link', 'right_elbow_yaw_link']
-  const lowerGroupKeys = ['base_link', 'left_thigh_pitch_link', 'left_knee_link', 'left_ankle_roll_link', 'right_thigh_pitch_link', 'right_knee_link', 'right_ankle_roll_link']
+  const entries = Object.entries(groups) as [string, { display_name: string; child_links: string[] }][]
+  const half = Math.ceil(entries.length / 2)
 
   const upperLinks: string[] = []
   const lowerLinks: string[] = []
   const groupNames: Record<string, string> = {}
 
-  for (const [key, group] of Object.entries(groups) as [string, { display_name: string; child_links: string[] }][]) {
+  entries.forEach(([key, group], idx) => {
     groupNames[key] = group.display_name
-    if (upperGroupKeys.includes(key)) {
+    if (idx < half) {
       upperLinks.push(...group.child_links)
-    } else if (lowerGroupKeys.includes(key)) {
+    } else {
       lowerLinks.push(...group.child_links)
     }
-  }
+  })
 
   return { upperLinks, lowerLinks, groupNames }
 }
