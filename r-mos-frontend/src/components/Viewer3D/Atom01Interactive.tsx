@@ -17,7 +17,7 @@ import { getExplodePartsForLink, CATEGORY_COLORS, REFERENCE_NODE_IDS, type Detai
 import { useAtom01AssemblyData } from './hooks/useAtom01AssemblyData';
 import { Atom01AssemblyRenderer } from './Atom01AssemblyRenderer';
 import type { RobotDataManifest } from './assemblyManifest';
-import { buildJointAxisMap, buildPartMetadata } from './manifestHelpers';
+import { buildJointAxisMap, buildPartMetadata, buildExplodeOffsetMap } from './manifestHelpers';
 
 // 零件信息接口
 export interface PartInfo {
@@ -504,7 +504,10 @@ const SubPartsGroup: React.FC<{
     );
 };
 
-// 爆炸偏移量配置 — 加大间距以容纳子零件
+/**
+ * @deprecated Hardcoded fallback — use buildExplodeOffsetMap(manifest) when manifest is available.
+ * Kept to ensure explode view works without a manifest.
+ */
 const EXPLODE_OFFSETS: Record<string, [number, number, number]> = {
     'base_link': [0, 0, 0],
     'torso_link': [0, 0, 0.4],
@@ -551,6 +554,7 @@ const InteractiveLinkMesh: React.FC<{
     fadeOpacity?: number;         // Gate-1: fade 透明度
     suppressExplodeOffset?: boolean; // 单节点隔离态下抑制 link 级偏移，避免核心件跑离视野中心
     preferAssemblyView?: boolean; // 装配树已覆盖时，降低旧主模型的遮挡感
+    explodeOffsetMap?: Record<string, [number, number, number]>; // 合并后的爆炸偏移量（manifest 优先覆盖硬编码）
 }> = ({
     name,
     modelBasePath,
@@ -569,6 +573,7 @@ const InteractiveLinkMesh: React.FC<{
     fadeOpacity: fadedOpacityProp = 0.15,
     suppressExplodeOffset = false,
     preferAssemblyView = false,
+    explodeOffsetMap,
 }) => {
         const meshRef = useRef<THREE.Group>(null);
         const { scene } = useGLTF(`${modelBasePath}/${name}.glb`);
@@ -715,7 +720,8 @@ const InteractiveLinkMesh: React.FC<{
         });
 
         // 计算爆炸主要偏移（平滑达到峰值，避免突然弹出）
-        const explodeOffset = EXPLODE_OFFSETS[name] || [0, 0, 0];
+        // 优先使用从 manifest 合并的 explodeOffsetMap，回退到硬编码 EXPLODE_OFFSETS
+        const explodeOffset = (explodeOffsetMap ?? EXPLODE_OFFSETS)[name] || [0, 0, 0];
         const primaryExplodeFactor = smoothstep(0, 0.45, explodeAmount);
         const explodeOffsetFactor = suppressExplodeOffset ? 0 : 1;
         const currentOffset: [number, number, number] = [
@@ -820,6 +826,12 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
     // Manifest-driven part metadata; merges hardcoded fallback with manifest data.
     const partMetadata = useMemo(
         () => ({ ...PART_METADATA, ...(buildPartMetadata(manifest) ?? {}) }),
+        [manifest],
+    );
+
+    // Manifest-driven explode offset map; merges hardcoded fallback with manifest data.
+    const explodeOffsets = useMemo(
+        () => ({ ...EXPLODE_OFFSETS, ...(buildExplodeOffsetMap(manifest) ?? {}) }),
         [manifest],
     );
 
@@ -999,6 +1011,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
                     fadeOpacity={fadeOpacity}
                     suppressExplodeOffset={suppressMainLinkOffset}
                     preferAssemblyView={Boolean(assemblyAdapter?.tree.nodes[name])}
+                    explodeOffsetMap={explodeOffsets}
                     onPointerOver={isClickable ? handlePointerOver(name) : undefined}
                     onPointerOut={isClickable ? handlePointerOut : undefined}
                     onClick={isClickable ? handleClick(name) : undefined}

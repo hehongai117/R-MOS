@@ -47,6 +47,22 @@ export function buildDisplayNameMap(
   return manifest?.display_names ?? {};
 }
 
+/**
+ * Build a per-node explode offset map from the manifest's explode_offsets array.
+ * Returns null when the manifest has no explode_offsets (caller should use its own fallback).
+ */
+export function buildExplodeOffsetMap(
+  manifest: RobotDataManifest | null | undefined
+): Record<string, [number, number, number]> | null {
+  const offsets = manifest?.explode_offsets;
+  if (!offsets?.length) return null;
+  const map: Record<string, [number, number, number]> = {};
+  for (const entry of offsets) {
+    map[entry.node_id] = entry.offset;
+  }
+  return map;
+}
+
 // ---- buildPartMetadata ----
 
 type PartGroup = 'base' | 'torso' | 'left_arm' | 'right_arm' | 'left_leg' | 'right_leg';

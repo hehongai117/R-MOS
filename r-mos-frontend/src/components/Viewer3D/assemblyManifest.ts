@@ -117,8 +117,7 @@ export interface ManifestCameraPreset {
 
 export interface ManifestExplodeOffset {
   node_id: string
-  direction: Vec3
-  distance: number
+  offset: Vec3
 }
 
 export interface ManifestToolEntry {

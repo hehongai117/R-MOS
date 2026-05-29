@@ -1868,5 +1868,30 @@
   ],
   "screw_instances": [],
   "constraints": [],
-  "explode_offsets": []
+  "explode_offsets": [
+    { "node_id": "base_link", "offset": [0, 0, 0] },
+    { "node_id": "torso_link", "offset": [0, 0, 0.4] },
+    { "node_id": "left_arm_pitch_link", "offset": [-0.3, 0.4, 0.3] },
+    { "node_id": "left_arm_roll_link", "offset": [-0.35, 0.5, 0.3] },
+    { "node_id": "left_arm_yaw_link", "offset": [-0.4, 0.6, 0.15] },
+    { "node_id": "left_elbow_pitch_link", "offset": [-0.5, 0.75, 0] },
+    { "node_id": "left_elbow_yaw_link", "offset": [-0.6, 0.9, -0.15] },
+    { "node_id": "right_arm_pitch_link", "offset": [-0.3, -0.4, 0.3] },
+    { "node_id": "right_arm_roll_link", "offset": [-0.35, -0.5, 0.3] },
+    { "node_id": "right_arm_yaw_link", "offset": [-0.4, -0.6, 0.15] },
+    { "node_id": "right_elbow_pitch_link", "offset": [-0.5, -0.75, 0] },
+    { "node_id": "right_elbow_yaw_link", "offset": [-0.6, -0.9, -0.15] },
+    { "node_id": "left_thigh_yaw_link", "offset": [0, 0.25, -0.15] },
+    { "node_id": "left_thigh_roll_link", "offset": [0, 0.3, -0.3] },
+    { "node_id": "left_thigh_pitch_link", "offset": [0, 0.35, -0.45] },
+    { "node_id": "left_knee_link", "offset": [0, 0.4, -0.7] },
+    { "node_id": "left_ankle_pitch_link", "offset": [0, 0.5, -1.0] },
+    { "node_id": "left_ankle_roll_link", "offset": [0, 0.55, -1.3] },
+    { "node_id": "right_thigh_yaw_link", "offset": [0, -0.25, -0.15] },
+    { "node_id": "right_thigh_roll_link", "offset": [0, -0.3, -0.3] },
+    { "node_id": "right_thigh_pitch_link", "offset": [0, -0.35, -0.45] },
+    { "node_id": "right_knee_link", "offset": [0, -0.4, -0.7] },
+    { "node_id": "right_ankle_pitch_link", "offset": [0, -0.5, -1.0] },
+    { "node_id": "right_ankle_roll_link", "offset": [0, -0.55, -1.3] }
+  ]
 }
