@@ -285,14 +285,6 @@ function MonitorPage() {
     [monitorJoints],
   )
 
-  const faultJoints = useMemo(
-    () =>
-      monitorJoints
-        .filter((joint) => joint.error_code && joint.meta)
-        .map((joint) => joint.meta!.atomJoint),
-    [monitorJoints],
-  )
-
   const highlightLinks = useMemo(
     () =>
       monitorJoints
