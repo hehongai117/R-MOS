@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { create } from 'zustand'
 
+import { API_ROOT } from '@/api/config'
 import type { GuidanceMode } from '@/types/user'
 
 export type UserRole = 'student' | 'teacher' | 'admin'
@@ -62,9 +63,6 @@ interface AuthState {
   }) => Promise<string>
   setUser: (user: AuthUser) => void
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const API_ROOT = `${API_BASE_URL}/api/v1`
 
 export const AUTH_STORAGE_KEYS = {
   accessToken: 'rmos_access_token',
@@ -150,16 +148,40 @@ function readStoredSession() {
   }
 }
 
-async function fetchPreference(accessToken: string): Promise<PreferenceResponse | null> {
+async function fetchPreference(accessToken: string): Promise<{ preference: PreferenceResponse | null; newToken?: string; authExpired?: boolean }> {
   try {
     const response = await authHttp.get<PreferenceResponse>('/agent/preference', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     })
-    return response.data
-  } catch {
-    return null
+    return { preference: response.data }
+  } catch (err: any) {
+    if (err?.response?.status === 401) {
+      // Token expired — try refreshing
+      const refreshToken = getStoredRefreshToken()
+      if (refreshToken) {
+        try {
+          const refreshRes = await authHttp.post<AuthTokenResponse>('/auth/refresh', {
+            refresh_token: refreshToken,
+          })
+          const newToken = refreshRes.data.access_token
+          // Persist the new tokens
+          persistSession(refreshRes.data, localStorage.getItem(AUTH_STORAGE_KEYS.email) ?? undefined)
+          // Retry preference with new token
+          const retryRes = await authHttp.get<PreferenceResponse>('/agent/preference', {
+            headers: { Authorization: `Bearer ${newToken}` },
+          })
+          return { preference: retryRes.data, newToken }
+        } catch {
+          // Both access token and refresh token are invalid
+          return { preference: null, authExpired: true }
+        }
+      }
+      // No refresh token available
+      return { preference: null, authExpired: true }
+    }
+    return { preference: null }
   }
 }
 
@@ -189,7 +211,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isInitialized: true,
     })
 
-    const preference = await fetchPreference(payload.access_token)
+    const { preference, newToken } = await fetchPreference(payload.access_token)
+    if (newToken) {
+      set({ accessToken: newToken })
+    }
     if (preference) {
       set((state) => ({
         user: state.user
@@ -293,7 +318,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isInitialized: true,
       })
 
-      const preference = await fetchPreference(stored.accessToken)
+      const { preference, newToken, authExpired } = await fetchPreference(stored.accessToken)
+      if (authExpired) {
+        // Session is completely dead — clear everything to avoid infinite reload loop
+        clearSessionStorage()
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          defaultRoute: null,
+          isInitialized: true,
+        })
+        return
+      }
+      if (newToken) {
+        set({ accessToken: newToken })
+      }
       if (preference) {
         set((state) => ({
           user: state.user
