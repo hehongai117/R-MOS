@@ -170,8 +170,8 @@ _SKIP_PREFIXES: tuple[str, ...] = ("__MACOSX",)
 # Regex: " (1)", " (2)", " (1)(1)", " (2)(3)" etc.
 _DL_DUP_RE = re.compile(r" \(\d+\)(\(\d+\))*$")
 
-# Regex: Finder copies — stem ending with a space + one or more digits, e.g. " 2", " 3"
-_FINDER_COPY_RE = re.compile(r" \d+$")
+# Regex: Finder copies — stem ending with a space + single digit 2-9 (Finder starts at 2)
+_FINDER_COPY_RE = re.compile(r" [2-9]$")
 
 
 def _should_skip_name(name: str) -> bool:
@@ -223,6 +223,9 @@ def _collect_files(src: Path) -> list[Path]:
         for entry in entries:
             name = entry.name
             if _should_skip_name(name):
+                continue
+
+            if entry.is_symlink():
                 continue
 
             if entry.is_dir():
@@ -315,6 +318,7 @@ async def _seed_robot(
 
         # Create RobotModel
         robot = RobotModel(
+            id=spec.robot_id,
             brand=spec.brand,
             model_name=spec.model_name,
             version="1.0",
