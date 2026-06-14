@@ -342,7 +342,7 @@ async def _seed_robot(
                 robot_model_id=robot.id,
                 asset_type=AssetType.UPLOAD_ORIGINAL,
                 file_path=str(rel_path),
-                file_size=file_size,
+                file_size=min(file_size, 2_147_483_647),  # cap to int32 max
                 asset_metadata={"source": "opensource_seed"},
             )
             session.add(asset)
