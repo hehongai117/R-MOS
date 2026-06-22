@@ -1,0 +1,96 @@
+{
+  "kb-1782105386904": {
+    "id": "kb-1782105386904",
+    "type": "solution",
+    "status": "APPROVED",
+    "title": "ABB motor handling",
+    "content": "ABB only",
+    "summary": "",
+    "scope": {
+      "device_model": [
+        "ABB-IRB120"
+      ],
+      "part_type": [],
+      "version_range": null,
+      "scenario": []
+    },
+    "contraindications": {
+      "device_model": [],
+      "part_material": [],
+      "conditions": []
+    },
+    "risk_level": "R1",
+    "confidence": {
+      "evidence_count": 0,
+      "success_rate": 1.0,
+      "reviewer_count": 1,
+      "average_rating": 5.0
+    },
+    "expiry": null,
+    "expired_at": null,
+    "version": 1,
+    "history": [
+      {
+        "version": 1,
+        "change": "Created",
+        "author": "2",
+        "timestamp": 1782105386904
+      }
+    ],
+    "source_task_id": null,
+    "source_evidence_ids": [],
+    "created_at": 1782105386904,
+    "created_by": "2",
+    "approved_by": "2",
+    "approved_at": 1782105386911,
+    "tags": [],
+    "category": ""
+  },
+  "kb-1782105386907": {
+    "id": "kb-1782105386907",
+    "type": "solution",
+    "status": "APPROVED",
+    "title": "FANUC motor handling",
+    "content": "FANUC only",
+    "summary": "",
+    "scope": {
+      "device_model": [
+        "FANUC-M10"
+      ],
+      "part_type": [],
+      "version_range": null,
+      "scenario": []
+    },
+    "contraindications": {
+      "device_model": [],
+      "part_material": [],
+      "conditions": []
+    },
+    "risk_level": "R1",
+    "confidence": {
+      "evidence_count": 0,
+      "success_rate": 1.0,
+      "reviewer_count": 1,
+      "average_rating": 5.0
+    },
+    "expiry": null,
+    "expired_at": null,
+    "version": 1,
+    "history": [
+      {
+        "version": 1,
+        "change": "Created",
+        "author": "2",
+        "timestamp": 1782105386907
+      }
+    ],
+    "source_task_id": null,
+    "source_evidence_ids": [],
+    "created_at": 1782105386907,
+    "created_by": "2",
+    "approved_by": "2",
+    "approved_at": 1782105386915,
+    "tags": [],
+    "category": ""
+  }
+}

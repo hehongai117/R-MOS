@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sqlalchemy import select, update
-from app.core.database import async_session
+from app.core.database import AsyncSessionLocal as async_session
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus
 from app.models.sop import SOP
 from app.models.knowledge_document import KnowledgeDocument
