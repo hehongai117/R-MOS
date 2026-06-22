@@ -36,7 +36,9 @@ def test_e2e_student_training_flow(
         _fake_generate,
     )
 
-    user_id, _email, login_payload = register_and_login(client, email_prefix="e2e_student_flow")
+    user_id, _email, login_payload = register_and_login(
+        client, email_prefix="e2e_student_flow", role="student"
+    )
     assert login_payload["role"] == "student"
 
     generate_resp = client.post(

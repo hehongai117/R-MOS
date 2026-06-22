@@ -10,7 +10,9 @@ from sqlalchemy.pool import StaticPool
 import app.models as app_models  # noqa: F401  # ensure metadata loaded
 from app.core.database import get_db
 from app.models.base import Base
+from app.models.school import School
 from main import app
+from tests.e2e.helpers import E2E_SCHOOL_NAME
 
 
 @pytest.fixture()
@@ -25,6 +27,7 @@ def e2e_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
     async def _init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
 
     asyncio.run(_init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)

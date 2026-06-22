@@ -17,8 +17,12 @@ import app.models as app_models  # noqa: F401  # ensure metadata is fully loaded
 from app.core.database import get_db
 from app.models.base import Base
 from app.models.rbac import Permission, Role, RolePermission, UserRole
+from app.models.school import School
 from app.models.user import User
 from main import app
+
+# onboarding 注册需要的白名单学校（测试统一使用）
+TEST_SCHOOL_NAME = "测试学校"
 
 
 @pytest.fixture(scope="module")
@@ -32,6 +36,7 @@ def knowledge_api_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=TEST_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -58,6 +63,8 @@ def _register_and_login(client: TestClient, *, email: str) -> str:
             "email": email,
             "password": "StrongPass123",
             "full_name": "Knowledge API User",
+            "role": "teacher",
+            "school_name": TEST_SCHOOL_NAME,
         },
     )
     assert register_resp.status_code == 201
@@ -295,7 +302,7 @@ def test_knowledge_upload_creates_job_and_supports_status_query(
     )
     assert upload_resp.status_code == 200
     upload_payload = upload_resp.json()
-    assert upload_payload["status"] == "completed"
+    assert upload_payload["status"] == "uploaded"
     assert upload_payload["filename"] == "tiny.pdf"
     assert upload_payload["brand"] == "ABB"
     job_id = upload_payload["job_id"]
@@ -307,4 +314,4 @@ def test_knowledge_upload_creates_job_and_supports_status_query(
     assert status_resp.status_code == 200
     status_payload = status_resp.json()
     assert status_payload["job_id"] == job_id
-    assert status_payload["status"] == "completed"
+    assert status_payload["status"] == "ready"

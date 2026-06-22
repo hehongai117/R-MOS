@@ -14,9 +14,12 @@ from app.core.database import get_db
 from app.core.security import hash_token
 from app.models.base import Base
 from app.models.refresh_token import RefreshToken
+from app.models.school import School
 from app.models.user import User
 from main import app
 import app.models as app_models  # noqa: F401  # 确保所有模型注册到 metadata
+
+TEST_SCHOOL_NAME = "测试学校"
 
 
 def _build_client() -> tuple[TestClient, async_sessionmaker]:
@@ -29,6 +32,7 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=TEST_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -51,6 +55,8 @@ def test_auth_register_success_returns_user_id() -> None:
                 "email": "new_user@example.com",
                 "password": "StrongPass123",
                 "full_name": "测试用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert response.status_code == 201
@@ -80,6 +86,8 @@ def test_auth_register_duplicate_email_returns_user_001() -> None:
             "email": "dup_user@example.com",
             "password": "StrongPass123",
             "full_name": "重复用户",
+            "role": "teacher",
+            "school_name": TEST_SCHOOL_NAME,
         }
         first = client.post("/api/v1/auth/register", json=payload)
         assert first.status_code == 201
@@ -102,6 +110,8 @@ def test_auth_register_weak_password_returns_user_002() -> None:
                 "email": "weak_user@example.com",
                 "password": "123",
                 "full_name": "弱密码用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert response.status_code == 400
@@ -121,6 +131,8 @@ def test_auth_login_success_returns_tokens() -> None:
                 "email": "login_user@example.com",
                 "password": "StrongPass123",
                 "full_name": "登录用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert register_resp.status_code == 201
@@ -150,6 +162,8 @@ def test_auth_login_wrong_password_returns_auth_001() -> None:
                 "email": "wrong_pass_user@example.com",
                 "password": "StrongPass123",
                 "full_name": "登录失败用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert register_resp.status_code == 201
@@ -190,6 +204,8 @@ def test_auth_refresh_success_returns_new_access_token() -> None:
                 "email": "refresh_user@example.com",
                 "password": "StrongPass123",
                 "full_name": "刷新用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert register_resp.status_code == 201
@@ -246,6 +262,8 @@ def test_auth_refresh_revoked_or_expired_returns_401_code() -> None:
                 "email": "refresh_denied_user@example.com",
                 "password": "StrongPass123",
                 "full_name": "刷新拒绝用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert register_resp.status_code == 201
@@ -278,6 +296,8 @@ def test_auth_logout_revokes_refresh_token() -> None:
                 "email": "logout_user@example.com",
                 "password": "StrongPass123",
                 "full_name": "登出用户",
+                "role": "teacher",
+                "school_name": TEST_SCHOOL_NAME,
             },
         )
         assert register_resp.status_code == 201

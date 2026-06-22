@@ -13,8 +13,12 @@ from app.core.database import get_db
 from app.models.audit_event import AuditEvent
 from app.models.base import Base
 from app.models.rbac import Permission, Role, RolePermission, UserRole
+from app.models.school import School
 from app.models.user import User
 from main import app
+
+# onboarding 注册需要的白名单学校（测试统一使用）
+TEST_SCHOOL_NAME = "测试学校"
 import app.models as app_models  # noqa: F401  # 确保模型全部注册
 
 
@@ -28,6 +32,7 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=TEST_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -122,7 +127,13 @@ async def _latest_audit_event(
 def _register_and_login(client: TestClient, *, email: str, password: str, full_name: str) -> str:
     register_resp = client.post(
         "/api/v1/auth/register",
-        json={"email": email, "password": password, "full_name": full_name},
+        json={
+            "email": email,
+            "password": password,
+            "full_name": full_name,
+            "role": "teacher",
+            "school_name": TEST_SCHOOL_NAME,
+        },
     )
     assert register_resp.status_code == 201
 

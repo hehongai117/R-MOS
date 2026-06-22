@@ -48,6 +48,11 @@ async def test_dispatch_sets_failed_on_error(scheduler, mock_task):
     mock_db = AsyncMock()
     mock_task.task_type = AnalysisTaskType.PDF_EXTRACT
 
+    # 失败分支会回滚后重新查询 task（res.scalar_one()），让该重查返回同一个 mock_task
+    refetch_result = MagicMock()
+    refetch_result.scalar_one.return_value = mock_task
+    mock_db.execute.return_value = refetch_result
+
     with patch.object(scheduler, "_get_processor") as mock_get:
         mock_get.return_value = AsyncMock(side_effect=ValueError("PDF 解析失败"))
 

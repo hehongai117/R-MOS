@@ -14,7 +14,11 @@ from sqlalchemy.pool import StaticPool
 import app.models as app_models  # noqa: F401
 from app.core.database import get_db
 from app.models.base import Base
+from app.models.school import School
 from main import app
+
+# onboarding 注册需要的白名单学校（测试统一使用）
+TEST_SCHOOL_NAME = "测试学校"
 
 
 @pytest.fixture(scope="module")
@@ -28,6 +32,7 @@ def training_execution_env() -> tuple[TestClient, async_sessionmaker[AsyncSessio
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=TEST_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -52,6 +57,8 @@ def _register_and_login(client: TestClient, *, email: str) -> tuple[int, str]:
             "email": email,
             "password": "StrongPass123",
             "full_name": "Training Execution User",
+            "role": "teacher",
+            "school_name": TEST_SCHOOL_NAME,
         },
     )
     assert register_resp.status_code == 201
