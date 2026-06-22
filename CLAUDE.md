@@ -21,6 +21,40 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 - **Assessment System**: Multi-dimensional scoring and feedback generation
 - **Multi-Robot Platform** (in progress): Teacher uploads robot docs → AI analysis → structured data → student use
 - **Universal 3D Viewer** (done): Manifest-driven 3D renderer with URDF→GLB auto-pipeline
+- **Modularization** (in progress): Migrating hardcoded data to manifest/config-driven architecture
+
+## Modularization Progress
+
+> Master plan: `docs/superpowers/plans/2026-05-18-modularization-master-plan.md`
+
+| Phase | Name | Tasks | Status |
+|-------|------|-------|--------|
+| 1 | 机器人数据清单化 (Robot Data Manifest) | 12 | ✅ Done |
+| 2 | SOP 裁决脚本数据库化 | 10 | ✅ Done |
+| 3 | 前端配置驱动化 | 6 | ✅ Done |
+| 4 | 后端配置外部化 | 5 | ✅ Done |
+
+**Branch:** `phase1-modularization` (frontend repo)
+
+### Key Modularization Files (Phase 2-4 output)
+
+- `r-mos-backend/app/schemas/sop.py` — SOPAdjudicationResponse schemas
+- `r-mos-backend/scripts/seed_adjudication_sops.py` — 31 adjudication SOPs seed script
+- `r-mos-frontend/src/api/sopScripts.ts` — SOP adjudication API client
+- `r-mos-frontend/src/hooks/useSOPScripts.ts` — SOP loading hook (API-driven)
+- `r-mos-frontend/src/config/nav.ts` — Centralized menu configuration
+- `r-mos-frontend/src/config/routes.ts` — Route permission table
+- `r-mos-frontend/src/config/brand.ts` — Brand name and version
+- `r-mos-frontend/src/config/statusLabels.ts` — Centralized status label maps
+- `r-mos-frontend/src/config/agentIntents.ts` — AI workbench intents config
+- `r-mos-backend/data/config/` — YAML configs (seed, mock faults, prompts)
+
+### Key Modularization Files (Phase 1 output)
+
+- `r-mos-frontend/src/components/Viewer3D/assemblyManifest.ts` — Extended with RobotDataManifest types
+- `r-mos-frontend/src/components/Viewer3D/useRobotDataManifest.ts` — Unified manifest loading hook
+- `r-mos-frontend/src/adjudication/data/manifestAdapter.ts` — Manifest→adjudication type bridge
+- `r-mos-backend/data/robot-assets/1/manifests/assembly_manifest.json` — Extended ATOM-01 manifest
 
 ## Multi-Robot Platform Progress
 

@@ -79,3 +79,6 @@ PROJECT_DIRECTORY_FULL.txt
 
 # Robot asset storage (managed by backend, not tracked in git)
 /data/robot-assets/
+
+# 修正: 机器人资产实际路径在 r-mos-backend 下
+r-mos-backend/data/robot-assets/
