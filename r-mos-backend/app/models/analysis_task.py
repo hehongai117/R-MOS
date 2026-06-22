@@ -2,7 +2,7 @@
 import enum
 from sqlalchemy import Column, Integer, Text, ForeignKey, Enum, DateTime, JSON
 from sqlalchemy.orm import relationship
-from .base import Base, TimestampMixin
+from .base import TZDateTime, Base, TimestampMixin
 
 
 class AnalysisTaskType(str, enum.Enum):
@@ -37,7 +37,7 @@ class AnalysisTask(Base, TimestampMixin):
     input_document_ids = Column(JSON, default=list, comment="输入文档 ID 列表")
     output_summary = Column(JSON, nullable=True, comment="分析结果摘要")
     error_message = Column(Text, nullable=True, comment="失败原因")
-    completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
+    completed_at = Column(TZDateTime, nullable=True, comment="完成时间")
 
     robot_model = relationship("RobotModel")
 

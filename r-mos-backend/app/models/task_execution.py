@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .base import Base, TimestampMixin, utcnow
+from .base import TZDateTime, Base, TimestampMixin, utcnow
 
 
 class TaskExecution(Base, TimestampMixin):
@@ -16,8 +16,8 @@ class TaskExecution(Base, TimestampMixin):
     diagnosis_trace_id = Column(String(100), nullable=True, comment="诊断追踪 ID")
     fault_type = Column(String(50), nullable=True, index=True, comment="故障类型")
     status = Column(String(20), default="in_progress", nullable=False, comment="in_progress/completed/abandoned")
-    started_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(TZDateTime, default=utcnow, nullable=False)
+    completed_at = Column(TZDateTime, nullable=True)
 
     step_results = relationship("TaskStepResult", back_populates="execution", cascade="all, delete-orphan", lazy="selectin")
 

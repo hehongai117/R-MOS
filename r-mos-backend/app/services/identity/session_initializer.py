@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -222,7 +222,7 @@ class SessionInitializer:
     async def _check_unfinished_session(self, user_id: int) -> Optional[dict]:
         """UF-06-c-1: 检查未完成的训练会话"""
         # 检查 24 小时内是否有进行中的训练
-        cutoff = datetime.utcnow() - timedelta(hours=24)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         result = await self.db.execute(
             select(TrainingSession)
             .where(

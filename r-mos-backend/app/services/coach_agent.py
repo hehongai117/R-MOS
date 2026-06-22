@@ -7,6 +7,8 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from enum import Enum
 
+from app.core.enums import RiskLevel
+
 
 class ActionType(str, Enum):
     """Valid action types"""
@@ -18,14 +20,6 @@ class ActionType(str, Enum):
     EXPLAIN = "explain"
     DEMO = "demo"
     CHECKPOINT = "checkpoint"
-
-
-class RiskLevel(str, Enum):
-    """Risk levels"""
-    R0 = "R0"  # No risk
-    R1 = "R1"  # Low risk
-    R2 = "R2"  # Medium risk
-    R3 = "R3"  # High risk
 
 
 class RiskHandling(str, Enum):

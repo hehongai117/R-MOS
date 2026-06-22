@@ -4,7 +4,7 @@ Snapshot服务（V2.3完整版）
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.models.snapshot import Snapshot
@@ -76,7 +76,7 @@ class SnapshotService:
             snapshot = Snapshot(
                 task_id=task_id,
                 step_index=step_index,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 trigger=trigger,
                 joint_states=joint_states_json,
                 sensor_data=sensor_data_json,

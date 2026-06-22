@@ -11,7 +11,7 @@ import asyncio
 import logging
 from typing import Dict, Optional
 from fastapi import WebSocket
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 
 from app.adapters.factory import AdapterFactory
@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 class ConnectionState:
     """单个连接的状态追踪"""
     websocket: WebSocket
-    connected_at: datetime = field(default_factory=datetime.utcnow)
-    last_pong: datetime = field(default_factory=datetime.utcnow)
+    connected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_pong: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     is_healthy: bool = True
     missed_pongs: int = 0
 
@@ -89,7 +89,7 @@ class ConnectionManager:
         
         # 处理 Pong 响应
         if message == "pong" or message == '{"type":"pong"}':
-            state.last_pong = datetime.utcnow()
+            state.last_pong = datetime.now(timezone.utc)
             state.missed_pongs = 0
             state.is_healthy = True
             logger.debug(f"收到心跳响应 [{conn_id}]")
@@ -100,7 +100,7 @@ class ConnectionManager:
             try:
                 await asyncio.sleep(self.HEARTBEAT_INTERVAL)
                 
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 stale_connections = []
                 
                 for conn_id, state in list(self.connections.items()):
@@ -148,7 +148,7 @@ class ConnectionManager:
                 
                 message = TelemetryMessage(
                     type="telemetry",
-                    timestamp=datetime.utcnow().isoformat() + "Z",
+                    timestamp=datetime.now(timezone.utc).isoformat() + "Z",
                     payload=TelemetryPayload(
                         joints=joints,
                         sensors=sensors,

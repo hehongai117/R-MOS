@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.models.task import Task, TaskStatus
@@ -77,7 +77,7 @@ class TaskService:
             )
         
         task.status = TaskStatus.IN_PROGRESS
-        task.started_at = datetime.utcnow()
+        task.started_at = datetime.now(timezone.utc)
         
         # 创建TASK_STARTED事件
         await self.event_service.create_event(
@@ -106,7 +106,7 @@ class TaskService:
         6. 检查是否完成
         7. 返回响应
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         
         # 1. 加载Task和SOP
         task = await self._get_task(task_id)
@@ -182,7 +182,7 @@ class TaskService:
                 action=request.action,
                 parameters=request.parameters,
                 result="success",
-                duration_ms=int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                duration_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
             )
             
             # 尝试创建Snapshot（失败不阻断，符合骨架§5.4）
@@ -253,7 +253,7 @@ class TaskService:
                 action=request.action,
                 parameters=request.parameters,
                 result="success",
-                duration_ms=int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                duration_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
             )
             
             # 创建Snapshot（仅为已执行步骤）
@@ -318,7 +318,7 @@ class TaskService:
         
         # 1. 更新状态
         task.status = TaskStatus.COMPLETED
-        task.completed_at = datetime.utcnow()
+        task.completed_at = datetime.now(timezone.utc)
         
         # 2. 调用评分引擎（V2.3核心集成）
         try:
@@ -360,7 +360,7 @@ class TaskService:
             )
         
         task.status = TaskStatus.PAUSED
-        task.paused_at = datetime.utcnow()
+        task.paused_at = datetime.now(timezone.utc)
         
         await self.event_service.create_event(
             task_id=task_id,

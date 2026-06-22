@@ -7,15 +7,20 @@ from app.models.robot_model import RobotStatus
 
 
 ALLOWED_EXTENSIONS = {
-    ".pdf", ".docx", ".doc",
-    ".step", ".stp", ".stl",
+    # 文档
+    ".pdf", ".docx", ".doc", ".md", ".txt",
+    # CAD / 3D 模型
+    ".step", ".stp", ".stl", ".obj", ".dae",
     ".glb", ".gltf",
+    # 机器人描述
+    ".urdf", ".xacro", ".xml", ".json", ".yaml", ".yml",
+    # 图片
     ".png", ".jpg", ".jpeg",
 }
 
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
-_CAD_EXTENSIONS = {".step", ".stp", ".stl"}
+_CAD_EXTENSIONS = {".step", ".stp", ".stl", ".obj", ".dae"}
 _MODEL_EXTENSIONS = {".glb", ".gltf"}
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 

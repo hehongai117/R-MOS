@@ -1,7 +1,7 @@
 """
 自定义异常类（基础设施）
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 
@@ -23,7 +23,7 @@ class BusinessRuleViolation(Exception):
         self.message = message
         self.code = code
         self.details = details or {}
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(self.message)
 
 
@@ -38,7 +38,7 @@ class AdapterConnectionError(Exception):
     
     def __init__(self, message: str):
         self.message = message
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(self.message)
 
 
@@ -50,7 +50,7 @@ class AuthenticationRequiredError(Exception):
 
     def __init__(self, message: str = "未登录或令牌无效"):
         self.message = message
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(self.message)
 
 
@@ -67,7 +67,7 @@ class ResourceNotFoundError(Exception):
         self.resource_type = resource_type
         self.resource_id = resource_id
         self.message = f"{resource_type}不存在: {resource_id}"
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(self.message)
 
 
@@ -91,7 +91,7 @@ class AccessDeniedError(Exception):
         self.resource_id = str(resource_id) if resource_id is not None else None
         self.reason = reason
         self.message = message
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(self.message)
 
 
@@ -206,5 +206,5 @@ class SecurityViolationError(Exception):
         self.code = code
         self.message = message
         self.details = details or {}
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(self.message)

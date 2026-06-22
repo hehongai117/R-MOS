@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.services.websocket_manager import manager
 
@@ -58,7 +58,7 @@ class TeacherMonitorService:
 
         message = {
             "type": event_type,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "data": data,
         }
 
@@ -86,7 +86,7 @@ class TeacherMonitorService:
 
         message = {
             "type": "step_warning",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "data": {
                 "user_id": user_id,
                 "step_id": step_id,
@@ -119,7 +119,7 @@ class TeacherMonitorService:
         # 构建消息
         ws_message = {
             "type": "teacher_message",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "data": {
                 "user_id": user_id,
                 "message": message,

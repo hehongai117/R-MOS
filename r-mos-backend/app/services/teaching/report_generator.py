@@ -14,7 +14,7 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +34,7 @@ from app.schemas.report import (
 from app.services.scoring_service import ScoringService
 from app.services.llm.router import LLMRouter, LLMProvider
 from app.services.teaching.group_stats import GroupStatsService
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,7 @@ class ReportGenerator:
             sop_name=sop.name if sop else None,
             user_id=task.user_id,
             started_at=task.created_at,
-            completed_at=task.completed_at or datetime.now(),
+            completed_at=task.completed_at or datetime.now(timezone.utc),
             total_duration_seconds=int(
                 (task.completed_at - task.created_at).total_seconds()
             ) if task.completed_at else 0,
@@ -247,8 +248,8 @@ class ReportGenerator:
 
             response = await self.llm_router.chat(
                 messages=messages,
-                provider=LLMProvider.OPENAI,
-                model="gpt-4",
+                provider=LLMProvider.DEEPSEEK,
+                model=settings.LLM_MODEL_ADVANCED,
                 temperature=0.7,
                 max_tokens=2000,
             )

@@ -3,7 +3,7 @@ Observation service for CRUD operations.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import select, func
@@ -18,8 +18,6 @@ from app.schemas.observation import (
 )
 
 def _to_naive(value: datetime | None) -> datetime | None:
-    if value and value.tzinfo is not None:
-        return value.replace(tzinfo=None)
     return value
 
 
@@ -49,7 +47,7 @@ class ObservationService:
         return ObservationListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
     async def create_observation(self, request: ObservationCreate) -> ObservationResponse:
-        ingest_time = datetime.utcnow()
+        ingest_time = datetime.now(timezone.utc)
         observation = Observation(
             id=str(uuid.uuid4()),
             observation_type=request.observation_type.value,

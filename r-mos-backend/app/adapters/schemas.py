@@ -4,7 +4,7 @@
 """
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Literal
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -89,7 +89,7 @@ class RobotInfo(BaseModel):
     model: str = Field(..., description="机器人型号")
     firmware_version: str = Field(..., description="固件版本")
     runtime_status: RobotStatus = Field(..., description="运行状态")
-    last_update: datetime = Field(default_factory=datetime.utcnow, description="最后更新时间")
+    last_update: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="最后更新时间")
 
 
 class PartDefinition(BaseModel):
@@ -112,7 +112,7 @@ class FaultInjectionResult(BaseModel):
     fault_code: str = Field(..., description="故障代码")
     target_part: str = Field(..., description="目标部件")
     severity: str = Field(..., description="严重程度")
-    injected_at: datetime = Field(default_factory=datetime.utcnow, description="注入时间")
+    injected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="注入时间")
     message: Optional[str] = Field(None, description="附加信息")
 
 

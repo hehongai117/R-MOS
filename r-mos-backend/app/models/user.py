@@ -5,7 +5,7 @@ V0.2 UF-01: 新增 role, teacher_id, class_id, hint_level 字段
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 
-from .base import Base, TimestampMixin
+from .base import TZDateTime, Base, TimestampMixin
 
 
 class User(Base, TimestampMixin):
@@ -19,7 +19,7 @@ class User(Base, TimestampMixin):
     full_name = Column(String(200), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     is_verified = Column(Boolean, nullable=False, default=False)
-    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(TZDateTime, nullable=True)
 
     # UF-01-a: 新增字段
     role = Column(String(20), nullable=False, default="student", index=True)  # student/teacher/admin

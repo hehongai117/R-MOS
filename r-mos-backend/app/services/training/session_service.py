@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select, update, and_
@@ -56,7 +56,7 @@ class SessionService:
             status="active",
             current_step=0,
             project_snapshot=project_snapshot,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             total_duration=0,
             ab_group=ab_group,
         )
@@ -135,7 +135,7 @@ class SessionService:
         existing = result.scalar_one_or_none()
 
         record_id = existing.record_id if existing else str(uuid.uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         if existing:
             # 更新已有记录
@@ -205,11 +205,11 @@ class SessionService:
 
         # 计算已持续时长
         if session.started_at:
-            duration = int((datetime.utcnow() - session.started_at).total_seconds())
+            duration = int((datetime.now(timezone.utc) - session.started_at).total_seconds())
             session.total_duration += duration
 
         session.status = "paused"
-        session.paused_at = datetime.utcnow()
+        session.paused_at = datetime.now(timezone.utc)
 
         await self.db.commit()
         await self.db.refresh(session)
@@ -241,7 +241,7 @@ class SessionService:
             return session
 
         session.status = "active"
-        session.started_at = datetime.utcnow()
+        session.started_at = datetime.now(timezone.utc)
         session.paused_at = None
 
         await self.db.commit()
@@ -314,7 +314,7 @@ class SessionService:
 
         # 计算最终时长
         if session.started_at and session.status == "active":
-            duration = int((datetime.utcnow() - session.started_at).total_seconds())
+            duration = int((datetime.now(timezone.utc) - session.started_at).total_seconds())
             session.total_duration += duration
 
         session.status = "abandoned"
@@ -330,7 +330,7 @@ class SessionService:
         Returns:
             过期会话数量
         """
-        cutoff = datetime.utcnow() - timedelta(hours=48)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
 
         # 查询并更新
         result = await self.db.execute(
@@ -346,7 +346,7 @@ class SessionService:
         for session in sessions:
             # 计算最终时长
             if session.started_at:
-                duration = int((datetime.utcnow() - session.started_at).total_seconds())
+                duration = int((datetime.now(timezone.utc) - session.started_at).total_seconds())
                 session.total_duration += duration
             session.status = "expired"
 
@@ -385,11 +385,11 @@ class SessionService:
 
         # 计算最终时长
         if session.started_at:
-            duration = int((datetime.utcnow() - session.started_at).total_seconds())
+            duration = int((datetime.now(timezone.utc) - session.started_at).total_seconds())
             session.total_duration += duration
 
         session.status = "submitted"
-        session.submitted_at = datetime.utcnow()
+        session.submitted_at = datetime.now(timezone.utc)
         session.submit_type = submit_type
         if score is not None:
             session.score = score

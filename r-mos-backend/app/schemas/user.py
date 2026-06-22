@@ -4,9 +4,16 @@
 用于请求验证和响应序列化
 """
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field, EmailStr, field_validator
-from app.models.user import UserRole
+
+
+class UserRole(str, Enum):
+    STUDENT = "student"
+    TEACHER = "teacher"
+    ADMIN = "admin"
+    TRAINEE = "trainee"
 
 
 # ============ 基础Schema ============

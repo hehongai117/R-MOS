@@ -8,16 +8,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.services.llm import LLMProvider, llm_router
+from app.services.llm.prompts import PROMPT_RISK_SCORER
+from app.core.enums import RiskLevel
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-
-class RiskLevel(str, Enum):
-    """风险等级"""
-    LOW = "low"         # 0-30
-    MEDIUM = "medium"   # 31-60
-    HIGH = "high"       # 61-80
-    CRITICAL = "critical"  # 81-100
 
 
 @dataclass
@@ -119,11 +114,11 @@ class LLMRiskScorer:
 
         response = await self.llm.chat(
             messages=[
-                {"role": "system", "content": "你是一个风险评估专家。"},
+                {"role": "system", "content": PROMPT_RISK_SCORER},
                 {"role": "user", "content": prompt}
             ],
-            provider=LLMProvider.OPENAI,
-            model="gpt-3.5-turbo",
+            provider=LLMProvider.DEEPSEEK,
+            model=settings.LLM_MODEL_BASIC,
             temperature=0.3,
             max_tokens=300,
         )

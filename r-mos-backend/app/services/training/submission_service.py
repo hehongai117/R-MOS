@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Any
 from dataclasses import dataclass, field
 
@@ -299,11 +299,11 @@ class SubmissionService:
 
         # 计算最终时长
         if session.started_at and session.status == "active":
-            duration = int((datetime.utcnow() - session.started_at).total_seconds())
+            duration = int((datetime.now(timezone.utc) - session.started_at).total_seconds())
             session.total_duration += duration
 
         session.status = "abandoned"
-        session.submitted_at = datetime.utcnow()
+        session.submitted_at = datetime.now(timezone.utc)
         session.submit_type = "abandoned"
 
         await self.db.commit()
@@ -409,7 +409,7 @@ class SubmissionService:
             "user_id": user_id,
             "submit_type": submit_type,
             "submitted_by": submitted_by,
-            "submitted_at": datetime.utcnow().isoformat(),
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
             "total_steps": total_steps,
             "completed_steps": completed_count,
             "failed_steps": failed_count,
@@ -427,7 +427,7 @@ class SubmissionService:
             session_id=session_id,
             user_id=user_id,
             submit_type=submit_type,
-            submitted_at=datetime.utcnow(),
+            submitted_at=datetime.now(timezone.utc),
             payload=payload,
             steps_summary=steps_summary,
         )
@@ -479,11 +479,11 @@ class SubmissionService:
 
         # 计算最终时长
         if session.started_at:
-            duration = int((datetime.utcnow() - session.started_at).total_seconds())
+            duration = int((datetime.now(timezone.utc) - session.started_at).total_seconds())
             session.total_duration += duration
 
         session.status = status
-        session.submitted_at = datetime.utcnow()
+        session.submitted_at = datetime.now(timezone.utc)
         session.submit_type = submit_type
         if score is not None:
             session.score = score

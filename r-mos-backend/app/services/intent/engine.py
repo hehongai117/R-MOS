@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from app.services.llm import LLMProvider, llm_router, prompt_engine
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -194,8 +195,8 @@ class IntentEngine:
 
         response = await self.llm.chat(
             messages=messages,
-            provider=LLMProvider.OPENAI,
-            model="gpt-3.5-turbo",
+            provider=LLMProvider.DEEPSEEK,
+            model=settings.LLM_MODEL_BASIC,
             temperature=0.3,
             max_tokens=500,
         )

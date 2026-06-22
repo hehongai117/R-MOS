@@ -5,7 +5,7 @@ UF-10-b: Skill Profile Service
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from dataclasses import dataclass
 
@@ -86,7 +86,7 @@ class SkillProfileService:
         # 更新统计
         profile.total_sessions += 1
         profile.total_duration += submission.get("total_duration", 0)
-        profile.last_trained_at = datetime.utcnow()
+        profile.last_trained_at = datetime.now(timezone.utc)
 
         # 评估升级
         await self._check_level_up(profile)
@@ -260,7 +260,7 @@ class SkillProfileService:
             increment = max(int(fail_increment), 1)
             if weak_step:
                 weak_step.fail_count += increment
-                weak_step.last_failed_at = datetime.utcnow()
+                weak_step.last_failed_at = datetime.now(timezone.utc)
                 weak_step.is_resolved = False
 
                 # 合并失败标签
@@ -273,7 +273,7 @@ class SkillProfileService:
                     step_id=step_id,
                     sop_id=sop_id,
                     fail_count=increment,
-                    last_failed_at=datetime.utcnow(),
+                    last_failed_at=datetime.now(timezone.utc),
                     fail_tags=fail_tags,
                     is_resolved=False,
                 )

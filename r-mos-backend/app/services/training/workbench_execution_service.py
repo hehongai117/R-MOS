@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -61,7 +61,7 @@ class TrainingWorkbenchExecutionService:
         target_path.write_bytes(content)
 
         content_hash = hashlib.sha256(content).hexdigest()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         content_uri = f"local://training-evidence/{session_id}/{stored_name}"
         bundle = await self.evidence_service.create_bundle(
             EvidenceBundleCreate(
@@ -229,7 +229,7 @@ class TrainingWorkbenchExecutionService:
             "role": "assistant",
             "content": self._strip_reasoning_blocks(response.content)
             or "请先确认关键工具状态与现场证据，再继续执行下一步。",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
     async def _get_owned_session(self, user_id: int, session_id: str):

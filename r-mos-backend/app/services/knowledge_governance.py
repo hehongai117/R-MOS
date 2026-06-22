@@ -5,7 +5,16 @@ from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 from enum import Enum
 from datetime import datetime, timedelta
+
+from app.core.enums import RiskLevel
+from pathlib import Path
+import json
+import logging
 import time
+
+logger = logging.getLogger(__name__)
+
+_DEFAULT_STORE_PATH = Path("data/knowledge_store.json")
 
 
 class KnowledgeStatus(str, Enum):
@@ -24,14 +33,6 @@ class KnowledgeType(str, Enum):
     DOCUMENT = "document"
     TIP = "tip"
     WARNING = "warning"
-
-
-class RiskLevel(str, Enum):
-    """Risk levels"""
-    R0 = "R0"
-    R1 = "R1"
-    R2 = "R2"
-    R3 = "R3"
 
 
 class ExpiryType(str, Enum):
@@ -170,9 +171,30 @@ class KnowledgeGovernance:
     - Confidence calculation
     """
 
-    def __init__(self):
+    def __init__(self, store_path: Optional[Path] = None):
+        self._store_path = store_path or _DEFAULT_STORE_PATH
         self._knowledge_store: Dict[str, KnowledgeEntry] = {}
         self._approval_requests: Dict[str, ApprovalRequest] = {}
+        self._load()
+
+    def _load(self) -> None:
+        """Load knowledge store from JSON file."""
+        if not self._store_path.exists():
+            return
+        try:
+            raw = json.loads(self._store_path.read_text(encoding="utf-8"))
+            for entry_id, entry_data in raw.items():
+                self._knowledge_store[entry_id] = KnowledgeEntry.model_validate(entry_data)
+        except Exception:
+            logger.warning("Failed to load knowledge store from %s", self._store_path, exc_info=True)
+
+    def _save(self) -> None:
+        """Persist knowledge store to JSON file (atomic write)."""
+        self._store_path.parent.mkdir(parents=True, exist_ok=True)
+        data = {eid: e.model_dump(mode="json") for eid, e in self._knowledge_store.items()}
+        tmp = self._store_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(self._store_path)
 
     def create_knowledge(
         self,
@@ -208,6 +230,7 @@ class KnowledgeGovernance:
         )
 
         self._knowledge_store[entry_id] = entry
+        self._save()
         return entry
 
     def submit_for_review(self, entry_id: str) -> tuple[bool, str]:
@@ -220,6 +243,7 @@ class KnowledgeGovernance:
             return False, f"Cannot submit in {entry.status.value} status"
 
         entry.status = KnowledgeStatus.PENDING
+        self._save()
         return True, "Submitted for review"
 
     def approve_knowledge(
@@ -247,6 +271,7 @@ class KnowledgeGovernance:
             if entry.expiry:
                 entry.expired_at = self._calculate_expiry(entry.expiry)
 
+            self._save()
             return True, "Approved"
         else:
             entry.status = KnowledgeStatus.REJECTED
@@ -257,6 +282,7 @@ class KnowledgeGovernance:
                 author=request.reviewer_id,
                 timestamp=int(time.time() * 1000)
             ))
+            self._save()
             return True, "Rejected"
 
     def _update_confidence_on_review(
@@ -299,6 +325,8 @@ class KnowledgeGovernance:
                     entry.status = KnowledgeStatus.EXPIRED
                     expired_ids.append(entry_id)
 
+        if expired_ids:
+            self._save()
         return expired_ids
 
     def search_knowledge(
@@ -353,6 +381,11 @@ class KnowledgeGovernance:
     ) -> float:
         """Calculate relevance score"""
         score = 0.0
+
+        # When no query text and no device_model filter, return a baseline
+        # score so that all matching entries are listed (browse mode).
+        if not query.query and not query.device_model:
+            return 0.5
 
         # Text match
         if query.query:
@@ -432,6 +465,7 @@ class KnowledgeGovernance:
         # Reset to pending for re-approval
         entry.status = KnowledgeStatus.PENDING
 
+        self._save()
         return True, f"Updated to version {entry.version}"
 
     def get_statistics(self) -> Dict[str, Any]:

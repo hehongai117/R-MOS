@@ -3,7 +3,7 @@
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import secrets
 
@@ -54,7 +54,7 @@ def _error_response(
                 "message": message,
                 "details": {},
             },
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "request_id": trace_id,
         },
     )
@@ -154,7 +154,7 @@ async def register(
 
     # 7. 自动签发 token（复用已有的辅助函数）
     access_token, refresh_token = _issue_token_pair()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db.add(
         AccessToken(
             user_id=user.id,
@@ -214,7 +214,7 @@ async def login(
         )
 
     access_token, refresh_token = _issue_token_pair()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     user.last_login_at = now
     db.add(
         AccessToken(
@@ -279,7 +279,7 @@ async def refresh_token(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     token_hash_value = hash_token(payload.refresh_token)
     session_result = await db.execute(
         select(RefreshToken).where(RefreshToken.refresh_token_hash == token_hash_value)
@@ -356,7 +356,7 @@ async def logout(
 
     if session is not None and not session.is_revoked:
         session.is_revoked = True
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         session.revoked_at = now
 
         access_tokens_result = await db.execute(

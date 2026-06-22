@@ -6,7 +6,7 @@ import logging
 import math
 from typing import Any, Optional
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -307,13 +307,16 @@ class KnowledgeHub:
             return False
         try:
             expires_at = self._parse_datetime(str(expires_at_raw))
-            return expires_at <= datetime.utcnow()
+            return expires_at <= datetime.now(timezone.utc)
         except Exception:
             return False
 
     def _parse_datetime(self, raw: str) -> datetime:
         normalized = raw.replace("Z", "+00:00")
-        return datetime.fromisoformat(normalized).replace(tzinfo=None)
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
 
 
 # 全局实例

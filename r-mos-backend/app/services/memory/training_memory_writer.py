@@ -209,6 +209,7 @@ class TrainingMemoryWriter:
         """使用 LLM 生成对话摘要"""
         try:
             from app.services.llm.router import LLMRouter, LLMProvider
+            from app.core.config import settings
 
             router = LLMRouter()
 
@@ -220,8 +221,8 @@ class TrainingMemoryWriter:
 
             response = await router.chat(
                 messages=[{"role": "user", "content": prompt}],
-                provider=LLMProvider.OPENAI,
-                model="gpt-4",
+                provider=LLMProvider.DEEPSEEK,
+                model=settings.LLM_MODEL_ADVANCED,
                 temperature=0.3,
                 max_tokens=200,
             )

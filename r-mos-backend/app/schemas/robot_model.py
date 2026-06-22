@@ -46,10 +46,10 @@ class RobotAssetResponse(BaseModel):
     asset_type: str
     file_path: str
     file_size: Optional[int] = None
-    metadata: Optional[dict] = None
+    metadata: Optional[dict] = Field(None, alias="asset_metadata")
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class FileUploadResponse(BaseModel):

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
     ]
 
     # Adapter配置
@@ -29,6 +31,7 @@ class Settings(BaseSettings):
     MOCK_JOINT_COUNT: int = 10
     MOCK_SIMULATION_SPEED: float = 1.0
     MOCK_BASE_TEMPERATURE: float = 40.0
+    DEFAULT_ROBOT_MODEL_ID: int = 1
 
     # WebSocket配置
     WEBSOCKET_HEARTBEAT_INTERVAL: int = 30
@@ -51,6 +54,8 @@ class Settings(BaseSettings):
     LLM_FALLBACK_PROVIDER: str = "minimax"
     LLM_TIMEOUT_SECONDS: float = 10.0
     LLM_ENABLE_MOCK_FALLBACK: bool = True
+    LLM_MODEL_ADVANCED: str = "deepseek-chat"    # 复杂任务（诊断、生成、报告）
+    LLM_MODEL_BASIC: str = "deepseek-chat"       # 简单任务（意图识别、聊天、增强）
 
     # AI Assistant
     AI_ASSISTANT_MAX_HISTORY: int = 20

@@ -4,7 +4,7 @@ TelemetryContextBuilder - P1-2
 """
 from dataclasses import dataclass, field
 from typing import Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.adapters.schemas import JointState, SensorData
 
@@ -155,7 +155,7 @@ class TelemetryContextBuilder:
 
         # 6. 构建上下文
         context = TelemetryContext(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             robot_status=robot_status,
             joint_count=len(joint_states),
             anomaly_joints=anomaly_joints,
@@ -409,11 +409,12 @@ class TelemetryContextBuilder:
 
         try:
             from app.services.llm.router import LLMProvider
+            from app.core.config import settings
 
             response = await self.llm_router.chat(
                 messages=[{"role": "user", "content": prompt}],
-                provider=LLMProvider.OPENAI,
-                model="gpt-4",
+                provider=LLMProvider.DEEPSEEK,
+                model=settings.LLM_MODEL_ADVANCED,
                 temperature=0.3,
                 max_tokens=500,
             )

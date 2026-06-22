@@ -4,7 +4,7 @@ PostgreSQL-based persistent memory
 """
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,7 +87,7 @@ class LongTermMemory:
                 trace_id=trace_id,
                 belief_state=belief_state,
                 decision=decision,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
 
             db.add(record)

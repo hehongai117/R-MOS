@@ -2,7 +2,7 @@
 Teaching domain API endpoints.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -757,7 +757,7 @@ async def create_evidence_card(
         card_type=request.card_type,
         title=f"{request.card_type} 证据卡片",
         summary="基于时间轴日志/事件/快照聚合生成",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         references=references_json,
         media_preview={},
     )

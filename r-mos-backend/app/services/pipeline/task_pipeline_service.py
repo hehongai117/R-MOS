@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import select
@@ -53,7 +53,7 @@ class TaskPipelineService:
             sop_id=sop_id,
             user_id=student_id,
             status=TaskStatus.IN_PROGRESS.value,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         self.db.add(task)
         await self.db.flush()
@@ -118,7 +118,7 @@ class TaskPipelineService:
             return {"error": "Execution not found"}
 
         execution.status = "completed"
-        execution.completed_at = datetime.utcnow()
+        execution.completed_at = datetime.now(timezone.utc)
 
         # Update parent task
         task_stmt = select(Task).where(Task.id == execution.task_id)
@@ -126,7 +126,7 @@ class TaskPipelineService:
         task = task_result.scalar_one_or_none()
         if task:
             task.status = TaskStatus.COMPLETED.value
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
 
         await self.db.commit()
 

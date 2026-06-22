@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.llm import llm_router, LLMProvider
 from app.services.knowledge.hub import KnowledgeHub
+from app.core.config import settings
 from app.services.knowledge.query_embedding_service import query_embedding_service
 
 logger = logging.getLogger(__name__)
@@ -251,8 +252,8 @@ class ProjectGenerator:
         try:
             response = await llm_router.chat(
                 messages=[{"role": "user", "content": prompt}],
-                provider=LLMProvider.OPENAI,
-                model="gpt-4",
+                provider=LLMProvider.DEEPSEEK,
+                model=settings.LLM_MODEL_ADVANCED,
                 temperature=0.3,
                 max_tokens=4000,
             )

@@ -1,8 +1,10 @@
 """AI 助手聊天端点"""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import get_db
 from app.services.ai_assistant_service import (
     AIAssistantService,
     ChatContext,
@@ -38,7 +40,7 @@ class AIChatResponse(BaseModel):
 
 
 @router.post("/ai-assistant/chat", response_model=AIChatResponse, tags=["ai-assistant"])
-async def chat_with_assistant(request: AIChatRequest):
+async def chat_with_assistant(request: AIChatRequest, db: AsyncSession = Depends(get_db)):
     """与 AI 助手对话 — 支持 SOP 练习辅导和全局通用维保问答两种模式"""
     context = ChatContext(
         sop_id=request.sop_id,
@@ -58,5 +60,6 @@ async def chat_with_assistant(request: AIChatRequest):
         message=request.message,
         context=context,
         history=history,
+        db=db,
     )
     return AIChatResponse(reply=result.reply, hint_level_used=result.hint_level_used)

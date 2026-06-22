@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -395,7 +395,7 @@ class PreflightCheckService:
             passed_checks=passed_checks,
             warning_checks=warning_checks,
             blocked_checks=blocked_checks,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             task_id=task_id,
             user_id=user_id,
             sop_id=sop_id,

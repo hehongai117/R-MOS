@@ -10,7 +10,7 @@ SOP 质量监控服务
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import select, func, and_
@@ -111,7 +111,7 @@ class SOPQualityMonitor:
 
         # 计算每个步骤的失败率
         alerts = []
-        cutoff_date = datetime.now() - timedelta(days=time_range_days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=time_range_days)
 
         for step in steps:
             stats = await self._calculate_step_failure_rate(

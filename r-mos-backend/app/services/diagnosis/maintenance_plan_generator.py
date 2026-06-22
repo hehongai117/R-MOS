@@ -13,6 +13,7 @@ from app.services.diagnosis.schemas import (
     MaintenanceAction,
 )
 from app.services.diagnosis.fault_diagnosis_engine import FaultDiagnosisEngine
+from app.services.llm.prompts import PROMPT_MAINTENANCE_PLAN
 
 logger = logging.getLogger(__name__)
 
@@ -362,6 +363,7 @@ class MaintenancePlanGenerator:
         根据具体情况进行定制化
         """
         from app.services.llm.router import LLMProvider
+        from app.core.config import settings
 
         primary = diagnosis_result.primary_hypothesis
 
@@ -397,11 +399,11 @@ class MaintenancePlanGenerator:
         try:
             response = await self.llm_router.chat(
                 messages=[
-                    {"role": "system", "content": "你是一个维保方案优化专家。"},
+                    {"role": "system", "content": PROMPT_MAINTENANCE_PLAN},
                     {"role": "user", "content": prompt}
                 ],
-                provider=LLMProvider.OPENAI,
-                model="gpt-4",
+                provider=LLMProvider.DEEPSEEK,
+                model=settings.LLM_MODEL_ADVANCED,
                 temperature=0.3,
                 max_tokens=800,
             )

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 
-from .base import Base, utcnow
+from .base import TZDateTime, Base, utcnow
 
 
 class MultimodalTimeline(Base):
@@ -21,7 +21,7 @@ class MultimodalTimeline(Base):
     scope_id = Column(String(64), nullable=False, index=True)
     trace_id = Column(String(64), nullable=True, index=True)
     created_by_user_id = Column(String(64), nullable=True, index=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    created_at = Column(TZDateTime, nullable=False, default=utcnow, index=True)
 
 
 class TimelineSegment(Base):
@@ -39,7 +39,7 @@ class TimelineSegment(Base):
     start_ts_ms = Column(BigInteger, nullable=False, index=True)
     end_ts_ms = Column(BigInteger, nullable=False, index=True)
     payload = Column(JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    created_at = Column(TZDateTime, nullable=False, default=utcnow, index=True)
 
 
 class AlignmentMap(Base):
@@ -56,7 +56,7 @@ class AlignmentMap(Base):
     segment_id = Column(Integer, ForeignKey("timeline_segments.id", ondelete="CASCADE"), nullable=False, index=True)
     ref_id = Column(String(64), nullable=True, index=True)
     score = Column(Float, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    created_at = Column(TZDateTime, nullable=False, default=utcnow, index=True)
 
 
 class EvidenceCard(Base):
@@ -74,7 +74,7 @@ class EvidenceCard(Base):
     card_type = Column(String(64), nullable=False)
     title = Column(String(255), nullable=False)
     summary = Column(Text, nullable=False)
-    timestamp = Column(DateTime(timezone=True), nullable=True)
+    timestamp = Column(TZDateTime, nullable=True)
     references = Column(JSON, nullable=False)
     media_preview = Column(JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    created_at = Column(TZDateTime, nullable=False, default=utcnow, index=True)

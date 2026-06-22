@@ -4,7 +4,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.adapters.factory import AdapterFactory
 
@@ -79,7 +79,7 @@ async def health_check():
 
     return HealthCheckResponse(
         status=overall_status,
-        timestamp=datetime.utcnow().isoformat() + "Z",
+        timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         version="2.2.0",
         checks=checks
     )

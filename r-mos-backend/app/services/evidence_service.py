@@ -3,7 +3,7 @@ Evidence bundle service.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 import uuid
@@ -59,8 +59,7 @@ def _compute_bundle_hash(bundle: EvidenceBundleCreate) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 def _to_naive(value: datetime | None) -> datetime | None:
-    if value and value.tzinfo is not None:
-        return value.replace(tzinfo=None)
+    """Identity — TIMESTAMPTZ columns accept aware datetimes directly."""
     return value
 
 
@@ -92,7 +91,7 @@ class EvidenceService:
     async def create_bundle(self, request: EvidenceBundleCreate) -> EvidenceBundleResponse:
         bundle_id = str(uuid.uuid4())
         bundle_hash = _compute_bundle_hash(request)
-        ingest_time = datetime.utcnow()
+        ingest_time = datetime.now(timezone.utc)
         sealed_at = ingest_time
 
         bundle = EvidenceBundle(

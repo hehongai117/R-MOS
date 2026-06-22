@@ -36,7 +36,8 @@ class SOPService:
             applicable_model=request.applicable_model,
             category=request.category,
             difficulty_level=request.difficulty_level,
-            estimated_time=request.estimated_time
+            estimated_time=request.estimated_time,
+            robot_model_id=getattr(request, 'robot_model_id', None),
         )
         
         self.db.add(sop)

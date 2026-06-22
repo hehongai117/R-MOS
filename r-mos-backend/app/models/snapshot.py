@@ -4,7 +4,7 @@ Snapshot（快照）数据模型（V2.4 故障惩罚支持）
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .base import Base, TimestampMixin, utcnow
+from .base import TZDateTime, Base, TimestampMixin, utcnow
 
 
 class Snapshot(Base, TimestampMixin):
@@ -17,7 +17,7 @@ class Snapshot(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     step_index = Column(Integer, nullable=False, comment="步骤索引")
-    timestamp = Column(DateTime(timezone=True), default=utcnow, nullable=False, comment="快照时间")
+    timestamp = Column(TZDateTime, default=utcnow, nullable=False, comment="快照时间")
     trigger = Column(String(50), nullable=False, comment="触发原因：step_execution/manual/error")
     
     # 机器人状态数据（JSON）

@@ -49,6 +49,7 @@ class SOPBase(BaseModel):
 
 class SOPCreate(SOPBase):
     """创建SOP（来自拆包B，包含嵌套steps）"""
+    robot_model_id: Optional[int] = Field(None, description="关联机器人型号ID")
     steps: List[SOPStepCreate] = Field(..., min_length=1, description="SOP步骤列表")
 
 class SOPUpdate(BaseModel):

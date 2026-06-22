@@ -4,7 +4,7 @@ Diagnosis service for teaching attempts (Phase2 P0).
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import select
@@ -77,7 +77,7 @@ class DiagnosisService:
             findings=findings,
             recommendations=recommendations,
             step_diagnoses=step_diagnoses,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(timezone.utc),
             source_refs=DiagnosisSourceRefs(attempt_evidence_id=evidence_link_id),
         )
 

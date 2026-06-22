@@ -4,7 +4,7 @@ RBAC 路由守卫（Gate-1 / B-001）。
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable
 
 from fastapi import Depends, Header, Request
@@ -58,7 +58,7 @@ async def get_current_actor(
     if token is None:
         raise AuthenticationRequiredError("未登录，请先登录后重试")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     token_hash = hash_token(token)
     access_token_result = await db.execute(
         select(AccessToken).where(AccessToken.access_token_hash == token_hash)

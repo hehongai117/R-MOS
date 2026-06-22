@@ -3,7 +3,7 @@ Assessment provider and external assessment services.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import select, func
@@ -35,8 +35,6 @@ from app.schemas.assessment import (
 
 
 def _to_naive(value: datetime | None) -> datetime | None:
-    if value and value.tzinfo is not None:
-        return value.replace(tzinfo=None)
     return value
 
 class AssessmentService:
@@ -69,7 +67,7 @@ class AssessmentService:
         return AssessmentProviderListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
     async def create_provider(self, request: AssessmentProviderCreate) -> AssessmentProviderResponse:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         provider = AssessmentProvider(
             id=str(uuid.uuid4()),
             provider_name=request.provider_name,
@@ -133,7 +131,7 @@ class AssessmentService:
             provider.contact_email = request.contact_email
         if request.status is not None:
             provider.status = request.status.value
-        provider.updated_at = datetime.utcnow()
+        provider.updated_at = datetime.now(timezone.utc)
 
         await self.db.commit()
         await self.db.refresh(provider)
@@ -177,7 +175,7 @@ class AssessmentService:
         if not provider:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         assessment = ExternalAssessment(
             id=str(uuid.uuid4()),
             provider_id=request.provider_id,
@@ -266,7 +264,7 @@ class AssessmentService:
         if not assessment:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         assessment.status = new_status.value
         assessment.status_updated_at = now
 
@@ -350,8 +348,8 @@ class AssessmentService:
             actor_id=actor_id,
             reason_code=reason_code.value if hasattr(reason_code, "value") else str(reason_code),
             reason_note=reason_note,
-            event_time=datetime.utcnow(),
-            ingest_time=datetime.utcnow(),
+            event_time=datetime.now(timezone.utc),
+            ingest_time=datetime.now(timezone.utc),
             trace_id=str(uuid.uuid4()),
         )
         self.db.add(event)

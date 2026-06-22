@@ -3,7 +3,7 @@ Teaching domain service layer (Phase 1).
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Union
 from enum import Enum
 
@@ -296,7 +296,7 @@ class TeachingService:
             )
         attempt.status = normalized
         if normalized == "abandoned":
-            attempt.abandoned_at = datetime.utcnow()
+            attempt.abandoned_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(attempt)
         return attempt
@@ -311,7 +311,7 @@ class TeachingService:
             )
         attempt.status = "graded"
         attempt.score = score
-        attempt.graded_at = datetime.utcnow()
+        attempt.graded_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(attempt)
         return attempt

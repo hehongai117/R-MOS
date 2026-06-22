@@ -17,8 +17,6 @@ from app.schemas.incident import (
 
 
 def _to_naive(value: datetime | None) -> datetime | None:
-    if value and value.tzinfo is not None:
-        return value.replace(tzinfo=None)
     return value
 
 

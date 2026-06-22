@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,8 +111,8 @@ class ApprovalService:
         approval.status = target_status
         approval.reason = reason
         approval.decided_by_user_id = str(decided_by_user_id)
-        approval.decided_at = datetime.utcnow()
-        approval.updated_at = datetime.utcnow()
+        approval.decided_at = datetime.now(timezone.utc)
+        approval.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(approval)
         return ApprovalTransitionResult(approval=approval, changed=True, reason=reason)
@@ -154,7 +154,7 @@ class ApprovalService:
             }
             command.status = "failed"
 
-        command.updated_at = datetime.utcnow()
+        command.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(command)
         await self.db.refresh(tool_call)
@@ -169,7 +169,7 @@ class ApprovalService:
         tool_call.status = "failed"
         tool_call.error_message = "approval_rejected"
         command.status = "failed"
-        command.updated_at = datetime.utcnow()
+        command.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(command)
         await self.db.refresh(tool_call)

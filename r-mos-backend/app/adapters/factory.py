@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _load_joint_names_from_manifest(robot_id: int = 1) -> list[str] | None:
+def _load_joint_names_from_manifest(robot_id: int = settings.DEFAULT_ROBOT_MODEL_ID) -> list[str] | None:
     """从 assembly_manifest.json 读取非 fixed 类型关节名称列表。
 
     如果文件不存在或解析失败，返回 None（由 MockRobotAdapter 使用硬编码 fallback）。
@@ -84,7 +84,7 @@ class AdapterFactory:
                         "base_temperature": settings.MOCK_BASE_TEMPERATURE,
                     }
                     # 尝试从 assembly_manifest.json 读取关节列表，失败时由 adapter 自身 fallback 到硬编码
-                    joint_names = _load_joint_names_from_manifest(robot_id=1)
+                    joint_names = _load_joint_names_from_manifest(robot_id=settings.DEFAULT_ROBOT_MODEL_ID)
                     if joint_names:
                         mock_config["joint_names"] = joint_names
                     cls._instance = MockRobotAdapter(config=mock_config)

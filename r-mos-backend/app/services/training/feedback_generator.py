@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Any
 from enum import Enum
 
@@ -398,6 +398,6 @@ class FeedbackGenerator:
             "next_learning_plan": feedback.next_learning_plan,
             "teaching_diagnosis": feedback.teaching_diagnosis,
         }
-        submission.feedback_generated_at = datetime.utcnow()
+        submission.feedback_generated_at = datetime.now(timezone.utc)
 
         await self.db.commit()

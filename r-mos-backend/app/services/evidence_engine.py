@@ -3,7 +3,7 @@ Evidence engine for generating summary evidence bundles from task execution data
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 import uuid
@@ -39,7 +39,7 @@ class EvidenceEngine:
 
         bundle_id = str(uuid.uuid4())
         bundle_hash = self._compute_bundle_hash(task_id, summary, observed_start, observed_end)
-        ingest_time = datetime.utcnow()
+        ingest_time = datetime.now(timezone.utc)
 
         bundle = EvidenceBundle(
             id=bundle_id,
@@ -101,7 +101,7 @@ class EvidenceEngine:
         times.extend([snapshot.timestamp for snapshot in snapshots if snapshot.timestamp])
 
         if not times:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             return now, None
 
         start = min(times)

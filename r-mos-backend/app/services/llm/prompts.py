@@ -10,6 +10,11 @@ import os
 
 
 _SYSTEM_PROMPT_FALLBACK = "你是一个专业的机器人维保培训助手"
+
+# 各服务场景的系统提示词（集中管理）
+PROMPT_FAULT_DIAGNOSIS = "你是一个专业的机器人故障诊断专家。请根据提供的遥测数据，分析可能的故障原因。"
+PROMPT_MAINTENANCE_PLAN = "你是一个维保方案优化专家。"
+PROMPT_RISK_SCORER = "你是一个风险评估专家。"
 _SYSTEM_PROMPT_TEMPLATE_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "..", "data", "config", "prompts", "system_prompt.txt"
 )

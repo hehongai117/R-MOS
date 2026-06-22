@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import TZDateTime, Base, TimestampMixin
 
 
 class StudentSkillProfile(Base, TimestampMixin):
@@ -25,7 +25,7 @@ class StudentSkillProfile(Base, TimestampMixin):
     # 统计
     total_sessions = Column(Integer, nullable=False, default=0)
     total_duration = Column(Integer, nullable=False, default=0)  # 累计训练秒数
-    last_trained_at = Column(DateTime(timezone=True), nullable=True)
+    last_trained_at = Column(TZDateTime, nullable=True)
 
     # 五维评分 (0-100)
     score_safety = Column(Numeric(5, 2), nullable=True)       # 安全规范执行
@@ -56,7 +56,7 @@ class StudentWeakStep(Base, TimestampMixin):
 
     # 统计
     fail_count = Column(Integer, nullable=False, default=0)
-    last_failed_at = Column(DateTime(timezone=True), nullable=True)
+    last_failed_at = Column(TZDateTime, nullable=True)
     fail_tags = Column(JSON, nullable=True)  # ["tool_error", "value_out_of_range", "sequence_wrong"]
 
     # 解决状态

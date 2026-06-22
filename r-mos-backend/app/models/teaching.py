@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from .base import Base, TimestampMixin
+from .base import TZDateTime, Base, TimestampMixin
 
 
 class GuidancePolicy(Base, TimestampMixin):
@@ -82,8 +82,8 @@ class Assignment(Base, TimestampMixin):
     title = Column(String(200), nullable=False)
     sop_id = Column(Integer, ForeignKey("sops.id", ondelete="SET NULL"), nullable=True, index=True)
     guidance_policy_id = Column(Integer, ForeignKey("guidance_policies.id", ondelete="SET NULL"), nullable=True, index=True)
-    start_at = Column(DateTime(timezone=True), nullable=True)
-    due_at = Column(DateTime(timezone=True), nullable=True)
+    start_at = Column(TZDateTime, nullable=True)
+    due_at = Column(TZDateTime, nullable=True)
     max_attempts = Column(Integer, nullable=True, default=1)
     scoring_policy = Column(JSON, nullable=True)
     competition_mode = Column(Boolean, nullable=False, default=False)
@@ -107,8 +107,8 @@ class AssignmentAttempt(Base, TimestampMixin):
     evidence_bundle_id = Column(String(64), ForeignKey("evidence_bundles.id", ondelete="SET NULL"), nullable=True, index=True)
     status = Column(String(20), nullable=False, default="in_progress")
     score = Column(Float, nullable=True)
-    graded_at = Column(DateTime(timezone=True), nullable=True)
-    abandoned_at = Column(DateTime(timezone=True), nullable=True)
+    graded_at = Column(TZDateTime, nullable=True)
+    abandoned_at = Column(TZDateTime, nullable=True)
     attempt_index = Column(Integer, nullable=False, default=1)
     diagnosis_code = Column(String(100), nullable=True)
     path_score = Column(Float, nullable=True)

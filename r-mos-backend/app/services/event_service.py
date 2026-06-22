@@ -4,7 +4,7 @@ Event服务（V2.3新增）
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.models.event import Event, EventType
@@ -48,7 +48,7 @@ class EventService:
             task_id=task_id,
             event_type=event_type,
             step_index=step_index,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             action=action,
             target=target,
             parameters=parameters,

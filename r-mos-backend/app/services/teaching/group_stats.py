@@ -11,7 +11,7 @@ P2-3: Teaching Group Statistics Service
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select, func, and_
@@ -109,7 +109,7 @@ class GroupStatsService:
             )
 
         if time_range_days:
-            cutoff_date = datetime.now() - timedelta(days=time_range_days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=time_range_days)
             conditions.append(AssignmentAttempt.created_at >= cutoff_date)
 
         # 查询所有完成的尝试
@@ -205,7 +205,7 @@ class GroupStatsService:
             )
 
         if time_range_days:
-            cutoff_date = datetime.now() - timedelta(days=time_range_days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=time_range_days)
             conditions.append(AssignmentAttempt.created_at >= cutoff_date)
 
         query = (

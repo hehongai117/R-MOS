@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, E
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from enum import Enum
-from .base import Base, TimestampMixin
+from .base import TZDateTime, Base, TimestampMixin
 
 
 class TaskStatus(str, Enum):
@@ -73,9 +73,9 @@ class Task(Base, TimestampMixin):
         comment="任务状态"
     )
     current_step_index = Column(Integer, default=0, nullable=False, comment="当前步骤索引")
-    started_at = Column(DateTime(timezone=True), nullable=True, comment="开始时间")
-    completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
-    paused_at = Column(DateTime(timezone=True), nullable=True, comment="暂停时间")  # V2.3新增
+    started_at = Column(TZDateTime, nullable=True, comment="开始时间")
+    completed_at = Column(TZDateTime, nullable=True, comment="完成时间")
+    paused_at = Column(TZDateTime, nullable=True, comment="暂停时间")  # V2.3新增
     time_limit = Column(Integer, nullable=True, comment="时间限制（秒）")
     pass_score = Column(Integer, default=70, nullable=False, comment="及格分数")
     final_score = Column(Integer, nullable=True, comment="最终得分")

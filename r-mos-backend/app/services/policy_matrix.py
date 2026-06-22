@@ -12,13 +12,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
 
-
-class RiskLevel(str, Enum):
-    """Risk levels for agent actions"""
-    R0 = "R0"  # Silent - no intervention needed
-    R1 = "R1"  # Advisory - suggestion only
-    R2 = "R2"  # Warning - requires acknowledgment
-    R3 = "R3"  # Blocking - must be approved
+from app.core.enums import RiskLevel
 
 
 class ActionCategory(str, Enum):

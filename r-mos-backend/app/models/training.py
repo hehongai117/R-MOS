@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, J
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-from app.models.base import Base, TimestampMixin, utcnow
+from app.models.base import TZDateTime, Base, TimestampMixin, utcnow
 
 
 class TrainingSession(Base, TimestampMixin):
@@ -31,9 +31,9 @@ class TrainingSession(Base, TimestampMixin):
     project_snapshot = Column(JSON, nullable=True)
 
     # 时间记录
-    started_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
-    paused_at = Column(DateTime(timezone=True), nullable=True)
-    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(TZDateTime, nullable=False, default=utcnow)
+    paused_at = Column(TZDateTime, nullable=True)
+    submitted_at = Column(TZDateTime, nullable=True)
 
     # 统计
     total_duration = Column(Integer, nullable=False, default=0)  # 秒
@@ -73,5 +73,5 @@ class SessionStepRecord(Base, TimestampMixin):
 
     # 时间
     duration_sec = Column(Integer, nullable=True)
-    started_at = Column(DateTime(timezone=True), nullable=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(TZDateTime, nullable=True)
+    completed_at = Column(TZDateTime, nullable=True)

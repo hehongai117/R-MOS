@@ -24,7 +24,7 @@ class DeepSeekClient(BaseLLMClient):
     async def chat(
         self,
         messages: list[dict],
-        model: str = "deepseek-chat",
+        model: str = "deepseek-v4-pro",
         tools: Optional[list[dict]] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,

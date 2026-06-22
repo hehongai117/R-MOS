@@ -8,6 +8,7 @@ import logging
 from typing import Optional, Any
 
 from app.services.llm.telemetry_context_builder import TelemetryContext
+from app.services.llm.prompts import PROMPT_FAULT_DIAGNOSIS
 from app.services.diagnosis.schemas import (
     DiagnosisResult,
     FaultHypothesis,
@@ -271,6 +272,7 @@ class FaultDiagnosisEngine:
         调用 LLM 进行多假设推理
         """
         from app.services.llm.router import LLMProvider
+        from app.core.config import settings
 
         # 构建提示词
         prompt = self._build_diagnosis_prompt(context)
@@ -278,11 +280,11 @@ class FaultDiagnosisEngine:
         # 调用 LLM
         response = await self.llm_router.chat(
             messages=[
-                {"role": "system", "content": "你是一个专业的机器人故障诊断专家。请根据提供的遥测数据，分析可能的故障原因。"},
+                {"role": "system", "content": PROMPT_FAULT_DIAGNOSIS},
                 {"role": "user", "content": prompt}
             ],
-            provider=LLMProvider.OPENAI,
-            model="gpt-4",
+            provider=LLMProvider.DEEPSEEK,
+            model=settings.LLM_MODEL_ADVANCED,
             temperature=0.3,
             max_tokens=1000,
         )

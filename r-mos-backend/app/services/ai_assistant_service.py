@@ -3,6 +3,9 @@ import logging
 from typing import Optional
 from dataclasses import dataclass, field
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -45,11 +48,12 @@ class AIAssistantService:
         message: str,
         context: ChatContext,
         history: list[ChatMessage] | None = None,
+        db: AsyncSession | None = None,
     ) -> ChatResponse:
         """处理学生提问，根据 hint_level 控制回答深度"""
         history = (history or [])[-self._max_history:]
 
-        system_prompt = self._build_system_prompt(context)
+        system_prompt = await self._build_system_prompt(context, db)
         messages = [{"role": "system", "content": system_prompt}]
         for msg in history:
             messages.append({"role": msg.role, "content": msg.content})
@@ -59,21 +63,30 @@ class AIAssistantService:
 
         return ChatResponse(reply=reply, hint_level_used=context.hint_level)
 
-    def _build_system_prompt(self, context: ChatContext) -> str:
+    async def _build_system_prompt(self, context: ChatContext, db: AsyncSession | None = None) -> str:
         """构建带上下文的 system prompt。
 
         - 有 sop_id：SOP 练习辅导模式（原有逻辑）
-        - 无 sop_id：通用维保助手模式
+        - 无 sop_id：通用维保助手模式（注入知识库内容）
         """
         if context.sop_id is None:
-            # 通用维保助手模式
+            # 通用维保助手模式 — 注入知识库上下文
             parts = [
-                "你是 R-MOS 机器人维保智能助手。"
-                "回答用户关于机器人维修、保养、故障排除的问题。"
-                "回答简洁专业，必要时列出步骤。"
+                "你是 R-MOS 机器人维保智能助手。",
+                "你必须严格基于下方【知识库资料】回答用户问题。",
+                "如果知识库中没有相关信息，请明确告知用户当前知识库暂无该内容。",
+                "回答简洁专业，必要时列出步骤。",
             ]
             if context.extra_context:
                 parts.append(f"\n上下文信息：{context.extra_context}")
+
+            # 查询知识库
+            kb_content = await self._fetch_knowledge(context.robot_model_id, db)
+            if kb_content:
+                parts.append(f"\n【知识库资料】\n{kb_content}")
+            else:
+                parts.append("\n【知识库资料】\n暂无该机器人的知识库文档。")
+
             return "\n".join(parts)
 
         # SOP 练习辅导模式（原有逻辑）
@@ -97,12 +110,52 @@ class AIAssistantService:
 
         return "\n".join(parts)
 
-    async def _call_llm(self, messages: list[dict]) -> str:
-        """调用 LLM — 复用现有 LLM Router 逻辑"""
+    async def _fetch_knowledge(self, robot_model_id: int | None, db: AsyncSession | None) -> str:
+        """从知识库查询当前机器人的文档内容，拼接为上下文文本。"""
+        if not robot_model_id or not db:
+            return ""
         try:
-            from app.services.llm.router import LLMRouter
+            from app.models.knowledge_document import KnowledgeDocument
+            query = (
+                select(KnowledgeDocument.title, KnowledgeDocument.content)
+                .where(KnowledgeDocument.robot_model_id == robot_model_id)
+                .order_by(KnowledgeDocument.id)
+                .limit(20)
+            )
+            result = await db.execute(query)
+            docs = result.all()
+            if not docs:
+                return ""
+
+            MAX_KB_CHARS = 6000
+            chunks = []
+            total = 0
+            for title, content in docs:
+                if not content:
+                    continue
+                snippet = content[:500]
+                entry = f"### {title}\n{snippet}"
+                if total + len(entry) > MAX_KB_CHARS:
+                    break
+                chunks.append(entry)
+                total += len(entry)
+            return "\n\n".join(chunks)
+        except Exception as e:
+            logger.warning("知识库查询失败: %s", e)
+            return ""
+
+    async def _call_llm(self, messages: list[dict]) -> str:
+        """调用 LLM — 使用 DeepSeek 作为主模型"""
+        try:
+            from app.services.llm.router import LLMRouter, LLMProvider
             router = LLMRouter()
-            response = await router.chat(messages)
+            response = await router.chat(
+                messages,
+                provider=LLMProvider.DEEPSEEK,
+                model=settings.LLM_MODEL_BASIC,
+                temperature=0.3,
+                max_tokens=2048,
+            )
             return response.content
         except Exception as e:
             logger.warning(f"LLM call failed, using fallback: {e}")

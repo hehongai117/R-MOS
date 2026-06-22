@@ -17,21 +17,23 @@ from app.schemas.report import ScoreBreakdown, StepScore
 logger = logging.getLogger(__name__)
 
 
+# 评分规则常量
+SCORE_BASE = 100.0                    # 基础分
+PENALTY_SKIP_STEP = 5.0               # 跳过步骤扣分（每次）
+PENALTY_ERROR_OPERATION = 10.0        # 错误操作扣分（每次）
+PENALTY_TIMEOUT = 15.0                # 超时扣分
+PENALTY_ANOMALY_SNAPSHOT = 15.0       # 故障惩罚扣分（每个异常快照）
+STEP_MAX_SCORE = 10.0                 # 单步满分
+
+
 class ScoringService:
     """评分服务（V2.3完整实现）
-    
+
     职责：
     - 计算Task最终得分
     - 生成评分细分（4个维度）
     - 生成步骤得分列表
     - 生成改进建议
-    
-    评分规则（MVP版本）：
-    - 基础分100分
-    - 跳过步骤：-5分/次
-    - 错误操作：-10分/次
-    - 超时：-15分
-    - 按比例分配到4个维度
     """
     
     def __init__(self, db: AsyncSession):
@@ -58,41 +60,41 @@ class ScoringService:
         stats = self._calculate_stats(task, events, sop, anomaly_count)
         
         # 3. 计算得分
-        base_score = 100.0
+        base_score = SCORE_BASE
         deductions = []
-        
+
         # 跳过步骤扣分
         if stats["skipped_steps"] > 0:
-            deduction = stats["skipped_steps"] * 5.0
+            deduction = stats["skipped_steps"] * PENALTY_SKIP_STEP
             base_score -= deduction
             deductions.append({
                 "reason": "跳过步骤",
                 "count": stats["skipped_steps"],
                 "points": -deduction
             })
-        
+
         # 错误操作扣分
         if stats["error_count"] > 0:
-            deduction = stats["error_count"] * 10.0
+            deduction = stats["error_count"] * PENALTY_ERROR_OPERATION
             base_score -= deduction
             deductions.append({
                 "reason": "错误操作",
                 "count": stats["error_count"],
                 "points": -deduction
             })
-        
+
         # 超时扣分
         if stats["is_timeout"]:
-            deduction = 15.0
+            deduction = PENALTY_TIMEOUT
             base_score -= deduction
             deductions.append({
                 "reason": "执行超时",
                 "points": -deduction
             })
-        
+
         # V2.4 新增：故障惩罚（检测到活动故障的快照）
         if stats["anomaly_count"] > 0:
-            deduction = stats["anomaly_count"] * 15.0  # 每个异常快照扣15分
+            deduction = stats["anomaly_count"] * PENALTY_ANOMALY_SNAPSHOT
             base_score -= deduction
             deductions.append({
                 "reason": "检测到故障",
@@ -121,8 +123,8 @@ class ScoringService:
                 step_scores.append(StepScore(
                     step_index=step.step_index,
                     step_title=step.title,
-                    score=0.0 if is_skipped else 10.0,
-                    max_score=10.0,
+                    score=0.0 if is_skipped else STEP_MAX_SCORE,
+                    max_score=STEP_MAX_SCORE,
                     deductions=deductions if is_skipped else [],
                     remarks="已跳过" if is_skipped else "已完成"
                 ))
