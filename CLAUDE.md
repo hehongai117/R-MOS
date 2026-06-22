@@ -59,8 +59,7 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 ## Multi-Robot Platform Progress
 
 > Design spec: `docs/superpowers/specs/2026-05-07-multi-robot-platform-design.md`
-> Master plan: `docs/superpowers/plans/2026-05-08-multi-robot-master-plan.md`
-> 3D Viewer plan: `docs/superpowers/plans/2026-05-16-universal-3d-viewer-pipeline.md`
+> （阶段计划文档已随该 initiative 完成归档清理；设计意图见上方 design spec）
 
 | Phase | Name | Tasks | Status |
 |-------|------|-------|--------|
@@ -78,9 +77,8 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 
 When resuming work in a new conversation:
 1. Read this file (CLAUDE.md) for architecture and progress
-2. Read master plan (`docs/superpowers/plans/2026-05-08-multi-robot-master-plan.md`) for current phase status
-3. Read the detailed plan for the current phase (e.g., `2026-05-07-multi-robot-phase0.md`)
-4. Read design spec only if design decisions need clarification
+2. Read the design spec (`docs/superpowers/specs/2026-05-07-multi-robot-platform-design.md`) for design decisions
+3. The Multi-Robot platform is fully delivered (all phases ✅); its phase plans were archived on completion
 
 ### Key Multi-Robot Files (Phase 0 output)
 
