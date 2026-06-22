@@ -82,3 +82,6 @@ PROJECT_DIRECTORY_FULL.txt
 
 # 修正: 机器人资产实际路径在 r-mos-backend 下
 r-mos-backend/data/robot-assets/
+
+# Superpowers SDD 工作目录(脚手架)
+.superpowers/
