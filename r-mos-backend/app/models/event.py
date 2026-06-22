@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, J
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from enum import Enum
-from .base import Base, TimestampMixin
+from .base import Base, TimestampMixin, utcnow
 
 
 class EventType(str, Enum):
@@ -36,7 +36,7 @@ class Event(Base, TimestampMixin):
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     event_type = Column(String(50), nullable=False, index=True, comment="事件类型")
     step_index = Column(Integer, nullable=True, comment="步骤索引")
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True, comment="事件时间")
+    timestamp = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True, comment="事件时间")
     
     # 操作详情
     action = Column(String(100), nullable=True, comment="执行的操作")

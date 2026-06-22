@@ -5,7 +5,7 @@ ConversationTurn Model - P1-8-1
 from datetime import datetime
 from sqlalchemy import Column, DateTime, Integer, String, Text, Index
 
-from app.models.base import Base
+from app.models.base import Base, utcnow
 
 
 class ConversationTurn(Base):
@@ -28,6 +28,6 @@ class ConversationTurn(Base):
     created_at = Column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=utcnow,
         index=True,
     )

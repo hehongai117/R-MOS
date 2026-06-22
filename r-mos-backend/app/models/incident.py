@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, String, Integer, DateTime, JSON
 
-from app.models.base import Base
+from app.models.base import Base, utcnow
 
 
 class Incident(Base):
@@ -17,9 +17,9 @@ class Incident(Base):
     incident_type = Column(String(50), nullable=False, index=True)
     incident_level = Column(String(20), nullable=False)
     status = Column(String(20), nullable=False, default="open")
-    event_time_start = Column(DateTime, nullable=False)
-    event_time_end = Column(DateTime, nullable=True)
-    ingest_time = Column(DateTime, default=datetime.utcnow, nullable=False)
+    event_time_start = Column(DateTime(timezone=True), nullable=False)
+    event_time_end = Column(DateTime(timezone=True), nullable=True)
+    ingest_time = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     human_summary = Column(String(500), nullable=True)
     machine_tags = Column(JSON, nullable=True)
     related_observation_ids = Column(JSON, nullable=True)

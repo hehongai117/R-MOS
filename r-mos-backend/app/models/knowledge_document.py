@@ -17,7 +17,7 @@ class KnowledgeDocument(Base, TimestampMixin):
     status = Column(String(20), default="PENDING", index=True, comment="PENDING/APPROVED/EXPIRED")
     risk_level = Column(String(5), default="R0", comment="风险等级")
     uploaded_by = Column(Integer, nullable=True, comment="上传用户 ID")
-    approved_at = Column(DateTime, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
     robot_model_id = Column(
         Integer, ForeignKey("robot_models.id", ondelete="SET NULL"),
         nullable=True, index=True, comment="关联机器人型号 ID",

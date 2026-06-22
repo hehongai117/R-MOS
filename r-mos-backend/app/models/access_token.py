@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String
 
-from .base import Base, TimestampMixin
+from .base import Base, TimestampMixin, utcnow
 
 
 class AccessToken(Base, TimestampMixin):
@@ -20,7 +20,7 @@ class AccessToken(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     access_token_hash = Column(String(64), nullable=False, unique=True)
-    issued_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False)
+    issued_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
     is_revoked = Column(Boolean, nullable=False, default=False)
-    revoked_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)

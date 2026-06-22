@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Index, Integer, JSON, String, Text, UniqueConstraint
 
-from .base import Base
+from .base import Base, utcnow
 
 
 class Skill(Base):
@@ -29,8 +29,8 @@ class Skill(Base):
     rollback_strategy = Column(JSON, nullable=True)
     status = Column(String(32), nullable=False, default="draft")
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
     # Phase 0: Extended fields (5 new governance fields)
     # 1. Evidence requirements
@@ -42,7 +42,7 @@ class Skill(Base):
     # 4. Execution timeout
     execution_timeout_ms = Column(Integer, nullable=True)
     # 5. Deprecated at
-    deprecated_at = Column(DateTime, nullable=True)
+    deprecated_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class SkillReview(Base):
@@ -56,7 +56,7 @@ class SkillReview(Base):
     reviewer_user_id = Column(String(64), nullable=True, index=True)
     status = Column(String(32), nullable=False, default="pending", index=True)
     review_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
 
 
 class SkillRelease(Base):
@@ -70,4 +70,4 @@ class SkillRelease(Base):
     status = Column(String(32), nullable=False, default="published", index=True)
     released_by_user_id = Column(String(64), nullable=True, index=True)
     release_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Index, Integer, String
 
-from .base import Base
+from .base import Base, utcnow
 
 
 class Approval(Base):
@@ -22,6 +22,6 @@ class Approval(Base):
     reason = Column(String(256), nullable=True)
     created_by_user_id = Column(String(64), nullable=True, index=True)
     decided_by_user_id = Column(String(64), nullable=True, index=True)
-    decided_at = Column(DateTime, nullable=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    decided_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)

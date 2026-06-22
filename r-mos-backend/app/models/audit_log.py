@@ -14,7 +14,7 @@ SOP 执行审计日志模型（V2.3 新增 - Phase 2）
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from datetime import datetime
 from enum import Enum
-from .base import Base
+from .base import Base, utcnow
 
 
 class AuditAction(str, Enum):
@@ -100,14 +100,14 @@ class SOPAuditLog(Base):
     event_time = Column(
         DateTime, 
         nullable=False, 
-        default=datetime.utcnow,
+        default=utcnow,
         index=True,
         comment="事件发生时间"
     )
     ingest_time = Column(
         DateTime, 
         nullable=False, 
-        default=datetime.utcnow,
+        default=utcnow,
         comment="记录入库时间"
     )
     

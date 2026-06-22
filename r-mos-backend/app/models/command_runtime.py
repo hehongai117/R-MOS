@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 
-from .base import Base
+from .base import Base, utcnow
 
 
 class Command(Base):
@@ -22,8 +22,8 @@ class Command(Base):
     skill_id = Column(String(128), nullable=True, index=True)
     status = Column(String(32), nullable=False, default="created", index=True)
     approval_id = Column(Integer, ForeignKey("approvals.id", ondelete="SET NULL"), nullable=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
     # Phase 0: Extended fields (10 new evidence fields)
     # 1. Resource binding
@@ -43,7 +43,7 @@ class Command(Base):
     # 8. Approved by
     approved_by = Column(String(64), nullable=True)
     # 9. Approved at
-    approved_at = Column(DateTime, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
     # 10. Execution budget
     execution_budget_ms = Column(Integer, nullable=True)
 
@@ -68,7 +68,7 @@ class AIToolCall(Base):
     approval_id = Column(Integer, ForeignKey("approvals.id", ondelete="SET NULL"), nullable=True, index=True)
     result_payload = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
 
     # Phase 0: Extended fields (8 new evidence fields)
     # 1. Input parameters

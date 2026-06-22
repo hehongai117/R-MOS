@@ -28,15 +28,16 @@ class AnalysisTask(Base, TimestampMixin):
         Integer, ForeignKey("robot_models.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    task_type = Column(Enum(AnalysisTaskType), nullable=False, comment="任务类型")
+    task_type = Column(Enum(AnalysisTaskType, values_callable=lambda x: [e.value for e in x]), nullable=False, comment="任务类型")
     status = Column(
-        Enum(AnalysisTaskStatus), default=AnalysisTaskStatus.PENDING,
+        Enum(AnalysisTaskStatus, values_callable=lambda x: [e.value for e in x]),
+        default=AnalysisTaskStatus.PENDING,
         nullable=False, index=True, comment="任务状态",
     )
     input_document_ids = Column(JSON, default=list, comment="输入文档 ID 列表")
     output_summary = Column(JSON, nullable=True, comment="分析结果摘要")
     error_message = Column(Text, nullable=True, comment="失败原因")
-    completed_at = Column(DateTime, nullable=True, comment="完成时间")
+    completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
 
     robot_model = relationship("RobotModel")
 

@@ -29,11 +29,13 @@ class RobotModel(Base, TimestampMixin):
         comment="创建者教师 ID（null 表示系统内置）",
     )
     visibility = Column(
-        Enum(RobotVisibility), default=RobotVisibility.PRIVATE,
+        Enum(RobotVisibility, values_callable=lambda x: [e.value for e in x]),
+        default=RobotVisibility.PRIVATE,
         nullable=False, comment="可见性: private/shared",
     )
     status = Column(
-        Enum(RobotStatus), default=RobotStatus.DRAFT,
+        Enum(RobotStatus, values_callable=lambda x: [e.value for e in x]),
+        default=RobotStatus.DRAFT,
         nullable=False, comment="状态: draft/analyzing/ready",
     )
     description = Column(Text, nullable=True, comment="机器人描述")

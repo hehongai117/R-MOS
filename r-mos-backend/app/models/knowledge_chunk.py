@@ -6,7 +6,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Index, JSON, String, Text
 
-from .base import Base
+from .base import Base, utcnow
 
 
 class AIKnowledgeChunk(Base):
@@ -27,4 +27,4 @@ class AIKnowledgeChunk(Base):
     course_id = Column(String(64), nullable=True, index=True)
     attempt_id = Column(String(64), nullable=True, index=True)
     metadata_json = Column("metadata", JSON, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)

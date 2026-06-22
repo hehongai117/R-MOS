@@ -45,6 +45,17 @@ from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, Tea
 from app.models.robot_asset import RobotAsset, AssetType
 from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
 from app.models.school import School  # noqa: F401
+from app.models.training import TrainingSession, SessionStepRecord
+from app.models.training_submission import TrainingSubmission
+from app.models.skill_profile import StudentSkillProfile, StudentWeakStep
+from app.models.conversation import ConversationTurn
+from app.models.agent_runtime import (
+    AgentRuntimeSnapshot,
+    BeliefStateRecord,
+    DecisionRecordDB,
+    ApprovalRecordDB,
+    ReplayCheckpoint,
+)
 
 __all__ = [
     # Base
@@ -133,4 +144,19 @@ __all__ = [
     "AnalysisTaskStatus",
     # School whitelist
     "School",
+    # Training system
+    "TrainingSession",
+    "SessionStepRecord",
+    "TrainingSubmission",
+    # Skill profile
+    "StudentSkillProfile",
+    "StudentWeakStep",
+    # Conversation
+    "ConversationTurn",
+    # Agent runtime
+    "AgentRuntimeSnapshot",
+    "BeliefStateRecord",
+    "DecisionRecordDB",
+    "ApprovalRecordDB",
+    "ReplayCheckpoint",
 ]

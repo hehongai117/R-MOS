@@ -21,10 +21,10 @@ class RobotAsset(Base, TimestampMixin):
         Integer, ForeignKey("robot_models.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    asset_type = Column(Enum(AssetType), nullable=False, comment="资产类型")
+    asset_type = Column(Enum(AssetType, values_callable=lambda x: [e.value for e in x]), nullable=False, comment="资产类型")
     file_path = Column(String(500), nullable=False, comment="相对存储路径")
     file_size = Column(Integer, nullable=True, comment="文件大小（字节）")
-    asset_metadata = Column(JSON, nullable=True, comment="元数据（顶点数、节点数等）")
+    asset_metadata = Column("metadata", JSON, nullable=True, comment="元数据（顶点数、节点数等）")
 
     robot_model = relationship("RobotModel", back_populates="assets")
 

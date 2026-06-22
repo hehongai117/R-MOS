@@ -10,4 +10,4 @@ class School(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(200), unique=True, nullable=False, index=True)
     province = Column(String(50), nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

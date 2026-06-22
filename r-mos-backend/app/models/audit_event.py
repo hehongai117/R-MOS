@@ -9,7 +9,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, JSON, String, func
 
-from .base import Base
+from .base import Base, utcnow
 
 
 class AuditEvent(Base):
@@ -51,7 +51,7 @@ class AuditEvent(Base):
     created_at = Column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=utcnow,
         server_default=func.now(),
         index=True,
     )

@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Nume
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, utcnow
 
 
 class TrainingSubmission(Base, TimestampMixin):
@@ -28,7 +28,7 @@ class TrainingSubmission(Base, TimestampMixin):
     submit_type = Column(String(20), nullable=False)  # manual/timeout/teacher/abandoned
     submitted_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # 教师强制提交时
     submitted_by_user = relationship("User", foreign_keys=[submitted_by], backref="forced_training_submissions")
-    submitted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    submitted_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
     # 提交包内容
     payload = Column(JSON, nullable=False)  # 完整的提交包 JSON
@@ -44,4 +44,4 @@ class TrainingSubmission(Base, TimestampMixin):
 
     # AI 反馈
     feedback = Column(JSON, nullable=True)  # UF-09 生成的反馈报告
-    feedback_generated_at = Column(DateTime, nullable=True)
+    feedback_generated_at = Column(DateTime(timezone=True), nullable=True)

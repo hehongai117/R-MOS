@@ -14,7 +14,7 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, JSON, Text, Index
 from sqlalchemy.orm import relationship
 
-from app.models.base import Base
+from app.models.base import Base, utcnow
 
 
 class AgentRuntimeSnapshot(Base):
@@ -30,7 +30,7 @@ class AgentRuntimeSnapshot(Base):
     state_data = Column(JSON, nullable=False)
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     is_final = Column(Boolean, default=False)
 
     __table_args__ = (
@@ -52,8 +52,8 @@ class BeliefStateRecord(Base):
     evidence_refs = Column(JSON, default=list)
     belief_metadata = Column(JSON, default=dict)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
     __table_args__ = (
         Index('ix_belief_trace_category', 'trace_id', 'belief_category'),
@@ -79,9 +79,9 @@ class DecisionRecordDB(Base):
     requires_approval = Column(Boolean, default=False)
     approval_level = Column(String(20), nullable=True)
     approved_by = Column(String(64), nullable=True)
-    approved_at = Column(DateTime, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     __table_args__ = (
         Index('ix_decision_trace_type', 'trace_id', 'decision_type'),
@@ -102,10 +102,10 @@ class ApprovalRecordDB(Base):
     decision_data = Column(JSON, default=dict)
 
     requested_by = Column(String(64), nullable=False)
-    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    requested_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     resolved_by = Column(String(64), nullable=True)
-    resolved_at = Column(DateTime, nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolution_note = Column(Text, nullable=True)
 
     __table_args__ = (
@@ -127,7 +127,7 @@ class ReplayCheckpoint(Base):
     decision_snapshot = Column(JSON, default=dict)
     evidence_snapshot = Column(JSON, default=dict)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     __table_args__ = (
         Index('ix_checkpoint_trace_seq', 'trace_id', 'sequence_number'),
