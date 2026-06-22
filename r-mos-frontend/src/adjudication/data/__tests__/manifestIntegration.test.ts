@@ -179,7 +179,7 @@ describe('manifestPartToPart — complete field mapping', () => {
     expect(result.screwSpec).toBeUndefined()
   })
 
-  it('sets parentId to undefined when parent_id is null', () => {
+  it('sets parentId to null when parent_id is null', () => {
     const entry: ManifestPartEntry = {
       id: 'root_part',
       category: 'frame',
@@ -192,7 +192,7 @@ describe('manifestPartToPart — complete field mapping', () => {
       group: null,
     }
     const result = manifestPartToPart(entry, MODEL_BASE)
-    expect(result.parentId).toBeUndefined()
+    expect(result.parentId).toBeNull()
   })
 })
 

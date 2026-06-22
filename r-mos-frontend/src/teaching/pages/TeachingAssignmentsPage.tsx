@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Empty, InputNumber, Table, Tabs, message } from 'antd'
+import { useEffect, useState } from 'react'
+import { App, Empty, InputNumber, Table, Tabs } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 
@@ -18,10 +18,11 @@ function statusTone(status: string) {
 
 const TeachingAssignmentsPage = () => {
   const navigate = useNavigate()
+  const { message } = App.useApp()
   const { assignments, loadAssignments, startAttempt, loading, error, clearError } = useTeachingStore()
 
   const [studentId, setStudentId] = useState<number>(1)
-  const [teacherLoading, setTeacherLoading] = useState(false)
+  const [, setTeacherLoading] = useState(false)
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
   const [attempts, setAttempts] = useState<AssignmentAttempt[]>([])
 
@@ -46,8 +47,8 @@ const TeachingAssignmentsPage = () => {
       if (attempt) {
         navigate(`/teaching/attempts/${attempt.id}`)
       }
-    } catch {
-      // 错误交给 store 统一提示
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '创建尝试失败')
     }
   }
 
@@ -64,53 +65,56 @@ const TeachingAssignmentsPage = () => {
     }
   }
 
-  const assignmentColumns: ColumnsType<Assignment> = useMemo(
-    () => [
-      { title: '作业标题', dataIndex: 'title', key: 'title' },
-      { title: '作业编号', dataIndex: 'id', key: 'id', width: 120 },
-      {
-        title: 'SOP',
-        dataIndex: 'sopId',
-        key: 'sopId',
-        width: 120,
-        render: (value: number | null | undefined) => value ?? '未配置',
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        width: 180,
-        render: (_: unknown, record: Assignment) => (
-          <Button size="sm" type="button" onClick={() => void handleStart(record)}>
-            开始
-          </Button>
-        ),
-      },
-    ],
-    [studentId],
-  )
-
-  const teacherColumns: ColumnsType<Assignment> = useMemo(
-    () => [
-      { title: '作业标题', dataIndex: 'title', key: 'title' },
-      { title: '作业编号', dataIndex: 'id', key: 'id', width: 120 },
-      {
-        title: '操作',
-        key: 'actions',
-        width: 200,
-        render: (_: unknown, record: Assignment) => (
+  const assignmentColumns: ColumnsType<Assignment> = [
+    { title: '作业标题', dataIndex: 'title', key: 'title' },
+    { title: '作业编号', dataIndex: 'id', key: 'id', width: 120 },
+    {
+      title: 'SOP',
+      dataIndex: 'sopId',
+      key: 'sopId',
+      width: 120,
+      render: (value: number | null | undefined) => value ?? '未配置',
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 180,
+      render: (_: unknown, record: Assignment) => {
+        const noSop = !record.sopId
+        return (
           <Button
             size="sm"
             type="button"
-            variant="secondary"
-            onClick={() => void handleViewAttempts(record)}
+            disabled={noSop}
+            title={noSop ? '该作业未配置 SOP，无法开始' : undefined}
+            onClick={() => void handleStart(record)}
           >
-            查看提交
+            {noSop ? '未配置 SOP' : '开始'}
           </Button>
-        ),
+        )
       },
-    ],
-    [teacherLoading],
-  )
+    },
+  ]
+
+  const teacherColumns: ColumnsType<Assignment> = [
+    { title: '作业标题', dataIndex: 'title', key: 'title' },
+    { title: '作业编号', dataIndex: 'id', key: 'id', width: 120 },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 200,
+      render: (_: unknown, record: Assignment) => (
+        <Button
+          size="sm"
+          type="button"
+          variant="secondary"
+          onClick={() => void handleViewAttempts(record)}
+        >
+          查看提交
+        </Button>
+      ),
+    },
+  ]
 
   const attemptColumns: ColumnsType<AssignmentAttempt> = [
     { title: '尝试编号', dataIndex: 'id', key: 'id', width: 120 },

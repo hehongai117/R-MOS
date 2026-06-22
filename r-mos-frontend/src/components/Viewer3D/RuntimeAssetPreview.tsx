@@ -1,10 +1,6 @@
 import { useGLTF } from '@react-three/drei'
 import { useEffect, useMemo, useState } from 'react'
 import { Mesh, MeshStandardMaterial, type Object3D } from 'three'
-import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js'
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
-import { VRMLLoader } from 'three/examples/jsm/loaders/VRMLLoader.js'
 
 import apiClient from '@/api/client'
 import { detectRuntimeAssetFormat } from '@/components/Viewer3D/runtimeManifest'
@@ -200,6 +196,7 @@ async function parseRuntimeAssetBlob(
   assetFormat: Exclude<ReturnType<typeof detectRuntimeAssetFormat>, 'gltf' | 'unsupported'>,
 ): Promise<Object3D> {
   if (assetFormat === 'stl') {
+    const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js')
     const geometry = new STLLoader().parse(await assetBlob.arrayBuffer())
     geometry.computeVertexNormals()
     return new Mesh(
@@ -212,10 +209,13 @@ async function parseRuntimeAssetBlob(
     )
   }
   if (assetFormat === 'obj') {
+    const { OBJLoader } = await import('three/examples/jsm/loaders/OBJLoader.js')
     return new OBJLoader().parse(await assetBlob.text())
   }
   if (assetFormat === 'dae') {
+    const { ColladaLoader } = await import('three/examples/jsm/loaders/ColladaLoader.js')
     return new ColladaLoader().parse(await assetBlob.text(), '').scene
   }
+  const { VRMLLoader } = await import('three/examples/jsm/loaders/VRMLLoader.js')
   return new VRMLLoader().parse(await assetBlob.text(), '')
 }

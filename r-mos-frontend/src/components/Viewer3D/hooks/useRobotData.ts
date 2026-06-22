@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { JointState, SensorData, TelemetryMessage } from '@/types/robot';
 import { WS_CONFIG } from '../constants';
+import { AUTH_STORAGE_KEYS } from '@/store/authStore';
 
 export interface RobotDataSnapshot {
     joints: JointState[];
@@ -108,7 +109,7 @@ export function useRobotData(wsUrl?: string): UseRobotDataReturn {
         }
 
         try {
-            const token = localStorage.getItem('access_token');
+            const token = localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
             const wsUrlWithAuth = token ? `${url}?token=${token}` : url;
 
             const ws = new WebSocket(wsUrlWithAuth);

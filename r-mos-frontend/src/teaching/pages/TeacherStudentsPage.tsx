@@ -17,31 +17,7 @@ import { SkillRadarChart } from '@/components/training/SkillRadarChart'
 import { WeakStepHeatmap } from '@/components/training/WeakStepHeatmap'
 import { TrainingTimeline } from '@/components/training/TrainingTimeline'
 import { Progress } from '@/components/ui/progress'
-
-/* ── helpers ── */
-
-const STEP_NAME_MAP: Record<string, string> = {
-  prepare_station: '准备工位',
-  motor_cover_remove: '拆解电机盖',
-  align_reducer: '校准减速器',
-  final_check: '最终复核',
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '暂无'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatHours(seconds?: number | null) {
-  if (!seconds) return '0h'
-  return `${(seconds / 3600).toFixed(1)}h`
-}
+import { formatDateTime, formatHours, STEP_NAME_MAP } from '@/utils/format'
 
 /* ── types ── */
 

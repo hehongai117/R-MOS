@@ -1,6 +1,4 @@
-import axios from 'axios'
-
-const api = axios.create({ baseURL: '/api/v1/pipeline' })
+import { apiClient } from './client'
 
 export interface DiagnoseRequest {
   telemetry: Record<string, unknown>
@@ -53,21 +51,21 @@ export interface TaskCompleteResponse {
 }
 
 export async function diagnoseFault(data: DiagnoseRequest): Promise<DiagnoseResponse> {
-  const res = await api.post<DiagnoseResponse>('/diagnose', data)
+  const res = await apiClient.post<DiagnoseResponse>('/pipeline/diagnose', data)
   return res.data
 }
 
 export async function createTaskFromDiagnosis(data: CreateTaskRequest): Promise<CreateTaskResponse> {
-  const res = await api.post<CreateTaskResponse>('/tasks/from-diagnosis', data)
+  const res = await apiClient.post<CreateTaskResponse>('/pipeline/tasks/from-diagnosis', data)
   return res.data
 }
 
 export async function completeStep(executionId: number, data: StepCompleteRequest): Promise<StepCompleteResponse> {
-  const res = await api.post<StepCompleteResponse>(`/executions/${executionId}/steps/complete`, data)
+  const res = await apiClient.post<StepCompleteResponse>(`/pipeline/executions/${executionId}/steps/complete`, data)
   return res.data
 }
 
 export async function completeTask(executionId: number): Promise<TaskCompleteResponse> {
-  const res = await api.post<TaskCompleteResponse>(`/executions/${executionId}/complete`)
+  const res = await apiClient.post<TaskCompleteResponse>(`/pipeline/executions/${executionId}/complete`)
   return res.data
 }

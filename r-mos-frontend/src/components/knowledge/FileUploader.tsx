@@ -12,7 +12,13 @@ interface FileUploaderProps {
   onUploadComplete: (result: FileUploadResponse) => void
 }
 
-const ACCEPTED_EXTENSIONS = ['.pdf', '.step', '.stp', '.stl', '.glb', '.gltf', '.doc', '.docx']
+const ACCEPTED_EXTENSIONS = [
+  '.pdf', '.doc', '.docx', '.md', '.txt',
+  '.step', '.stp', '.stl', '.obj', '.dae',
+  '.glb', '.gltf',
+  '.urdf', '.xacro', '.xml', '.json', '.yaml', '.yml',
+  '.png', '.jpg', '.jpeg',
+]
 
 export function FileUploader({ robotId, onUploadComplete }: FileUploaderProps) {
   const [files, setFiles] = useState<File[]>([])
@@ -70,7 +76,7 @@ export function FileUploader({ robotId, onUploadComplete }: FileUploaderProps) {
             </label>
           </div>
           <div className="text-xs text-text-muted">
-            支持 PDF、CAD（STEP/STP）、GLB/GLTF、STL、Word 格式，单文件 ≤ 200MB
+            支持 PDF、Word、Markdown、CAD（STEP/STL/OBJ/DAE）、GLB/GLTF、URDF、图片，单文件 ≤ 200MB
           </div>
           <input
             id={inputId}

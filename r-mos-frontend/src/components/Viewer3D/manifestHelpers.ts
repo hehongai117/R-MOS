@@ -119,7 +119,7 @@ export function buildPartMetadata(
   if (groups) {
     for (const [groupKey, group] of Object.entries(groups)) {
       // Normalise group key: strip trailing _link, _pitch, _yaw, _roll suffixes
-      let normKey = groupKey
+      const normKey = groupKey
         .replace(/_link$/, '')
         .replace(/_(pitch|yaw|roll)$/, '');
       // Validate it is one of the known groups, otherwise infer per-link

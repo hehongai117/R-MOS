@@ -13,27 +13,6 @@ export interface AdminUsersResponse {
   total: number
 }
 
-export interface ApprovalListItem {
-  id: number
-  trace_id?: string | null
-  command_id?: number | null
-  tool_call_id?: number | null
-  status: string
-  reason?: string | null
-  created_by_user_id?: string | null
-  decided_by_user_id?: string | null
-  decided_at?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
-
-export interface ApprovalListResponse {
-  items: ApprovalListItem[]
-  limit: number
-  offset: number
-  count: number
-}
-
 export interface MonitorHealthResponse {
   overall_status?: string
   status?: string
@@ -73,23 +52,6 @@ export interface HealthResponse {
 
 export async function getAdminUsers(limit = 200) {
   const response = await apiClient.get<AdminUsersResponse>('/admin/users', { params: { limit } })
-  return response.data
-}
-
-export async function getAiApprovals(status = 'pending', limit = 5) {
-  const response = await apiClient.get<ApprovalListResponse>('/ai/approvals', {
-    params: { status, limit },
-  })
-  return response.data
-}
-
-export async function grantAiApproval(id: number, reason?: string) {
-  const response = await apiClient.post(`/ai/approvals/${id}/grant`, { reason })
-  return response.data
-}
-
-export async function rejectAiApproval(id: number, reason?: string) {
-  const response = await apiClient.post(`/ai/approvals/${id}/reject`, { reason })
   return response.data
 }
 

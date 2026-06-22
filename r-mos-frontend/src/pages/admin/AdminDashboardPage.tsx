@@ -16,22 +16,9 @@ import { listApprovals, type ApprovalRecord } from '@/api/approvals'
 import { getAcceptanceReports, getCurrentMetrics, type MetricRecord } from '@/api/agent-v2'
 import { DataCard, EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Progress } from '@/components/ui/progress'
+import { formatDateTime } from '@/utils/format'
 
 const REFRESH_INTERVAL_MS = 30000
-
-function formatDateTime(value?: string | number | null) {
-  if (!value) {
-    return '暂无'
-  }
-
-  return new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
 
 function overallStatusTone(status?: string) {
   const normalized = status?.toLowerCase()
@@ -79,17 +66,7 @@ function AdminDashboardPage() {
       setError(null)
 
       try {
-        const [
-          usersResponse,
-          approvalsResponse,
-          metricsResponse,
-          reportsResponse,
-          monitorHealthResponse,
-          monitorMetricsResponse,
-          monitorHistoryResponse,
-          alertsResponse,
-          systemHealthResponse,
-        ] = await Promise.all([
+        const results = await Promise.allSettled([
           getAdminUsers(200),
           listApprovals({ status: 'pending', limit: 5, offset: 0 }),
           getCurrentMetrics(),
@@ -105,17 +82,37 @@ function AdminDashboardPage() {
           return
         }
 
-        setUserTotal(usersResponse.total)
-        setApprovalsCount(approvalsResponse.count)
-        setPendingApprovals(approvalsResponse.items)
-        setMetrics(metricsResponse.metrics)
-        setMetricReports(reportsResponse.reports)
-        setMonitorHealth(monitorHealthResponse as Record<string, unknown>)
-        setMonitorMetrics(monitorMetricsResponse)
-        setMonitorHistory(monitorHistoryResponse.metrics)
-        setAlerts(alertsResponse.alerts)
-        setSystemHealth(systemHealthResponse as unknown as Record<string, unknown>)
+        const val = <T,>(r: PromiseSettledResult<T>): T | undefined =>
+          r.status === 'fulfilled' ? r.value : undefined
+
+        const usersResponse = val(results[0])
+        const approvalsResponse = val(results[1])
+        const metricsResponse = val(results[2])
+        const reportsResponse = val(results[3])
+        const monitorHealthResponse = val(results[4])
+        const monitorMetricsResponse = val(results[5])
+        const monitorHistoryResponse = val(results[6])
+        const alertsResponse = val(results[7])
+        const systemHealthResponse = val(results[8])
+
+        setUserTotal(usersResponse?.total ?? 0)
+        setApprovalsCount(approvalsResponse?.count ?? 0)
+        setPendingApprovals(approvalsResponse?.items ?? [])
+        setMetrics(metricsResponse?.metrics ?? [])
+        setMetricReports(reportsResponse?.reports ?? [])
+        setMonitorHealth((monitorHealthResponse as Record<string, unknown>) ?? null)
+        setMonitorMetrics(monitorMetricsResponse ?? null)
+        setMonitorHistory(monitorHistoryResponse?.metrics ?? [])
+        setAlerts(alertsResponse?.alerts ?? [])
+        setSystemHealth((systemHealthResponse as unknown as Record<string, unknown>) ?? null)
         setLastUpdatedAt(new Date())
+
+        const failedCount = results.filter((r) => r.status === 'rejected').length
+        if (failedCount === results.length) {
+          setError('所有数据源加载失败，请检查后端服务状态')
+        } else {
+          setError(null)
+        }
       } catch (requestError) {
         if (alive) {
           setError(requestError instanceof Error ? requestError.message : '管理员首页加载失败')

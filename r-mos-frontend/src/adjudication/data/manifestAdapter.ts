@@ -31,13 +31,13 @@ export function manifestPartToPart(entry: ManifestPartEntry, modelBase: string):
     bomCode: entry.bom_code,
     displayName: entry.display_name,
     modelPath: entry.mesh_id ? `${modelBase}/${entry.mesh_id}` : '',
-    parentId: entry.parent_id ?? undefined,
+    parentId: entry.parent_id ?? null,
     localPosition: entry.local_position,
     localRotation: entry.local_rotation,
   }
 }
 
-export function manifestScrewToPart(entry: ManifestScrewEntry, modelBase: string): Part {
+export function manifestScrewToPart(entry: ManifestScrewEntry, _modelBase: string): Part {
   const screwSpec: ScrewSpec = {
     type: entry.spec.type,
     pitch: entry.spec.pitch,

@@ -643,6 +643,4 @@ export const rejectRequest = async (requestId: string, rejectionReason: string):
   return response.data;
 };
 
-// Re-export existing types for backward compatibility
-export type { AgentRequest, AgentResponse, NextAction, CoachOutput, DiagnoserOutput } from './agent';
-export * from './agent';
+

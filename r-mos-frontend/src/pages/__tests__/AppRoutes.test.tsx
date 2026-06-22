@@ -1,13 +1,8 @@
-import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/App'
 import { AUTH_STORAGE_KEYS, useAuthStore } from '@/store/authStore'
-
-vi.mock('@/components/auth/AuthContext', () => ({
-  AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
 
 vi.mock('@/components/Layout/AppLayout', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')

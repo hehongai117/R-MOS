@@ -87,6 +87,10 @@ export function preloadRobotModel(robotId: string, linkNames?: string[]): void {
     const ROBOT_BASE = getRobotModelBase(robotId);
     const links = linkNames ?? HARDCODED_ATOM01_LINKS;
 
+    if (!linkNames) {
+        console.warn('[ModelPreloader] linkNames 未提供，使用 ATOM-01 硬编码 fallback。请传入 manifest 中的 link 列表。');
+    }
+
     links.forEach((name) => {
         try {
             useGLTF.preload(`${ROBOT_BASE}/${name}.glb`);

@@ -1,6 +1,6 @@
-export type RobotId = string;
+import { API_BASE_URL } from '@/api/client'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+export type RobotId = string;
 
 /**
  * Get the base URL for loading a robot's 3D model assets from the API.

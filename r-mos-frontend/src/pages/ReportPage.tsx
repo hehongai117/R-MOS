@@ -7,11 +7,7 @@ import { getTaskReport } from '@/api/task'
 import { DataCard, EmptyState, PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import type { TaskReport } from '@/types/report'
-
-function formatDateTime(value?: string) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN')
-}
+import { formatDateTime } from '@/utils/format'
 
 const ReportPage = () => {
   const { taskId } = useParams<{ taskId: string }>()

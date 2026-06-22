@@ -49,7 +49,7 @@ const SOPListPage: React.FC = () => {
     setCreating(true);
     try {
       // 调用 API 创建任务
-      const task = await createTask({
+      await createTask({
         title: `${sop.name} - 训练任务`,
         sop_id: sop.id,
       });

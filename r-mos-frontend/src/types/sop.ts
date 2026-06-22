@@ -60,6 +60,7 @@ export interface SOPListResponse {
 
 // SOP创建请求 - 对齐 SOPCreate
 export interface SOPCreateRequest extends SOPBase {
+    robot_model_id?: number
     steps: Omit<SOPStep, 'id' | 'sop_id' | 'created_at' | 'updated_at'>[]
 }
 

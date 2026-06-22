@@ -12,20 +12,9 @@ import {
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { formatDateTime } from '@/utils/format'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected'
-
-function formatDateTime(value?: string | null) {
-  if (!value) {
-    return '-'
-  }
-  return new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function getStatusTone(status: string) {
   if (status === 'pending') {

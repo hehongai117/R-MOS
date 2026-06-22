@@ -30,8 +30,8 @@ interface RequestConfig extends InternalAxiosRequestConfig {
   skipAuthRefresh?: boolean
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const API_ROOT = `${API_BASE_URL}/api/v1`
+import { API_BASE_URL, API_ROOT } from './config'
+export { API_BASE_URL, API_ROOT }
 
 function getStoredRefreshToken() {
   return (
