@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -57,7 +58,7 @@ describe('StudentSkillsPage', () => {
         getTrainingSessionsMock.mockResolvedValue([])
         getActiveTrainingSessionMock.mockRejectedValue(new Error('none'))
 
-        render(<StudentSkillsPage />)
+        render(<MemoryRouter><StudentSkillsPage /></MemoryRouter>)
 
         await waitFor(() => {
             expect(screen.getAllByText(/Lv\.3/).length).toBeGreaterThanOrEqual(1)
@@ -73,7 +74,7 @@ describe('StudentSkillsPage', () => {
         getTrainingSessionsMock.mockResolvedValue([])
         getActiveTrainingSessionMock.mockRejectedValue(new Error('none'))
 
-        render(<StudentSkillsPage />)
+        render(<MemoryRouter><StudentSkillsPage /></MemoryRouter>)
 
         await waitFor(() => {
             expect(screen.getByText('技能雷达暂不可用')).toBeTruthy()
@@ -93,7 +94,7 @@ describe('StudentSkillsPage', () => {
         getTrainingSessionsMock.mockResolvedValue([])
         getActiveTrainingSessionMock.mockRejectedValue(new Error('none'))
 
-        render(<StudentSkillsPage />)
+        render(<MemoryRouter><StudentSkillsPage /></MemoryRouter>)
 
         await waitFor(() => {
             expect(screen.getByText('准备工位')).toBeTruthy()

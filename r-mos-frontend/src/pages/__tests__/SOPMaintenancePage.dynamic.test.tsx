@@ -204,6 +204,8 @@ vi.mock('@/data/maintenanceKnowledge', () => ({
 }))
 
 vi.mock('@/adjudication', () => ({
+  injectManifestPartRegistry: vi.fn(),
+  clearManifestPartRegistry: vi.fn(),
   AdjudicationReport: class {},
   SOPExecutor: class {},
   SOPExecutionContext: class {},
