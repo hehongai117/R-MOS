@@ -276,7 +276,13 @@ def test_diagnoser_diagnose_empty_history_returns_null_root_cause() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_knowledge_search_returns_results_list() -> None:
-    """POST /agent/knowledge/search — 返回 results 列表结构."""
+    """POST /agent/knowledge/search — 返回 results 列表结构.
+
+    knowledge_store.json 中预置了 2 条 APPROVED 条目（ABB motor handling、FANUC motor handling）。
+    因为 _calculate_relevance 即使 query 不命中文本也会通过 confidence boost 给出正分，
+    导致每次测试（如 test_approve_knowledge_success）新增 APPROVED 条目后结果数增加。
+    计数不确定，使用 >= 2 保证预置条目始终存在。
+    """
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="ks1@x.com", password="StrongPass123", full_name="K1")
@@ -291,6 +297,9 @@ def test_knowledge_search_returns_results_list() -> None:
         body = resp.json()
         assert "results" in body
         assert isinstance(body["results"], list)
+        # >= 2：预置 knowledge_store.json 至少包含 ABB/FANUC 2 条 APPROVED 条目
+        # 实际数量因 test_approve_knowledge_* 写入共享 JSON 文件而随测试顺序增加（非确定性）
+        assert len(body["results"]) >= 2
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -298,7 +307,10 @@ def test_knowledge_search_returns_results_list() -> None:
 
 
 def test_knowledge_search_pending_status() -> None:
-    """POST /agent/knowledge/search — 使用 PENDING 状态也能正常返回."""
+    """POST /agent/knowledge/search — 使用 PENDING 状态也能正常返回.
+
+    knowledge_store.json 中无 PENDING 条目，因此结果为空列表。
+    """
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="ks2@x.com", password="StrongPass123", full_name="K2")
@@ -313,6 +325,8 @@ def test_knowledge_search_pending_status() -> None:
         body = resp.json()
         assert "results" in body
         assert isinstance(body["results"], list)
+        # knowledge_store.json 中无 PENDING 条目，空列表
+        assert body["results"] == []
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -456,7 +470,7 @@ def test_get_knowledge_upload_job_existing_returns_job_data() -> None:
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert "job_id" in body or "project_id" in body
+        assert body["job_id"] == job_id
         assert "status" in body
     finally:
         client.close()
@@ -874,7 +888,7 @@ def test_execute_message_mode_returns_success_response() -> None:
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body["status"] in ("success", "error")
+        assert body["status"] == "success"
         assert "trace_id" in body
         assert "mode_used" in body
         assert body["mode_used"] == "message"
@@ -886,7 +900,12 @@ def test_execute_message_mode_returns_success_response() -> None:
 
 
 def test_execute_command_mode_no_side_effects_returns_success() -> None:
-    """POST /agent/execute — command 模式无副作用时返回 success + command/tool_call 信息."""
+    """POST /agent/execute — command 模式无副作用时返回 error（已知 bug）.
+
+    当前实现中 Command(user_id=...) 传入了无效字段（Command 模型使用 actor_user_id），
+    导致 SQLAlchemy 抛出 TypeError，endpoint 捕获后返回 status="error"。
+    这是被锁定的当前行为（characterization）。
+    """
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="exec2@x.com", password="StrongPass123", full_name="EXEC2")
@@ -906,7 +925,8 @@ def test_execute_command_mode_no_side_effects_returns_success() -> None:
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body["status"] in ("success", "error")
+        # Command(user_id=...) 使用无效字段名，endpoint 捕获后返回 "error"（已知 bug）
+        assert body["status"] == "error"
         assert "trace_id" in body
         assert body["mode_used"] == "command"
     finally:
@@ -916,7 +936,12 @@ def test_execute_command_mode_no_side_effects_returns_success() -> None:
 
 
 def test_execute_command_mode_with_side_effects_returns_pending_approval() -> None:
-    """POST /agent/execute — command 模式有副作用时返回 pending_approval."""
+    """POST /agent/execute — command 模式有副作用时实际返回 error（已知 bug）.
+
+    设计预期为 pending_approval，但当前实现中 Command(user_id=...) 使用无效字段名
+    （模型字段为 actor_user_id），导致 TypeError 被捕获后返回 status="error"。
+    这是被锁定的当前行为（characterization）。
+    """
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="exec3@x.com", password="StrongPass123", full_name="EXEC3")
@@ -937,8 +962,9 @@ def test_execute_command_mode_with_side_effects_returns_pending_approval() -> No
         )
         assert resp.status_code == 200
         body = resp.json()
-        # 有 side_effects 时状态应为 pending_approval
-        assert body["status"] in ("pending_approval", "error")
+        # Command(user_id=...) 使用无效字段名，endpoint 捕获后返回 "error"（已知 bug）
+        # 设计预期为 pending_approval，但当前行为是 error
+        assert body["status"] == "error"
         assert "trace_id" in body
         assert body["mode_used"] == "command"
     finally:
@@ -1320,8 +1346,7 @@ def test_check_idempotency_always_returns_not_exists() -> None:
         assert resp.status_code == 200
         body = resp.json()
         assert body["exists"] is False
-        assert "message" in body
-        assert "idempotency_key" in body["message"] or "/v2/request" in body["message"]
+        assert body["message"] == "Use /v2/request with idempotency_key to check"
     finally:
         client.close()
         app.dependency_overrides.clear()
