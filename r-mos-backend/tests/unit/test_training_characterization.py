@@ -482,6 +482,9 @@ def test_generate_workbench_draft_requires_auth() -> None:
             json={"robot_model": "ABB", "task_summary": "x", "focus_prompt": "y"},
         )
         assert resp.status_code == 401
+        body = resp.json()
+        # 验证响应体格式和准确的错误消息
+        assert body["message"] == "未登录，请先登录后重试"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1205,9 +1208,9 @@ def test_get_user_sessions_with_status_filter() -> None:
         assert resp.status_code == 200
         body = resp.json()
         assert isinstance(body, list)
-        # 应包含 active 状态会话
+        # 应包含 active 状态会话（种子数据生成确定性的 1 个 active 会话）
         active_sessions = [s for s in body if s["status"] == "active"]
-        assert len(active_sessions) >= 1
+        assert len(active_sessions) == 1
 
 
     finally:
