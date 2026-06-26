@@ -596,6 +596,7 @@ def test_get_attempt_student_wrong_id_returns_404():
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
+        assert body["details"]["code"] == "READ_ACCESS_DENIED"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -830,6 +831,7 @@ def test_get_attempt_replay_student_role_no_user_id_returns_404():
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
+        assert body["details"]["code"] == "READ_ACCESS_DENIED"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -877,6 +879,7 @@ def test_get_attempt_replay_teacher_no_user_id_returns_404():
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
+        assert body["details"]["code"] == "READ_ACCESS_DENIED"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1368,6 +1371,7 @@ def test_parse_user_id_empty_string_returns_none_via_access_check():
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
+        assert body["details"]["code"] == "READ_ACCESS_DENIED"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1389,6 +1393,7 @@ def test_parse_user_id_non_integer_returns_none_via_access_check():
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
+        assert body["details"]["code"] == "READ_ACCESS_DENIED"
     finally:
         client.close()
         app.dependency_overrides.clear()
