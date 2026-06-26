@@ -1,6 +1,8 @@
 [run]
 omit =
     app/models/*
+# Python 3.12+ sysmon API provides better async/await line tracking
+core = sysmon
 
 [report]
 omit =
