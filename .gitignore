@@ -85,3 +85,8 @@ r-mos-backend/data/robot-assets/
 
 # Superpowers SDD 工作目录(脚手架)
 .superpowers/
+
+# 测试覆盖率产物(本地生成，不入库)
+r-mos-frontend/coverage/
+htmlcov/
+coverage.xml
