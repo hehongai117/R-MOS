@@ -29,5 +29,20 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     setupFiles: ["./src/test-setup.ts"],
+    // Phase 2 测试安全网：守护 Phase 3 待重构巨型文件的行覆盖率，防止重构期回退。
+    // 阈值与 docs/superpowers/plans/2026-06-25-phase2-test-safety-net.md 的 Global Constraints 一致。
+    coverage: {
+      provider: "v8",
+      include: [
+        "src/pages/SOPMaintenancePage.tsx",
+        "src/components/Viewer3D/Atom01Interactive.tsx",
+        "src/components/Maintenance/SOPPlayerAdjudicated.tsx",
+      ],
+      thresholds: {
+        "src/pages/SOPMaintenancePage.tsx": { lines: 70 },
+        "src/components/Viewer3D/Atom01Interactive.tsx": { lines: 55 },
+        "src/components/Maintenance/SOPPlayerAdjudicated.tsx": { lines: 70 },
+      },
+    },
   },
 });

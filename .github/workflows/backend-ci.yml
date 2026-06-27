@@ -86,6 +86,16 @@ jobs:
             --cov-report=xml \
             --cov-config=.coveragerc
 
+      # Phase 2 测试安全网门禁：守护 Phase 3 待重构的三个巨型端点文件覆盖率。
+      # 复用上一步 `--cov=app`（sysmon core，可追踪 anyio worker 线程内的异步路由）已采集的
+      # .coverage 数据，仅做 report 不重新插桩 —— 避免将端点模块单列为 --cov 目标时
+      # 触发的 asyncpg/aiosqlite 原生异步线程拆解 segfault（py3.13）。
+      - name: God-file endpoint coverage gate
+        run: |
+          coverage report \
+            --include='*/app/api/v1/endpoints/agent.py,*/app/api/v1/endpoints/training.py,*/app/api/v1/endpoints/teaching.py' \
+            --fail-under=80
+
       - name: Upload backend coverage xml
         uses: actions/upload-artifact@v4
         with:

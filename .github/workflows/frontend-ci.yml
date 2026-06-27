@@ -42,5 +42,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Coverage gate (god files)
+        run: npx vitest run --coverage
+
       - name: Build
         run: npm run build
