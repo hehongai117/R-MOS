@@ -527,10 +527,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ## Phase 2 收尾（最后一个 Task 完成后）
 
-- [ ] 全量复验：后端 `pytest tests/` 全绿；前端 `vitest run --coverage` 达阈值；`tsc`/`eslint` 绿。
-- [ ] 更新总控计划 `2026-06-22-quality-hardening-master-plan.md`：Phase 2 → ✅ Done。
-- [ ] 更新记忆 `project_quality_hardening.md`：Phase 2 完成、6 文件覆盖率达标。
-- [ ] 用中文汇报：6 文件覆盖率（前/后对比）+ 安全网就绪，可进入 Phase 3 重构。
+- [x] 全量复验：后端 686 passed/3 skipped（14-service 82.98% + 端点 93%）；前端 56 文件 412 passed/2 skipped，coverage gate EXIT0；`tsc`/`eslint` 绿。
+- [x] 更新总控计划 `2026-06-22-quality-hardening-master-plan.md`：Phase 2 → ✅ Done。
+- [x] 更新记忆 `project_quality_hardening.md`：Phase 2 完成、6 文件覆盖率达标。
+- [x] 用中文汇报：6 文件覆盖率（前/后对比）+ 安全网就绪，可进入 Phase 3 重构。
 
 ## 自检（计划编写完成后）
 
