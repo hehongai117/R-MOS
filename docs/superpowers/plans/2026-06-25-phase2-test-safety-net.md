@@ -296,11 +296,13 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: 锁定 `SOPMaintenancePage` 渲染与关键交互的特征测试。
 
-- [ ] **Step 1：复用 mock 样板搭骨架**
+- [x] **Step 1：复用 mock 样板搭骨架**
 
 Create `SOPMaintenancePage.characterization.test.tsx`，复制 `SOPMaintenancePage.test.tsx` 顶部的 mock（`react-router-dom` useNavigate/useSearchParams、`@react-three/fiber` Canvas stub、`@/adjudication` 含 `injectManifestPartRegistry`/`clearManifestPartRegistry`，以及 api/store mock）。
 
-- [ ] **Step 2：写渲染 + 交互特征测试**
+> 实施记录：Canvas mock 改为渲染 children（而非空 stub），使 3D 分支选择三元运算可观测；Atom01Interactive/SOPPlayerAdjudicated mock 捕获 props 回调，从而驱动隔离态状态机。
+
+- [x] **Step 2：写渲染 + 交互特征测试**
 
 覆盖现有测试未覆盖的分支：不同 `workspaceVariant`、SOP 列表加载态/空态、步骤切换、面板折叠/展开等。示例：
 ```tsx
@@ -319,16 +321,16 @@ it('renders empty state when no sops', async () => {
 ```
 （mock 工厂名、空态文案以组件真实实现为准——先跑一次看真实 DOM 再固化断言。）
 
-- [ ] **Step 3：补齐到 ≥70%**
+- [x] **Step 3：补齐到 ≥70%**
 
 Run:
 ```bash
 cd r-mos-frontend && npx vitest run src/pages/__tests__/SOPMaintenancePage.characterization.test.tsx \
   --coverage --coverage.include='src/pages/SOPMaintenancePage.tsx' 2>&1 | grep 'SOPMaintenancePage.tsx'
 ```
-迭代到 `SOPMaintenancePage.tsx` 行覆盖率 ≥70%。
+迭代到 `SOPMaintenancePage.tsx` 行覆盖率 ≥70%。**实测 75.78%（44 用例全绿）。**
 
-- [ ] **Step 4：全绿并提交**
+- [x] **Step 4：全绿并提交**（commit 512fd2d2）
 
 Run: `npx vitest run src/pages/__tests__/SOPMaintenancePage.characterization.test.tsx`
 Expected: 全 passed。
