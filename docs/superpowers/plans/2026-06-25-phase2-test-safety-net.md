@@ -404,12 +404,12 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: 锁定 `SOPPlayerAdjudicated` 步骤播放/裁决交互的特征测试。
 
-- [ ] **Step 1：分析依赖 + 搭 mock**
+- [x] **Step 1：分析依赖 + 搭 mock**
 
 Run: `grep -nE 'import|props|useState|adjudicat|executor|onStep|on[A-Z]' src/components/Maintenance/SOPPlayerAdjudicated.tsx | head -40`
 确定它对 `@/adjudication`（executor/decisionEngine）的依赖并 mock（参考 SOPMaintenancePage 的 `@/adjudication` mock，含 `injectManifestPartRegistry`/`clearManifestPartRegistry`）。Create 测试文件。
 
-- [ ] **Step 2：写步骤播放/裁决特征测试**
+- [x] **Step 2：写步骤播放/裁决特征测试**
 
 断言：给定 SOP 步骤 props，渲染当前步骤；点击"执行/下一步"触发裁决并推进；裁决阻断时显示阻断原因。示例：
 ```tsx
@@ -421,7 +421,7 @@ it('renders current step and advances on execute', async () => {
 ```
 （props 形状、按钮文案以组件真实实现为准。）
 
-- [ ] **Step 3：补齐到 ≥70%**
+- [x] **Step 3：补齐到 ≥70%**（实测 75.69%）
 
 Run:
 ```bash
@@ -430,7 +430,7 @@ npx vitest run src/components/Maintenance/__tests__/SOPPlayerAdjudicated.charact
 ```
 迭代到 ≥70%。
 
-- [ ] **Step 4：全绿并提交**
+- [x] **Step 4：全绿并提交**（commit be2232c7，11 用例全绿）
 
 Run: `npx vitest run src/components/Maintenance/__tests__/SOPPlayerAdjudicated.characterization.test.tsx`
 ```bash
