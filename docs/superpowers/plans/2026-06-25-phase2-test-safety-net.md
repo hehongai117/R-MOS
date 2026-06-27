@@ -455,17 +455,21 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Consumes: Task 2-7 达成的覆盖率。
 - Produces: CI 门禁守护这 6 个文件的覆盖率，防止 Phase 3 重构期间回退。
 
-- [ ] **Step 1：后端门禁纳入三端点**
+- [x] **Step 1：后端门禁纳入三端点**（实施时调整方案，见下方说明）
 
-在 `backend-ci.yml` 的"Pytest core 14 services coverage gate"步骤的 `--cov=` 列表中**追加**三行：
-```yaml
-            --cov=app.api.v1.endpoints.agent \
-            --cov=app.api.v1.endpoints.training \
-            --cov=app.api.v1.endpoints.teaching \
-```
-（保持现有 `--cov-fail-under=70`；因三端点目标 80% 高于 70%，不会拉低门禁。）
+> **实施偏差（已核实）**：原计划是把 `--cov=app.api.v1.endpoints.{agent,training,teaching}` 追加进 14-service 门禁。实测在 py3.13 下，**将端点模块单列为 `--cov` 目标**会在全量异步测试套件运行中触发 asyncpg/aiosqlite 异步线程拆解的原生 **Segmentation fault**（ctrace/sysmon/pytrace 三种 core 均复现；`--cov=app` 广域采集则稳定）。
+>
+> 改用等效且无崩溃的方案：复用既有 "Pytest app coverage xml (reference)" 步骤的 `--cov=app`（sysmon core 可追踪 anyio worker 线程内异步路由）已采集的 `.coverage`，新增独立步骤 `God-file endpoint coverage gate`：
+> ```yaml
+> - name: God-file endpoint coverage gate
+>   run: |
+>     coverage report \
+>       --include='*/app/api/v1/endpoints/agent.py,*/app/api/v1/endpoints/training.py,*/app/api/v1/endpoints/teaching.py' \
+>       --fail-under=80
+> ```
+> 仅 report 不重新插桩，规避 segfault。当前三端点合计 **93%**（agent 87% / training 99% / teaching 94%），`--fail-under=80` 提供比原 70% 更强的回归保护。
 
-- [ ] **Step 2：前端 vitest 覆盖率阈值配置**
+- [x] **Step 2：前端 vitest 覆盖率阈值配置**
 
 在 `r-mos-frontend/vitest.config.ts` 的 `test` 中新增 `coverage`：
 ```ts
@@ -485,7 +489,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 （阈值与 Global Constraints 一致；`@vitest/coverage-v8` 已在 Task 1 加入 devDependencies。）
 
-- [ ] **Step 3：前端 CI 增加覆盖率步骤**
+- [x] **Step 3：前端 CI 增加覆盖率步骤**
 
 在 `frontend-ci.yml` 的 `npm test` 之后新增：
 ```yaml
@@ -494,7 +498,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
         run: npx vitest run --coverage
 ```
 
-- [ ] **Step 4：本地验证两个门禁**
+- [x] **Step 4：本地验证两个门禁**（前端 EXIT0，三组件 77.29/84.14/75.69；后端端点 gate EXIT0，合计 93%）
 
 Run:
 ```bash
@@ -507,7 +511,7 @@ cd /Users/xuhehong/Desktop/r-mos/r-mos-frontend && npx vitest run --coverage 2>&
 ```
 Expected: 两者均通过（不报 fail-under / threshold 未达）。
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**（commit ef9170d2）
 
 ```bash
 cd /Users/xuhehong/Desktop/r-mos
