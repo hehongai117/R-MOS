@@ -355,12 +355,12 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: 锁定 `Atom01Interactive` 非 3D 逻辑（props、控制面板、部件选择回调、状态切换）的特征测试。
 
-- [ ] **Step 1：分析可测面 + 搭 mock**
+- [x] **Step 1：分析可测面 + 搭 mock**
 
 Run: `grep -nE 'export|function |useState|props|onSelect|on[A-Z]|Canvas|useFrame|@react-three' src/components/Viewer3D/Atom01Interactive.tsx | head -40`
 确定 3D 渲染部分（`@react-three/fiber`/`@react-three/drei`/`useFrame`）需 mock，逻辑部分（控制面板、回调、状态）可测。Create 测试文件，mock `@react-three/fiber`（`Canvas: () => <div>CanvasStub</div>`、`useFrame: () => {}`）与 `@react-three/drei`（按需 stub）。
 
-- [ ] **Step 2：写非 3D 逻辑特征测试**
+- [x] **Step 2：写非 3D 逻辑特征测试**
 
 断言：组件能挂载不崩溃；控制面板 DOM 出现；触发部件选择/关节控制回调时 props 回调被调用。示例：
 ```tsx
@@ -372,7 +372,7 @@ it('mounts without crashing and renders control affordances', () => {
 ```
 （props、testid/文案以组件真实实现为准。）
 
-- [ ] **Step 3：补齐到 ≥55%**
+- [x] **Step 3：补齐到 ≥55%**
 
 Run:
 ```bash
@@ -381,7 +381,7 @@ npx vitest run src/components/Viewer3D/__tests__/Atom01Interactive.characterizat
 ```
 迭代到 ≥55%。**3D 渲染路径（useFrame 回调、Three 场景图）在 jsdom 下不可达**，在测试文件注释说明，不强求更高。
 
-- [ ] **Step 4：全绿并提交**
+- [x] **Step 4：全绿并提交**（commit 2c77b583，实测 84.14%，10 用例全绿）
 
 Run: `npx vitest run src/components/Viewer3D/__tests__/Atom01Interactive.characterization.test.tsx`
 ```bash
