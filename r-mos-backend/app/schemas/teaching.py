@@ -259,3 +259,29 @@ class DiagnosisReport(TeachingBaseModel):
     attachments: list[dict[str, Any]] = Field(default_factory=list)
     generated_at: datetime
     source_refs: DiagnosisSourceRefs
+
+
+# ── Inline request bodies (moved from teaching.py endpoint) ──────────────────
+
+class AttemptCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    student_id: int
+    task_id: Optional[int] = None
+
+
+class AttemptStatusUpdateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    status: str
+
+
+class AttemptGradeRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    score: float
+
+
+class ClassUpdateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+    name: Optional[str] = None
+    term: Optional[str] = None
+    teacher_id: Optional[int] = None
+    metadata_json: Optional[dict[str, Any]] = None
