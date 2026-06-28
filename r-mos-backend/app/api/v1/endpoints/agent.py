@@ -3,16 +3,12 @@ Agent API Endpoints
 P0: Frontend integration for Agent services
 """
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional, List, Dict, Any
 import uuid
 import logging
-import enum
 
 from app.core.database import get_db
-from app.core.database import AsyncSessionLocal
 from app.core.exceptions import PermissionDeniedError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.command_runtime import Command, AIToolCall
@@ -27,86 +23,41 @@ logger = logging.getLogger(__name__)
 from app.services.agent_service import orchestrator
 from app.services.coach_agent import coach_agent
 from app.services.diagnoser_agent import diagnoser_agent
-from app.services.knowledge_governance import knowledge_governance
 from app.services.multi_agent_coordinator import multi_agent_coordinator
-from app.services.evidence_enforcement import evidence_enforcer, ACTION_EVIDENCE_REQUIREMENTS
 from app.services.orchestrator_v2 import orchestrator_v2, TaskEventType
 from app.services.approval_queue import approval_queue, ApprovalPriority
 from app.services.policy_matrix import policy_matrix
 from app.services.authz_guard import require_permission
-from app.services.knowledge.project_ingest_worker import ProjectIngestWorker
-from app.services.knowledge.project_ingest_service import project_ingest_service
 from app.services.teaching.report_generator import ReportGenerator
-from app.schemas.robot_project import (
-    RobotProjectListResponse,
-    RobotProjectManifestResponse,
-    RobotProjectUploadJobResponse,
+from app.services.sop.quality_monitor import SOPQualityMonitor
+from app.schemas.agent import (
+    CoachRecommendRequest,
+    DiagnoseRequest,
+    CoordinateRequest,
+    AgentExecuteMode,
+    AgentExecuteRequest,
+    AgentExecuteResponse,
+    DiagnosisTraceActionRequest,
+    DiagnosisTraceActionResponse,
+    CreateApprovalRequest,
+    GenerateReportRequest,
+    GenerateReportResponse,
+    SOPQualityCheckRequest,
+    SOPQualityCheckResponse,
+    GuidanceModeRequest,
+    LLMPreferenceRequest,
+    UserPreferenceResponse,
 )
-from app.schemas.report import LLMEvaluationReport
+from app.api.v1.endpoints import agent_knowledge, agent_evidence
+
+# Re-export symbols that tests access via `agent_endpoints.<name>`
+from app.services.knowledge_governance import knowledge_governance  # noqa: F401
+from app.api.v1.endpoints.agent_knowledge import knowledge_upload_jobs  # noqa: F401
 
 router = APIRouter(prefix="/agent", tags=["agent"])
-knowledge_upload_jobs: dict[str, dict[str, Any]] = {}
 
-
-async def _run_project_ingest(project_id: str) -> None:
-    async with AsyncSessionLocal() as session:
-        await ProjectIngestWorker().ingest_project(session, project_id)
-
-
-def _should_use_request_session_for_ingest(db: AsyncSession) -> bool:
-    bind = db.get_bind()
-    if bind is None or bind.dialect.name != "sqlite":
-        return False
-    database = getattr(bind.engine.url, "database", None)
-    return database in (None, "", ":memory:")
-
-
-class CoachRecommendRequest(BaseModel):
-    task_id: str
-    current_step: int
-    step_history: List[Dict[str, Any]] = Field(default_factory=list)
-    trainee_action: Optional[Dict[str, Any]] = None
-
-
-class DiagnoseRequest(BaseModel):
-    task_id: str
-    error_history: List[Dict[str, Any]] = Field(default_factory=list)
-    action_history: List[Dict[str, Any]] = Field(default_factory=list)
-    evidence_refs: List[str] = Field(default_factory=list)
-
-
-class KnowledgeSearchRequest(BaseModel):
-    query: str = ""
-    device_model: Optional[str] = None
-    part_type: Optional[str] = None
-    status: Optional[str] = "APPROVED"
-
-
-class KnowledgeCreateRequest(BaseModel):
-    title: str
-    content: str
-    type: str = "solution"
-    scope: Optional[Dict[str, Any]] = None
-    risk_level: str = "R1"
-
-
-class KnowledgeApproveRequest(BaseModel):
-    decision: str  # approve, reject
-    feedback: str = ""
-    rating: Optional[float] = None
-
-
-class CoordinateRequest(BaseModel):
-    task_id: str
-    user_id: str
-    action: str
-    context: Dict[str, Any] = Field(default_factory=dict)
-
-
-class EvidenceCollectRequest(BaseModel):
-    step_id: str
-    evidence_id: str
-    evidence_type: str
+router.include_router(agent_knowledge.router)
+router.include_router(agent_evidence.router)
 
 
 @router.get("/task-status/{user_id}")
@@ -163,190 +114,6 @@ async def diagnose_error(request: DiagnoseRequest, _: None = Depends(require_per
     }
 
 
-# ============ Knowledge Governance Endpoints ============
-
-@router.post("/knowledge/search")
-async def search_knowledge(request: KnowledgeSearchRequest, _: None = Depends(require_permission("agent:read"))):
-    """Search knowledge entries"""
-    from app.services.knowledge_governance import KnowledgeSearchQuery, KnowledgeStatus
-
-    status = KnowledgeStatus.APPROVED if request.status == "APPROVED" else KnowledgeStatus.PENDING
-
-    results = knowledge_governance.search_knowledge(
-        KnowledgeSearchQuery(
-            query=request.query,
-            device_model=request.device_model,
-            part_type=request.part_type,
-            status=status,
-        )
-    )
-
-    return {
-        "results": [
-            {
-                "id": m.entry.id,
-                "type": m.entry.type.value,
-                "status": m.entry.status.value,
-                "title": m.entry.title,
-                "content": m.entry.content,
-                "scope": m.entry.scope.model_dump(),
-                "contraindications": m.entry.contraindications.model_dump(),
-                "risk_level": m.entry.risk_level.value,
-                "confidence": m.entry.confidence.model_dump(),
-                "relevance_score": m.relevance_score,
-                "match_reasons": m.match_reasons,
-            }
-            for m in results
-        ]
-    }
-
-
-@router.post("/knowledge")
-async def create_knowledge(
-    request: KnowledgeCreateRequest,
-    actor: ActorContext = Depends(require_permission("agent:execute")),
-):
-    """Create new knowledge entry"""
-    from app.services.knowledge_governance import KnowledgeType, RiskLevel, Scope
-
-    entry = knowledge_governance.create_knowledge(
-        title=request.title,
-        content=request.content,
-        entry_type=KnowledgeType(request.type),
-        creator_id=str(actor.user_id),
-        scope=Scope(**request.scope) if request.scope else None,
-        risk_level=RiskLevel(request.risk_level),
-    )
-
-    return {
-        "id": entry.id,
-        "status": entry.status.value,
-        "title": entry.title,
-    }
-
-
-@router.post("/knowledge/upload")
-async def upload_knowledge_file(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    brand: Optional[str] = None,
-    model: Optional[str] = None,
-    version: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_permission("agent:execute")),
-):
-    """Upload a knowledge file and create an ingest job record."""
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-
-    job = await project_ingest_service.create_upload_job(
-        db,
-        filename=file.filename or "upload.bin",
-        content=content,
-        content_type=file.content_type,
-        brand=brand,
-        model=model,
-        version=version,
-    )
-    if _should_use_request_session_for_ingest(db):
-        background_tasks.add_task(ProjectIngestWorker().ingest_project, db, job.project_id)
-    else:
-        background_tasks.add_task(_run_project_ingest, job.project_id)
-    return job.model_dump()
-
-
-@router.get("/knowledge/upload/{job_id}")
-async def get_knowledge_upload_job(
-    job_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_permission("agent:read")),
-):
-    """Query upload ingest job status."""
-    job: RobotProjectUploadJobResponse | dict[str, Any] | None = await project_ingest_service.get_upload_job(
-        db,
-        job_id=job_id,
-    )
-    if isinstance(job, RobotProjectUploadJobResponse):
-        return job.model_dump()
-
-    if job is None:
-        job = knowledge_upload_jobs.get(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Knowledge upload job not found")
-    return job
-
-
-@router.get("/knowledge/projects", response_model=RobotProjectListResponse)
-async def list_robot_projects(
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_permission("agent:read")),
-):
-    return await project_ingest_service.list_projects(db)
-
-
-@router.get("/knowledge/projects/{project_id}/manifest", response_model=RobotProjectManifestResponse)
-async def get_robot_project_manifest(
-    project_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_permission("agent:read")),
-):
-    manifest = await project_ingest_service.get_project_manifest(db, project_id=project_id)
-    if manifest is None:
-        raise HTTPException(status_code=404, detail="robot project manifest not found")
-    return manifest
-
-
-@router.get("/knowledge/projects/{project_id}/assets/{asset_path:path}")
-async def get_robot_project_asset(
-    project_id: str,
-    asset_path: str,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_permission("agent:read")),
-):
-    try:
-        content, media_type = await project_ingest_service.get_project_asset(
-            db,
-            project_id=project_id,
-            asset_path=asset_path,
-        )
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="robot project asset not found") from exc
-    return Response(content=content, media_type=media_type)
-
-
-@router.post("/knowledge/{entry_id}/submit")
-async def submit_knowledge(entry_id: str, _: None = Depends(require_permission("agent:execute"))):
-    """Submit knowledge for review"""
-    success, message = knowledge_governance.submit_for_review(entry_id)
-    if not success:
-        raise HTTPException(status_code=400, detail=message)
-    return {"status": "submitted"}
-
-
-@router.post("/knowledge/{entry_id}/approve")
-async def approve_knowledge(
-    entry_id: str,
-    request: KnowledgeApproveRequest,
-    actor: ActorContext = Depends(require_permission("agent:execute")),
-):
-    """Approve or reject knowledge"""
-    from app.services.knowledge_governance import ApprovalRequest
-
-    success, message = knowledge_governance.approve_knowledge(
-        ApprovalRequest(
-            entry_id=entry_id,
-            reviewer_id=str(actor.user_id),
-            decision=request.decision,
-            feedback=request.feedback,
-            rating=request.rating,
-        )
-    )
-    if not success:
-        raise HTTPException(status_code=400, detail=message)
-    return {"status": request.decision}
-
-
 # ============ Multi-Agent Coordination Endpoints ============
 
 @router.post("/coordinate")
@@ -369,126 +136,7 @@ async def coordinate_agents(request: CoordinateRequest, _: None = Depends(requir
     }
 
 
-# ============ Evidence Enforcement Endpoints ============
-
-@router.get("/evidence/status/{step_id}")
-async def get_evidence_status(step_id: str, _: None = Depends(require_permission("agent:read"))):
-    """Get evidence collection status for a step"""
-    status = evidence_enforcer.get_evidence_status(step_id)
-    return status
-
-
-@router.post("/evidence/collect")
-async def collect_evidence(request: EvidenceCollectRequest, _: None = Depends(require_permission("agent:execute"))):
-    """Record evidence collection"""
-    evidence_enforcer.collect_evidence(
-        step_id=request.step_id,
-        evidence_id=request.evidence_id,
-        evidence_type=request.evidence_type
-    )
-    return {"status": "collected"}
-
-
-@router.get("/evidence/can-proceed/{step_id}")
-async def can_proceed(step_id: str, _: None = Depends(require_permission("agent:read"))):
-    """Check if can proceed to next step"""
-    allowed, reason = evidence_enforcer.can_proceed(step_id)
-    return {"allowed": allowed, "reason": reason}
-
-
-# ============ Action Evidence Requirements ============
-
-@router.get("/evidence/requirements/{action_type}")
-async def get_evidence_requirements(action_type: str, _: None = Depends(require_permission("agent:read"))):
-    """Get required evidence for an action type"""
-    requirements = ACTION_EVIDENCE_REQUIREMENTS.get(action_type, [])
-    return {"action_type": action_type, "requirements": [r.model_dump() for r in requirements]}
-
-
 # ============ P2-1: Unified Agent Execute Schema ============
-
-class AgentExecuteMode(str, enum.Enum):
-    """Execution mode for unified agent endpoint"""
-    COMMAND = "command"
-    MESSAGE = "message"
-    AUTO = "auto"         # Auto-detect based on input
-
-
-class AgentExecuteRequest(BaseModel):
-    """Unified Agent Execute Request - P2-1 Convergence
-
-    Supports both command-style and message-style invocation.
-    """
-    # Common fields
-    user_id: str
-    mode: AgentExecuteMode = Field(default=AgentExecuteMode.AUTO, description="Execution mode: command|message|auto")
-
-    # Command mode fields
-    intent: Optional[str] = Field(default=None, description="Command intent")
-    tool_name: Optional[str] = Field(default=None, description="Tool to execute")
-    tool_args: Dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
-    skill_id: Optional[str] = Field(default=None, description="Skill ID")
-    side_effects: List[str] = Field(default_factory=list, description="Side effects")
-    input_text: Optional[str] = Field(default=None, description="Input text for command")
-
-    # Message mode fields
-    message: Optional[str] = Field(default=None, description="Natural language message")
-
-    # Shared fields
-    context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
-    resource_ref: Optional[Dict[str, Any]] = Field(default=None, description="Resource reference")
-    policy_context: Optional[Dict[str, Any]] = Field(default=None, description="Policy context")
-    intent_classification: Optional[str] = Field(default=None, description="Pre-classified intent")
-    telemetry_payload: Optional[Dict[str, Any]] = Field(default=None, description="Telemetry payload for diagnosis flows")
-    trace_id: Optional[str] = Field(default=None, description="Trace ID for replay")
-    idempotency_key: Optional[str] = Field(default=None, description="Idempotency key")
-
-    class Config:
-        json_schema_extra = {
-            "examples": [
-                # Command mode example
-                {
-                    "mode": "command",
-                    "user_id": "user-123",
-                    "intent": "dispatch",
-                    "tool_name": "assignments.create_draft",
-                    "skill_id": "teaching.dispatch.draft",
-                    "tool_args": {"input_text": "Create a task for robot arm maintenance"},
-                    "side_effects": ["assignments.write"],
-                },
-                # Message mode example
-                {
-                    "mode": "message",
-                    "user_id": "user-123",
-                    "message": "Help me with the current maintenance task",
-                    "context": {"task_id": "task-456"},
-                },
-            ]
-        }
-
-
-class AgentExecuteResponse(BaseModel):
-    """Unified Agent Execute Response"""
-    status: str = Field(description="Execution status: success|pending_approval|error")
-    result: Optional[Dict[str, Any]] = Field(default=None, description="Execution result")
-    trace_id: str = Field(description="Trace ID for this execution")
-    from_cache: bool = Field(default=False, description="Whether result was from cache")
-    approval_id: Optional[int] = Field(default=None, description="Approval ID if pending")
-    mode_used: str = Field(description="Actual mode used: command|message")
-
-
-class DiagnosisTraceActionRequest(BaseModel):
-    action: str = Field(..., description="Action name: confirm_execution | escalate_to_teacher")
-
-
-class DiagnosisTraceActionResponse(BaseModel):
-    trace_id: str
-    action: str
-    message: str
-    recorded: bool = True
-
-# ============ P2-1: Unified Agent Execute Endpoint ============
-
 
 async def _require_agent_permission(
     http_request: Request,
@@ -888,18 +536,6 @@ async def list_modules(_: None = Depends(require_permission("agent:read"))):
 
 # ============ Approval Queue Endpoints (Phase 2) ============
 
-class CreateApprovalRequest(BaseModel):
-    """Request to create approval"""
-    requester_id: str
-    resource_type: str
-    resource_id: str
-    action: str
-    reason: str
-    priority: str = "normal"
-    evidence_refs: Optional[List[str]] = None
-    ttl_seconds: Optional[int] = None
-
-
 @router.post("/approval/request")
 async def create_approval_request(request: CreateApprovalRequest, _: None = Depends(require_permission("agent:execute"))):
     """Create a new approval request"""
@@ -1013,18 +649,6 @@ async def reject_request(
 
 # ============ P2-2: Evaluation Report Endpoints ============
 
-class GenerateReportRequest(BaseModel):
-    """Request to generate evaluation report"""
-    task_id: int
-    use_llm: bool = Field(default=True, description="Whether to use LLM for narrative")
-
-
-class GenerateReportResponse(BaseModel):
-    """Response for evaluation report generation"""
-    report: LLMEvaluationReport
-    bundle_id: Optional[str] = Field(default=None, description="Evidence bundle ID if saved")
-
-
 @router.post("/evaluation/report", response_model=GenerateReportResponse)
 async def generate_evaluation_report(
     request: GenerateReportRequest,
@@ -1061,21 +685,6 @@ async def generate_evaluation_report(
 
 
 # ============ P2-3: SOP Quality Monitor Endpoints ============
-
-from app.services.sop.quality_monitor import SOPQualityMonitor
-
-
-class SOPQualityCheckRequest(BaseModel):
-    """Request to check SOP quality"""
-    sop_id: Optional[int] = Field(default=None, description="Specific SOP ID to check")
-    time_range_days: int = Field(default=30, description="Time range in days")
-
-
-class SOPQualityCheckResponse(BaseModel):
-    """Response for SOP quality check"""
-    alerts: List[Dict[str, Any]]
-    tickets_created: List[Dict[str, Any]]
-
 
 @router.post("/sop/quality/check", response_model=SOPQualityCheckResponse)
 async def check_sop_quality(
@@ -1118,27 +727,6 @@ async def check_sop_quality(
 
 
 # ============ P2-4: User Preference Endpoints ============
-
-class GuidanceModeRequest(BaseModel):
-    """Request to update guidance mode"""
-    mode: str = Field(..., description="Guidance mode: full_time | on_demand | silent")
-
-
-class LLMPreferenceRequest(BaseModel):
-    """Request to update user-level LLM settings."""
-    provider: str = Field(..., min_length=1, description="LLM provider, e.g. openai")
-    model: str = Field(..., min_length=1, description="Model name")
-    base_url: str = Field(..., min_length=1, description="Provider base URL")
-    api_key: Optional[str] = Field(default=None, description="User-specific API key")
-
-
-class UserPreferenceResponse(BaseModel):
-    """User preference response"""
-    user_id: int
-    guidance_mode: str
-    guidance_mode_display: str
-    preferences: Dict[str, Any]
-
 
 @router.get("/preference", response_model=UserPreferenceResponse)
 async def get_user_preference(
