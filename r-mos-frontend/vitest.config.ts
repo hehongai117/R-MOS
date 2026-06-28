@@ -35,6 +35,9 @@ export default defineConfig({
       provider: "v8",
       include: [
         "src/pages/SOPMaintenancePage.tsx",
+        "src/pages/sopMaintenance/useRuntimeDraft.ts",
+        "src/pages/sopMaintenance/useSOPViewState.ts",
+        "src/pages/sopMaintenance/useSOPPlaybackBridge.ts",
         "src/components/Viewer3D/Atom01Interactive.tsx",
         "src/components/Viewer3D/atom01/SubPartMesh.tsx",
         "src/components/Viewer3D/atom01/SubPartsGroup.tsx",
@@ -44,6 +47,9 @@ export default defineConfig({
       ],
       thresholds: {
         "src/pages/SOPMaintenancePage.tsx": { lines: 70 },
+        "src/pages/sopMaintenance/useRuntimeDraft.ts": { lines: 70 },
+        "src/pages/sopMaintenance/useSOPViewState.ts": { lines: 70 },
+        "src/pages/sopMaintenance/useSOPPlaybackBridge.ts": { lines: 70 },
         "src/components/Viewer3D/Atom01Interactive.tsx": { lines: 55 },
         "src/components/Viewer3D/atom01/SubPartMesh.tsx": { lines: 55 },
         "src/components/Viewer3D/atom01/SubPartsGroup.tsx": { lines: 55 },
