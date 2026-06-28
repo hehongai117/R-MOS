@@ -93,7 +93,7 @@ jobs:
       - name: God-file endpoint coverage gate
         run: |
           coverage report \
-            --include='*/app/api/v1/endpoints/agent*.py,*/app/api/v1/endpoints/training.py,*/app/api/v1/endpoints/teaching.py' \
+            --include='*/app/api/v1/endpoints/agent*.py,*/app/api/v1/endpoints/training*.py,*/app/api/v1/endpoints/teaching.py' \
             --fail-under=80
 
       - name: Upload backend coverage xml
