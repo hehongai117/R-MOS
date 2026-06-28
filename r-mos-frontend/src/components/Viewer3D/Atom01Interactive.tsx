@@ -13,7 +13,7 @@ import { Atom01AssemblyRenderer } from './Atom01AssemblyRenderer';
 import type { RobotDataManifest } from './assemblyManifest';
 import { buildJointAxisMap, buildPartMetadata, buildExplodeOffsetMap } from './manifestHelpers';
 import type { PartInfo } from './atom01/atom01Constants';
-import { PART_METADATA, EXPLODE_OFFSETS, JOINTS_AXIS_FALLBACK } from './atom01/atom01Constants';
+import { PART_METADATA, EXPLODE_OFFSETS, JOINTS_AXIS_FALLBACK, CORE_OUTLIER_ABS_MAX_DIM } from './atom01/atom01Constants';
 import { smoothstep } from './atom01/atom01Geometry';
 import { InteractiveLinkMesh } from './atom01/InteractiveLinkMesh';
 import { SubPartsGroup } from './atom01/SubPartsGroup';
@@ -179,7 +179,7 @@ export const Atom01Interactive: React.FC<Atom01InteractiveProps> = ({
                 if (!geometry.boundingBox) return;
                 tempBox.copy(geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
                 const meshSize = tempBox.getSize(new THREE.Vector3());
-                if (Math.max(meshSize.x, meshSize.y, meshSize.z) > 6.0) return;
+                if (Math.max(meshSize.x, meshSize.y, meshSize.z) > CORE_OUTLIER_ABS_MAX_DIM) return;
                 worldBox.union(tempBox);
                 hasVisibleMesh = true;
             });
