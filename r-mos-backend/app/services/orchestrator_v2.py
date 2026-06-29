@@ -12,9 +12,8 @@ This is a major upgrade from the original AgentOrchestrator, providing:
 
 import uuid
 import time
-from typing import Dict, Any, List, Optional, Callable
-from enum import Enum
-from dataclasses import asdict, dataclass, field, is_dataclass
+from typing import Dict, Any, List, Optional
+from dataclasses import asdict, is_dataclass
 
 from app.adapters.factory import AdapterFactory
 from app.core.resource_parser import resource_parser, ResourceRef, ResourceBindingResult
@@ -26,137 +25,10 @@ from app.services.llm.telemetry_context_builder import TelemetryContextBuilder
 from app.services.simulation.simulation_executor import SimulationExecutor
 from app.services.knowledge_governance import KnowledgeSearchQuery, KnowledgeStatus, knowledge_governance
 
-
-class TaskFSMState(str, Enum):
-    """Task FSM States"""
-    IDLE = "idle"
-    CREATED = "created"
-    READY = "ready"
-    RUNNING = "running"
-    PAUSED = "paused"
-    WAITING_APPROVAL = "waiting_approval"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-class TaskEventType(str, Enum):
-    """Task FSM Events"""
-    CREATE = "create"
-    START = "start"
-    PAUSE = "pause"
-    RESUME = "resume"
-    COMPLETE = "complete"
-    FAIL = "fail"
-    CANCEL = "cancel"
-    APPROVE = "approve"
-    REJECT = "reject"
-
-
-@dataclass
-class TaskContext:
-    """Task execution context"""
-    task_id: str
-    user_id: str
-    trace_id: str
-    state: TaskFSMState = TaskFSMState.IDLE
-    current_step: int = 0
-    total_steps: int = 0
-    skill_id: Optional[str] = None
-    resource_refs: List[ResourceRef] = field(default_factory=list)
-    evidence_collected: List[str] = field(default_factory=list)
-    created_at: int = field(default_factory=lambda: int(time.time() * 1000))
-    started_at: Optional[int] = None
-    completed_at: Optional[int] = None
-    budget_used_ms: int = 0
-    budget_limit_ms: int = 300000  # 5 minutes default
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class ModuleDispatchResult:
-    """Result of module dispatch"""
-    module_id: str
-    module_name: str
-    success: bool
-    output: Any = None
-    error: Optional[str] = None
-    execution_time_ms: int = 0
-    evidence_required: List[str] = field(default_factory=list)
-
-
-class ModuleRegistry:
-    """Registry for skill modules"""
-
-    def __init__(self):
-        self._modules: Dict[str, Callable] = {}
-        self._module_metadata: Dict[str, Dict[str, Any]] = {}
-
-    def register(
-        self,
-        module_id: str,
-        module_name: str,
-        handler: Callable,
-        metadata: Optional[Dict[str, Any]] = None
-    ):
-        """Register a skill module"""
-        self._modules[module_id] = handler
-        self._module_metadata[module_id] = {
-            "name": module_name,
-            "metadata": metadata or {}
-        }
-
-    def get_handler(self, module_id: str) -> Optional[Callable]:
-        """Get module handler by ID"""
-        return self._modules.get(module_id)
-
-    def get_metadata(self, module_id: str) -> Optional[Dict[str, Any]]:
-        """Get module metadata"""
-        return self._module_metadata.get(module_id)
-
-    def list_modules(self) -> List[str]:
-        """List all registered module IDs"""
-        return list(self._modules.keys())
-
-
-class IdempotencyCache:
-    """In-memory idempotency cache"""
-
-    def __init__(self, ttl_seconds: int = 3600):
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._timestamps: Dict[str, int] = {}
-        self._ttl_seconds = ttl_seconds
-
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
-        """Get cached response"""
-        # Check expiry
-        if key in self._timestamps:
-            if time.time() - self._timestamps[key] > self._ttl_seconds:
-                del self._cache[key]
-                del self._timestamps[key]
-                return None
-        return self._cache.get(key)
-
-    def set(self, key: str, value: Dict[str, Any]):
-        """Cache response"""
-        self._cache[key] = value
-        self._timestamps[key] = int(time.time())
-
-    def has(self, key: str) -> bool:
-        """Check if key exists and is valid"""
-        if key not in self._cache:
-            return False
-        # Check expiry
-        if time.time() - self._timestamps[key] > self._ttl_seconds:
-            del self._cache[key]
-            del self._timestamps[key]
-            return False
-        return True
-
-    def clear(self):
-        """Clear all cache"""
-        self._cache.clear()
-        self._timestamps.clear()
+# Re-export moved symbols so existing `from app.services.orchestrator_v2 import X` keeps working.
+from app.services.orchestration.fsm import TaskFSMState, TaskEventType, TaskContext, ModuleDispatchResult  # noqa: F401
+from app.services.orchestration.module_registry import ModuleRegistry  # noqa: F401
+from app.services.orchestration.idempotency import IdempotencyCache  # noqa: F401
 
 
 class OrchestratorV2:
