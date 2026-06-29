@@ -44,6 +44,8 @@ export default defineConfig({
         "src/components/Viewer3D/atom01/InteractiveLinkMesh.tsx",
         "src/components/Viewer3D/atom01/atom01Geometry.ts",
         "src/components/Maintenance/SOPPlayerAdjudicated.tsx",
+        "src/components/Maintenance/sopPlayer/useSOPActionResolver.ts",
+        "src/components/Maintenance/sopPlayer/useSOPExecutorBridge.ts",
       ],
       thresholds: {
         "src/pages/SOPMaintenancePage.tsx": { lines: 70 },
@@ -56,6 +58,8 @@ export default defineConfig({
         "src/components/Viewer3D/atom01/InteractiveLinkMesh.tsx": { lines: 55 },
         "src/components/Viewer3D/atom01/atom01Geometry.ts": { lines: 80 },
         "src/components/Maintenance/SOPPlayerAdjudicated.tsx": { lines: 70 },
+        "src/components/Maintenance/sopPlayer/useSOPActionResolver.ts": { lines: 70 },
+        "src/components/Maintenance/sopPlayer/useSOPExecutorBridge.ts": { lines: 70 },
       },
     },
   },
