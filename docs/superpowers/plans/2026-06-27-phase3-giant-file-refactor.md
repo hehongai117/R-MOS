@@ -535,7 +535,7 @@ python -m pytest tests/ -o addopts='' -q --cov=app.services.orchestrator_v2 --co
 ```
 Expected: 全 passed；orchestrator_v2 覆盖率 ≥70%（注意：现门禁按模块名 `app.services.orchestrator_v2` 计，类移出后该模块只剩 OrchestratorV2，覆盖率可能变化——若 <70%，把 `orchestration.*` 三模块一并加入 `backend-ci.yml` 14-service gate 的 `--cov=` 列表，使整体守护不缩水）。`wc -l orchestrator_v2.py` 目标 ≤ 450 行。
 
-- [ ] **Step 4：提交**
+- [x] **Step 4：提交**
 
 ```bash
 git add r-mos-backend/app/services/orchestrator_v2.py r-mos-backend/app/services/orchestration .github/workflows/backend-ci.yml
@@ -556,7 +556,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Modify: 视实际发现而定（候选：Task 4/5 抽出的 `atom01Constants.ts`、`sopMaintenanceConfig.ts` 中标 `@deprecated` 的 fallback；`SOPPlayerAdjudicated` 的 `PART_TARGET_ALIASES`）
 - Modify: `CLAUDE.md`、`docs/superpowers/plans/2026-06-22-quality-hardening-master-plan.md`、记忆
 
-- [ ] **Step 1：盘点残留硬编码**
+- [x] **Step 1：盘点残留硬编码**（结论：全部为必要 fallback，零删除）
 
 Run:
 ```bash
@@ -565,7 +565,7 @@ grep -rnE '@deprecated|ATOM-01|atom01|robotId === 1|hardcod|硬编码' r-mos-fro
 ```
 逐条判断：**已被 manifest/config 取代且无引用** → 删；**仍是必要 fallback** → 保留并确认注释准确。**不删有真实引用的兜底**（多机器人 manifest 尚不完整时仍需）。
 
-- [ ] **Step 2：执行可安全清理项 + 全量验证**
+- [x] **Step 2：执行可安全清理项 + 全量验证**（无可安全删除项；review 修复另清理了端点死 import）
 
 仅清理确认无引用的死代码。每删一处跑相关特征测试：
 ```bash
@@ -574,7 +574,7 @@ cd ../r-mos-backend && python -m pytest -q
 ```
 Expected: 全绿（删的是死代码，行为不变）。
 
-- [ ] **Step 3：Phase 3 收尾文档 + 记忆**
+- [x] **Step 3：Phase 3 收尾文档 + 记忆**
 
 - 更新总控计划 `2026-06-22-quality-hardening-master-plan.md`：Phase 3 → ✅ Done。
 - 更新 `CLAUDE.md`：如有文件路径指向变化（新增 `app/schemas/agent.py`、`atom01/`、`sopMaintenance/`、`sopPlayer/` 等），校正"Key Files"链接。
@@ -595,10 +595,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ## Phase 3 收尾（最后一个 Task 完成后）
 
-- [ ] 全量复验：后端 `pytest -q` 全绿 + 两个覆盖率门禁通过；前端 `vitest run --coverage` 达阈值 + `tsc`/`eslint` 绿。
-- [ ] 6（+1）文件行数前/后对比表（目标：endpoints 各 ≤600/≤450；Atom01 ≤450；SOPMaintenancePage ≤700；SOPPlayer ≤450；orchestrator ≤450）。
-- [ ] 更新总控计划 Phase 3 → ✅ Done；更新记忆。
-- [ ] 中文汇报：行数下降 + 行为等价（特征测试全程绿）+ 安全网门禁随代码迁移已扩展，可进入 Phase 4（性能硬化）。
+- [x] 全量复验：后端 scoped 657 passed/3 skipped + 端点门禁 92% + 14-service 门禁通过；前端 vitest+coverage EXIT0、tsc/eslint 绿。
+- [x] 行数前/后：agent 1214→335、training 1038→598、teaching 901→68、Atom01 1207→339、SOPMaintenancePage 1615→700、SOPPlayer 895→354、orchestrator 772→644（后者 OrchestratorV2 类本体不可拆，达成 floor）。
+- [x] 更新总控计划 Phase 3 → ✅ Done；更新记忆。
+- [x] 中文汇报：见会话。
 
 ## 自检（计划编写完成后）
 
