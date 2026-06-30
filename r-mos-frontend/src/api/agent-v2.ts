@@ -190,7 +190,7 @@ export const sendAgentRequestV2 = async (request: AgentRequestV2): Promise<Agent
     from_cache: boolean;
     approval_id?: number;
     mode_used: 'command' | 'message';
-  }>('/agent/execute', { ...request, mode: 'message' });
+  }>('/agent/execute', { ...request, mode: 'message' }, { timeout: 90000 });
 
   const payload = response.data;
   const result = payload.result;

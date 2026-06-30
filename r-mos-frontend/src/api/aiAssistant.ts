@@ -23,6 +23,6 @@ export interface AIChatResponse {
 }
 
 export async function sendAIChat(request: AIChatRequest): Promise<AIChatResponse> {
-  const res = await apiClient.post<AIChatResponse>('/ai-assistant/chat', request)
+  const res = await apiClient.post<AIChatResponse>('/ai-assistant/chat', request, { timeout: 90000 })
   return res.data
 }
