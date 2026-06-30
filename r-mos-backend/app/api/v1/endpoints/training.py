@@ -5,8 +5,7 @@ UF-04, UF-06: Training API Endpoints
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List, Any
-from datetime import datetime
+from typing import Optional, List
 import logging
 
 from app.core.database import get_db
@@ -16,7 +15,6 @@ from app.services.training.submission_service import SubmissionService
 from app.services.training.feedback_generator import FeedbackGenerator, FeedbackRole
 from app.services.identity.class_membership import ClassMembershipService
 from app.services.memory.skill_profile_service import SkillProfileService
-from app.services.authz_guard import ActorContext, get_current_actor
 from app.models.training_submission import TrainingSubmission
 from app.schemas.training_workbench import (
     SessionCreateRequest, SessionResponse, StepRecordResponse,

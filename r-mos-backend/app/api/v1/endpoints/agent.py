@@ -3,13 +3,12 @@ Agent API Endpoints
 P0: Frontend integration for Agent services
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, Request
+from typing import Dict, Any
 import uuid
 import logging
 
 from app.core.database import get_db
-from app.core.exceptions import PermissionDeniedError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.command_runtime import Command, AIToolCall
 from app.models.approval import Approval
