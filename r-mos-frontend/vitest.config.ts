@@ -34,6 +34,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: [
+        "src/api/retry.ts",
         "src/pages/SOPMaintenancePage.tsx",
         "src/pages/sopMaintenance/useRuntimeDraft.ts",
         "src/pages/sopMaintenance/useSOPViewState.ts",
@@ -51,6 +52,7 @@ export default defineConfig({
         "src/components/Maintenance/sopPlayer/SOPPlayerView.tsx",
       ],
       thresholds: {
+        "src/api/retry.ts": { lines: 80 },
         "src/pages/SOPMaintenancePage.tsx": { lines: 70 },
         "src/pages/sopMaintenance/useRuntimeDraft.ts": { lines: 70 },
         "src/pages/sopMaintenance/useSOPViewState.ts": { lines: 70 },

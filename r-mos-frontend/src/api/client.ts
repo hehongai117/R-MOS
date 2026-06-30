@@ -31,6 +31,7 @@ interface RequestConfig extends InternalAxiosRequestConfig {
 }
 
 import { API_BASE_URL, API_ROOT } from './config'
+import { installRetry } from './retry'
 export { API_BASE_URL, API_ROOT }
 
 function getStoredRefreshToken() {
@@ -47,6 +48,12 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+// Install retry BEFORE the 401 interceptor.
+// Axios response interceptors run FIFO, so the retry handler (registered here)
+// runs first: it retries 502/503/504/network errors transparently and lets 401
+// pass through to the refresh logic below.
+installRetry(apiClient)
 
 apiClient.interceptors.request.use(
   (config) => {
