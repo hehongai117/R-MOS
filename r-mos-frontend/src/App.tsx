@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import AppLayout from '@/components/Layout/AppLayout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
 import { PageSkeleton } from '@/components/ui/skeleton'
 import LoginPage from '@/pages/LoginPage'
@@ -71,11 +72,11 @@ function App() {
         <AntdApp>
           <Toaster />
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={withSuspense(<RegisterPage />)} />
+            <Route path="/login" element={<RouteErrorBoundary><LoginPage /></RouteErrorBoundary>} />
+            <Route path="/register" element={<RouteErrorBoundary>{withSuspense(<RegisterPage />)}</RouteErrorBoundary>} />
 
             <Route element={<ProtectedRoute />}>
-              <Route path="onboarding/robots" element={withSuspense(<OnboardingRobotsPage />)} />
+              <Route path="onboarding/robots" element={<RouteErrorBoundary>{withSuspense(<OnboardingRobotsPage />)}</RouteErrorBoundary>} />
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<DefaultRouteRedirect />} />
                 <Route

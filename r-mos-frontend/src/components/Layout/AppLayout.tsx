@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { GlobalAIChat } from '@/components/AIAssistant/GlobalAIChat'
+import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
 import { LAYOUT_CONFIG, type NavItem, type NavGroup } from '@/config/nav'
 import { BRAND_NAME } from '@/config/brand'
 
@@ -182,7 +183,9 @@ function RoleLayoutShell({
           </div>
         )}
         <div className="mx-auto min-h-[calc(100vh-3rem)] max-w-[1600px] p-6">
-          <Outlet />
+          <RouteErrorBoundary>
+            <Outlet />
+          </RouteErrorBoundary>
         </div>
       </main>
       <GlobalAIChat />
