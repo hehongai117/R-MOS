@@ -76,6 +76,7 @@ import {
     LeftRailSopList,
 } from './sopMaintenance/SOPMaintenancePanels';
 import { SOPViewerScene } from './sopMaintenance/SOPViewerScene';
+import { Viewer3DErrorBoundary } from '@/components/common/ErrorBoundary';
 
 interface SOPMaintenancePageProps {
     workspaceVariant?: WorkspaceVariant;
@@ -613,53 +614,55 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
                                 </Space>
                             }
                         >
-                            <Canvas
-                                key={`cam-${cameraPreset.position.join(',')}-${cameraPreset.target.join(',')}-${cameraPreset.fov}`}
-                                camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}
-                                shadows
-                                dpr={[1, 2]}
-                            >
-                                <SOPViewerScene
-                                    cameraPreset={cameraPreset}
-                                    focusTarget={focusTarget}
-                                    runtimeManifest={runtimeManifest}
-                                    runtimePreviewAssetUrl={runtimePreviewAssetUrl}
-                                    runtimePreviewAssetPath={runtimePreviewAssetPath}
-                                    manifest={manifest}
-                                    currentRobot={currentRobot}
-                                    robotId={robotId}
-                                    viewerModelScale={viewerModelScale}
-                                    effectiveExplodeAmount={effectiveExplodeAmount}
-                                    visibleLinks={visibleLinks}
-                                    clickableLinks={clickableLinks}
-                                    fadedLinks={fadedLinks}
-                                    referenceLinks={referenceLinks}
-                                    subPartEnabledLinks={subPartEnabledLinks}
-                                    isFullscreen={isFullscreen}
-                                    hoveredPart={hoveredPart}
-                                    selectedPart={selectedPart}
-                                    showDetailParts={showDetailParts}
-                                    viewState={viewState}
-                                    viewMode={viewMode}
-                                    isolationLevel={isolationLevel}
-                                    l2TargetLink={l2TargetLink}
-                                    l2SelectedPartIdx={l2SelectedPartIdx}
-                                    selectedOverviewNode={selectedOverviewNode}
-                                    adjudicatedDisassemblyReady={adjudicatedDisassemblyReady}
-                                    selectedScrewId={selectedScrewId}
-                                    selectedToolId={selectedToolId}
-                                    disassemblyPlaying={disassemblyPlaying}
-                                    onPartHover={handlePartHover}
-                                    onPartSelect={handlePartSelect}
-                                    onPartDoubleClick={handlePartDoubleClick}
-                                    onSubPartSelect={handleSubPartSelect}
-                                    onSubPartHover={handleSubPartHover}
-                                    onVisibleBoundsChange={handleVisibleBoundsChange}
-                                    setDisassemblyStep={setDisassemblyStep}
-                                    setDisassemblyPlaying={setDisassemblyPlaying}
-                                    setExplodeAmount={setExplodeAmount}
-                                />
-                            </Canvas>
+                            <Viewer3DErrorBoundary>
+                                <Canvas
+                                    key={`cam-${cameraPreset.position.join(',')}-${cameraPreset.target.join(',')}-${cameraPreset.fov}`}
+                                    camera={{ position: cameraPreset.position, fov: cameraPreset.fov }}
+                                    shadows
+                                    dpr={[1, 2]}
+                                >
+                                    <SOPViewerScene
+                                        cameraPreset={cameraPreset}
+                                        focusTarget={focusTarget}
+                                        runtimeManifest={runtimeManifest}
+                                        runtimePreviewAssetUrl={runtimePreviewAssetUrl}
+                                        runtimePreviewAssetPath={runtimePreviewAssetPath}
+                                        manifest={manifest}
+                                        currentRobot={currentRobot}
+                                        robotId={robotId}
+                                        viewerModelScale={viewerModelScale}
+                                        effectiveExplodeAmount={effectiveExplodeAmount}
+                                        visibleLinks={visibleLinks}
+                                        clickableLinks={clickableLinks}
+                                        fadedLinks={fadedLinks}
+                                        referenceLinks={referenceLinks}
+                                        subPartEnabledLinks={subPartEnabledLinks}
+                                        isFullscreen={isFullscreen}
+                                        hoveredPart={hoveredPart}
+                                        selectedPart={selectedPart}
+                                        showDetailParts={showDetailParts}
+                                        viewState={viewState}
+                                        viewMode={viewMode}
+                                        isolationLevel={isolationLevel}
+                                        l2TargetLink={l2TargetLink}
+                                        l2SelectedPartIdx={l2SelectedPartIdx}
+                                        selectedOverviewNode={selectedOverviewNode}
+                                        adjudicatedDisassemblyReady={adjudicatedDisassemblyReady}
+                                        selectedScrewId={selectedScrewId}
+                                        selectedToolId={selectedToolId}
+                                        disassemblyPlaying={disassemblyPlaying}
+                                        onPartHover={handlePartHover}
+                                        onPartSelect={handlePartSelect}
+                                        onPartDoubleClick={handlePartDoubleClick}
+                                        onSubPartSelect={handleSubPartSelect}
+                                        onSubPartHover={handleSubPartHover}
+                                        onVisibleBoundsChange={handleVisibleBoundsChange}
+                                        setDisassemblyStep={setDisassemblyStep}
+                                        setDisassemblyPlaying={setDisassemblyPlaying}
+                                        setExplodeAmount={setExplodeAmount}
+                                    />
+                                </Canvas>
+                            </Viewer3DErrorBoundary>
                         </Card>
                     </div>
                 </Col>

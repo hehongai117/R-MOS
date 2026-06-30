@@ -18,6 +18,7 @@ const {
   sopSceneSyncMock,
   sopPlayerCallbackCapture,
   atomCapture,
+  atomShouldThrow,
 } = vi.hoisted(() => {
   const sopPlayerCallbackCapture: { current: Record<string, unknown> | null } = {
     current: null,
@@ -25,6 +26,7 @@ const {
   const atomCapture: { current: Record<string, unknown> | null } = {
     current: null,
   }
+  const atomShouldThrow: { current: boolean } = { current: false }
   return {
     setOperationModeMock: vi.fn(),
     setCurrentToolMock: vi.fn(),
@@ -37,6 +39,7 @@ const {
     sopSceneSyncMock: vi.fn(),
     sopPlayerCallbackCapture,
     atomCapture,
+    atomShouldThrow,
   }
 })
 
@@ -114,6 +117,7 @@ vi.mock('@/components/DiagnosisPanel/DiagnosisPanel', () => ({
 // sub-part select / double click / visible bounds) that own the isolation state machine.
 vi.mock('@/components/Viewer3D/Atom01Interactive', () => ({
   Atom01Interactive: (props: Record<string, unknown>) => {
+    if (atomShouldThrow.current) throw new Error('WebGL not supported')
     atomCapture.current = props
     return <div>Atom01InteractiveStub</div>
   },
@@ -332,6 +336,7 @@ describe('SOPMaintenancePage characterization', () => {
     clientPostMock.mockReset()
     navigateMock.mockReset()
     sopPlayerCallbackCapture.current = null
+    atomShouldThrow.current = false
     window.sessionStorage.clear()
 
     clientGetMock.mockResolvedValue({ data: { projects: [] } })
@@ -944,5 +949,28 @@ describe('SOPMaintenancePage characterization', () => {
     // intent.requiredTool routed to setCurrentTool (targetPart isolation is a no-op
     // without manifest-derived partMetadata)
     expect(setCurrentToolMock).toHaveBeenCalledWith('TORQUE_WRENCH')
+  })
+
+  // ─── 3D error boundary degradation ───────────────────────────────────────
+
+  it('shows 3D 视图不可用 fallback when 3D child throws, rest of page still visible', () => {
+    // Need a robot so Atom01Interactive is mounted (robotId branch in SOPViewerScene).
+    currentRobotSelectorMock.mockImplementation(
+      (sel: (s: Record<string, unknown>) => unknown) => sel(ROBOT_STATE),
+    )
+    // Suppress expected React error-boundary console noise in this test.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    atomShouldThrow.current = true
+
+    render(<SOPMaintenancePage />)
+
+    // 3D region shows the Viewer3DErrorBoundary degradation copy
+    expect(screen.getByText(/3D 视图不可用/)).toBeTruthy()
+    // WebGL-specific message also present (may appear in multiple nested elements)
+    expect(screen.getAllByText(/WebGL/).length).toBeGreaterThan(0)
+    // Page-level heading still visible → page did NOT crash
+    expect(screen.getByRole('heading', { name: 'SOP 维保系统' })).toBeTruthy()
+
+    consoleError.mockRestore()
   })
 })
