@@ -138,3 +138,86 @@ Paste this table into `docs/superpowers/plans/phase4-baseline.md`.
 **All protected routes skipped** — Set `AUTH_TOKEN` (see above).
 
 **Numbers vary between runs** — Run 3× and take the median. Lighthouse desktop preset disables network/CPU throttling; vary if the machine is under load.
+
+---
+
+## WebSocket Telemetry Probe
+
+Measures the real-time telemetry stream emitted by the backend WebSocket endpoint (`/ws/robot/status`).  
+Mirrors the behaviour of `useWebSocket.ts`: replies `{ type: 'pong' }` to every server `ping` so the server keeps streaming, then collects inter-arrival statistics for the 5 Hz telemetry channel.
+
+### Prerequisites
+
+Install `ws` once locally (not committed to `package.json`):
+
+```bash
+cd r-mos-frontend
+npm i -D ws
+```
+
+The backend must be running before you start the probe.
+
+### Environment Variables
+
+| Variable          | Default                                      | Description                         |
+|-------------------|----------------------------------------------|-------------------------------------|
+| `WS_URL`          | `ws://localhost:8000/ws/robot/status`        | Full WebSocket URL to connect to    |
+| `WS_DURATION_SEC` | `20`                                         | How long (seconds) to collect data  |
+
+To probe a specific robot's channel use the `/ws/robot/{id}/status` path:
+
+```bash
+WS_URL=ws://localhost:8000/ws/robot/42/status npm run perf:ws
+```
+
+### How to Run
+
+```bash
+# Default (20 s, default robot channel)
+npm run perf:ws
+
+# Custom duration
+WS_DURATION_SEC=60 npm run perf:ws
+
+# Specific robot + longer run
+WS_URL=ws://localhost:8000/ws/robot/3/status WS_DURATION_SEC=30 npm run perf:ws
+```
+
+### Output
+
+Printed to stdout as a Markdown table:
+
+```
+## WebSocket Telemetry Probe Results
+
+| Metric                          | Value         |
+|---------------------------------|---------------|
+| Duration (s)                    | 20            |
+| Total telemetry messages        | 101           |
+| Actual throughput (Hz)          | 5.03          |
+| Inter-arrival mean (ms)         | 198.8         |
+| Inter-arrival P50 (ms)          | 199.1         |
+| Inter-arrival P95 (ms)          | 212.4         |
+| 5 Hz achievement rate (%)       | 94.0          |
+| 5 Hz band [160–240 ms]          | 94/100 intervals |
+| Ping→pong cycle RTT mean (ms)   | 204.3         |
+| Disconnect count                | 0             |
+```
+
+### How to Read the Numbers
+
+**5 Hz achievement rate** — percentage of consecutive inter-arrival intervals that fall within the ±20 % tolerance band around 200 ms (i.e. 160–240 ms).  A healthy stream should show ≥ 90 %.
+
+**Inter-arrival P95** — 95th-percentile gap between successive telemetry frames.  Values > 300 ms indicate occasional frame drops or scheduler jitter.
+
+**Ping→pong cycle RTT** — approximate round-trip derived from successive server `ping` arrivals (a server-side proxy for network latency + scheduling overhead).
+
+**Disconnect count** — number of unexpected close events during the probe window.  Any value > 0 should be investigated.
+
+### Troubleshooting
+
+**"Connection refused"** — Start the backend first (`npm run dev` in `r-mos-backend`, or `/run-backend`).
+
+**"ws package is not installed"** — Run `npm i -D ws`.
+
+**"Not enough data"** — Backend is reachable but not sending telemetry; check the robot adapter / mock service.

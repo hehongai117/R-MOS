@@ -9,7 +9,8 @@
         "test": "vitest run",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview",
-        "perf:lighthouse": "node scripts/perf/lighthouse.mjs"
+        "perf:lighthouse": "node scripts/perf/lighthouse.mjs",
+        "perf:ws": "node scripts/perf/ws-probe.mjs"
     },
     "dependencies": {
         "@ant-design/icons": "^5.2.6",
