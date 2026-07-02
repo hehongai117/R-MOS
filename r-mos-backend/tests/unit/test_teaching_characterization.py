@@ -117,9 +117,9 @@ def test_get_guidance_policy_not_found_returns_404():
         assert resp.status_code == 404
         body = resp.json()
         # _raise_not_found → HTTPException → http_exception_handler → error_type="HTTPException"
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -313,9 +313,9 @@ def test_update_class_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -369,9 +369,9 @@ def test_create_course_class_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "99999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "99999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -387,9 +387,9 @@ def test_get_course_not_found_returns_404():
         resp = client.get("/api/v1/courses/9999")
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -412,9 +412,9 @@ def test_enroll_student_class_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "88888" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "88888" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -465,9 +465,9 @@ def test_create_assignment_class_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "77777" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "77777" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -483,9 +483,9 @@ def test_get_assignment_not_found_returns_404():
         resp = client.get("/api/v1/assignments/9999")
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -501,9 +501,9 @@ def test_list_attempts_assignment_not_found_returns_404():
         resp = client.get("/api/v1/assignments/9999/attempts")
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -522,9 +522,9 @@ def test_create_attempt_assignment_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -957,9 +957,9 @@ def test_create_evidence_card_attempt_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "99999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "99999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1173,9 +1173,9 @@ def test_update_attempt_status_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1226,9 +1226,9 @@ def test_grade_attempt_not_found_returns_404():
         )
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1271,9 +1271,9 @@ def test_get_attempt_evidence_not_found_returns_404():
         resp = client.get("/api/v1/attempts/9999/evidence")
         assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1316,36 +1316,33 @@ def test_get_attempt_diagnosis_not_found_returns_404():
         assert resp.status_code == 404
         body = resp.json()
         # _raise_not_found → HTTPException → http_exception_handler
-        assert body["error_type"] == "HTTPException"
-        assert body["details"] is None
-        assert "9999" in body["message"]
+        assert body["error_type"] == "ResourceNotFoundError"
+        assert body["details"] is not None
+        assert "9999" in str(body["details"])
     finally:
         client.close()
         app.dependency_overrides.clear()
 
 
-def test_get_attempt_diagnosis_fallback_error_returns_500():
+def test_get_attempt_diagnosis_no_task_returns_404():
     """
-    GET /api/v1/attempts/{id}/diagnosis when attempt has no task and no evidence
-    → 500 HTTPException with "EVIDENCE_FALLBACK_FAILED" message.
-    BUG: 当 attempt 无 task 且无 evidence 时，DiagnosisService 抛出
-    EvidenceFallbackError，endpoint 捕获后 raise HTTPException(500)，
-    HTTPException handler 返回 error_type="HTTPException"，特征锁定。
-    覆盖: get_attempt_diagnosis EvidenceFallbackError branch lines 893-899.
+    GET /api/v1/attempts/{id}/diagnosis when attempt has no linked task
+    → 404（而非 500）。
+
+    修复 P0#7 后：attempt 未关联 task（task_id 为空）是"无诊断可用"的数据状态，
+    endpoint 对 EvidenceFallbackError(task_id=None) 返回 404 而非误报服务器 500。
     """
     client, sf = _build_client()
     try:
-        # Attempt with no task_id → diagnosis service will raise EvidenceFallbackError
+        # Attempt with no task_id → diagnosis service will raise EvidenceFallbackError(task_id=None)
         _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=9002, task_id=None))
 
         resp = client.get(f"/api/v1/attempts/{attempt_id}/diagnosis")
-        assert resp.status_code == 500
+        assert resp.status_code == 404
         body = resp.json()
-        # raise HTTPException(status_code=500, detail="EVIDENCE_FALLBACK_FAILED")
-        # → http_exception_handler → message = "EVIDENCE_FALLBACK_FAILED"
+        # 直接 raise HTTPException(404, ...) → http_exception_handler → error_type="HTTPException"
         assert body["error_type"] == "HTTPException"
-        assert body["message"] == "EVIDENCE_FALLBACK_FAILED"
-        assert body["details"] is None
+        assert "诊断" in body["message"]
     finally:
         client.close()
         app.dependency_overrides.clear()

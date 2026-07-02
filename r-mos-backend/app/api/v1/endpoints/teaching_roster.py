@@ -804,6 +804,10 @@ async def get_attempt_diagnosis(
     try:
         return await service.get_diagnosis_report(attempt_id)
     except EvidenceFallbackError as exc:
+        # attempt 未关联 task（task_id 为空）不是服务器故障，而是"无诊断可用"的数据状态 → 404；
+        # 仅当有 task 却仍无法生成证据时才是真正的 500。
+        if exc.task_id is None:
+            raise HTTPException(status_code=404, detail="该测评暂无可用诊断（未关联任务）")
         logger.error(
             "Diagnosis evidence fallback failed: attempt_id=%s task_id=%s",
             exc.attempt_id,

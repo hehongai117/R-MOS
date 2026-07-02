@@ -4,8 +4,6 @@ Avoids circular import between teaching.py and teaching_roster.py.
 """
 from typing import Any, Optional
 
-from fastapi import HTTPException
-
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 
 
@@ -14,7 +12,10 @@ def _raise_business_error(exc: BusinessRuleViolation) -> None:
 
 
 def _raise_not_found(exc: ResourceNotFoundError) -> None:
-    raise HTTPException(status_code=404, detail=str(exc))
+    # 直接抛出类型化的 ResourceNotFoundError，交由 main.py 的专用处理器映射为
+    # 404 + error_type="ResourceNotFoundError" + 结构化 details；
+    # 此前转成通用 HTTPException 会命中兜底处理器，error_type 丢失为 "HTTPException"。
+    raise exc
 
 
 def _parse_user_id(raw_user_id: Optional[str]) -> Optional[int]:
