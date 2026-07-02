@@ -900,11 +900,10 @@ def test_execute_message_mode_returns_success_response() -> None:
 
 
 def test_execute_command_mode_no_side_effects_returns_success() -> None:
-    """POST /agent/execute — command 模式无副作用时返回 error（已知 bug）.
+    """POST /agent/execute — command 模式无副作用时返回 success.
 
-    当前实现中 Command(user_id=...) 传入了无效字段（Command 模型使用 actor_user_id），
-    导致 SQLAlchemy 抛出 TypeError，endpoint 捕获后返回 status="error"。
-    这是被锁定的当前行为（characterization）。
+    修复 P0#5 后：Command 用正确字段（actor_user_id + 必填 trace_id）构造成功，
+    无副作用工具直接执行返回 status="success"，result 含 command_id/tool_call_id。
     """
     client, sf = _build_client()
     try:
@@ -925,10 +924,12 @@ def test_execute_command_mode_no_side_effects_returns_success() -> None:
         )
         assert resp.status_code == 200
         body = resp.json()
-        # Command(user_id=...) 使用无效字段名，endpoint 捕获后返回 "error"（已知 bug）
-        assert body["status"] == "error"
+        # 修复后：无副作用 command 正常执行成功
+        assert body["status"] == "success"
         assert "trace_id" in body
         assert body["mode_used"] == "command"
+        assert body["result"]["command_id"] is not None
+        assert body["result"]["tool_call_id"] is not None
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -936,11 +937,10 @@ def test_execute_command_mode_no_side_effects_returns_success() -> None:
 
 
 def test_execute_command_mode_with_side_effects_returns_pending_approval() -> None:
-    """POST /agent/execute — command 模式有副作用时实际返回 error（已知 bug）.
+    """POST /agent/execute — command 模式有副作用时返回 pending_approval.
 
-    设计预期为 pending_approval，但当前实现中 Command(user_id=...) 使用无效字段名
-    （模型字段为 actor_user_id），导致 TypeError 被捕获后返回 status="error"。
-    这是被锁定的当前行为（characterization）。
+    修复 P0#5 后：有副作用的工具创建 Approval 记录，返回 status="pending_approval"
+    且携带 approval_id（原先因 Command 字段名错误被吞成 error）。
     """
     client, sf = _build_client()
     try:
@@ -962,11 +962,11 @@ def test_execute_command_mode_with_side_effects_returns_pending_approval() -> No
         )
         assert resp.status_code == 200
         body = resp.json()
-        # Command(user_id=...) 使用无效字段名，endpoint 捕获后返回 "error"（已知 bug）
-        # 设计预期为 pending_approval，但当前行为是 error
-        assert body["status"] == "error"
+        # 修复后：有副作用 command 进入待审批
+        assert body["status"] == "pending_approval"
         assert "trace_id" in body
         assert body["mode_used"] == "command"
+        assert body["approval_id"] is not None
     finally:
         client.close()
         app.dependency_overrides.clear()

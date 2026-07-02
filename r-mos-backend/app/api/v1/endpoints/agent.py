@@ -181,10 +181,12 @@ async def execute_agent(
             }
 
             # Create Command record
+            # 注意：Command 模型的用户字段是 actor_user_id（非 user_id），且 trace_id 必填、
+            # 无 input_text 列。此前误用 user_id/input_text 会在构造时抛 TypeError 被吞成 error。
             command = Command(
-                user_id=request.user_id,
+                trace_id=trace_id,
+                actor_user_id=request.user_id,
                 intent=command_payload["intent"],
-                input_text=command_payload.get("input_text"),
                 skill_id=command_payload.get("skill_id"),
                 status="pending",
             )
