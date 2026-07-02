@@ -409,13 +409,11 @@ def test_generate_workbench_draft_value_error_returns_400(monkeypatch) -> None:
         app.state.test_sessionmaker = None
 
 
-def test_generate_workbench_draft_json_decode_error_returns_400(monkeypatch) -> None:
-    """POST /training/workbench/draft — JSONDecodeError 时返回 400（覆盖 lines 391-392）。
+def test_generate_workbench_draft_json_decode_error_returns_502(monkeypatch) -> None:
+    """POST /training/workbench/draft — JSONDecodeError 时返回 502.
 
-    BUG (characterization-lock): json.JSONDecodeError 是 ValueError 的子类，
-    endpoint 中 except ValueError 出现在 except json.JSONDecodeError 之前，
-    所以 JSONDecodeError 被 ValueError 分支截获，返回 400 而非预期的 502。
-    此行为被锁定，不修复产品代码。
+    修复 P0#6 后：except json.JSONDecodeError 排在 except ValueError 之前，
+    AI 结果解析失败正确归为 502（网关级错误），而非误判为 400 输入错误。
     """
     client, sf = _build_client()
     try:
@@ -434,11 +432,10 @@ def test_generate_workbench_draft_json_decode_error_returns_400(monkeypatch) -> 
             headers={"Authorization": f"Bearer {token}"},
             json={"robot_model": "ABB", "task_summary": "x", "focus_prompt": "y"},
         )
-        # BUG: JSONDecodeError 是 ValueError 子类，被 except ValueError 先截获，返回 400 而非 502
-        assert resp.status_code == 400
+        # 修复后：JSONDecodeError → 502
+        assert resp.status_code == 502
         body = resp.json()
-        # 错误消息包含 JSONDecodeError 的 str(exc)（如 "invalid json: line 1 ..."）
-        assert "invalid json" in body["message"]
+        assert "训练草案" in body["message"]
     finally:
         client.close()
         app.dependency_overrides.clear()

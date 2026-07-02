@@ -146,10 +146,12 @@ async def generate_training_workbench_draft(
         )
         await session_service.initialize_steps(session_id, payload["steps"])
         payload["project"]["session_id"] = session_id
+    except json.JSONDecodeError as exc:
+        # JSONDecodeError 是 ValueError 的子类，必须放在 except ValueError 之前，
+        # 否则 AI 结果解析失败会被错误归为 400 输入错误，502 分支成为死代码。
+        raise HTTPException(status_code=502, detail="AI 返回结果无法解析为训练草案") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail="AI 返回结果无法解析为训练草案") from exc
     except Exception as exc:
         logger.error(f"[training-workbench] draft generation failed: {exc}")
         raise HTTPException(status_code=502, detail="训练草案生成失败，请稍后重试") from exc
