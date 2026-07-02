@@ -96,3 +96,6 @@ r-mos-frontend/scripts/perf/out/
 
 # vite.config.ts 的转译产物(误生成,勿入库)
 r-mos-frontend/vite.config.js
+
+# 客户说明书中间产物(截图+md,最终 docx 在桌面)
+.doc-assets/
