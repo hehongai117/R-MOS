@@ -277,8 +277,8 @@ class SOPQualityMonitor:
         Returns:
             创建的工单列表
         """
-        # 获取所有活跃的 SOP
-        sop_query = select(SOP).where(SOP.is_active == True)  # noqa: E712
+        # 获取所有 SOP（SOP 模型无 is_active/status 列，不存在软删除概念，全部纳入检查）
+        sop_query = select(SOP)
         sop_result = await self.db.execute(sop_query)
         sops = sop_result.scalars().all()
 

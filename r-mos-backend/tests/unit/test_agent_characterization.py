@@ -1298,14 +1298,13 @@ def test_get_task_status_v2_existing_returns_context() -> None:
 # 权限：agent:execute
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_evaluate_policy_v2_returns_500_due_to_model_dump_bug() -> None:
-    """POST /agent/v2/policy/evaluate — PolicyDecision 是 dataclass 没有 model_dump()，返回 500.
+def test_evaluate_policy_v2_returns_decision() -> None:
+    """POST /agent/v2/policy/evaluate — 返回 PolicyDecision 序列化结果（200）.
 
-    注意：这是当前代码的 bug（characterization），endpoint 调用 decision.model_dump()
-    但 PolicyDecision 是 dataclass 而非 Pydantic model，导致 AttributeError 500 异常。
-    使用 raise_server_exceptions=False 才能检验 HTTP 响应而非 pytest exception。
+    修复 P0#1 后：endpoint 用 dataclasses.asdict() 序列化 PolicyDecision（dataclass），
+    返回决策字段（allowed / risk_level / requires_approval 等）。
     """
-    client, sf = _build_client(raise_server_exceptions=False)
+    client, sf = _build_client()
     try:
         token = _register_and_login(client, email="pol1@x.com", password="StrongPass123", full_name="POL1")
         asyncio.run(_grant_role_permissions(sf, email="pol1@x.com", role_name="agent_user", permission_keys=["agent:execute"]))
@@ -1316,11 +1315,11 @@ def test_evaluate_policy_v2_returns_500_due_to_model_dump_bug() -> None:
             params={"action": "read_sop"},
             json={"user_id": "u1", "resource_type": "sops"},
         )
-        # PolicyDecision 没有 model_dump()，当前行为是 500 InternalServerError
-        assert resp.status_code == 500
+        assert resp.status_code == 200
         body = resp.json()
-        assert body["error_type"] == "InternalServerError"
-        assert body["status_code"] == 500
+        assert isinstance(body["allowed"], bool)
+        assert "risk_level" in body
+        assert "requires_approval" in body
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1750,14 +1749,13 @@ def test_generate_evaluation_report_invalid_task_id_returns_500() -> None:
 # 权限：agent:execute
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_sop_quality_check_full_run_returns_500_due_to_model_attribute_bug() -> None:
-    """POST /agent/sop/quality/check — 无 sop_id 时全量检查，SOP.is_active 属性不存在导致 500.
+def test_sop_quality_check_full_run_returns_result() -> None:
+    """POST /agent/sop/quality/check — 无 sop_id 时全量检查，返回 200.
 
-    注意：当前 SOPQualityMonitor.run_quality_check 查询 SOP 时使用 SOP.is_active 过滤，
-    但 SOP 模型无此属性，导致 AttributeError 500 异常。这是锁定的当前行为。
-    使用 raise_server_exceptions=False 才能检验 HTTP 响应而非 pytest exception。
+    修复 P0#3 后：run_quality_check 不再用不存在的 SOP.is_active 过滤（改为查询全部 SOP），
+    返回 SOPQualityCheckResponse（alerts / tickets_created）。空库时为空结果。
     """
-    client, sf = _build_client(raise_server_exceptions=False)
+    client, sf = _build_client()
     try:
         token = _register_and_login(client, email="sopq1@x.com", password="StrongPass123", full_name="SOPQ1")
         asyncio.run(_grant_role_permissions(sf, email="sopq1@x.com", role_name="agent_user", permission_keys=["agent:execute"]))
@@ -1767,11 +1765,10 @@ def test_sop_quality_check_full_run_returns_500_due_to_model_attribute_bug() -> 
             headers={"Authorization": f"Bearer {token}"},
             json={"time_range_days": 30},
         )
-        # SOPQualityMonitor.run_quality_check 引用 SOP.is_active（不存在），当前行为是 500
-        assert resp.status_code == 500
+        assert resp.status_code == 200
         body = resp.json()
-        assert body["error_type"] == "InternalServerError"
-        assert body["status_code"] == 500
+        assert "alerts" in body
+        assert "tickets_created" in body
     finally:
         client.close()
         app.dependency_overrides.clear()

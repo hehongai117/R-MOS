@@ -3,6 +3,7 @@ Agent V2 API Endpoints
 Task FSM, policy evaluation, idempotency, trace events, module registry.
 """
 
+from dataclasses import asdict
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional, Dict, Any
 
@@ -172,7 +173,9 @@ async def evaluate_policy_v2(
 ):
     """Evaluate policy for an action"""
     decision = policy_matrix.evaluate(action, context)
-    return decision.model_dump()
+    # PolicyDecision 是 dataclass（非 Pydantic），用 asdict 序列化；
+    # risk_level 是 str 枚举，FastAPI jsonable_encoder 会正确转为其值。
+    return asdict(decision)
 
 
 # V2: Idempotency Check Endpoint
