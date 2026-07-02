@@ -79,16 +79,27 @@ class TestTimingMiddlewareDefaultOff:
         assert "x-process-time" not in resp.headers
 
     def test_no_timing_middleware_in_stack(self):
-        """main.py 的 middleware stack 不得含有 TimingMiddleware 实例。"""
-        os.environ.pop("PERF_TIMING", None)
+        """main.py 的 middleware stack 不得含有 TimingMiddleware 实例（reload 证明守卫本身生效）。"""
+        import sys
 
-        from app.core.timing_middleware import TimingMiddleware
-        import main as main_module
+        saved = os.environ.pop("PERF_TIMING", None)
+        try:
+            # 强制重新执行模块级守卫：若 main 已被缓存，直接 import 不会重跑
+            # module-level 的 if os.getenv("PERF_TIMING")=="1" 条件；reload 才能证明
+            # 守卫本身在 PERF_TIMING 未设置时确实跳过了 TimingMiddleware 注册。
+            if "main" in sys.modules:
+                importlib.reload(sys.modules["main"])
+            import main as main_module  # noqa: PLC0415
 
-        middleware_classes = [
-            m.cls if hasattr(m, "cls") else type(m)
-            for m in main_module.app.user_middleware
-        ]
-        assert TimingMiddleware not in middleware_classes, (
-            "TimingMiddleware 不应在 PERF_TIMING 未设置时出现在 middleware stack 中"
-        )
+            from app.core.timing_middleware import TimingMiddleware
+            middleware_classes = [
+                m.cls if hasattr(m, "cls") else type(m)
+                for m in main_module.app.user_middleware
+            ]
+            assert TimingMiddleware not in middleware_classes, (
+                "TimingMiddleware 不应在 PERF_TIMING 未设置时出现在 middleware stack 中"
+            )
+        finally:
+            # 恢复调用前的环境变量状态（无论断言是否通过）
+            if saved is not None:
+                os.environ["PERF_TIMING"] = saved
