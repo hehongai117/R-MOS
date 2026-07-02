@@ -8,6 +8,7 @@ R-MOS Backend 应用入口（V2.2完整版）
 """
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -87,6 +88,12 @@ app = FastAPI(
 
 
 # ===== 中间件配置 =====
+
+# AI 管线计时中间件（默认关闭，仅 PERF_TIMING=1 时启用）
+if os.getenv("PERF_TIMING") == "1":
+    from app.core.timing_middleware import TimingMiddleware
+    app.add_middleware(TimingMiddleware)
+    logger.info("TimingMiddleware 已启用 (PERF_TIMING=1)")
 
 # CORS中间件（允许前端跨域访问）
 app.add_middleware(
