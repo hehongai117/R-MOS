@@ -93,3 +93,6 @@ coverage.xml
 
 # Lighthouse 原始测量结果(本地生成，不入库)
 r-mos-frontend/scripts/perf/out/
+
+# vite.config.ts 的转译产物(误生成,勿入库)
+r-mos-frontend/vite.config.js
