@@ -116,7 +116,9 @@ describe('shouldRetry', () => {
   })
 
   it('returns false for cancel errors regardless of method', () => {
-    const cancelErr = new CanceledError('cancelled', 'ERR_CANCELED', {
+    // axios 1.18.x 的 CanceledError 构造签名为 (message, config, request)，无 code 位；
+    // shouldRetry 靠 axios.isCancel()(__CANCEL__ 标记)判定，仅 message 即可。
+    const cancelErr = new CanceledError('cancelled', {
       method: 'get',
     } as InternalAxiosRequestConfig)
     expect(shouldRetry(cancelErr as AxiosError, 0, {})).toBe(false)
