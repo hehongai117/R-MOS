@@ -87,7 +87,9 @@ async def get_approval_history(
     _: None = Depends(require_permission("agent:read")),
 ):
     """Get approval request history (approved/rejected)"""
-    history = approval_queue.get_request_history(limit, offset)
+    # get_request_history 签名为 (requester_id, status, limit)；此前按 (limit, offset)
+    # 位置传参，把 limit 塞进了 requester_id 过滤，导致恒空。用关键字 limit + 手动 offset 分页。
+    history = approval_queue.get_request_history(limit=limit + offset)[offset:]
 
     return {
         "requests": [
@@ -161,10 +163,14 @@ async def generate_evaluation_report(
     generator = ReportGenerator(db)
 
     # Generate report
-    report = await generator.generate_report(
-        task_id=request.task_id,
-        use_llm=request.use_llm,
-    )
+    # task 不存在时 _load_task_data 抛 ValueError；转为 404 而非未捕获的 500。
+    try:
+        report = await generator.generate_report(
+            task_id=request.task_id,
+            use_llm=request.use_llm,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
     # Save to evidence bundle
     try:

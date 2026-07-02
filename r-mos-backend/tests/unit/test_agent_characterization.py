@@ -1551,15 +1551,33 @@ def test_get_pending_approvals_with_priority_filter() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_get_approval_history_returns_requests_list() -> None:
-    """GET /agent/approval/history — 返回 requests 列表（含已处理条目）.
+    """GET /agent/approval/history — 返回 requests 列表（含已提交条目）.
 
-    注意：当前实现中 get_request_history(limit, offset) 将 limit 传给 requester_id，
-    导致始终返回空列表（参数顺序 bug）。此测试锁定此当前行为。
+    修复 P0#4 后：get_request_history 用关键字 limit 调用（此前把 limit 位置传给
+    requester_id 过滤，导致恒空）。先创建一条审批请求，历史应能查到它。
     """
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="apph1@x.com", password="StrongPass123", full_name="APPH1")
-        asyncio.run(_grant_role_permissions(sf, email="apph1@x.com", role_name="agent_user", permission_keys=["agent:read"]))
+        asyncio.run(_grant_role_permissions(sf, email="apph1@x.com", role_name="agent_user", permission_keys=["agent:read", "agent:execute"]))
+
+        # 先创建一条审批请求（进入内存队列）
+        unique_resource = "sop-hist-check-001"
+        create = client.post(
+            "/api/v1/agent/approval/request",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "requester_id": "apph1",
+                "resource_type": "sops",
+                "resource_id": unique_resource,
+                "action": "sops.write",
+                "reason": "history test",
+                "priority": "high",
+                "evidence_refs": [],
+                "ttl_seconds": 3600,
+            },
+        )
+        assert create.status_code == 200
 
         resp = client.get(
             "/api/v1/agent/approval/history",
@@ -1569,8 +1587,8 @@ def test_get_approval_history_returns_requests_list() -> None:
         body = resp.json()
         assert "requests" in body
         assert isinstance(body["requests"], list)
-        # 当前实现因参数顺序 bug 始终返回空列表
-        assert body["requests"] == []
+        # 修复后：历史非空，且能查到刚创建的请求
+        assert any(r["resource_id"] == unique_resource for r in body["requests"])
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1716,12 +1734,11 @@ def test_reject_request_not_found_returns_404() -> None:
 # 权限：agent:read
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_generate_evaluation_report_invalid_task_id_returns_500() -> None:
-    """POST /agent/evaluation/report — 不存在的 task_id 导致 ValueError，返回 500.
+def test_generate_evaluation_report_invalid_task_id_returns_404() -> None:
+    """POST /agent/evaluation/report — 不存在的 task_id 返回 404（而非 500）.
 
-    注意：当前 ReportGenerator.generate_report 对不存在的 task_id 抛出
-    ValueError('Task 99999 not found')，未被捕获，导致 500 InternalServerError。
-    使用 raise_server_exceptions=False 才能检验 HTTP 响应而非 pytest exception。
+    修复 P0#2 后：endpoint 捕获 ReportGenerator 对缺失 task 抛出的 ValueError，
+    转为 404 Not Found。
     """
     client, sf = _build_client(raise_server_exceptions=False)
     try:
@@ -1733,11 +1750,10 @@ def test_generate_evaluation_report_invalid_task_id_returns_500() -> None:
             headers={"Authorization": f"Bearer {token}"},
             json={"task_id": 99999, "use_llm": False},
         )
-        # 不存在的任务 ID 导致 ValueError 未捕获，当前行为是 500
-        assert resp.status_code == 500
+        # 修复后：缺失 task 返回 404
+        assert resp.status_code == 404
         body = resp.json()
-        assert body["error_type"] == "InternalServerError"
-        assert body["status_code"] == 500
+        assert "99999" in str(body)
     finally:
         client.close()
         app.dependency_overrides.clear()
