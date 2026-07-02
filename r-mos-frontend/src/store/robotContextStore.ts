@@ -2,9 +2,31 @@
 import { create } from 'zustand'
 
 import { listRobots, listStudentRobots } from '@/api/robots'
+import { DEFAULT_ROBOT_MODEL_NAME } from '@/config/robots'
 import type { RobotModel } from '@/types/robotModel'
 
 const STORAGE_KEY = 'rmos_current_robot_id'
+
+/**
+ * 选出初始机器人：优先历史选择 → 精选默认型号（DEFAULT_ROBOT_MODEL_NAME）→ 首个机器人。
+ * autoPickFirst=false 时（学生端多台情况）不自动兜底首个，保持"需手动选择"语义。
+ */
+function pickInitialRobot(
+  robots: RobotModel[],
+  storedId: number | null,
+  autoPickFirst: boolean,
+): RobotModel | null {
+  if (storedId) {
+    const stored = robots.find((r) => r.id === storedId)
+    if (stored) return stored
+  }
+  if (DEFAULT_ROBOT_MODEL_NAME) {
+    const featured = robots.find((r) => r.model_name === DEFAULT_ROBOT_MODEL_NAME)
+    if (featured) return featured
+  }
+  if (autoPickFirst && robots.length > 0) return robots[0]
+  return null
+}
 
 interface RobotContextState {
   currentRobotId: number | null
@@ -43,15 +65,8 @@ export const useRobotContextStore = create<RobotContextState>((set, _get) => ({
       const res = await listStudentRobots(studentId)
       const robots = res.items
 
-      // 恢复之前选中的机器人，或自动选中唯一一台
-      const storedId = getStoredRobotId()
-      let current: RobotModel | null = null
-      if (storedId) {
-        current = robots.find((r) => r.id === storedId) ?? null
-      }
-      if (!current && robots.length === 1) {
-        current = robots[0]
-      }
+      // 恢复历史选择 → 精选默认型号 → 唯一一台时自动选中（多台不自动兜底，需手动选）
+      const current = pickInitialRobot(robots, getStoredRobotId(), robots.length === 1)
 
       set({
         availableRobots: robots,
@@ -75,14 +90,8 @@ export const useRobotContextStore = create<RobotContextState>((set, _get) => ({
       const res = await listRobots()
       const robots = res.items
 
-      const storedId = getStoredRobotId()
-      let current: RobotModel | null = null
-      if (storedId) {
-        current = robots.find((r) => r.id === storedId) ?? null
-      }
-      if (!current && robots.length > 0) {
-        current = robots[0]
-      }
+      // 恢复历史选择 → 精选默认型号 → 首个机器人
+      const current = pickInitialRobot(robots, getStoredRobotId(), true)
 
       set({
         availableRobots: robots,
