@@ -185,6 +185,15 @@ r-mos-frontend/src/
 /check-deps          # Check dependency versions
 ```
 
+## Performance Measurement Tooling (Phase 4)
+
+> 测量依赖按需安装（未入 package.json）：`cd r-mos-frontend && npm i -D lighthouse chrome-launcher ws`。基线回填至 `docs/superpowers/plans/phase4-baseline.md`。
+
+- `r-mos-frontend/scripts/perf/lighthouse.mjs` — 首屏/关键路由 Lighthouse（`npm run perf:lighthouse`，`BASE_URL`/`AUTH_TOKEN` 环境变量）
+- `r-mos-frontend/scripts/perf/ws-probe.mjs` — WebSocket 5Hz 遥测时延/达成率探针（`npm run perf:ws`，`WS_URL`/`WS_DURATION_SEC`）
+- `r-mos-frontend/scripts/perf/3d-viewer-trace-runbook.md` — 3D 渲染 trace 采集手册（DevTools Performance）
+- `r-mos-backend/scripts/perf/ai_pipeline_timing.md` + `app/core/timing_middleware.py` — AI 管线计时（**默认关闭**，`PERF_TIMING=1` 启用，响应头 `X-Process-Time`）
+
 ## Key Endpoints
 
 | Endpoint | Description |
