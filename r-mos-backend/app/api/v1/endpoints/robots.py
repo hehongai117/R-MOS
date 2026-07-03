@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.services.storage.file_storage import LocalFileStorage
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.robot_service import RobotService
+from app.services.robot_asset_validator import validate_robot_assets
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.models.robot_asset import RobotAsset, AssetType
 from app.schemas.robot_model import (
@@ -358,6 +359,14 @@ async def publish_robot(
     else:
         if not RobotService.can_publish(robot.status):
             raise HTTPException(status_code=409, detail="当前状态不允许发布（分析进行中）")
+        missing = validate_robot_assets(robot_id, _storage)
+        if missing:
+            shown = "、".join(missing[:10])
+            suffix = f" 等共 {len(missing)} 项" if len(missing) > 10 else ""
+            raise HTTPException(
+                status_code=409,
+                detail=f"资产不完整，无法发布。缺失：{shown}{suffix}",
+            )
         robot.status = RobotStatus.READY
 
     await db.commit()

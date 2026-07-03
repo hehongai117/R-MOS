@@ -9,8 +9,11 @@ from app.core.database import AsyncSessionLocal
 from app.models.analysis_task import AnalysisTask, AnalysisTaskStatus
 from app.models.robot_model import RobotModel, RobotStatus
 from app.services.analysis.scheduler import AnalysisScheduler
+from app.services.robot_asset_validator import validate_robot_assets
+from app.services.storage.file_storage import LocalFileStorage
 
 logger = logging.getLogger(__name__)
+_storage = LocalFileStorage()
 
 
 class AnalysisWorker:
@@ -78,7 +81,15 @@ class AnalysisWorker:
                 )
             )
             if not pending_result.scalar_one_or_none():
-                robot.status = RobotStatus.READY
+                missing = validate_robot_assets(robot.id, _storage)
+                if missing:
+                    robot.status = RobotStatus.DRAFT
+                    logger.warning(
+                        "机器人 %s 分析完成但资产不完整（缺 %d 项），置为 DRAFT 待教师处理",
+                        robot.id, len(missing),
+                    )
+                else:
+                    robot.status = RobotStatus.READY
                 await db.commit()
 
 

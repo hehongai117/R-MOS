@@ -51,3 +51,59 @@ def test_complete_assets_pass(storage):
 def test_empty_mesh_catalog_passes_with_manifest(storage):
     _write_manifest(storage, 7, {})
     assert validate_robot_assets(7, storage) == []
+
+
+# --- 发布端点闸门测试 ---
+
+from fastapi import HTTPException
+
+from app.models.robot_model import RobotModel, RobotStatus, RobotVisibility
+from app.services.authz_guard import ActorContext
+
+
+@pytest.mark.asyncio
+async def test_publish_blocked_when_assets_missing(test_db, tmp_path, monkeypatch):
+    """资产不全的机器人发布应被 409 阻断，且报错指明缺失文件。"""
+    from app.api.v1.endpoints import robots as robots_ep
+
+    monkeypatch.setattr(robots_ep, "_storage", LocalFileStorage(base_dir=str(tmp_path)))
+
+    robot = RobotModel(
+        brand="Test", model_name="NoAssets", owner_teacher_id=1,
+        visibility=RobotVisibility.PRIVATE, status=RobotStatus.DRAFT,
+    )
+    test_db.add(robot)
+    await test_db.commit()
+    await test_db.refresh(robot)
+
+    actor = ActorContext(user_id=1, email="t@rmos.test", roles={"teacher"}, permissions=set())
+    with pytest.raises(HTTPException) as exc:
+        await robots_ep.publish_robot(robot.id, db=test_db, actor=actor)
+    assert exc.value.status_code == 409
+    assert MANIFEST_REL_PATH in exc.value.detail
+
+    await test_db.refresh(robot)
+    assert robot.status == RobotStatus.DRAFT
+
+
+@pytest.mark.asyncio
+async def test_publish_allowed_when_assets_complete(test_db, tmp_path, monkeypatch):
+    from app.api.v1.endpoints import robots as robots_ep
+
+    local = LocalFileStorage(base_dir=str(tmp_path))
+    monkeypatch.setattr(robots_ep, "_storage", local)
+
+    robot = RobotModel(
+        brand="Test", model_name="FullAssets", owner_teacher_id=1,
+        visibility=RobotVisibility.PRIVATE, status=RobotStatus.DRAFT,
+    )
+    test_db.add(robot)
+    await test_db.commit()
+    await test_db.refresh(robot)
+
+    _write_manifest(local, robot.id, {"m1": "models/a.glb"})
+    local.upload(robot.id, "a.glb", b"glb-bytes", subdirectory="models")
+
+    actor = ActorContext(user_id=1, email="t@rmos.test", roles={"teacher"}, permissions=set())
+    result = await robots_ep.publish_robot(robot.id, db=test_db, actor=actor)
+    assert result.status == RobotStatus.READY
