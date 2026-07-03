@@ -49,3 +49,73 @@ def test_list_files(storage, tmp_path):
 def test_get_full_path(storage, tmp_path):
     full = storage.get_full_path(robot_model_id=42, rel_path="models/base.glb")
     assert full == str(tmp_path / "42" / "models" / "base.glb")
+
+
+# --- P1-1 新原语测试 ---
+
+def test_exists_true_and_false(storage, tmp_path):
+    (tmp_path / "42" / "models").mkdir(parents=True)
+    (tmp_path / "42" / "models" / "a.glb").write_bytes(b"a")
+    assert storage.exists(robot_model_id=42, rel_path="models/a.glb") is True
+    assert storage.exists(robot_model_id=42, rel_path="models/missing.glb") is False
+
+
+def test_open_stream_reads_content(storage, tmp_path):
+    (tmp_path / "42" / "models").mkdir(parents=True)
+    (tmp_path / "42" / "models" / "s.glb").write_bytes(b"stream-bytes")
+    stream = storage.open_stream(robot_model_id=42, rel_path="models/s.glb")
+    try:
+        assert stream.read() == b"stream-bytes"
+    finally:
+        stream.close()
+
+
+def test_open_stream_missing_raises(storage):
+    with pytest.raises(FileNotFoundError):
+        storage.open_stream(robot_model_id=42, rel_path="models/none.glb")
+
+
+def test_get_public_url_is_none_for_local(storage):
+    assert storage.get_public_url(robot_model_id=42, rel_path="models/a.glb") is None
+
+
+def test_materialize_yields_readable_path(storage, tmp_path):
+    (tmp_path / "42" / "docs").mkdir(parents=True)
+    (tmp_path / "42" / "docs" / "m.pdf").write_bytes(b"pdf-bytes")
+    with storage.materialize(robot_model_id=42, rel_path="docs/m.pdf") as p:
+        assert p.read_bytes() == b"pdf-bytes"
+
+
+def test_materialize_missing_raises(storage):
+    with pytest.raises(FileNotFoundError):
+        with storage.materialize(robot_model_id=42, rel_path="docs/none.pdf"):
+            pass
+
+
+def test_materialize_dir_yields_robot_dir(storage, tmp_path):
+    (tmp_path / "42" / "uploads").mkdir(parents=True)
+    (tmp_path / "42" / "uploads" / "r.urdf").write_bytes(b"<robot/>")
+    with storage.materialize_dir(robot_model_id=42) as d:
+        assert (d / "uploads" / "r.urdf").exists()
+
+
+def test_materialize_dir_creates_when_missing(storage):
+    with storage.materialize_dir(robot_model_id=77) as d:
+        assert d.is_dir()
+
+
+@pytest.mark.parametrize("method,args", [
+    ("download", ("../evil",)),
+    ("delete", ("../evil",)),
+    ("exists", ("../evil",)),
+    ("open_stream", ("../evil",)),
+])
+def test_path_traversal_blocked_everywhere(storage, method, args):
+    with pytest.raises(ValueError):
+        getattr(storage, method)(42, *args)
+
+
+def test_materialize_traversal_blocked(storage):
+    with pytest.raises(ValueError):
+        with storage.materialize(42, "../evil"):
+            pass
