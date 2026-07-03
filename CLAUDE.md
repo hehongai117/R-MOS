@@ -2,7 +2,7 @@
 
 ## AI 协作规范
 
-- **模型分工：** 所有 Plan 编写使用 Opus 模型；所有 Task 执行默认使用 Sonnet 模型；遇到非常复杂的 Task 可切换为 Opus 模型；执行过程中根据任务复杂度自动切换，无需用户干预。
+- **模型分工：** 所有 Plan 编写使用 Fable 5 模型（claude-fable-5）；所有 Task 执行默认使用最新 Sonnet 模型（当前为 Sonnet 4.6）；遇到非常复杂的 Task 可切换为 Fable 5 模型；执行过程中根据任务复杂度自动切换，无需用户干预。
 - **执行方式：** 所有 Phase 下的 Task 全部使用 Subagent-Driven 方式（每个 Task 派发独立 subagent，任务间 review，快速迭代）。
 
 ## Project Context
