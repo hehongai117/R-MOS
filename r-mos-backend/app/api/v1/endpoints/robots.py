@@ -1,8 +1,7 @@
 """Robot model CRUD API endpoints."""
-import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -475,13 +474,13 @@ async def get_robot_tools(
 ):
     """获取机器人工具列表（从 assembly_manifest.json 中读取）。"""
     import json
-    from pathlib import Path
 
-    manifest_path = Path("data/robot-assets") / str(robot_id) / "manifests" / "assembly_manifest.json"
-    if not manifest_path.exists():
+    try:
+        manifest = json.loads(
+            _storage.download(robot_model_id=robot_id, rel_path="manifests/assembly_manifest.json")
+        )
+    except (FileNotFoundError, ValueError, json.JSONDecodeError):
         return {"robot_id": robot_id, "tools": []}
-
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     return {"robot_id": robot_id, "tools": manifest.get("tools", [])}
 
 
@@ -528,13 +527,6 @@ async def get_robot_asset(
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
 
-    try:
-        full_path = _storage.get_full_path(robot_model_id=robot_id, rel_path=file_path)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="非法文件路径")
-    if not os.path.exists(full_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
-
     ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
     content_types = {
         "glb": "model/gltf-binary",
@@ -545,5 +537,15 @@ async def get_robot_asset(
     }
     media_type = content_types.get(ext, "application/octet-stream")
 
-    return FileResponse(full_path, media_type=media_type)
+    try:
+        public_url = _storage.get_public_url(robot_model_id=robot_id, rel_path=file_path)
+        if public_url:
+            return RedirectResponse(public_url, status_code=307)
+        stream = _storage.open_stream(robot_model_id=robot_id, rel_path=file_path)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="非法文件路径")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    return StreamingResponse(stream, media_type=media_type)
 
