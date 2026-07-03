@@ -15,6 +15,8 @@ export interface ErrorResponse {
   status_code: number
   error_type: string
   message: string
+  /** FastAPI HTTPException 的原生错误字段（如资产闸门 409 的缺失清单） */
+  detail?: string
   details?: {
     code: string
     message: string
@@ -119,7 +121,7 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response) {
-      message.error(error.response.data?.message || '请求失败，请稍后重试')
+      message.error(error.response.data?.detail || error.response.data?.message || '请求失败，请稍后重试')
     } else if (error.request) {
       message.error('网络连接失败，请检查网络')
     } else {

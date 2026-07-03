@@ -10,6 +10,10 @@ on:
 jobs:
   integration-e2e:
     runs-on: ubuntu-latest
+    # 与 backend-ci.yml 的作业级 env 保持同步：CI 无 .env，DEBUG 默认 False
+    # 会触发 validate_production 拒启（详见 backend-ci.yml 同位置注释）。
+    env:
+      DEBUG: "true"
     defaults:
       run:
         working-directory: r-mos-backend
