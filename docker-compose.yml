@@ -21,8 +21,8 @@ services:
     build: ./r-mos-backend
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rmos}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-rmos}
-      SECRET_KEY: ${SECRET_KEY:-rmos-compose-change-in-production}
-      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-me}
+      DEBUG: "${DEBUG:-true}"
       CORS_ORIGINS: '["http://localhost", "http://localhost:3000"]'
       ROBOT_MODE: ${ROBOT_MODE:-simulation}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
