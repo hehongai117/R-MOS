@@ -162,6 +162,7 @@ r-mos-frontend/src/
 - **Auth**: `ActorContext` from `authz_guard.py` — contains `user_id`, `email`, `roles: set[str]`, `permissions: set[str]`
 - **Storage**: `FileStorageBase` ABC → `LocalFileStorage` (base_dir: `data/robot-assets/`), path traversal protected
 - **Robot ownership**: All robot mutations require `_require_teacher_or_admin(actor)` check + owner verification
+- **Multi-tenancy prep**: 所有新建表必须带租户维度字段（当前用 `school_id`/`school_name`，建外键优先）；新查询禁止写跨租户逻辑。正式租户隔离方案见路线图 S-2。
 
 ## Available Commands
 
