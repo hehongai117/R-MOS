@@ -35,6 +35,19 @@ P3   战略项与优化项 ─ 依赖业务决策（S-1/S-2）
 
 # P0 — 立即执行（本周内，全部小任务，直接按下述步骤做）
 
+> **✅ P0 已于 2026-07-03 全部完成并通过终审**（subagent-driven 执行，逐任务 review + Fable 终审）。
+> 执行实录见 `.superpowers/sdd/progress.md`。计划外新增修复（执行中暴露的真实问题）：
+> - 迁移链漂移 ×2（c386b081 补 5 列；86db2b1f pgvector IF EXISTS）——主线合并后 CI 首次在全新库建库暴露
+> - CI 环境根因（957770a4：CI 无 .env → validate_production 拒启 e2e；atom01 测试/脚本硬编码本机路径）
+> - P0-2 范围修正（fd93782f）：全量套件在 PG env 下有 asyncpg 跨事件循环问题（Linux 必现），
+>   改为"PG 门禁独立成步 + 主套件裸跑"；全量迁 PG 留给 P2-1（原计划亦如此划分）
+> - 终审必修（d0dd028e）：integration-ci 同步 DEBUG env（仅 PR 触发故潜伏）+ 前端透传 FastAPI detail
+> - compose 修复（63abc39a）：dev 栈诚实声明 DEBUG=true，SECRET_KEY 守卫经正反向验证保持牙齿
+>
+> **终审移交备注（P1 开工必读）已归档于台账**：P1-1 需把 worker.py 第 3 个 LocalFileStorage 实例纳入工厂收敛；
+> P1-2 注意 compose 无资产卷挂载；P1-3 建议引入显式 ENVIRONMENT=production 开关并保持两条 CI env 同步；
+> P1-4 的第一个真实用例是 worker 回落 DRAFT 的教师可见通知。Defer 的 Minor 清单见台账分诊表。
+
 ## Task P0-1: 主线合并（先于一切）
 
 **已核实事实：** `main` 落后 `quality-hardening-phase2` 70 个提交、**零分叉**（`git log quality-hardening-phase2..main` 为空），可 fast-forward，无冲突风险。
