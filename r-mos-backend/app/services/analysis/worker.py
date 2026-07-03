@@ -10,10 +10,10 @@ from app.models.analysis_task import AnalysisTask, AnalysisTaskStatus
 from app.models.robot_model import RobotModel, RobotStatus
 from app.services.analysis.scheduler import AnalysisScheduler
 from app.services.robot_asset_validator import validate_robot_assets
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage import get_storage
 
 logger = logging.getLogger(__name__)
-_storage = LocalFileStorage()
+_storage = get_storage()
 
 
 class AnalysisWorker:

@@ -13,7 +13,7 @@ except ImportError:
 from app.models.analysis_task import AnalysisTask
 from app.models.robot_asset import RobotAsset, AssetType
 from app.models.knowledge_document import KnowledgeDocument
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ MAX_CHUNK_LENGTH = 4000
 
 class PdfExtractor:
     def __init__(self):
-        self.storage = LocalFileStorage()
+        self.storage = get_storage()
 
     async def process(self, task: AnalysisTask, db: AsyncSession) -> dict:
         """提取机器人所有 PDF 资产的文本，按页面切片存入 KnowledgeDocument。

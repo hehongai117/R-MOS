@@ -26,6 +26,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # 存储后端配置
+    STORAGE_BACKEND: str = "local"  # local / s3（P1-2 实现）
+    STORAGE_BASE_DIR: str = "data/robot-assets"
+
     # Adapter配置
     ROBOT_MODE: str = "simulation"  # simulation / physical
     MOCK_JOINT_COUNT: int = 10

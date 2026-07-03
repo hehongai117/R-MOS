@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analysis_task import AnalysisTask
 from app.models.robot_asset import RobotAsset, AssetType
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class ManifestGenerator:
     """解析 GLB 文件节点树，生成装配清单 JSON 并存储为 MANIFEST 资产。"""
 
     def __init__(self):
-        self.storage = LocalFileStorage()
+        self.storage = get_storage()
 
     async def process(self, task: AnalysisTask, db: AsyncSession) -> dict:
         """处理分析任务，为所有 GLB 资产生成装配清单。

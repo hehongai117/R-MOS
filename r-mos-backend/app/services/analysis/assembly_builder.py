@@ -10,7 +10,7 @@ from app.models.analysis_task import AnalysisTask
 from app.models.robot_asset import RobotAsset, AssetType
 from app.services.analysis.urdf_parser import URDFParser
 from app.services.analysis.cad_converter import convert_single_cad_to_glb
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class AssemblyBuilder:
     """Orchestrates: URDF discovery → parse → mesh conversion → manifest output."""
 
     def __init__(self):
-        self.storage = LocalFileStorage()
+        self.storage = get_storage()
         self.parser = URDFParser()
 
     async def process(self, task: AnalysisTask, db: AsyncSession) -> dict:

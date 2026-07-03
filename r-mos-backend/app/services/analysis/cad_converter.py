@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analysis_task import AnalysisTask
 from app.models.robot_asset import RobotAsset, AssetType
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class CadConverter:
     """检测 CAD/GLB 文件并转换为 GLB 格式，创建 MODEL_GLB 资产记录。"""
 
     def __init__(self):
-        self.storage = LocalFileStorage()
+        self.storage = get_storage()
 
     async def process(self, task: AnalysisTask, db: AsyncSession) -> dict:
         """处理分析任务中的 CAD/GLB 文件。

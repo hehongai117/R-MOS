@@ -7,7 +7,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage import get_storage
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.robot_service import RobotService
 from app.services.robot_asset_validator import validate_robot_assets
@@ -29,7 +29,7 @@ from app.schemas.analysis_task import AnalysisTaskResponse, AnalysisTaskListResp
 router = APIRouter(prefix="/robots", tags=["robots"])
 
 # Initialize storage (will be replaced with DI later)
-_storage = LocalFileStorage()
+_storage = get_storage()
 
 
 def _require_teacher_or_admin(actor: ActorContext):

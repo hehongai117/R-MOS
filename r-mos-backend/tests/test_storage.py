@@ -119,3 +119,25 @@ def test_materialize_traversal_blocked(storage):
     with pytest.raises(ValueError):
         with storage.materialize(42, "../evil"):
             pass
+
+
+# --- 工厂测试 ---
+from app.services.storage import get_storage
+
+
+def test_get_storage_returns_singleton_local():
+    get_storage.cache_clear()
+    s1 = get_storage()
+    s2 = get_storage()
+    assert isinstance(s1, LocalFileStorage)
+    assert s1 is s2
+    get_storage.cache_clear()
+
+
+def test_get_storage_unknown_backend_raises(monkeypatch):
+    from app.core.config import settings
+    get_storage.cache_clear()
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "gcs")
+    with pytest.raises(ValueError, match="gcs"):
+        get_storage()
+    get_storage.cache_clear()
