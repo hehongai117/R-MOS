@@ -55,9 +55,17 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
         run: alembic upgrade head
 
-      - name: Pytest core 14 services coverage gate
+      # Postgres 专属门禁单独一步跑：这些测试直读 DATABASE_URL，需要已迁移的真实 PG。
+      # 主套件保持裸跑（无 DATABASE_URL）——全量测试在 PG env 下存在 asyncpg 跨事件循环
+      # 问题（Event loop is closed，Linux 上必现），全量迁 PG 属 P2-1 测试体系升级范围。
+      - name: Postgres DB gate tests
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
+        run: |
+          pytest tests/unit/test_audit_query_index_gate.py \
+                 tests/unit/test_skill_registry_migration_gate.py -v
+
+      - name: Pytest core 14 services coverage gate
         run: |
           pytest tests/ \
             --cov=app.services.approval_service \
@@ -78,8 +86,6 @@ jobs:
             --cov-fail-under=70
 
       - name: Pytest app coverage xml (reference)
-        env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
         run: |
           pytest tests/ \
             --cov=app \
