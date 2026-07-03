@@ -17,6 +17,11 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # CI 无 .env，Settings.DEBUG 默认 False 会触发 validate_production 拒启
+    # (SECRET_KEY 哨兵值)，导致全部 e2e TestClient 启动即 RuntimeError。
+    # CI 是测试环境，诚实声明 DEBUG=true（与 docker-compose dev 栈同一逻辑）。
+    env:
+      DEBUG: "true"
     defaults:
       run:
         working-directory: r-mos-backend

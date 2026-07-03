@@ -4,7 +4,7 @@ import importlib.util
 from pathlib import Path
 
 
-PROJECT_ROOT = Path("/Users/xuhehong/Desktop/r-mos")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = PROJECT_ROOT / "scripts" / "export_atom01_assembly_manifest.py"
 
 

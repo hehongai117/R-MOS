@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 
-PROJECT_ROOT = Path("/Users/xuhehong/Desktop/r-mos")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ATOM01_DIR = PROJECT_ROOT / "r-mos-frontend" / "public" / "models" / "robots" / "atom01"
 DATA_DIR = PROJECT_ROOT / "scripts" / "data" / "atom01"
 
