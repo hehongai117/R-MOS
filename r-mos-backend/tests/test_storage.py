@@ -1,6 +1,6 @@
 """Tests for FileStorageService (local filesystem implementation)."""
 import pytest
-from app.services.storage.file_storage import LocalFileStorage
+from app.services.storage.file_storage import FileStorageBase, LocalFileStorage
 
 
 @pytest.fixture
@@ -46,9 +46,10 @@ def test_list_files(storage, tmp_path):
     assert sorted(files) == ["models/a.glb", "models/b.glb"]
 
 
-def test_get_full_path(storage, tmp_path):
-    full = storage.get_full_path(robot_model_id=42, rel_path="models/base.glb")
-    assert full == str(tmp_path / "42" / "models" / "base.glb")
+def test_get_full_path_removed_from_interface(storage):
+    """P1-1 完成判据：本地路径不再从接口泄漏。"""
+    assert not hasattr(FileStorageBase, "get_full_path")
+    assert not hasattr(storage, "get_full_path")
 
 
 # --- P1-1 新原语测试 ---

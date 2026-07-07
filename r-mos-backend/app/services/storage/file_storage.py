@@ -145,6 +145,3 @@ class LocalFileStorage(FileStorageBase):
     def materialize_dir(self, robot_model_id: int) -> AbstractContextManager[Path]:
         return self._materialize_dir_impl(robot_model_id)
 
-    def get_full_path(self, robot_model_id: int, rel_path: str) -> str:
-        """已弃用：仅在迁移期保留，Task 6 删除。"""
-        return str(self._resolve(robot_model_id, rel_path))
