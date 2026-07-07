@@ -91,11 +91,10 @@ class ManifestGenerator:
         except ImportError as exc:
             raise RuntimeError("trimesh 未安装，无法解析 GLB 文件") from exc
 
-        # 获取文件绝对路径（去掉第一段 robot_model_id 前缀）
+        # materialize 文件（trimesh 需要真实本地路径）
         rel = asset.file_path.split("/", 1)[-1]  # e.g. "models/robot.glb"
-        full_path = self.storage.get_full_path(asset.robot_model_id, rel)
-
-        loaded = trimesh.load(full_path)
+        with self.storage.materialize(asset.robot_model_id, rel) as full_path:
+            loaded = trimesh.load(str(full_path))
         return self._build_node_tree(loaded)
 
     def _build_node_tree(self, scene) -> dict:

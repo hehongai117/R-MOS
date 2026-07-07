@@ -48,18 +48,16 @@ class PdfExtractor:
 
         # 3. 对每个 PDF：提取切片并创建 KnowledgeDocument
         for asset in pdf_assets:
+            # file_path 格式为 "10/uploads/manual.pdf"，去掉第一段得相对路径
+            rel = asset.file_path.split("/", 1)[-1]
             try:
-                # file_path 格式为 "10/uploads/manual.pdf"，去掉第一段再调用 get_full_path
-                rel = asset.file_path.split("/", 1)[-1]
-                full_path = self.storage.get_full_path(asset.robot_model_id, rel)
-            except (ValueError, Exception) as exc:
+                with self.storage.materialize(asset.robot_model_id, rel) as local_path:
+                    chunks = self._extract_text_from_pdf(str(local_path))
+            except (FileNotFoundError, ValueError) as exc:
                 logger.warning("跳过资产 %s，路径解析失败：%s", asset.file_path, exc)
                 continue
-
-            try:
-                chunks = self._extract_text_from_pdf(full_path)
             except Exception as exc:
-                logger.warning("PDF 提取失败 %s：%s", full_path, exc)
+                logger.warning("PDF 提取失败 %s：%s", asset.file_path, exc)
                 continue
 
             files_processed += 1

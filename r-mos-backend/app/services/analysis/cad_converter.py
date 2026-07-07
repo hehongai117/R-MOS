@@ -146,9 +146,8 @@ class CadConverter:
     def _copy_glb_asset(self, asset: RobotAsset) -> dict:
         """将 GLB 文件复制到 models/ 子目录，返回新的存储信息。"""
         rel = asset.file_path.split("/", 1)[-1]  # "uploads/robot.glb"
-        src_path = self.storage.get_full_path(asset.robot_model_id, rel)
-        filename = Path(src_path).name
-        content = Path(src_path).read_bytes()
+        content = self.storage.download(asset.robot_model_id, rel)
+        filename = rel.rsplit("/", 1)[-1]
         rel_path = self.storage.upload(asset.robot_model_id, filename, content, subdirectory="models")
         return {"file_path": rel_path, "file_size": len(content)}
 
@@ -159,28 +158,41 @@ class CadConverter:
             {"file_path": str, "file_size": int, "quality": dict} — 成功
             None — 失败（trimesh 不可用或转换出错）
         """
-        # 1. 尝试导入 trimesh
+        # 1. 尝试导入 trimesh（在 I/O 之前检查可用性）
         try:
-            import trimesh
+            import trimesh  # noqa: F401
         except ImportError:
             logger.error("trimesh 未安装，无法执行 CAD 转换。请运行: pip install trimesh")
             return None
 
-        # 2. 获取源文件绝对路径
+        # 2. materialize 源文件（trimesh 需要真实本地路径）
         rel = asset.file_path.split("/", 1)[-1]
         try:
-            src_path = self.storage.get_full_path(asset.robot_model_id, rel)
+            with self.storage.materialize(asset.robot_model_id, rel) as src_path:
+                return self._do_convert(asset, src_path)
+        except FileNotFoundError:
+            logger.error("源文件不存在: %s", asset.file_path)
+            return None
         except ValueError as exc:
             logger.error("路径遍历检测: %s", exc)
             return None
 
-        if not Path(src_path).exists():
-            logger.error("源文件不存在: %s", src_path)
-            return None
+    def _do_convert(self, asset: RobotAsset, src_path: Path) -> Optional[dict]:
+        """实际执行 CAD → GLB 转换（trimesh 加载 → 导出 bytes → upload）。
+
+        Args:
+            asset: 源资产记录（用于 robot_model_id）
+            src_path: materialize 后的本地文件 Path
+
+        Returns:
+            {"file_path": str, "file_size": int, "quality": dict} — 成功
+            None — 转换出错
+        """
+        import trimesh
 
         # 3. 加载模型
         try:
-            scene = trimesh.load(src_path, force="scene")
+            scene = trimesh.load(str(src_path), force="scene")
         except Exception as exc:
             logger.error("trimesh 加载失败 [%s]: %s", src_path, exc)
             return None
@@ -208,7 +220,7 @@ class CadConverter:
         quality = self._quality_check(vertices=vertices, faces=faces, file_size=len(glb_bytes))
 
         # 6. 存储 GLB 文件（同名替换扩展名）
-        stem = Path(src_path).stem
+        stem = src_path.stem
         glb_filename = f"{stem}.glb"
         rel_path = self.storage.upload(
             asset.robot_model_id, glb_filename, glb_bytes, subdirectory="models"

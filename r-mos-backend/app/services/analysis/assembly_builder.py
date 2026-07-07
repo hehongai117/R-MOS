@@ -1,6 +1,7 @@
 """Assembly builder — orchestrates URDF parsing, mesh conversion, and manifest generation."""
 import json
 import logging
+import tempfile
 from pathlib import Path
 
 from sqlalchemy import select
@@ -25,10 +26,15 @@ class AssemblyBuilder:
     async def process(self, task: AnalysisTask, db: AsyncSession) -> dict:
         """Main entry point for pipeline integration."""
         robot_model_id = task.robot_model_id
-        robot_dir = str(self.storage.base_dir / str(robot_model_id))
+        with self.storage.materialize_dir(robot_model_id) as robot_dir:
+            return await self._process_in_dir(task, db, robot_model_id, robot_dir)
 
+    async def _process_in_dir(
+        self, task: AnalysisTask, db: AsyncSession, robot_model_id: int, robot_dir: Path
+    ) -> dict:
+        """Core assembly logic, called with the robot directory materialized on local disk."""
         # 1. Find URDF
-        urdf_files = self._find_urdf_files(robot_dir)
+        urdf_files = self._find_urdf_files(str(robot_dir))
         if not urdf_files:
             logger.info("robot_model_id=%d: no URDF found, skipping assembly build", robot_model_id)
             return {"assembly_built": False, "reason": "no URDF file found in uploads"}
@@ -47,10 +53,7 @@ class AssemblyBuilder:
 
         # 3. Resolve and convert meshes
         mesh_refs = [link.mesh_filename for link in parse_result.links if link.mesh_filename]
-        resolved = self._resolve_mesh_files(mesh_refs, robot_dir)
-
-        models_dir = Path(robot_dir) / "models"
-        models_dir.mkdir(parents=True, exist_ok=True)
+        resolved = self._resolve_mesh_files(mesh_refs, str(robot_dir))
 
         meshes_converted = 0
         for link in parse_result.links:
@@ -62,34 +65,39 @@ class AssemblyBuilder:
                 logger.warning("robot_model_id=%d: mesh not found: %s", robot_model_id, basename)
                 continue
 
-            output_glb = models_dir / f"{link.name}.glb"
-            if output_glb.exists():
+            # 已存在则跳过（通过 storage.exists 检查，不依赖本地路径）
+            if self.storage.exists(robot_model_id, f"models/{link.name}.glb"):
                 meshes_converted += 1
                 continue
 
-            result = await convert_single_cad_to_glb(source_path, str(output_glb))
-            if result["success"]:
-                meshes_converted += 1
-                rel_path = f"{robot_model_id}/models/{link.name}.glb"
-                existing = await db.execute(
-                    select(RobotAsset).where(
-                        RobotAsset.robot_model_id == robot_model_id,
-                        RobotAsset.file_path == rel_path,
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                output_glb = Path(tmp_dir) / f"{link.name}.glb"
+                result = await convert_single_cad_to_glb(source_path, str(output_glb))
+                if result["success"]:
+                    content = output_glb.read_bytes()
+                    rel_path = self.storage.upload(
+                        robot_model_id, f"{link.name}.glb", content, subdirectory="models"
                     )
-                )
-                if not existing.scalar_one_or_none():
-                    db.add(RobotAsset(
-                        robot_model_id=robot_model_id,
-                        asset_type=AssetType.MODEL_GLB,
-                        file_path=rel_path,
-                        file_size=result["file_size"],
-                        asset_metadata={"source": basename, "conversion": "urdf_assembly_build"},
-                    ))
-            else:
-                logger.warning(
-                    "robot_model_id=%d: failed to convert %s: %s",
-                    robot_model_id, basename, result["error"],
-                )
+                    meshes_converted += 1
+                    existing = await db.execute(
+                        select(RobotAsset).where(
+                            RobotAsset.robot_model_id == robot_model_id,
+                            RobotAsset.file_path == rel_path,
+                        )
+                    )
+                    if not existing.scalar_one_or_none():
+                        db.add(RobotAsset(
+                            robot_model_id=robot_model_id,
+                            asset_type=AssetType.MODEL_GLB,
+                            file_path=rel_path,
+                            file_size=result["file_size"],
+                            asset_metadata={"source": basename, "conversion": "urdf_assembly_build"},
+                        ))
+                else:
+                    logger.warning(
+                        "robot_model_id=%d: failed to convert %s: %s",
+                        robot_model_id, basename, result["error"],
+                    )
 
         # 4. Generate assembly manifest
         manifest = parse_result.to_assembly_manifest(robot_model_id)

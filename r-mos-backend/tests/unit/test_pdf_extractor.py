@@ -1,5 +1,6 @@
 """Unit tests for PDF document extractor."""
 import pytest
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
@@ -38,7 +39,14 @@ async def test_process_creates_knowledge_documents(extractor, mock_task):
     mock_result.scalars.return_value.all.return_value = [mock_asset]
     mock_db.execute = AsyncMock(return_value=mock_result)
 
-    with patch.object(extractor, "_extract_text_from_pdf") as mock_extract:
+    # materialize 现在检查文件是否存在；用 MagicMock 上下文管理器模拟 yield Path
+    mock_cm = MagicMock()
+    mock_cm.__enter__ = MagicMock(return_value=Path("/fake/uploads/manual.pdf"))
+    mock_cm.__exit__ = MagicMock(return_value=False)
+    mock_materialize = MagicMock(return_value=mock_cm)
+
+    with patch.object(extractor.storage, "materialize", mock_materialize), \
+         patch.object(extractor, "_extract_text_from_pdf") as mock_extract:
         mock_extract.return_value = [
             {"title": "第一章 概述", "content": "这是概述内容" * 50},
             {"title": "第二章 安装", "content": "这是安装内容" * 50},
