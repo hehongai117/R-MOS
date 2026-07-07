@@ -8,12 +8,12 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.llm import LLMProvider, llm_router
+from app.services.storage import get_storage
 from app.services.user_preference_service import UserPreferenceService
 
 
@@ -69,20 +69,19 @@ class TrainingWorkbenchDraftGenerator:
         """从 assembly_manifest.json 加载 link 名称和 display_names。"""
         if not robot_id:
             return [], {}
-        manifest_path = Path("data/robot-assets") / str(robot_id) / "manifests" / "assembly_manifest.json"
-        if not manifest_path.exists():
-            return [], {}
         try:
-            data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            nodes = data.get("nodes", [])
-            link_names = [
-                n["link_name"] for n in nodes
-                if n.get("link_name") and n.get("mesh_id")
-            ]
-            display_names = data.get("display_names", {})
-            return link_names, display_names
-        except (json.JSONDecodeError, KeyError):
+            data = json.loads(
+                get_storage().download(robot_model_id=robot_id, rel_path="manifests/assembly_manifest.json")
+            )
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, KeyError):
             return [], {}
+        nodes = data.get("nodes", [])
+        link_names = [
+            n["link_name"] for n in nodes
+            if n.get("link_name") and n.get("mesh_id")
+        ]
+        display_names = data.get("display_names", {})
+        return link_names, display_names
 
     async def _get_llm_preference(self, user_id: int) -> dict[str, str]:
         pref = await self.preference_service.get_or_create_preference(user_id)
