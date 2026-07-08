@@ -76,3 +76,18 @@ def test_factory_builds_s3_backend(monkeypatch):
         s = get_storage()
         assert isinstance(s, S3FileStorage)
     get_storage.cache_clear()
+
+
+def test_ensure_bucket_reraises_non_404():
+    """权限类错误不得被吞成 create_bucket。"""
+    from unittest.mock import MagicMock
+    from botocore.exceptions import ClientError
+
+    with mock_aws():
+        s = S3FileStorage(bucket="test-bucket", region="us-east-1")
+    err_403 = ClientError({"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadBucket")
+    s._client = MagicMock()
+    s._client.head_bucket.side_effect = err_403
+    with pytest.raises(ClientError):
+        s._ensure_bucket()
+    s._client.create_bucket.assert_not_called()

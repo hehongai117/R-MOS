@@ -60,8 +60,11 @@ class S3FileStorage(FileStorageBase):
 
         try:
             self._client.head_bucket(Bucket=self._bucket)
-        except ClientError:
-            self._client.create_bucket(Bucket=self._bucket)
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in ("NoSuchBucket", "404"):
+                self._client.create_bucket(Bucket=self._bucket)
+            else:
+                raise
 
     def _key(self, robot_model_id: int, rel_path: str) -> str:
         _assert_safe_rel_path(rel_path)
