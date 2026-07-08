@@ -70,11 +70,24 @@ async def test_asset_redirects_when_public_url_available(test_db, local_storage,
         local_storage, "get_public_url", lambda robot_model_id, rel_path: "https://cdn.example/x.glb"
     )
     robot = await _make_robot(test_db)
+    local_storage.upload(robot.id, "x.glb", b"glb", subdirectory="models")
 
     resp = await robots_ep.get_robot_asset(robot.id, "models/x.glb", db=test_db)
     assert isinstance(resp, RedirectResponse)
     assert resp.status_code == 307
     assert resp.headers["location"] == "https://cdn.example/x.glb"
+
+
+@pytest.mark.asyncio
+async def test_asset_streaming_closes_handle_via_background(test_db, local_storage, monkeypatch):
+    from app.api.v1.endpoints import robots as robots_ep
+
+    monkeypatch.setattr(robots_ep, "_storage", local_storage)
+    robot = await _make_robot(test_db)
+    local_storage.upload(robot.id, "part.glb", b"glb-binary", subdirectory="models")
+
+    resp = await robots_ep.get_robot_asset(robot.id, "models/part.glb", db=test_db)
+    assert resp.background is not None  # BackgroundTask(stream.close)
 
 
 @pytest.mark.asyncio

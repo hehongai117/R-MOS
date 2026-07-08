@@ -10,6 +10,7 @@ import re
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from anyio import to_thread
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.llm import LLMProvider, llm_router
@@ -33,7 +34,7 @@ class TrainingWorkbenchDraftGenerator:
         task_summary: str,
         focus_prompt: str,
     ) -> dict:
-        link_names, display_names = self._load_robot_manifest(robot_id)
+        link_names, display_names = await to_thread.run_sync(self._load_robot_manifest, robot_id)
         llm_pref = await self._get_llm_preference(user_id)
         response = await llm_router.chat(
             messages=[{"role": "user", "content": self._build_prompt(robot_model, task_summary, focus_prompt, link_names=link_names)}],

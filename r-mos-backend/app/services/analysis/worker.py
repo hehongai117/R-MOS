@@ -2,6 +2,7 @@
 import asyncio
 import logging
 
+from anyio import to_thread
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,7 +82,7 @@ class AnalysisWorker:
                 )
             )
             if not pending_result.scalar_one_or_none():
-                missing = validate_robot_assets(robot.id, _storage)
+                missing = await to_thread.run_sync(validate_robot_assets, robot.id, _storage)
                 if missing:
                     robot.status = RobotStatus.DRAFT
                     logger.warning(

@@ -1,9 +1,12 @@
 """Robot model CRUD API endpoints."""
+from functools import partial
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from anyio import to_thread
+from starlette.background import BackgroundTask
 
 from app.core.database import get_db
 from app.services.storage import get_storage
@@ -237,12 +240,13 @@ async def upload_robot_files(
             asset_type = RobotService.detect_asset_type(clean_name)
             subdirectory = RobotService.detect_subdirectory(asset_type)
 
-            rel_path = _storage.upload(
+            rel_path = await to_thread.run_sync(partial(
+                _storage.upload,
                 robot_model_id=robot_id,
                 filename=clean_name,
                 content=content,
                 subdirectory=subdirectory,
-            )
+            ))
 
             asset = RobotAsset(
                 robot_model_id=robot_id,
@@ -358,7 +362,7 @@ async def publish_robot(
     else:
         if not RobotService.can_publish(robot.status):
             raise HTTPException(status_code=409, detail="当前状态不允许发布（分析进行中）")
-        missing = validate_robot_assets(robot_id, _storage)
+        missing = await to_thread.run_sync(validate_robot_assets, robot_id, _storage)
         if missing:
             shown = "、".join(missing[:10])
             suffix = f" 等共 {len(missing)} 项" if len(missing) > 10 else ""
@@ -476,9 +480,10 @@ async def get_robot_tools(
     import json
 
     try:
-        manifest = json.loads(
-            _storage.download(robot_model_id=robot_id, rel_path="manifests/assembly_manifest.json")
+        manifest_bytes = await to_thread.run_sync(
+            _storage.download, robot_id, "manifests/assembly_manifest.json"
         )
+        manifest = json.loads(manifest_bytes)
     except (FileNotFoundError, ValueError, json.JSONDecodeError):
         return {"robot_id": robot_id, "tools": []}
     return {"robot_id": robot_id, "tools": manifest.get("tools", [])}
@@ -538,14 +543,17 @@ async def get_robot_asset(
     media_type = content_types.get(ext, "application/octet-stream")
 
     try:
-        public_url = _storage.get_public_url(robot_model_id=robot_id, rel_path=file_path)
+        found = await to_thread.run_sync(_storage.exists, robot_id, file_path)
+        if not found:
+            raise HTTPException(status_code=404, detail="文件不存在")
+        public_url = await to_thread.run_sync(_storage.get_public_url, robot_id, file_path)
         if public_url:
             return RedirectResponse(public_url, status_code=307)
-        stream = _storage.open_stream(robot_model_id=robot_id, rel_path=file_path)
+        stream = await to_thread.run_sync(_storage.open_stream, robot_id, file_path)
     except ValueError:
         raise HTTPException(status_code=400, detail="非法文件路径")
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="文件不存在")
 
-    return StreamingResponse(stream, media_type=media_type)
+    return StreamingResponse(stream, media_type=media_type, background=BackgroundTask(stream.close))
 
