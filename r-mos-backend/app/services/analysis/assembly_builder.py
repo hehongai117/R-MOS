@@ -66,8 +66,15 @@ class AssemblyBuilder:
                 continue
 
             # 已存在则跳过（通过 storage.exists 检查，不依赖本地路径）
-            if self.storage.exists(robot_model_id, f"models/{link.name}.glb"):
-                meshes_converted += 1
+            try:
+                if self.storage.exists(robot_model_id, f"models/{link.name}.glb"):
+                    meshes_converted += 1
+                    continue
+            except ValueError:
+                logger.warning(
+                    "robot_model_id=%d: link 名称含非法路径字符，跳过: %s",
+                    robot_model_id, link.name,
+                )
                 continue
 
             with tempfile.TemporaryDirectory() as tmp_dir:
@@ -75,9 +82,16 @@ class AssemblyBuilder:
                 result = await convert_single_cad_to_glb(source_path, str(output_glb))
                 if result["success"]:
                     content = output_glb.read_bytes()
-                    rel_path = self.storage.upload(
-                        robot_model_id, f"{link.name}.glb", content, subdirectory="models"
-                    )
+                    try:
+                        rel_path = self.storage.upload(
+                            robot_model_id, f"{link.name}.glb", content, subdirectory="models"
+                        )
+                    except ValueError:
+                        logger.warning(
+                            "robot_model_id=%d: link 名称含非法路径字符，跳过: %s",
+                            robot_model_id, link.name,
+                        )
+                        continue
                     meshes_converted += 1
                     existing = await db.execute(
                         select(RobotAsset).where(

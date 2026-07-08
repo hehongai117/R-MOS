@@ -142,3 +142,22 @@ def test_get_storage_unknown_backend_raises(monkeypatch):
     with pytest.raises(ValueError, match="gcs"):
         get_storage()
     get_storage.cache_clear()
+
+
+# --- P1-2 Task 1: upload 侧防护 ---
+
+@pytest.mark.parametrize("bad_filename", ["../evil.glb", "a/b.glb", "..", "", "a\\b.glb"])
+def test_upload_rejects_bad_filename(storage, bad_filename):
+    with pytest.raises(ValueError):
+        storage.upload(robot_model_id=42, filename=bad_filename, content=b"x", subdirectory="models")
+
+
+@pytest.mark.parametrize("bad_subdir", ["../up", "a/../b", "/abs", "a\\b"])
+def test_upload_rejects_bad_subdirectory(storage, bad_subdir):
+    with pytest.raises(ValueError):
+        storage.upload(robot_model_id=42, filename="ok.glb", content=b"x", subdirectory=bad_subdir)
+
+
+def test_upload_still_accepts_normal_input(storage):
+    rel = storage.upload(robot_model_id=42, filename="ok.glb", content=b"x", subdirectory="models")
+    assert rel == "42/models/ok.glb"

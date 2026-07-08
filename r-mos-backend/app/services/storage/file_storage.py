@@ -13,6 +13,22 @@ from pathlib import Path
 from typing import BinaryIO, Iterator, List, Optional
 
 
+def _assert_safe_filename(filename: str) -> None:
+    """upload 文件名防护：拒绝路径分隔符与目录跳转（双实现共用）。"""
+    if not filename or filename in (".", ".."):
+        raise ValueError(f"非法文件名: {filename!r}")
+    if "/" in filename or "\\" in filename:
+        raise ValueError(f"文件名不得包含路径分隔符: {filename!r}")
+
+
+def _assert_safe_subdirectory(subdirectory: str) -> None:
+    """upload 子目录防护：拒绝目录跳转与绝对路径（双实现共用）。"""
+    if subdirectory.startswith(("/", "\\")) or "\\" in subdirectory:
+        raise ValueError(f"非法子目录: {subdirectory!r}")
+    if ".." in subdirectory.split("/"):
+        raise ValueError(f"子目录不得包含 '..': {subdirectory!r}")
+
+
 class FileStorageBase(ABC):
     """Abstract file storage interface."""
 
@@ -75,6 +91,9 @@ class LocalFileStorage(FileStorageBase):
         return full
 
     def upload(self, robot_model_id: int, filename: str, content: bytes, subdirectory: str = "") -> str:
+        _assert_safe_filename(filename)
+        if subdirectory:
+            _assert_safe_subdirectory(subdirectory)
         target_dir = self._robot_dir(robot_model_id)
         if subdirectory:
             target_dir = target_dir / subdirectory
