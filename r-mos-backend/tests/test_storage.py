@@ -11,12 +11,15 @@ from app.services.storage import get_storage
 from app.services.storage.file_storage import FileStorageBase, LocalFileStorage
 
 
-@pytest.fixture(params=["local"])
+@pytest.fixture(params=["local", "s3"])
 def storage(request, tmp_path):
     if request.param == "local":
         yield LocalFileStorage(base_dir=str(tmp_path))
-    else:  # pragma: no cover — Task 3 填充 s3 分支
-        raise NotImplementedError(request.param)
+    else:
+        from moto import mock_aws
+        from app.services.storage.s3_storage import S3FileStorage
+        with mock_aws():
+            yield S3FileStorage(bucket="test-bucket", region="us-east-1")
 
 
 # ============ 契约组：全实现必须通过 ============

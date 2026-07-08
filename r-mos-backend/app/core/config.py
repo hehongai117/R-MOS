@@ -2,7 +2,7 @@
 配置管理 — 产品化版本
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # 存储后端配置
     STORAGE_BACKEND: str = "local"  # local / s3（P1-2 实现）
     STORAGE_BASE_DIR: str = "data/robot-assets"
+    # S3 兼容对象存储（STORAGE_BACKEND=s3 时生效；MinIO/OSS 传自定义 endpoint）
+    S3_ENDPOINT_URL: Optional[str] = None
+    S3_PUBLIC_ENDPOINT_URL: Optional[str] = None  # 浏览器可达域名（presign 用），空则同 endpoint
+    S3_BUCKET: str = "rmos-assets"
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    S3_REGION: str = "us-east-1"
+    S3_PRESIGN_EXPIRE_SECONDS: int = 900
 
     # Adapter配置
     ROBOT_MODE: str = "simulation"  # simulation / physical
