@@ -1,5 +1,7 @@
 # P1-2（S3FileStorage）移交备注 — 来自 P1-1 终审（2026-07-08）
 
+> ✅ 已被 2026-07-08-p1-2-s3-storage.md 消费（全部 12 条落地或有对应测试）；留档备查。
+
 > 写 P1-2 子计划前必读。来源：P1-1 全分支终审报告（Fable），接口契约全集。
 
 1. **`upload` 返回值格式是硬契约**：必须返回 `"{robot_model_id}/{subdirectory}/{filename}"`（含 id 前缀）。该值直接落 DB `robot_assets.file_path`，所有读取方一律 `file_path.split("/", 1)[-1]` 去首段再回调 storage。格式不一致 = 全管线静默失效。

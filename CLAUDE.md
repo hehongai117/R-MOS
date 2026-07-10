@@ -160,7 +160,7 @@ r-mos-frontend/src/
 - **Pydantic**: Use `model_validate()` and `model_dump()` (not `.dict()`)
 - **Enums**: Use `.value` when serializing to JSON
 - **Auth**: `ActorContext` from `authz_guard.py` — contains `user_id`, `email`, `roles: set[str]`, `permissions: set[str]`
-- **Storage**: `FileStorageBase` ABC → 工厂 `get_storage()`（配置 `STORAGE_BACKEND`，全仓唯一实例化入口）。本地路径零泄漏：HTTP 下发走 `open_stream`/`get_public_url`，分析管线走 `materialize`/`materialize_dir`，穿越防护统一在 `_resolve`。S3 实现见 P1-2。
+- **Storage**: `FileStorageBase` ABC → 工厂 `get_storage()`（`STORAGE_BACKEND=local/s3`，全仓唯一实例化入口）。实现：`LocalFileStorage`（磁盘）/`S3FileStorage`（S3/MinIO/OSS，boto3，presign 直连）。本地路径零泄漏：HTTP 下发 head-first 404 → presign 307 或流式(background close)，分析管线 `materialize`/`materialize_dir`。契约测试在 `tests/test_storage.py` 双实现参数化双跑。
 - **Robot ownership**: All robot mutations require `_require_teacher_or_admin(actor)` check + owner verification
 - **Multi-tenancy prep**: 所有新建表必须带租户维度字段（当前用 `school_id`/`school_name`，建外键优先）；新查询禁止写跨租户逻辑。正式租户隔离方案见路线图 S-2。
 
