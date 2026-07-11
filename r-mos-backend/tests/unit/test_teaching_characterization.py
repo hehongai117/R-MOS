@@ -13,7 +13,11 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 
+import pytest
+
 import app.models as app_models  # noqa: F401  # 确保模型全部注册
+
+pytestmark = pytest.mark.characterization
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine

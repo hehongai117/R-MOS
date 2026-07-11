@@ -58,7 +58,9 @@ jobs:
       - name: Alembic upgrade head (PostgreSQL)
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
-        run: alembic upgrade head
+        run: |
+          alembic upgrade head
+          alembic check
 
       # Postgres 专属门禁单独一步跑：这些测试直读 DATABASE_URL，需要已迁移的真实 PG。
       # 主套件保持裸跑（无 DATABASE_URL）——全量测试在 PG env 下存在 asyncpg 跨事件循环
