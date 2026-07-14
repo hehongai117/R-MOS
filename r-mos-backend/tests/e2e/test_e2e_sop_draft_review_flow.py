@@ -24,6 +24,8 @@ async def _seed_robot_project_flow(session_factory: async_sessionmaker[AsyncSess
                 source_package_path="/tmp/semantic-regression.zip",
             )
         )
+        # PG 强制 FK：必须先 flush 使 RobotProject 落库，再插 RobotPartManifest
+        await session.flush()
         session.add(
             RobotPartManifest(
                 project_id=project_id,

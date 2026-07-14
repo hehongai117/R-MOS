@@ -7,9 +7,9 @@
 """
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, JSON, String, func
+from sqlalchemy import Column, ForeignKey, Index, Integer, JSON, String, func
 
-from .base import Base, utcnow
+from .base import Base, TZDateTime, utcnow
 
 
 class AuditEvent(Base):
@@ -49,7 +49,7 @@ class AuditEvent(Base):
     tokens_out = Column(Integer, nullable=True, comment="输出 token 数量")
 
     created_at = Column(
-        DateTime,
+        TZDateTime,
         nullable=False,
         default=utcnow,
         server_default=func.now(),

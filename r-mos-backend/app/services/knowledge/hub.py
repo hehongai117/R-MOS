@@ -157,7 +157,10 @@ class KnowledgeHub:
             bind = db.get_bind()
             if bind is not None and bind.dialect.name == "postgresql":
                 try:
-                    return await self._semantic_search_pgvector(db, embedding, limit)
+                    # SAVEPOINT 隔离 pgvector 查询：失败时只回滚到 savepoint，
+                    # 外部事务及已加载的 ORM 对象均不受影响（不 expire）。
+                    async with db.begin_nested():
+                        return await self._semantic_search_pgvector(db, embedding, limit)
                 except Exception as exc:
                     logger.warning(f"pgvector semantic search failed, falling back to Python cosine search: {exc}")
 

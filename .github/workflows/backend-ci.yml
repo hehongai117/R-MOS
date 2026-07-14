@@ -72,6 +72,16 @@ jobs:
           pytest tests/unit/test_audit_query_index_gate.py \
                  tests/unit/test_skill_registry_migration_gate.py -v
 
+      # e2e 在真 Postgres 上跑（消除 SQLite 方言盲区）。独立数据库避免
+      # 污染 rmos_ci（alembic/门禁在用）；per-test drop/create_all 自隔离。
+      - name: E2E on Postgres
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_e2e
+          DEBUG: "true"
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE rmos_e2e" || true
+          pytest tests/e2e/ -q
+
       - name: Pytest core 14 services coverage gate
         run: |
           pytest tests/ \
