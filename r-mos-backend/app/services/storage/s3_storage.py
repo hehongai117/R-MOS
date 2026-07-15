@@ -100,6 +100,8 @@ class S3FileStorage(FileStorageBase):
         return resp["Body"].read()
 
     def list_files(self, robot_model_id: int, subdirectory: str = "") -> List[str]:
+        if subdirectory:
+            _assert_safe_subdirectory(subdirectory)
         prefix = f"{robot_model_id}/"
         if subdirectory:
             prefix = f"{prefix}{subdirectory}/"

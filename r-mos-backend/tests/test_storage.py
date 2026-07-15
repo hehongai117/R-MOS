@@ -3,8 +3,6 @@
 Task 3 在 fixture params 中加入 "s3"（moto mock）后，契约组自动双跑。
 Local 特有断言（磁盘布局）与工厂测试在文件末尾独立分组。
 """
-import json
-
 import pytest
 
 from app.services.storage import get_storage
@@ -122,6 +120,12 @@ def test_materialize_traversal_blocked(storage):
             pass
 
 
+@pytest.mark.parametrize("bad_subdir", ["../43", "a/../b", "/abs"])
+def test_list_files_rejects_bad_subdirectory(storage, bad_subdir):
+    with pytest.raises(ValueError):
+        storage.list_files(robot_model_id=42, subdirectory=bad_subdir)
+
+
 @pytest.mark.parametrize("bad_filename", ["../evil.glb", "a/b.glb", "..", "", "a\\b.glb"])
 def test_upload_rejects_bad_filename(storage, bad_filename):
     with pytest.raises(ValueError):
@@ -154,6 +158,21 @@ def test_get_full_path_removed_from_interface(local_storage):
     """P1-1 完成判据：本地路径不再从接口泄漏。"""
     assert not hasattr(FileStorageBase, "get_full_path")
     assert not hasattr(local_storage, "get_full_path")
+
+
+def test_local_symlink_escape_blocked(tmp_path):
+    """目录内符号链接指向目录外：resolve 跟随后被 is_relative_to 拒绝。"""
+    base = tmp_path / "assets"
+    outside = tmp_path / "outside"
+    (base / "42").mkdir(parents=True)
+    outside.mkdir()
+    secret = outside / "secret.txt"
+    secret.write_bytes(b"secret")
+    (base / "42" / "link.txt").symlink_to(secret)
+
+    storage = LocalFileStorage(base_dir=str(base))
+    with pytest.raises(ValueError):
+        storage.download(robot_model_id=42, rel_path="link.txt")
 
 
 # ============ 工厂 ============

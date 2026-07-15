@@ -119,6 +119,8 @@ class LocalFileStorage(FileStorageBase):
             full_path.unlink()
 
     def list_files(self, robot_model_id: int, subdirectory: str = "") -> List[str]:
+        if subdirectory:
+            _assert_safe_subdirectory(subdirectory)
         target_dir = self._robot_dir(robot_model_id)
         if subdirectory:
             target_dir = target_dir / subdirectory

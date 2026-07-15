@@ -91,3 +91,21 @@ def test_ensure_bucket_reraises_non_404():
     with pytest.raises(ClientError):
         s._ensure_bucket()
     s._client.create_bucket.assert_not_called()
+
+
+def test_trimesh_eager_load_survives_materialize_exit(s3_storage):
+    """manifest_generator 依赖：trimesh 对 GLB eager-load，
+    materialize 临时文件清理后仍可访问已加载对象（P1-1/P1-2 终审两度登记的欠账）。"""
+    import trimesh
+
+    glb_bytes = trimesh.creation.box(extents=(1, 1, 1)).export(file_type="glb")
+    s3_storage.upload(robot_model_id=1, filename="box.glb", content=glb_bytes, subdirectory="models")
+
+    with s3_storage.materialize(robot_model_id=1, rel_path="models/box.glb") as p:
+        loaded = trimesh.load(str(p), force="scene")
+        temp_path = p
+    assert not temp_path.exists()  # 临时文件已清理
+    # 块外访问已加载对象——eager-load 保证不再触盘
+    assert len(loaded.geometry) >= 1
+    for mesh in loaded.geometry.values():
+        assert mesh.vertices.shape[0] > 0
