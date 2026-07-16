@@ -99,3 +99,7 @@ r-mos-frontend/vite.config.js
 
 # 客户说明书中间产物(截图+md,最终 docx 在桌面)
 .doc-assets/
+
+# Playwright
+r-mos-frontend/playwright-report/
+r-mos-frontend/test-results/

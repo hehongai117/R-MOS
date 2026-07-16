@@ -176,7 +176,6 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         if (context?.executionState !== SOPExecutionState.COMPLETE || !sessionId) return;
         const timer = setTimeout(() => navigate(`/reports/${sessionId}`), 2000);
         return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [context?.executionState, sessionId, navigate]);
 
 

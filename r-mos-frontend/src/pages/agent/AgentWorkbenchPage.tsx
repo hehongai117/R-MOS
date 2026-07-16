@@ -176,7 +176,6 @@ function AgentWorkbenchPage() {
       content: alertMsg,
       timestamp: Date.now(),
     }])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faultParam, jointParam])
 
   const submit = async (customInput?: string, customIntent?: string) => {

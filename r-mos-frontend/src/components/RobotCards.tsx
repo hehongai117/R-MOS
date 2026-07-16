@@ -47,6 +47,7 @@ export default function RobotCards({ robots, selectedId, onSelect, loading }: Ro
         return (
           <Card
             key={robot.id}
+            data-testid="robot-card"
             className={cn(
               'cursor-pointer transition-all hover:shadow-sm',
               isSelected
