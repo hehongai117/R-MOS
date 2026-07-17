@@ -164,7 +164,7 @@ export function useSOPExecutorBridge({
         if (sop) {
             handleSelectSOP(initialSopId);
         }
-    }, [initialSopId, availableSOPs, handleSelectSOP]);
+    }, [initialSopId, availableSOPs]);
 
     return {
         selectedSOP,

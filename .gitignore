@@ -103,3 +103,7 @@ r-mos-frontend/vite.config.js
 # Playwright
 r-mos-frontend/playwright-report/
 r-mos-frontend/test-results/
+
+# macOS Finder/同步工具产生的重复副本（P2-1a 终审 Minor#9、P2-1b Task1 实际污染过提交）
+* 2.*
+* 3.*
