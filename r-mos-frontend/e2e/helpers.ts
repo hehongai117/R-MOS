@@ -18,7 +18,7 @@ export async function ensureRobotSelected(page: Page) {
   await page.waitForURL('**/dashboard')
   // RobotCards 仅在多台时渲染选择卡；等页面稳定后按需点击
   const firstCard = page.locator('[data-testid="robot-card"]').first()
-  if (await firstCard.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await firstCard.isVisible({ timeout: 6000 }).catch(() => false)) {
     await firstCard.click()
   }
   // 上下文写入 localStorage('rmos_current_robot_id')

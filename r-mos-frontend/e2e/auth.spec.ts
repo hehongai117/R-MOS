@@ -16,8 +16,11 @@ test('教师登录成功跳转教学监控台', async ({ page }) => {
 
 test('错误密码停留登录页并出错误提示', async ({ page }) => {
   await login(page, ACCOUNTS.student.email, 'WrongPass@999')
+  // 先断言 toast 出现（sonner error toast 有 data-type="error" 或匹配错误文案）
+  const errorToast = page.locator(
+    '[data-sonner-toast][data-type="error"], [role="status"]:has-text("失败"), [role="status"]:has-text("错误"), [role="status"]:has-text("密码")',
+  )
+  await expect(errorToast.first()).toBeVisible({ timeout: 5_000 })
+  // toast 可见后再确认 URL 仍停留在 /login
   await expect(page).toHaveURL(/\/login/)
-  // sonner toast 错误提示（登录失败/密码错误类文案），宽松匹配避免绑死文案
-  // LoginPage 使用 toast.error() via sonner；选择器匹配 data-sonner-toast 或 [role="status"]
-  await expect(page.locator('[data-sonner-toast], [role="status"]').first()).toBeVisible({ timeout: 5000 })
 })
