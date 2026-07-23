@@ -765,6 +765,11 @@ async def tier3_sops(session: AsyncSession, robot_id: int) -> list[SOP]:
                     tools_required=step_data.get("tools_required"),
                 ))
             await session.flush()
+        else:
+            # 幂等性保障：确保已存在的 SOP 关联到正确的机器人
+            if sop.robot_model_id != robot_id:
+                sop.robot_model_id = robot_id
+                await session.flush()
         sops.append(sop)
     return sops
 
@@ -1135,7 +1140,8 @@ async def tier9_faults_scenarios(session: AsyncSession, sops: list[SOP], robot_i
                 FaultSOPMapping.sop_id == sop.id,
             )
         )
-        if result.scalar_one_or_none() is None:
+        existing_mapping = result.scalar_one_or_none()
+        if existing_mapping is None:
             session.add(FaultSOPMapping(
                 fault_type=fdef["fault_code"],
                 sop_id=sop.id,
@@ -1143,6 +1149,10 @@ async def tier9_faults_scenarios(session: AsyncSession, sops: list[SOP], robot_i
                 priority=1,
                 robot_model_id=robot_id,
             ))
+        else:
+            # 幂等性保障：确保已存在的映射关联到正确的机器人
+            if existing_mapping.robot_model_id != robot_id:
+                existing_mapping.robot_model_id = robot_id
     await session.flush()
 
 

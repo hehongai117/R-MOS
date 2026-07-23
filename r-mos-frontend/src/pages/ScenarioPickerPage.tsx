@@ -99,7 +99,7 @@ export default function ScenarioPickerPage() {
                   type="button"
                   size="sm"
                   className="w-full"
-                  onClick={() => navigate(`/maintenance?sop_id=${scenario.sop_id}`)}
+                  onClick={() => navigate(`/maintenance?sop=sop-db-${scenario.sop_id}`)}
                 >
                   <Play className="mr-2 h-3 w-3" />
                   开始练习
