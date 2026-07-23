@@ -1,8 +1,10 @@
 /**
- * ModelPreloader.tsx — 模型预加载器
+ * ModelPreloader.tsx — 模型预加载器（工具函数集）
  *
- * 登录后静默预加载爆炸图所需的所有子零件 GLB，
- * 确保用户点击爆炸图时零件能瞬间显示。
+ * 导出 preloadOverviewParts / preloadAllParts / preloadRobotModel 等预加载工具。
+ * 注意：SOP 维护页当前采用「零预加载」策略（phase4b 优化，2026-07）——首屏仅由
+ * 24-link 基础装配体渲染（约 13MB），明细子零件由 DetailParts/SubPartsGroup 经
+ * Suspense 按需加载。本模块函数保留供其他调用方或未来使用，维护页不再主动调用。
  *
  * 使用 drei 的 useGLTF.preload() 将 GLB 下载并解析到内存缓存。
  */
