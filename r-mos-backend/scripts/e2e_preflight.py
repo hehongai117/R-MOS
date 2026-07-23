@@ -77,7 +77,7 @@ def main() -> int:
         if sop_list:
             print(f"[PASS] SOP 裁决脚本 ×{len(sop_list)}")
         else:
-            failures.append("SOP 裁决脚本列表为空（检查 seed_adjudication_sops.py 是否在 seed_demo_full 中被调用）")
+            failures.append("SOP 裁决脚本列表为空（检查 seed_demo_full.py 的 tier3_sops 是否成功播种 sops 表）")
     except Exception as exc:  # noqa: BLE001
         failures.append(f"GET /sops/adjudication 请求失败: {exc}")
 
