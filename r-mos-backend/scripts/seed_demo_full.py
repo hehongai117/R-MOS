@@ -1088,16 +1088,16 @@ async def tier8_knowledge(session: AsyncSession, robot_id: int, teacher_id: int)
         await session.execute(
             text("""
                 INSERT INTO knowledge_documents
-                    (title, content, source, fault_tags, sop_tags, status,
+                    (title, content, doc_type, fault_tags, sop_tags, status,
                      robot_model_id, generation_status, created_at, updated_at)
                 VALUES
-                    (:title, :content, :source, :fault_tags, :sop_tags, :status,
+                    (:title, :content, :doc_type, :fault_tags, :sop_tags, :status,
                      :robot_model_id, :generation_status, :now, :now)
             """),
             {
                 "title": doc_data["title"],
                 "content": doc_data["content"],
-                "source": doc_data["doc_type"],
+                "doc_type": doc_data["doc_type"],
                 "fault_tags": _json.dumps(doc_data["fault_tags"]),
                 "sop_tags": _json.dumps(doc_data["sop_tags"]),
                 "status": doc_data["status"],
