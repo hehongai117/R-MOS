@@ -10,6 +10,7 @@ const {
   setOperationModeMock,
   setCurrentToolMock,
   preloadAllPartsMock,
+  preloadOverviewPartsMock,
   clientGetMock,
   clientPostMock,
   navigateMock,
@@ -31,6 +32,7 @@ const {
     setOperationModeMock: vi.fn(),
     setCurrentToolMock: vi.fn(),
     preloadAllPartsMock: vi.fn(),
+    preloadOverviewPartsMock: vi.fn(),
     clientGetMock: vi.fn(),
     clientPostMock: vi.fn(),
     navigateMock: vi.fn(),
@@ -153,6 +155,7 @@ vi.mock('@/components/Viewer3D/DetailParts', () => ({
 
 vi.mock('@/components/Viewer3D/ModelPreloader', () => ({
   preloadAllParts: preloadAllPartsMock,
+  preloadOverviewParts: preloadOverviewPartsMock,
 }))
 
 vi.mock('@/components/Viewer3D/RuntimeAssetPreview', () => ({
@@ -538,10 +541,10 @@ describe('SOPMaintenancePage characterization', () => {
 
   // ─── preload on mount ─────────────────────────────────────────────────────
 
-  it('calls preloadAllParts exactly once on mount', () => {
+  it('calls preloadOverviewParts exactly once on mount', () => {
     render(<SOPMaintenancePage />)
 
-    expect(preloadAllPartsMock).toHaveBeenCalledOnce()
+    expect(preloadOverviewPartsMock).toHaveBeenCalledOnce()
   })
 
   // ─── SOPPlayer callback: onSummarize → exam overlay ──────────────────────

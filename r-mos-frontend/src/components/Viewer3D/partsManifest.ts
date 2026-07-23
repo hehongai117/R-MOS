@@ -551,3 +551,18 @@ export function getDetailPartActionTarget(linkName: string, partIndex: number): 
     if (!detailPart) return null;
     return detailPart.actionTarget ?? null;
 }
+
+/**
+ * 获取概览级节点（OVERVIEW_NODE_IDS）对应的爆炸图零件 URL。
+ * 只返回 overview_nodes.json 中列出的节点的零件，
+ * 不包含其余明细节点（明细零件由 DetailParts 按需加载）。
+ */
+export function overviewPartUrls(): string[] {
+    const overviewSet = new Set(OVERVIEW_NODE_IDS);
+    return Array.from(new Set(
+        Object.keys(getDetailPartsMap())
+            .filter((link) => overviewSet.has(link))
+            .flatMap((link) => getExplodePartsForLink(link))
+            .map((part) => `${PARTS_BASE}/${part.path}`),
+    ));
+}

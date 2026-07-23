@@ -31,7 +31,7 @@ import { useAssemblyManifest } from '@/components/Viewer3D/useAssemblyManifest';
 import {
     UI_CAPABILITIES,
 } from '@/components/Viewer3D/partsManifest';
-import { preloadAllParts } from '@/components/Viewer3D/ModelPreloader';
+import { preloadOverviewParts } from '@/components/Viewer3D/ModelPreloader';
 import {
     getLinkDisplayName,
 } from '@/components/Viewer3D/assemblyTree';
@@ -293,9 +293,9 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         }
     }, [diagnosisActionLoading, latestDiagnosisTraceId]);
 
-    // 预加载爆炸图子零件 GLB（静默后台）
+    // 预加载概览级爆炸图子零件 GLB（静默后台）；明细零件由 DetailParts 按需加载
     useEffect(() => {
-        preloadAllParts();
+        preloadOverviewParts();
     }, []);
 
     // 监听全屏变化事件（ESC 退出时同步状态）

@@ -8,7 +8,7 @@
  */
 
 import { useGLTF } from '@react-three/drei';
-import { ALL_EXPLODE_PART_URLS } from './partsManifest';
+import { ALL_EXPLODE_PART_URLS, overviewPartUrls } from './partsManifest';
 import { getRobotModelBase } from '../../config/robots';
 
 /** 批量大小：每帧处理多少个 URL 的预加载调用 */
@@ -97,6 +97,36 @@ export function preloadRobotModel(robotId: string, linkNames?: string[]): void {
         } catch {
             // ignore
         }
+    });
+}
+
+/**
+ * 只预加载概览级节点（OVERVIEW_NODE_IDS）对应的爆炸图零件。
+ * 明细零件由 DetailParts 按需加载（Suspense 驱动），不在此处 eager 预取。
+ * 分批调用以避免一次性发起过多网络请求。
+ * 返回一个 Promise，在全部完成时 resolve。
+ */
+export function preloadOverviewParts(): Promise<void> {
+    const urls = overviewPartUrls();
+    if (urls.length === 0) return Promise.resolve();
+
+    return new Promise<void>((resolve) => {
+        function loadBatch(startIdx: number) {
+            const batch = urls.slice(startIdx, startIdx + BATCH_SIZE);
+            batch.forEach((url) => {
+                try {
+                    useGLTF.preload(url);
+                } catch {
+                    // 静默忽略单个文件的预加载错误
+                }
+            });
+            if (startIdx + BATCH_SIZE < urls.length) {
+                setTimeout(() => loadBatch(startIdx + BATCH_SIZE), BATCH_DELAY);
+            } else {
+                resolve();
+            }
+        }
+        loadBatch(0);
     });
 }
 
