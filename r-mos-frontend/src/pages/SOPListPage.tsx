@@ -54,7 +54,7 @@ const SOPListPage: React.FC = () => {
         sop_id: sop.id,
       });
       message.success('任务创建成功');
-      navigate(`/maintenance?sop=${sop.id}`);
+      navigate(`/maintenance?sop=sop-db-${sop.id}`);
     } catch (error) {
       message.error('创建任务失败');
     } finally {
