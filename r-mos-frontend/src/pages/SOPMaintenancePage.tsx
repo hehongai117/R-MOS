@@ -31,7 +31,6 @@ import { useAssemblyManifest } from '@/components/Viewer3D/useAssemblyManifest';
 import {
     UI_CAPABILITIES,
 } from '@/components/Viewer3D/partsManifest';
-import { preloadOverviewParts } from '@/components/Viewer3D/ModelPreloader';
 import {
     getLinkDisplayName,
 } from '@/components/Viewer3D/assemblyTree';
@@ -293,10 +292,9 @@ function SOPMaintenancePage({ workspaceVariant = 'runtime', layoutMode }: SOPMai
         }
     }, [diagnosisActionLoading, latestDiagnosisTraceId]);
 
-    // 预加载概览级爆炸图子零件 GLB（静默后台）；明细零件由 DetailParts 按需加载
-    useEffect(() => {
-        preloadOverviewParts();
-    }, []);
+    // 明细/爆炸零件不做 eager 预加载：首屏概览由 robot-assets 基础装配体（24 link）
+    // 完整渲染；明细子零件仅在用户钻取某 link + 爆炸模式时由 SubPartsGroup/DetailParts
+    // 经 Suspense 按需加载（见 SOPViewerScene）。避免首屏拉取 155 个 parts GLB。
 
     // 监听全屏变化事件（ESC 退出时同步状态）
     useEffect(() => {

@@ -539,12 +539,14 @@ describe('SOPMaintenancePage characterization', () => {
     expect(screen.queryByText('RuntimeAssetPreviewStub')).toBeNull()
   })
 
-  // ─── preload on mount ─────────────────────────────────────────────────────
+  // ─── no eager part preload on mount ───────────────────────────────────────
 
-  it('calls preloadOverviewParts exactly once on mount', () => {
+  it('does not eagerly preload detail/explode parts on mount (on-demand via Suspense)', () => {
     render(<SOPMaintenancePage />)
 
-    expect(preloadOverviewPartsMock).toHaveBeenCalledOnce()
+    // 首屏概览由 robot-assets 基础装配体渲染；明细零件仅在钻取时按需加载。
+    expect(preloadOverviewPartsMock).not.toHaveBeenCalled()
+    expect(preloadAllPartsMock).not.toHaveBeenCalled()
   })
 
   // ─── SOPPlayer callback: onSummarize → exam overlay ──────────────────────
