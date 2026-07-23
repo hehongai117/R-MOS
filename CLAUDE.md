@@ -174,6 +174,7 @@ r-mos-frontend/src/
 # Frontend
 /run-frontend         # Start frontend dev server
 /test-frontend        # Run frontend tests
+/e2e-browser         # Playwright 浏览器 E2E（需本地后端在跑；cd r-mos-frontend && npm run e2e）
 
 # Project
 /new-api             # Create new API endpoint
