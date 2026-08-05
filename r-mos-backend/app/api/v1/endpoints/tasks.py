@@ -7,6 +7,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from app.core.database import get_db
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.schemas.task import (
     TaskCreate,
     TaskResponse,
@@ -109,16 +110,24 @@ async def resume_task(
 
 @router.get("/tasks", response_model=TaskListResponse, tags=["Tasks"])
 async def list_tasks(
-    user_id: Optional[int] = Query(None, description="按执行用户过滤"),
+    user_id: Optional[int] = Query(None, description="按执行用户过滤（仅教师/管理员可用）"),
     status: Optional[TaskStatus] = Query(None, description="按任务状态过滤"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
-    """查询 Task 列表（维保报告列表页数据源）。"""
+    """查询 Task 列表（维保报告列表页数据源）。
+
+    可见范围按角色收敛：学生只能看到本人的任务，教师/管理员可查看全部或指定用户。
+    入参 user_id 对学生无效——权限不能依赖前端传参，否则可被直接绕过。
+    """
+    is_privileged = bool({"teacher", "admin"} & actor.roles)
+    effective_user_id = user_id if is_privileged else actor.user_id
+
     service = TaskService(db)
     items, total = await service.list_tasks(
-        user_id=user_id, status=status, limit=limit, offset=offset
+        user_id=effective_user_id, status=status, limit=limit, offset=offset
     )
     return TaskListResponse(
         items=[TaskResponse.model_validate(t) for t in items],
