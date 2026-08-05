@@ -1,4 +1,5 @@
 """Robot model CRUD API endpoints."""
+import logging
 from functools import partial
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
@@ -13,6 +14,7 @@ from app.services.storage import get_storage
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.robot_service import RobotService
 from app.services.robot_asset_validator import validate_robot_assets
+from app.services.knowledge.project_ingest_service import project_ingest_service
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.models.robot_asset import RobotAsset, AssetType
 from app.schemas.robot_model import (
@@ -27,6 +29,8 @@ from app.schemas.robot_model import (
 )
 from app.models.analysis_task import AnalysisTask, AnalysisTaskType, AnalysisTaskStatus
 from app.schemas.analysis_task import AnalysisTaskResponse, AnalysisTaskListResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/robots", tags=["robots"])
 
@@ -230,6 +234,8 @@ async def upload_robot_files(
 
     uploaded = []
     failed = []
+    # 同一批内容还要喂给知识管线（SOP 维保练习页 / 知识检索），避免用户分两处上传
+    knowledge_payload: list[tuple[str, bytes, str | None]] = []
 
     for file in files:
         try:
@@ -258,10 +264,28 @@ async def upload_robot_files(
             await db.flush()
             await db.refresh(asset)
             uploaded.append(asset)
+            knowledge_payload.append((clean_name, content, file.content_type))
         except ValueError as e:
             failed.append({"filename": file.filename or "", "error": str(e)})
 
     await db.commit()
+
+    # 双写知识管线。失败不影响主流程（3D 资产已经落库），只记日志。
+    if knowledge_payload:
+        try:
+            await project_ingest_service.sync_project_for_robot_model(
+                db,
+                robot_model_id=robot_id,
+                brand=robot.brand,
+                model=robot.model_name,
+                version=robot.version,
+                files=knowledge_payload,
+            )
+        except Exception as exc:  # noqa: BLE001 - 知识管线不应阻断资产上传
+            logger.warning(
+                "robot_model_id=%d: 同步知识管线失败（不影响 3D 资产）: %s", robot_id, exc
+            )
+
     return FileUploadResponse(
         uploaded=[RobotAssetResponse.model_validate(a) for a in uploaded],
         failed=failed,

@@ -19,6 +19,7 @@ const KnowledgePage = lazy(() => import('@/pages/KnowledgePage'))
 const MonitorPage = lazy(() => import('@/pages/MonitorPage'))
 const MyTasksPage = lazy(() => import('@/pages/MyTasksPage'))
 const ReportPage = lazy(() => import('@/pages/ReportPage'))
+const ReportListPage = lazy(() => import('@/pages/ReportListPage'))
 const ScenarioPickerPage = lazy(() => import('@/pages/ScenarioPickerPage'))
 const SOPListPage = lazy(() => import('@/pages/SOPListPage'))
 const SOPMaintenancePage = lazy(() => import('@/pages/SOPMaintenancePage'))
@@ -133,7 +134,7 @@ function App() {
                 />
                 <Route path="agent/workbench" element={withSuspense(withRoles(<AgentWorkbenchPage />, getAllowedRoles('agent/workbench')))} />
                 <Route path="settings" element={withSuspense(withRoles(<UserSettingsPage />, getAllowedRoles('settings')))} />
-                <Route path="reports" element={withSuspense(withRoles(<ReportPage />, getAllowedRoles('reports')))} />
+                <Route path="reports" element={withSuspense(withRoles(<ReportListPage />, getAllowedRoles('reports')))} />
                 <Route path="reports/:taskId" element={withSuspense(withRoles(<ReportPage />, getAllowedRoles('reports/:taskId')))} />
               </Route>
             </Route>

@@ -21,6 +21,7 @@ from app.services.diagnosis.fault_diagnosis_engine import diagnosis_engine
 from app.services.diagnosis.maintenance_plan_generator import maintenance_plan_generator
 from app.services.policy_matrix import policy_matrix, PolicyDecision, RiskLevel, ActionCategory
 from app.services.intent import intent_engine, IntentScene
+from app.services.llm.router import llm_router
 from app.services.llm.telemetry_context_builder import TelemetryContextBuilder
 from app.services.simulation.simulation_executor import SimulationExecutor
 from app.services.knowledge_governance import KnowledgeSearchQuery, KnowledgeStatus, knowledge_governance
@@ -126,7 +127,7 @@ class OrchestratorV2:
             return "plan-task"
         return intent
 
-    def _general_handler(self, context: TaskContext) -> Any:
+    async def _general_handler(self, context: TaskContext) -> Any:
         message = self._normalize_prompt(
             str(context.metadata.get("message") or ""),
             "请概述当前工作台状态。",
@@ -161,12 +162,10 @@ class OrchestratorV2:
                 "suggestions": ["派单维保", "诊断问题", "知识查询"],
             }
         else:
-            content = (
-                "我可以在 AI 工作台帮你做四类事：维保派单、故障诊断、知识查询和训练指导。"
-                "告诉我机器人型号、故障现象或训练目标即可。"
-            )
+            # 开放式问题交给 LLM 回答，而不是返回固定的功能介绍文案。
+            content = await self._answer_with_llm(message)
             action = {
-                "type": "workbench_overview",
+                "type": "workbench_answer",
                 "suggestions": ["派单维保", "诊断问题", "知识查询", "训练指导"],
             }
         return {
@@ -175,6 +174,42 @@ class OrchestratorV2:
             "action": action,
             "trace_id": context.trace_id,
         }
+
+    async def _answer_with_llm(
+        self,
+        message: str,
+        system_prompt: str | None = None,
+        fallback: str | None = None,
+    ) -> str:
+        """调用 LLM 生成回答；任何异常都退回到可用的兜底文案。
+
+        llm_router.chat_with_fallback 自带 DeepSeek → MiniMax → mock 三级降级，
+        这里再包一层，确保对话链路在任何情况下都不会因 LLM 故障而中断。
+        """
+        default_system = (
+            "你是 R-MOS 机器人维护操作系统的维保智能体，面向职业院校师生。"
+            "请用中文回答机器人维护、故障排查、SOP 相关问题，"
+            "给出可执行的排查步骤，并在涉及高压、运动部件等操作时提示安全注意事项。"
+            "回答控制在 300 字以内。"
+        )
+        default_fallback = (
+            "我可以在 AI 工作台帮你做四类事：维保派单、故障诊断、知识查询和训练指导。"
+            "告诉我机器人型号、故障现象或训练目标即可。"
+        )
+        try:
+            response = await llm_router.chat_with_fallback(
+                messages=[
+                    {"role": "system", "content": system_prompt or default_system},
+                    {"role": "user", "content": message},
+                ],
+                temperature=0.3,
+            )
+            content = (getattr(response, "content", "") or "").strip()
+            if content:
+                return content
+        except Exception as exc:  # noqa: BLE001 - 对话链路不能因 LLM 故障中断
+            logger.warning("LLM answer failed, using fallback: %s", exc)
+        return fallback or default_fallback
 
     def _execution_handler(self, context: TaskContext) -> Any:
         message = self._normalize_prompt(
@@ -314,7 +349,7 @@ class OrchestratorV2:
             resources = binding_result.resources
 
         # 4. Evaluate policy
-        intent = intent_classification or self._classify_intent(message)
+        intent = intent_classification or await self._classify_intent(message)
         policy_intent = self._map_policy_intent(intent)
         policy_decision = policy_matrix.evaluate(policy_intent, {
             "user_id": user_id,
@@ -397,13 +432,16 @@ class OrchestratorV2:
 
         return response
 
-    def _classify_intent(self, message: str) -> str:
-        """Classify user intent using IntentEngine (P1-3-4)"""
-        import asyncio
+    async def _classify_intent(self, message: str) -> str:
+        """Classify user intent using IntentEngine (P1-3-4)
 
+        注意：必须 await，不能用 asyncio.run()。process_request 跑在 FastAPI 的
+        事件循环里，asyncio.run() 在运行中的事件循环内会抛 RuntimeError，
+        异常被下面的 except 吞掉后每次都降级到关键词匹配，LLM 识别永不生效。
+        """
         try:
             # Use LLM-based intent recognition
-            result = asyncio.run(intent_engine.recognize(message, use_llm=True))
+            result = await intent_engine.recognize(message, use_llm=True)
 
             # Map IntentScene to module action
             scene_to_action = {
@@ -503,7 +541,32 @@ class OrchestratorV2:
     async def _diagnosis_handler(self, context: TaskContext) -> Any:
         telemetry_payload = context.metadata.get("telemetry_payload")
         if not telemetry_payload:
-            return {"status": "error", "message": "缺少遥测数据，无法诊断"}
+            # 无遥测时不再直接拒绝：工作台聊天场景本就不带遥测，
+            # 退化为基于文字描述的初步诊断，仍给出可执行的排查方向。
+            message = self._normalize_prompt(
+                str(context.metadata.get("message") or ""),
+                "机器人出现异常，请给出排查方向。",
+            )
+            content = await self._answer_with_llm(
+                message,
+                system_prompt=(
+                    "你是 R-MOS 的机器人故障诊断专家。用户没有提供实时遥测数据，"
+                    "请基于文字描述给出初步诊断：列出最可能的 3 个故障原因（按可能性排序），"
+                    "每个原因附带验证方法；最后说明需要哪些遥测数据才能进一步确认。"
+                    "涉及带电或运动部件时必须提示安全措施。回答控制在 400 字以内。"
+                ),
+                fallback="暂时无法完成诊断，请补充故障现象描述或接入实时遥测数据。",
+            )
+            return {
+                "status": "ok",
+                "message": content,
+                "action": {
+                    "type": "preliminary_diagnosis",
+                    "telemetry_available": False,
+                    "next_step": "接入实时遥测后可获得完整的故障推理与仿真验证结果。",
+                },
+                "trace_id": context.trace_id,
+            }
 
         telemetry_context = self._telemetry_builder.build_from_payload(telemetry_payload)
         diagnosis = await self._diagnosis_engine.diagnose(

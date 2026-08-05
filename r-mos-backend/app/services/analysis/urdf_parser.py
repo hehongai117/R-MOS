@@ -49,7 +49,9 @@ class URDFParseResult:
         for link in self.links:
             if link.mesh_filename:
                 mesh_id = f"{link.name}_mesh"
-                glb_name = f"{link.name}.glb"
+                # 路径统一小写：上传落盘会强制小写文件名，此处保留原大小写会
+                # 在大小写敏感的文件系统上取不到 GLB。key 仍用原名（nodes 靠它引用）。
+                glb_name = f"{link.name.lower()}.glb"
                 mesh_catalog[mesh_id] = glb_name
 
         # Build nodes

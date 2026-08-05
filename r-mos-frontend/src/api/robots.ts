@@ -46,7 +46,10 @@ export async function uploadRobotFiles(
   onProgress?: (percent: number) => void,
 ): Promise<FileUploadResponse> {
   const formData = new FormData()
-  files.forEach((file) => formData.append('files', file))
+  // 显式传 file.name：来自文件夹选择（webkitdirectory）的 File，浏览器默认会用
+  // webkitRelativePath（如 meshes/base_link.STL）当文件名，后端清洗后变成
+  // meshes_base_link.stl，导致 URDF 的 mesh 引用按 basename 匹配不上。
+  files.forEach((file) => formData.append('files', file, file.name))
   const response = await apiClient.post<FileUploadResponse>(
     `/robots/${robotId}/upload`,
     formData,

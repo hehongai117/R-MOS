@@ -5,7 +5,7 @@ V2.3.1 修复：
 - 添加 status 字段验证器，自动将字符串转换为 TaskStatus 枚举
 """
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 from app.models.task import TaskStatus
 
@@ -86,3 +86,11 @@ class StepExecutionResponse(BaseModel):
                 "is_task_completed": False
             }
         }
+
+
+class TaskListResponse(BaseModel):
+    """Task 列表响应（维保报告列表页使用）"""
+    items: List[TaskResponse]
+    total: int
+    limit: int
+    offset: int

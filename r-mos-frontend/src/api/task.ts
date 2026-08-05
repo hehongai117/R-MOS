@@ -80,14 +80,25 @@ export async function getTaskReport(taskId: number): Promise<TaskReport> {
     return response.data
 }
 
+export interface TaskListResult {
+    items: Task[]
+    total: number
+    limit: number
+    offset: number
+}
+
 /**
- * 获取任务列表（可选，如后端支持）
+ * 获取任务列表（维保报告列表页数据源）
+ *
+ * 契约对齐后端 GET /tasks：返回 { items, total, limit, offset }，
+ * 分页参数是 offset（不是 skip）。
  */
 export async function listTasks(params: {
     status?: string
-    skip?: number
+    user_id?: number
     limit?: number
-} = {}): Promise<Task[]> {
-    const response = await apiClient.get<Task[]>('/tasks', { params })
+    offset?: number
+} = {}): Promise<TaskListResult> {
+    const response = await apiClient.get<TaskListResult>('/tasks', { params })
     return response.data
 }

@@ -109,7 +109,7 @@ describe('KnowledgePage', () => {
     })
   })
 
-  it('shows a robot project ingest workspace for teacher users while preserving legacy search', async () => {
+  it('shows robot projects as a read-only view now that upload is unified', async () => {
     render(<KnowledgePage />)
 
     expect(screen.getByRole('heading', { name: '知识库' })).toBeTruthy()
@@ -119,13 +119,13 @@ describe('KnowledgePage', () => {
     await userEvent.click(screen.getByRole('tab', { name: '机器人项目' }))
 
     await waitFor(() => {
-      expect(screen.getByText('机器人项目包上传')).toBeTruthy()
+      expect(screen.getByText('最近项目')).toBeTruthy()
     })
 
-    expect(screen.getByLabelText('机器人品牌')).toBeTruthy()
-    expect(screen.getByLabelText('机器人型号')).toBeTruthy()
-    expect(screen.getByLabelText('版本标识')).toBeTruthy()
-    expect(screen.getByText('最近项目')).toBeTruthy()
+    // 上传已统一到「文件上传」，这里不再有独立的项目包上传入口
+    expect(screen.queryByText('机器人项目包上传')).toBeNull()
+    expect(screen.queryByLabelText('机器人品牌')).toBeNull()
+    expect(screen.getByText(/机器人项目由「文件上传」自动生成/)).toBeTruthy()
     expect(screen.getByText('Fourier')).toBeTruthy()
     expect(screen.getByText('N1')).toBeTruthy()
   })

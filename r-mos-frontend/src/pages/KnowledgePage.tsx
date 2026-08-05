@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Empty, Form, Select, Table, Tabs, message } from 'antd'
 
 import {
@@ -9,18 +9,13 @@ import {
   searchKnowledge,
   submitKnowledgeForReview,
 } from '@/api/agent'
-import {
-  getRobotProjectUploadJob,
-  listRobotProjects,
-  uploadRobotProjectPackage,
-} from '@/api/robotKnowledge'
+import { listRobotProjects } from '@/api/robotKnowledge'
 import { listAnalysisTasks } from '@/api/robots'
 import { AddRobotDialog } from '@/components/knowledge/AddRobotDialog'
 import { AnalysisStatusPanel } from '@/components/knowledge/AnalysisStatusPanel'
 import { FileUploader } from '@/components/knowledge/FileUploader'
 import { PublishControl } from '@/components/knowledge/PublishControl'
 import { RobotProjectTable } from '@/components/knowledge/RobotProjectTable'
-import { RobotProjectUploadPanel } from '@/components/knowledge/RobotProjectUploadPanel'
 import { RobotSidebar } from '@/components/knowledge/RobotSidebar'
 import { PageHeader, SectionCard, StatusBadge } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -30,7 +25,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useRobotContextStore } from '@/store/robotContextStore'
 import { useRobotStore, useSelectedRobot } from '@/store/robotStore'
 import type { AnalysisTask, RobotModelCreateRequest } from '@/types/robotModel'
-import type { RobotProjectSummary, RobotProjectUploadJob } from '@/types/robotKnowledge'
+import type { RobotProjectSummary } from '@/types/robotKnowledge'
 
 const { Option } = Select
 
@@ -48,12 +43,6 @@ function riskTone(level: string) {
   return 'success'
 }
 
-function uploadStatusTone(status: string) {
-  if (status === 'ready') return 'success'
-  if (status === 'failed') return 'error'
-  if (status === 'ingesting') return 'warning'
-  return 'active'
-}
 
 const KnowledgePage = () => {
   const role = useAuthStore((state) => state.user?.role ?? 'student')
@@ -80,18 +69,8 @@ const KnowledgePage = () => {
   const [projectsLoading, setProjectsLoading] = useState(false)
   const [projects, setProjects] = useState<RobotProjectSummary[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploading, setUploading] = useState(false)
-  const [uploadJobs, setUploadJobs] = useState<RobotProjectUploadJob[]>([])
-  const pollingTimersRef = useRef<Record<string, number>>({})
   const [form] = Form.useForm()
 
-  const upsertUploadJob = useCallback((job: RobotProjectUploadJob) => {
-    setUploadJobs((prev) => {
-      const next = [job, ...prev.filter((item) => item.job_id !== job.job_id)]
-      return next.slice(0, 10)
-    })
-  }, [])
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true)
@@ -126,40 +105,6 @@ const KnowledgePage = () => {
     }
   }, [searchQuery, selectedDevice])
 
-  const startPollingUploadJob = useCallback((jobId: string) => {
-    const clearCurrent = () => {
-      const timerId = pollingTimersRef.current[jobId]
-      if (timerId) {
-        window.clearTimeout(timerId)
-        delete pollingTimersRef.current[jobId]
-      }
-    }
-
-    const poll = async () => {
-      try {
-        const job = await getRobotProjectUploadJob(jobId)
-        upsertUploadJob(job)
-
-        if (job.status === 'ready' || job.status === 'failed') {
-          clearCurrent()
-          setUploadProgress(100)
-          await loadProjects()
-          return
-        }
-
-        setUploadProgress((current) => Math.min(current + 15, 90))
-        pollingTimersRef.current[jobId] = window.setTimeout(() => {
-          void poll()
-        }, 2000)
-      } catch {
-        clearCurrent()
-        setUploadProgress(0)
-        message.error('ingest 状态轮询失败')
-      }
-    }
-
-    void poll()
-  }, [loadProjects, upsertUploadJob])
 
   // Load analysis tasks when selectedRobotId changes
   const loadAnalysisTasks = useCallback(async (robotId: number) => {
@@ -177,13 +122,6 @@ const KnowledgePage = () => {
   useEffect(() => {
     void handleSearch()
     void loadProjects()
-
-    return () => {
-      Object.values(pollingTimersRef.current).forEach((timerId) => {
-        window.clearTimeout(timerId)
-      })
-      pollingTimersRef.current = {}
-    }
   }, [handleSearch, loadProjects])
 
   // Fetch robots on mount for teacher/admin
@@ -249,33 +187,6 @@ const KnowledgePage = () => {
       await handleSearch()
     } catch {
       message.error('创建失败')
-    }
-  }
-
-  const handleRobotUpload = async (payload: {
-    file: File
-    brand: string
-    model: string
-    version: string
-  }) => {
-    setUploading(true)
-    setUploadProgress(10)
-    try {
-      const job = await uploadRobotProjectPackage(payload.file, {
-        brand: payload.brand,
-        model: payload.model,
-        version: payload.version,
-      })
-      upsertUploadJob(job)
-      setUploadProgress(35)
-      setActiveTab('projects')
-      startPollingUploadJob(job.job_id)
-      message.success(`项目包已提交：${payload.file.name}`)
-    } catch {
-      setUploadProgress(0)
-      message.error('项目包上传失败')
-    } finally {
-      setUploading(false)
     }
   }
 
@@ -350,12 +261,11 @@ const KnowledgePage = () => {
   const robotProjectTab = (
     <div className="space-y-4">
       {canManageKnowledge ? (
-        <SectionCard title="项目包 ingest">
-          <RobotProjectUploadPanel
-            uploading={uploading}
-            uploadProgress={uploadProgress}
-            onUpload={handleRobotUpload}
-          />
+        <SectionCard title="关于机器人项目">
+          <div className="text-sm text-text-muted">
+            机器人项目由「文件上传」自动生成，无需单独上传。上传机型文件后，系统会同时建立
+            3D 装配模型（供 3D 展示、实时监控使用）和知识项目（供 SOP 维保练习、知识检索使用）。
+          </div>
         </SectionCard>
       ) : null}
 
@@ -372,30 +282,6 @@ const KnowledgePage = () => {
         )}
       </SectionCard>
 
-      <SectionCard title="ingest 任务">
-        {uploadJobs.length === 0 ? (
-          <Empty description="暂无 ingest 记录" />
-        ) : (
-          <div className="space-y-3">
-            {uploadJobs.map((job) => (
-              <div
-                key={job.job_id}
-                className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-elevated px-4 py-3"
-              >
-                <div>
-                  <div className="text-sm text-text-primary">
-                    {(job.brand ?? '未知品牌') + ' ' + (job.model ?? '未知型号')}
-                  </div>
-                  <div className="mt-1 text-xs text-text-muted">
-                    {job.filename ?? job.job_id} · {job.version ?? '-'}
-                  </div>
-                </div>
-                <StatusBadge label={job.status} status={uploadStatusTone(job.status)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
     </div>
   )
 
@@ -570,7 +456,6 @@ const KnowledgePage = () => {
     selectedDevice,
     selectedProjectId,
     selectedRobotId,
-    uploadJobs,
   ])
 
   const mainContent = (

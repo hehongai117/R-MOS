@@ -1,13 +1,19 @@
 """
 Task API端点（V2.3完整版）
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.schemas.task import TaskCreate, TaskResponse, StepExecutionRequest, StepExecutionResponse
+from app.schemas.task import (
+    TaskCreate,
+    TaskResponse,
+    TaskListResponse,
+    StepExecutionRequest,
+    StepExecutionResponse,
+)
 from app.schemas.report import TaskReport
 from app.services.task_service import TaskService
 from app.services.event_service import EventService
@@ -99,6 +105,27 @@ async def resume_task(
     service = TaskService(db)
     task = await service.resume_task(task_id)
     return task
+
+
+@router.get("/tasks", response_model=TaskListResponse, tags=["Tasks"])
+async def list_tasks(
+    user_id: Optional[int] = Query(None, description="按执行用户过滤"),
+    status: Optional[TaskStatus] = Query(None, description="按任务状态过滤"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询 Task 列表（维保报告列表页数据源）。"""
+    service = TaskService(db)
+    items, total = await service.list_tasks(
+        user_id=user_id, status=status, limit=limit, offset=offset
+    )
+    return TaskListResponse(
+        items=[TaskResponse.model_validate(t) for t in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse, tags=["Tasks"])

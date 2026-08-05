@@ -65,9 +65,12 @@ class AssemblyBuilder:
                 logger.warning("robot_model_id=%d: mesh not found: %s", robot_model_id, basename)
                 continue
 
+            # GLB 文件名统一小写，与上传落盘的小写文件名保持一致
+            glb_filename = f"{link.name.lower()}.glb"
+
             # 已存在则跳过（通过 storage.exists 检查，不依赖本地路径）
             try:
-                if self.storage.exists(robot_model_id, f"models/{link.name}.glb"):
+                if self.storage.exists(robot_model_id, f"models/{glb_filename}"):
                     meshes_converted += 1
                     continue
             except ValueError:
@@ -78,13 +81,13 @@ class AssemblyBuilder:
                 continue
 
             with tempfile.TemporaryDirectory() as tmp_dir:
-                output_glb = Path(tmp_dir) / f"{link.name}.glb"
+                output_glb = Path(tmp_dir) / glb_filename
                 result = await convert_single_cad_to_glb(source_path, str(output_glb))
                 if result["success"]:
                     content = output_glb.read_bytes()
                     try:
                         rel_path = self.storage.upload(
-                            robot_model_id, f"{link.name}.glb", content, subdirectory="models"
+                            robot_model_id, glb_filename, content, subdirectory="models"
                         )
                     except ValueError:
                         logger.warning(
@@ -118,7 +121,7 @@ class AssemblyBuilder:
         for link in parse_result.links:
             if link.mesh_filename:
                 mesh_id = f"{link.name}_mesh"
-                manifest["mesh_catalog"][mesh_id] = f"models/{link.name}.glb"
+                manifest["mesh_catalog"][mesh_id] = f"models/{link.name.lower()}.glb"
 
         # 5. Store manifest
         manifest_json = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")

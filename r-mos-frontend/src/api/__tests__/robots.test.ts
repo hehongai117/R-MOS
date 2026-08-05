@@ -83,6 +83,22 @@ describe('robots API', () => {
     expect(result).toEqual(uploaded)
   })
 
+  it('uploadRobotFiles pins the upload filename to the basename', async () => {
+    // 回归用例：文件夹选择（webkitdirectory）的 File 带 webkitRelativePath，
+    // 浏览器默认会用 "meshes/base_link.STL" 当上传名，后端清洗成
+    // meshes_base_link.stl → URDF 的 mesh 引用按 basename 匹配失败，3D 建不出来。
+    // 注意：jsdom 的 FormData 不复现该浏览器行为，断言结果文件名测不出回归，
+    // 因此这里直接断言 append 的第三个参数（显式文件名）确实被传入。
+    mockPost.mockResolvedValue({ data: { uploaded: [], failed: [] } })
+    const appendSpy = vi.spyOn(FormData.prototype, 'append')
+    const file = new File(['x'], 'base_link.STL', { type: '' })
+
+    await uploadRobotFiles(5, [file])
+
+    expect(appendSpy).toHaveBeenCalledWith('files', file, 'base_link.STL')
+    appendSpy.mockRestore()
+  })
+
   it('triggerAnalysis calls POST /robots/:id/analyze', async () => {
     const task = { id: 1, status: 'pending' }
     mockPost.mockResolvedValue({ data: task })

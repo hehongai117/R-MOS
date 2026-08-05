@@ -28,31 +28,39 @@ interface UseAssemblyManifestResult {
 
 const manifestCache = new Map<number, AssemblyManifestWithJoints | null>()
 
+/** manifest 与它所属的 robotId 绑定存储，避免渲染期把上一台的数据交给新机型。 */
+interface ManifestEntry {
+  rid: number | undefined
+  manifest: AssemblyManifestWithJoints | null
+}
+
 export function useAssemblyManifest(robotId: number | undefined): UseAssemblyManifestResult {
-  const [manifest, setManifest] = useState<AssemblyManifestWithJoints | null>(null)
+  const [entry, setEntry] = useState<ManifestEntry>({ rid: undefined, manifest: null })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!robotId) {
+      setEntry({ rid: undefined, manifest: null })
       setLoading(false)
       return
     }
 
     // Check cache
     if (manifestCache.has(robotId)) {
-      setManifest(manifestCache.get(robotId)!)
+      setEntry({ rid: robotId, manifest: manifestCache.get(robotId)! })
       setLoading(false)
       return
     }
+
+    setLoading(true)
+    setError(null)
 
     let cancelled = false
 
     const rid = robotId!
 
     async function fetchManifest() {
-      setLoading(true)
-      setError(null)
       try {
         const url = `/robots/${rid}/assets/manifests/assembly_manifest.json`
         const res = await apiClient.get<AssemblyManifestWithJoints>(url)
@@ -63,14 +71,14 @@ export function useAssemblyManifest(robotId: number | undefined): UseAssemblyMan
             throw new Error('Invalid manifest format')
           }
           manifestCache.set(rid, data)
-          setManifest(data)
+          setEntry({ rid, manifest: data })
         }
       } catch (e: any) {
         if (!cancelled) {
           if (e.response?.status === 404) {
             // No manifest — not an error, just means no assembly view
             manifestCache.set(rid, null)
-            setManifest(null)
+            setEntry({ rid, manifest: null })
           } else {
             setError(e.message || 'Failed to load manifest')
           }
@@ -83,6 +91,16 @@ export function useAssemblyManifest(robotId: number | undefined): UseAssemblyMan
     fetchManifest()
     return () => { cancelled = true }
   }, [robotId])
+
+  // 渲染期就按 robotId 校验：React 先渲染后跑 effect，若这里直接返回上一台的
+  // manifest，子组件会用「新 robotId + 旧 link 名」发请求（实测切换机型时 29 个 404）。
+  // 缓存命中时直接取用，避免已加载过的机型来回切换出现空白闪烁。
+  const cached =
+    robotId !== undefined && manifestCache.has(robotId)
+      ? manifestCache.get(robotId)!
+      : undefined
+  const manifest =
+    cached !== undefined ? cached : entry.rid === robotId ? entry.manifest : null
 
   return {
     manifest,

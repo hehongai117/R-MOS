@@ -96,6 +96,102 @@ class ProjectIngestService:
             version=project.version,
         )
 
+    async def sync_project_for_robot_model(
+        self,
+        db: AsyncSession,
+        *,
+        robot_model_id: int,
+        brand: str | None,
+        model: str | None,
+        version: str | None,
+        files: list[tuple[str, bytes, str | None]],
+    ) -> RobotProject:
+        """把一批机型文件同步进知识管线，复用同一个 RobotProject。
+
+        统一导入入口的后半段：`/robots/{id}/upload` 落 RobotAsset（喂 3D）之后，
+        再调这里落 RobotProject/RobotProjectFile（喂 SOP 维保练习页与知识检索），
+        使一次上传同时满足两条链路。
+
+        以 robot_key = "robot-model-{id}" 关联机型，多次上传幂等复用同一 project；
+        同名文件覆盖而非重复插入。
+        """
+        robot_key = f"robot-model-{robot_model_id}"
+        project = (
+            await db.execute(select(RobotProject).where(RobotProject.robot_key == robot_key))
+        ).scalar_one_or_none()
+
+        if project is None:
+            project_id = str(uuid.uuid4())
+            project = RobotProject(
+                id=project_id,
+                robot_key=robot_key,
+                brand=brand or "unknown",
+                model=model or "unknown",
+                version=version,
+                status=RobotProjectStatus.UPLOADED,
+                source_package_path=str(self.storage_root / project_id),
+                ingest_summary_json={"files_total": 0, "source": "robot_model_upload"},
+            )
+            db.add(project)
+            await db.flush()
+        else:
+            # 机型信息可能被改过，保持同步
+            project.brand = brand or project.brand
+            project.model = model or project.model
+            project.version = version or project.version
+            project.status = RobotProjectStatus.UPLOADED
+
+        target_dir = self.storage_root / project.id
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        existing = {
+            row.relative_path: row
+            for row in (
+                await db.execute(
+                    select(RobotProjectFile).where(RobotProjectFile.project_id == project.id)
+                )
+            ).scalars().all()
+        }
+
+        for filename, content, content_type in files:
+            safe_name = Path(filename).name
+            target_path = target_dir / safe_name
+            target_path.write_bytes(content)
+            classified = classify_file(safe_name)
+            digest = hashlib.sha256(content).hexdigest()
+
+            record = existing.get(safe_name)
+            if record is not None:
+                record.sha256 = digest
+                record.storage_path = str(target_path)
+                record.mime_type = content_type
+                continue
+
+            record = RobotProjectFile(
+                project_id=project.id,
+                filename=safe_name,
+                relative_path=safe_name,
+                file_kind=classified.kind.value,
+                mime_type=content_type,
+                sha256=digest,
+                storage_path=str(target_path),
+                classification_json={
+                    "strategy": classified.strategy.value,
+                    "extension": classified.extension,
+                },
+            )
+            db.add(record)
+            existing[safe_name] = record
+
+        project.ingest_summary_json = {
+            **(project.ingest_summary_json or {}),
+            "files_total": len(existing),
+            "source": "robot_model_upload",
+        }
+        await db.commit()
+        await db.refresh(project)
+        return project
+
     async def get_upload_job(
         self,
         db: AsyncSession,

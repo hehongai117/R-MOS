@@ -2,7 +2,7 @@
 Task服务（V2.3完整版）
 """
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
@@ -399,6 +399,34 @@ class TaskService:
     async def get_task(self, task_id: int) -> Task:
         """查询Task"""
         return await self._get_task(task_id)
+
+    async def list_tasks(
+        self,
+        user_id: Optional[int] = None,
+        status: Optional[TaskStatus] = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[Task], int]:
+        """分页查询Task列表，返回 (当前页数据, 总数)。
+
+        供维保报告列表页使用；按最新在前排序。
+        """
+        filters = []
+        if user_id is not None:
+            filters.append(Task.user_id == user_id)
+        if status is not None:
+            filters.append(Task.status == status)
+
+        count_stmt = select(func.count()).select_from(Task)
+        list_stmt = select(Task)
+        for condition in filters:
+            count_stmt = count_stmt.where(condition)
+            list_stmt = list_stmt.where(condition)
+
+        total = (await self.db.execute(count_stmt)).scalar_one()
+        list_stmt = list_stmt.order_by(Task.id.desc()).limit(limit).offset(offset)
+        items = list((await self.db.execute(list_stmt)).scalars().all())
+        return items, total
     
     async def _get_task(self, task_id: int) -> Task:
         """内部：获取Task（抛出异常）"""

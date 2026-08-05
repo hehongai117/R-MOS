@@ -75,3 +75,45 @@ def test_to_assembly_manifest():
     # mesh_catalog should map link_name_mesh → expected GLB path
     assert "base_link_mesh" in manifest["mesh_catalog"]
     assert "arm_link_mesh" in manifest["mesh_catalog"]
+
+
+MIXED_CASE_URDF = """<?xml version="1.0"?>
+<robot name="mixed_case_bot">
+  <link name="base_link">
+    <visual>
+      <geometry><mesh filename="package://d/meshes/base_link.STL"/></geometry>
+    </visual>
+  </link>
+  <link name="left_Link1">
+    <visual>
+      <geometry><mesh filename="package://d/meshes/left_Link1.STL"/></geometry>
+    </visual>
+  </link>
+  <joint name="j1" type="revolute">
+    <parent link="base_link"/>
+    <child link="left_Link1"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1" upper="1" effort="1" velocity="1"/>
+  </joint>
+</robot>
+"""
+
+
+def test_mesh_catalog_paths_are_lowercase_for_mixed_case_links():
+    """上传落盘会强制小写文件名，manifest 引用的 GLB 路径必须与之一致。
+
+    回归用例：URDF link 名带大写（如 SolidWorks 导出的 left_Link1）时，
+    manifest 若保留原大小写，会与实际落盘的 left_link1.glb 不匹配 —
+    在大小写敏感的文件系统（Linux）上 3D 资产 404，
+    且发布闸门精确比对时会误判"资产缺失"。
+    """
+    parser = URDFParser()
+    result = parser.parse(MIXED_CASE_URDF)
+    manifest = result.to_assembly_manifest(robot_model_id=1)
+
+    # key 保留原始 link 名（nodes 通过它引用 catalog，不涉及文件系统）
+    assert "left_Link1_mesh" in manifest["mesh_catalog"]
+    # 值是文件路径，必须小写以匹配落盘
+    assert manifest["mesh_catalog"]["left_Link1_mesh"] == "left_link1.glb"
+    assert manifest["mesh_catalog"]["base_link_mesh"] == "base_link.glb"

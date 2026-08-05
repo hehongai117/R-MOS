@@ -163,7 +163,18 @@ async def test_diagnoser_returns_structured_result_with_telemetry_payload(monkey
 
 
 @pytest.mark.asyncio
-async def test_diagnoser_returns_error_without_telemetry_payload():
+async def test_diagnoser_returns_preliminary_diagnosis_without_telemetry(monkeypatch):
+    """无遥测时给出基于文字描述的初步诊断（旧行为是直接返回 error，已改）。"""
+
+    async def _fake_chat(messages, **kwargs):
+        class _Resp:
+            content = "初步判断：1) 伺服使能未开启；2) 制动器未释放；3) 供电电压不足。"
+
+        return _Resp()
+
+    monkeypatch.setattr(
+        "app.services.orchestrator_v2.llm_router.chat_with_fallback", _fake_chat
+    )
     orchestrator = OrchestratorV2()
 
     response = await orchestrator.process_request(
@@ -173,10 +184,9 @@ async def test_diagnoser_returns_error_without_telemetry_payload():
     )
 
     assert response["success"] is True
-    assert response["result"] == {
-        "status": "error",
-        "message": "缺少遥测数据，无法诊断",
-    }
+    assert response["result"]["status"] == "ok"
+    assert "伺服使能未开启" in response["result"]["message"]
+    assert response["result"]["action"]["telemetry_available"] is False
     assert isinstance(response["trace_id"], str)
 
 
@@ -222,7 +232,10 @@ def test_module_registry_and_idempotency_cache_support_basic_operations():
     assert cache.has("idem-2") is False
 
 
-def test_classify_intent_falls_back_to_keywords(monkeypatch):
+@pytest.mark.asyncio
+async def test_classify_intent_falls_back_to_keywords(monkeypatch):
+    """LLM 不可用时仍应降级到关键词匹配（_classify_intent 现为协程）。"""
+
     async def _raise(*args, **kwargs):
         raise RuntimeError("llm unavailable")
 
@@ -230,10 +243,10 @@ def test_classify_intent_falls_back_to_keywords(monkeypatch):
 
     orchestrator = OrchestratorV2()
 
-    assert orchestrator._classify_intent("为什么机器人停住了，需要诊断") == "delegate-diagnoser"
-    assert orchestrator._classify_intent("请开始执行当前练习") == "execute-task"
-    assert orchestrator._classify_intent("搜索相关知识") == "read-kb"
-    assert orchestrator._classify_intent("随便聊聊") == "general"
+    assert await orchestrator._classify_intent("为什么机器人停住了，需要诊断") == "delegate-diagnoser"
+    assert await orchestrator._classify_intent("请开始执行当前练习") == "execute-task"
+    assert await orchestrator._classify_intent("搜索相关知识") == "read-kb"
+    assert await orchestrator._classify_intent("随便聊聊") == "general"
 
 
 @pytest.mark.asyncio
@@ -313,3 +326,93 @@ def test_task_lifecycle_budget_and_trace_events():
 
     events = orchestrator.get_trace_events(task.trace_id)
     assert len(events) >= 3
+
+
+@pytest.mark.asyncio
+async def test_classify_intent_uses_llm_inside_running_event_loop(monkeypatch):
+    """回归：意图识别必须在运行中的事件循环里真正调用 LLM。
+
+    此前用 asyncio.run() 调用异步的 intent_engine.recognize()，而 process_request
+    本身跑在 FastAPI 的事件循环内 —— asyncio.run() 在事件循环中必抛 RuntimeError，
+    异常被 except 吞掉后每次都降级到关键词匹配，LLM 意图识别 100% 失效。
+    """
+    from app.services.intent import IntentScene
+
+    calls: list[str] = []
+
+    async def _fake_recognize(message, use_llm=False):
+        calls.append(message)
+
+        class _Result:
+            scene = IntentScene.DIAGNOSIS
+
+        return _Result()
+
+    monkeypatch.setattr(
+        "app.services.orchestrator_v2.intent_engine.recognize", _fake_recognize
+    )
+    orchestrator = OrchestratorV2()
+
+    # 这句话不含关键词表里的任何词（诊断/为什么/怎么办…），
+    # 一旦降级到关键词匹配就会返回 "general"。
+    result = await orchestrator._classify_intent("手臂抬不起来，帮我分析一下原因")
+
+    assert calls, "intent_engine.recognize 应被真正调用（说明没有降级）"
+    assert result == "delegate-diagnoser"
+
+
+@pytest.mark.asyncio
+async def test_general_handler_answers_via_llm(monkeypatch):
+    """通用问答必须走 LLM，而不是返回硬编码模板。"""
+    captured: dict = {}
+
+    async def _fake_chat(messages, **kwargs):
+        captured["messages"] = messages
+
+        class _Resp:
+            content = "可能原因：1) 关节电机过流保护；2) 减速器卡死；3) 编码器反馈异常。"
+
+        return _Resp()
+
+    monkeypatch.setattr(
+        "app.services.orchestrator_v2.llm_router.chat_with_fallback", _fake_chat
+    )
+    orchestrator = OrchestratorV2()
+
+    response = await orchestrator.process_request(
+        user_id="u-1",
+        message="W2 机器人手臂抬不起来，帮我分析可能的故障原因",
+        intent_classification="general",
+    )
+
+    assert response["success"] is True
+    assert "关节电机过流保护" in response["message"]
+    assert "我可以在 AI 工作台帮你做四类事" not in response["message"]
+    # 用户问题应被带进 prompt
+    assert any("手臂抬不起来" in str(m.get("content", "")) for m in captured["messages"])
+
+
+@pytest.mark.asyncio
+async def test_diagnoser_falls_back_to_text_diagnosis_without_telemetry(monkeypatch):
+    """无遥测数据时，应基于文字描述给出诊断，而不是直接拒绝。"""
+
+    async def _fake_chat(messages, **kwargs):
+        class _Resp:
+            content = "初步判断为肩关节伺服驱动器欠压，建议先检查供电与制动器释放状态。"
+
+        return _Resp()
+
+    monkeypatch.setattr(
+        "app.services.orchestrator_v2.llm_router.chat_with_fallback", _fake_chat
+    )
+    orchestrator = OrchestratorV2()
+
+    response = await orchestrator.process_request(
+        user_id="u-1",
+        message="W2 手臂抬不起来，没有遥测数据",
+        intent_classification="delegate-diagnoser",
+    )
+
+    assert response["success"] is True
+    assert response["result"]["status"] != "error"
+    assert "伺服驱动器欠压" in response["result"]["message"]
