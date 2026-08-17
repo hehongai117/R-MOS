@@ -6505,3 +6505,32 @@
   - 前端构建通过（8.37s），无 TypeScript 类型错误
 - Next Step: Phase 3 — AI 分析管线（7 Tasks）
   - 将当前分支提交并推送到 `origin/feat/phase1-2-fsm-evidence`
+
+---
+
+- DateTime: 2026-08-17 09:17 CST
+- Task: SOP 三段式引导 Task 1.1 — sop_steps 四列、迁移与 ADR
+- Scope (files changed):
+  - r-mos-backend/app/models/sop.py
+  - r-mos-backend/app/schemas/sop.py
+  - r-mos-backend/app/services/sop_service.py
+  - r-mos-backend/alembic/versions/20260817_sop_three_phase_columns.py
+  - r-mos-backend/tests/test_sop_three_phase.py
+  - docs/adr/ADR-2026-08-17-sop-three-phase-schema.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py -v
+  - cd r-mos-backend && source venv/bin/activate && alembic heads
+  - cd r-mos-backend && source venv/bin/activate && alembic upgrade head && alembic current
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/ -v -k "sop"
+- Tests:
+  - 失败测试：3 failed，确认 SOPStep 尚无三段式字段后才实施。
+  - 专用测试：3 passed。
+  - 迁移：20260714_audit_tz → 20260817_sop_three_phase；current 为 head。
+  - SOP 回归：33 passed、779 deselected、0 failed。
+- Result: PASS
+- Risks/Notes:
+  - 专用测试夹具补了已有 is_critical=False 默认值；直接构造未落库对象时，该已有字段的数据库默认值不会自动赋到 Python 对象。
+  - 测试输出含项目既有 Pydantic 与 datetime 弃用警告；本任务未改动相关代码。
+  - 未修改 DATABASE_URL、CORS 或存量 SOP 内容；未执行 git push。
+- Next Step: 按用户指令停止；不进入 Task 1.2 或其他 Task。

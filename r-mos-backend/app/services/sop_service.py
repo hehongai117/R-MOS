@@ -293,6 +293,10 @@ class SOPService:
                 onFailure=on_failure,
                 isIrreversible=action_params.get("isIrreversible", False),
                 fatalOnFailure=step.is_critical,
+                phase=step.phase or "execute",
+                groupPath=step.group_path,
+                stepView=step.step_view,
+                requiredParts=step.required_parts or [],
             ))
 
         return SOPAdjudicationResponse(

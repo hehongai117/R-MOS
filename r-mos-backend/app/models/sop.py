@@ -64,6 +64,12 @@ class SOPStep(Base, TimestampMixin):
     allow_skip = Column(Boolean, default=False, comment="是否允许跳过")
     hints = Column(JSON, nullable=True, comment="提示信息（JSON）")
     tools_required = Column(JSON, nullable=True, comment="所需工具列表（JSON）")
+    # 三段式引导（2026-08-17）
+    phase = Column(String(20), nullable=False, server_default="execute",
+                   comment="阶段：prep/execute/verify")
+    group_path = Column(String(200), nullable=True, comment="模块/子装配路径，如 torso/sub_a")
+    step_view = Column(JSON, nullable=True, comment="作者化 3D 构图（相机/可见集/高亮/爆炸）")
+    required_parts = Column(JSON, nullable=True, comment="本步所需物料 [{bom_code,name,qty,note}]")
     
     # 关系
     sop = relationship("SOP", back_populates="steps")

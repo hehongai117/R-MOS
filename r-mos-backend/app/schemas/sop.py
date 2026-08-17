@@ -21,6 +21,10 @@ class SOPStepBase(BaseModel):
     allow_skip: bool = Field(False, description="是否允许跳过")
     hints: Optional[List[str]] = Field(None, description="提示信息")
     tools_required: Optional[List[str]] = Field(None, description="所需工具")
+    phase: str = Field("execute", description="阶段：prep/execute/verify")
+    group_path: Optional[str] = Field(None, max_length=200, description="模块/子装配路径")
+    step_view: Optional[Dict[str, Any]] = Field(None, description="作者化 3D 构图")
+    required_parts: Optional[List[Dict[str, Any]]] = Field(None, description="本步所需物料")
 
 class SOPStepCreate(SOPStepBase):
     """创建SOP步骤（来自拆包B）"""
@@ -159,6 +163,10 @@ class SOPAdjudicationStepResponse(BaseModel):
     onFailure: Dict[str, Any] = Field(default_factory=dict)
     isIrreversible: bool = False
     fatalOnFailure: bool = False
+    phase: str = "execute"
+    groupPath: Optional[str] = None
+    stepView: Optional[Dict[str, Any]] = None
+    requiredParts: List[Dict[str, Any]] = Field(default_factory=list)
 
 class SOPAdjudicationResponse(BaseModel):
     sopId: str
