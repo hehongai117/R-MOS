@@ -63,6 +63,7 @@ export function runIrreversibleRollbackTest(): {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '占位步骤',
@@ -77,6 +78,7 @@ export function runIrreversibleRollbackTest(): {
                 onFailure: { action: 'block', message: '阻断' },
             },
             {
+                phase: 'execute' as const,
                 stepId: 'step_002',
                 stepIndex: 1,
                 title: '不可逆步骤',
@@ -142,6 +144,7 @@ export function runFatalFailureLockTest(): {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '制造失败触发致命',

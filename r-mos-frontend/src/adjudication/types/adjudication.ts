@@ -148,7 +148,13 @@ export enum ActionType {
   UNPLUG_CONNECTOR = 'unplug_connector', // 拔出连接器
   
   // 视图操作
-  FOCUS_CAMERA = 'focus_camera'          // 聚焦视角
+  FOCUS_CAMERA = 'focus_camera',         // 聚焦视角
+
+  // 准备/装配/验证（三段式引导）
+  CONFIRM_KIT = 'confirm_kit',           // 齐套确认（工具+备件）
+  INSTALL_PART = 'install_part',         // 装回零件
+  TIGHTEN_SCREW = 'tighten_screw',       // 拧紧螺丝
+  VERIFY_CHECK = 'verify_check'          // 验收勾选
 }
 
 /** 螺丝状态枚举 */
@@ -295,7 +301,12 @@ export enum ValidationType {
   PART_DETACHED = 'part_detached',                 // 零件已分离
   TOOL_MATCHED = 'tool_matched',                   // 工具匹配
   GEOMETRY_CHECK = 'geometry_check',               // 几何条件满足
-  STATE_CHECK = 'state_check'                      // 状态检查
+  STATE_CHECK = 'state_check',                     // 状态检查
+
+  // 三段式引导
+  KIT_CONFIRMED = 'kit_confirmed',                 // 齐套项全部勾选
+  SCREW_ORDER_MATCHED = 'screw_order_matched',     // 螺丝紧固顺序匹配
+  CHECKLIST_CONFIRMED = 'checklist_confirmed'      // 验收清单全部勾选
 }
 
 /** SOP 验证 */
@@ -336,6 +347,34 @@ export interface SOPFailureReason {
 }
 
 /** SOP 步骤（裁决级） */
+/** 步骤所属阶段 */
+export type SOPPhase = 'prep' | 'execute' | 'verify';
+
+/** 作者化 3D 构图；全字段可选，缺省项回落到启发式推断 */
+export interface StepView {
+  camera?: {
+    position: [number, number, number];
+    target: [number, number, number];
+    fov: number;
+  };
+  visibleLinks?: string[];   // 本步可见的 link 白名单
+  highlight?: string[];      // 高亮零件
+  explode?: number;          // 爆炸系数 0~1
+  screwFocus?: string[];     // 聚焦螺丝实例
+}
+
+/**
+ * 本步所需物料（BOM 行）。
+ * 字段名为 snake_case：后端 requiredParts 原样透传 sop_steps.required_parts
+ * 的 JSON，不做 key 转换（见 sop_service._sop_to_adjudication）。
+ */
+export interface RequiredPart {
+  bom_code: string;
+  name: string;
+  qty: number;
+  note?: string;
+}
+
 export interface SOPStepAdjudication {
   stepId: string;                        // "step_003"
   stepIndex: number;                     // 3
@@ -376,6 +415,12 @@ export interface SOPStepAdjudication {
 
   // 失败即致命
   fatalOnFailure?: boolean;
+
+  // 三段式引导
+  phase: SOPPhase;                       // 缺省由后端给 'execute'
+  groupPath?: string;                    // "torso/sub_a"
+  stepView?: StepView;                   // 为空则回落启发式
+  requiredParts?: RequiredPart[];        // 齐套检查数据源
 }
 
 /** SOP 脚本（裁决级） */

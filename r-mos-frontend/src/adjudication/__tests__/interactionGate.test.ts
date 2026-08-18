@@ -29,6 +29,7 @@ function makeState(): InteractionState {
 
 function makeStep(action: ActionType, targetParts: string[]): SOPStepAdjudication {
     return {
+        phase: 'execute' as const,
         stepId: 'step_test',
         stepIndex: 1,
         title: 'test',

@@ -35,6 +35,7 @@ export function runFatalFailureTest(): {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '尝试拆卸脚底板（预期失败）',
@@ -57,6 +58,7 @@ export function runFatalFailureTest(): {
                 fatalOnFailure: true,
             },
             {
+                phase: 'execute' as const,
                 stepId: 'step_002',
                 stepIndex: 1,
                 title: '占位步骤',

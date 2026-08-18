@@ -62,6 +62,7 @@ export function runTeachingModeHintTest(): TestResult {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '制造前置条件失败',
@@ -168,6 +169,7 @@ export function runTeachingRetryTest(): TestResult {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '制造前置条件失败',

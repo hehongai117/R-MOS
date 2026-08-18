@@ -6508,6 +6508,125 @@
 
 ---
 
+- DateTime: 2026-08-10 09:53 CST
+- Task: Phase 4 — R-MOS单校五台真机完整交付优化方案
+- Scope (files changed):
+  - docs/plans/2026-08-10-rmos-single-school-five-robot-delivery-optimization-v0.1.0.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - git status --short --branch
+  - git diff --name-only
+  - rg/find/wc/sed核对路由、测试、适配器、前端页面、部署配置和现有交付计划
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --check -- docs/plans/2026-08-10-rmos-single-school-five-robot-delivery-optimization-v0.1.0.md docs-archive/DEVELOPMENT_LOG.md
+- Tests:
+  - 前端Vitest：62个测试文件通过；477项通过、2项跳过、0项失败
+  - 前端生产构建：PASS；6312个模块完成构建
+  - 文档结构：12个主章节、9个工作包、5项Must需求全部进入追踪矩阵
+  - 后端：未运行；规定的r-mos-backend/.venv不存在，现有venv不得作为正式证据
+- Result: PASS（Phase 4方案文档完成；后端当前基线仍待W-00恢复正式环境后验证）
+- Risks/Notes:
+  - AGENTS.md引用的验收章程、专项计划、检查清单和根开发日志在当前分支缺失或已归档，已列为W-00首要整改。
+  - 前端测试通过但存在Three.js测试警告、浏览器模拟限制和大文件构建警告，不能替代真实浏览器及3D性能验收。
+  - 保留用户原有knowledge_store.json修改及未跟踪的.agents、.claude/projects和两份投标文档，未触碰。
+  - 未执行git push。
+- Next Step: 用户确认Phase 4后进入Phase 4.1，逐条建立可测性矩阵。
+
+---
+
+- DateTime: 2026-08-10 21:38 CST
+- Task: Phase 4.1 — R-MOS单校五台真机交付可测性检查
+- Scope (files changed):
+  - docs/testing/2026-08-10-rmos-single-school-five-robot-acceptance-matrix-v0.1.0.md
+  - docs/plans/2026-08-10-rmos-single-school-five-robot-delivery-optimization-v0.1.0.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg/sed核对AC-01至AC-10、T-01至T-16及需求追踪关系
+  - rg统计详细用例编号、AC覆盖和正常/边界/异常分类
+  - awk校验16个Test_ID均恰有N/B/E三类且无重复或缺失
+  - git diff --check核对本批文档格式
+  - git status --short和git diff --name-only核对改动边界
+- Tests:
+  - AC覆盖：AC-01至AC-10，共10/10条
+  - 详细用例：T-01至T-16各3类，共48/48项；正常、边界、异常各16项
+  - 必填字段：每项均包含数据、方法与负责人、证据、PASS/FAIL和当前执行条件
+  - 文档一致性：主方案已回链Phase 4.1验收矩阵
+  - 代码测试：未运行；本批仅修改测试方案文档，且规定的正式`.venv`仍不存在
+- Result: PASS（Phase 4.1可测性设计完成；未把尚未执行的产品验收写成已通过）
+- Risks/Notes:
+  - 首轮语义检查发现AC-08通过条件虽可理解，但未直写“0台/FAIL”；已改为“不合格机器人进入受控状态0台”，复检通过。
+  - 正式执行仍受四项闸门约束：正式`.venv`、G0五机型与真机、预生产环境、20场课堂试点。
+  - 五台机型未确定前，厂家安全阈值由G0资料确定；缺资料的机型不得进入受控状态。
+  - 保留用户原有knowledge_store.json修改及未跟踪的.agents、.claude/projects和两份投标文档，未触碰。
+  - 未启动服务，未连接真机，未执行git push。
+- Next Step: 用户确认Phase 4.1后进入Phase 4.2，形成上线、监控、停止与回滚方案。
+
+---
+
+- DateTime: 2026-08-10 22:01 CST
+- Task: Phase 4.2 — R-MOS单校五台真机上线与回滚方案
+- Scope (files changed):
+  - docs/plans/2026-08-10-rmos-single-school-five-robot-deployment-rollback-v0.1.0.md
+  - docs/plans/2026-08-10-rmos-single-school-five-robot-delivery-optimization-v0.1.0.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg/sed核对docker-compose.yml、Phase 4主方案、Phase 4.1验收矩阵和现有部署资料
+  - awk/rg统计5个上线阶段、18项监控、5级停止处理、6项回滚演练和7项实施任务
+  - test/rg核对主方案、验收矩阵和Phase 4.2文档互链
+  - git diff --check与尾部空白检查
+  - git status --short和git diff --name-only核对改动边界
+- Tests:
+  - 分批上线：D0至D4，共5/5阶段；均包含人群、比例、真机数量、观察期、进入、退出和失败处理
+  - 监控：MON-01至MON-10及REL-11至REL-18，共18/18项；均包含基线、告警、停止或回滚阈值、方法和负责人
+  - 回滚：L0至L4，共5/5级；DR-01至DR-06，共6/6项；数据保留、隔离、对账、恢复和禁止动作补发均有明确规则
+  - 实施：DEP-01至DEP-07，共7/7项；均有目标文件、工作内容、最小验证和完成闸门
+  - 代码测试：未运行；本批仅修改方案文档，正式`.venv`、E2、E3和真机仍未到位
+- Result: PASS（Phase 4.2方案设计完成）；生产上线准备度FAIL（REL-BLOCK-01真实演练未执行）
+- Risks/Notes:
+  - 当前docker-compose.yml存在默认密码、开发密钥、DEBUG开启、MinIO浮动版本等问题，已明确禁止直接用于生产。
+  - 首轮一致性检查发现DR-03/DR-04写成阻断D1但总规则要求D0前完成，已统一改为阻断D0。
+  - 补充首次上线安全基线规则：当前演示版本未通过安全门禁，不能作为生产回滚目标。
+  - 明确“动作关闭”只关闭启动、复位、回零和预定义运动动作；教师确认的软件停止继续可用，软件入口不可信时使用物理急停。
+  - 未把计划中的回滚演练写成已完成；只有DR-01至DR-06真实PASS后才可清除生产阻断。
+  - 保留用户原有knowledge_store.json修改及未跟踪的.agents、.claude/projects和两份投标文档，未触碰。
+  - 未启动服务，未连接真机，未执行git push。
+- Next Step: 用户确认Phase 4.2后进入Phase 5，建立需求、范围、安全边界和机型变更管理规则。
+
+---
+
+- DateTime: 2026-08-10 22:22 CST
+- Task: Phase 5 — R-MOS完整交付变更管理方案
+- Scope (files changed):
+  - docs/plans/2026-08-10-rmos-change-management-v0.1.0.md
+  - docs/plans/2026-08-10-rmos-single-school-five-robot-delivery-optimization-v0.1.0.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg/sed核对主方案的范围、指标、工期、人员、缓冲、G0和既有变更规则
+  - awk/rg统计基线项、C0至C4、13类阶段映射、批准矩阵、影响域、缓冲池和当前记录
+  - test/rg核对Phase 4主方案、Phase 4.1、Phase 4.2和Phase 5互链
+  - git diff --check与尾部空白检查
+  - git status --short和git diff --name-only核对改动边界
+- Tests:
+  - 基线：10/10项锁定范围、用户、容量、真机、安全、质量、工期和生产门禁
+  - 分级：C0至C4共5/5级；均有量化条件、批准要求和版本规则
+  - 阶段映射：13/13类变化均指定需重走Phase和复验项目
+  - 影响检查：10/10个影响域；批准矩阵6/6类；当前记录3/3条
+  - 资源：70+70+35=175人日；产品变更池已用0、剩余35人日
+  - 代码测试：未运行；本批仅修改方案文档，正式`.venv`仍不存在
+- Result: PASS（Phase 5方案设计完成）；BASE-001待用户回复“确认 Phase 5”后冻结
+- Risks/Notes:
+  - 首轮终检把`70+70+35`中的加号当作正则符号导致误报；逐条诊断确认文档内容存在，改用原样文字匹配后复检。
+  - G0锁定前逐步补录候选机型属于计划内参数补齐，不消耗35人日产品变更池；G0后换机型至少C2。
+  - 明确机型替换的升级边界：保持本地适配器、安全和5台容量可按C2；新增厂家云、外部服务、技术栈或安全放宽则升级C3/C4。
+  - AI控制真机、学生自批、绕过现场检查或物理急停、自由轨迹、动作自动重试、删除拒绝审计和未演练直接上线均为C4拒绝项。
+  - 当前没有产品变更申请；综合人日单价和具体机型报价只在相关CHG申请时作为该申请的TBD-Block，不编造金额。
+  - 保留用户原有knowledge_store.json修改及未跟踪的.agents、.claude/projects和两份投标文档，未触碰。
+  - 未启动服务，未连接真机，未执行git push。
+- Next Step: 用户确认Phase 5后冻结BASE-001，并从W-00开始执行六个月优化计划；生产启用仍需先清零REL-BLOCK-01。
+
+---
+
 - DateTime: 2026-08-17 09:17 CST
 - Task: SOP 三段式引导 Task 1.1 — sop_steps 四列、迁移与 ADR
 - Scope (files changed):
@@ -6534,3 +6653,36 @@
   - 测试输出含项目既有 Pydantic 与 datetime 弃用警告；本任务未改动相关代码。
   - 未修改 DATABASE_URL、CORS 或存量 SOP 内容；未执行 git push。
 - Next Step: 按用户指令停止；不进入 Task 1.2 或其他 Task。
+
+---
+
+- DateTime: 2026-08-18 16:45 CST
+- Task: SOP 三段式引导 Task 1.2 — 前端裁决类型扩展
+- Scope (files changed):
+  - r-mos-frontend/src/adjudication/types/adjudication.ts
+  - r-mos-frontend/src/adjudication/__tests__/threePhase.test.ts（新建）
+  - r-mos-frontend/vitest.config.ts
+  - r-mos-frontend/src/components/Viewer3D/runtimeManifest.ts
+  - r-mos-frontend/src/adjudication/__tests__/{core_logic,examMode,interactionGate,p4_mode,sopExecutor}.test.ts
+  - docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md（checkbox）
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts
+  - cd r-mos-frontend && npm run build
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npx vitest run --exclude "**/threePhase.test.ts"
+- Tests:
+  - 失败测试：2 failed | 2 passed（枚举缺失确认；两个纯类型用例运行时无断言效力，由 tsc 把关）。
+  - 实施后专用测试：4 passed。
+  - 构建：tsc -b && vite build 通过（首轮暴露 12 处缺 phase，补齐后绿）。
+  - 全量：63 files / 481 passed | 2 skipped。
+  - 基线复测（排除新文件）：477 passed | 2 skipped ⇒ 零退化；计划文档所写基线 465 已过时。
+- Result: PASS
+- Risks/Notes:
+  - 计划偏离 1：RequiredPart 采用 snake_case `bom_code` 而非计划的 `bomCode`。后端 _sop_to_adjudication 对 required_parts 原样透传 JSON，不做 key 转换，实际线上数据即为 bom_code；加转换层属多余，故对齐真实数据。
+  - 计划偏离 2：计划指定的测试路径 src/adjudication/__tests__/ 不在 vitest include 内。按现有白名单模式（既有 adjudication.vitest.test.ts）单加一行，未打开整个目录。
+  - 发现（计划外，未处理）：src/adjudication/__tests__/ 下 9 个测试文件中 8 个不在 vitest include，从未执行——含计划 T2.1 指定为存量回归依据的 decisionEngine.test.ts 与 hardwareSopsFlow.test.ts。T2.1 的回归验收方案需据此调整。
+  - phase 保持必填。tsc 暴露 12 处构造缺字段：生产代码 1 处（runtimeManifest.ts 运行时草案，补 'execute'），死测试 11 处（同补，使 tsc -b 保持绿）。
+  - 误用 git stash 且 pathspec 在子目录下未匹配，导致 stash push 空转、随后的 pop 指向历史遗留的 stash@{0}；因 knowledge_store.json 冲突被 git 拒绝，工作区未受影响。首轮"基线 481"因此无效，已用 --exclude 重测。
+  - 未修改 DATABASE_URL、CORS；未执行 git push。
+- Next Step: Task 2.1 装配方向裁决（canInstallPart/canTightenScrew）；开工前需先解决 T2.1 存量回归依赖死测试的问题。

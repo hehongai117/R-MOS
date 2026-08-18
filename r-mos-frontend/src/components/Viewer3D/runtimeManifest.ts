@@ -267,6 +267,8 @@ export function buildRuntimeSopScript(draft: MaintenanceDraftResponse): SOPScrip
       action: 'block' as const,
       message: '请先完成当前运行时草案步骤的确认。',
     },
+    // 运行时草案无阶段元数据，统一归入执行段
+    phase: 'execute' as const,
   }))
 
   return {

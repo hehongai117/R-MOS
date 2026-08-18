@@ -89,6 +89,7 @@ export function runExamFatalWithoutFlagTest(): TestResult {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '制造严重错误',
@@ -173,6 +174,7 @@ export function runExamForceCorrectionTest(): TestResult {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '制造前置条件失败',
@@ -255,6 +257,7 @@ export function runExamFatalCircuitBreakerTest(): TestResult {
         difficulty: 'beginner',
         steps: [
             {
+                phase: 'execute' as const,
                 stepId: 'step_001',
                 stepIndex: 0,
                 title: '制造致命失败',
