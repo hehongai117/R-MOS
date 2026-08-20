@@ -200,6 +200,26 @@ function checkValidation(validation: SOPValidation): {
             };
         }
 
+        case ValidationType.KIT_CONFIRMED: {
+            const required = (validation.params.requiredItems as string[]) ?? [];
+            const confirmed = new Set((validation.params.confirmedItems as string[]) ?? []);
+            const missing = required.filter((item) => !confirmed.has(item));
+            return {
+                passed: missing.length === 0,
+                message: missing.length === 0 ? '' : `齐套未完成，缺：${missing.join('、')}`,
+            };
+        }
+
+        case ValidationType.CHECKLIST_CONFIRMED: {
+            const required = (validation.params.requiredItems as string[]) ?? [];
+            const confirmed = new Set((validation.params.confirmedItems as string[]) ?? []);
+            const missing = required.filter((item) => !confirmed.has(item));
+            return {
+                passed: missing.length === 0,
+                message: missing.length === 0 ? '' : `验收项未完成，缺：${missing.join('、')}`,
+            };
+        }
+
         default:
             return { passed: true, message: '' };
     }
