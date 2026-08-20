@@ -220,6 +220,30 @@ function checkValidation(validation: SOPValidation): {
             };
         }
 
+        case ValidationType.SCREW_ORDER_MATCHED: {
+            const expected = (validation.params.expectedOrder as string[]) ?? [];
+            const actual = store.actionHistory
+                .filter((record) => record.action === ActionType.TIGHTEN_SCREW
+                    && record.result === AdjudicationResult.ALLOWED)
+                .map((record) => record.targetParts[0])
+                .filter(Boolean);
+            const mismatchAt = actual.findIndex((id, index) => id !== expected[index]);
+
+            if (mismatchAt !== -1) {
+                return {
+                    passed: false,
+                    message: `紧固顺序错误：第 ${mismatchAt + 1} 颗应为 ${expected[mismatchAt]}，实际为 ${actual[mismatchAt]}`,
+                };
+            }
+            if (actual.length < expected.length) {
+                return {
+                    passed: false,
+                    message: `还需紧固 ${expected.length - actual.length} 颗螺丝`,
+                };
+            }
+            return { passed: true, message: '' };
+        }
+
         default:
             return { passed: true, message: '' };
     }

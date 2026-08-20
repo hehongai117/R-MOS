@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { validateStepCompletion } from '../executor/sopExecutor';
+import { useAdjudicationStore } from '../core/stateManager';
 import {
+    AdjudicationResult,
     ActionType,
     ValidationType,
     type StepView,
@@ -111,6 +113,64 @@ describe('齐套与验收 validation', () => {
             ValidationType.CHECKLIST_CONFIRMED,
             ['hex_2.5', 'hex_3', '6205-2RS'],
         ));
+
+        expect(result.allPassed).toBe(true);
+    });
+});
+
+function orderStep(expected: string[]): SOPStepAdjudication {
+    return {
+        ...checklistStep(ValidationType.KIT_CONFIRMED, []),
+        stepId: 'step_tighten',
+        title: '对角拧紧',
+        action: ActionType.TIGHTEN_SCREW,
+        phase: 'execute',
+        validations: [{
+            type: ValidationType.SCREW_ORDER_MATCHED,
+            params: { expectedOrder: expected },
+            isRequired: true,
+        }],
+    } as SOPStepAdjudication;
+}
+
+function pushTighten(screwId: string) {
+    useAdjudicationStore.getState().addActionRecord({
+        action: ActionType.TIGHTEN_SCREW,
+        targetParts: [screwId],
+        toolId: 'hex_3',
+        result: AdjudicationResult.ALLOWED,
+    });
+}
+
+describe('对角紧固顺序', () => {
+    const DIAGONAL = ['screw_a1', 'screw_a3', 'screw_a2', 'screw_a4'];
+
+    beforeEach(() => useAdjudicationStore.getState().resetState());
+
+    it('顺序错误时不通过', () => {
+        pushTighten('screw_a1');
+        pushTighten('screw_a2');
+
+        const result = validateStepCompletion(orderStep(DIAGONAL));
+
+        expect(result.allPassed).toBe(false);
+        expect(result.failedValidations[0].message).toContain('顺序');
+    });
+
+    it('部分完成且顺序正确时不报错，但未拧完仍不通过', () => {
+        pushTighten('screw_a1');
+        pushTighten('screw_a3');
+
+        const result = validateStepCompletion(orderStep(DIAGONAL));
+
+        expect(result.allPassed).toBe(false);
+        expect(result.failedValidations[0].message).not.toContain('顺序错误');
+    });
+
+    it('全部按对角顺序拧完后通过', () => {
+        DIAGONAL.forEach(pushTighten);
+
+        const result = validateStepCompletion(orderStep(DIAGONAL));
 
         expect(result.allPassed).toBe(true);
     });

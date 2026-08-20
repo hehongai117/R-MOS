@@ -6774,3 +6774,34 @@
   - docs/testing/ACCEPTANCE_CHARTER.md 在当前工作区不存在；本任务按用户明确验收判据与指定计划执行。
   - 保留用户原有计划文档、knowledge_store.json 修改及无关未跟踪文件；未修改 vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
 - Next Step: 本任务 3 个文件已本地提交；由用户验收并回填计划状态。不得进入 Task 2.3。
+
+---
+
+- DateTime: 2026-08-20 21:06 CST
+- Task: SOP 三段式引导 Task 2.3 — 螺丝对角紧固顺序判定
+- Scope (files changed):
+  - r-mos-frontend/src/adjudication/executor/sopExecutor.ts
+  - r-mos-frontend/src/adjudication/__tests__/threePhase.test.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts -t 对角紧固顺序
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --name-only
+  - git diff --check
+  - git add r-mos-frontend/src/adjudication/executor/sopExecutor.ts r-mos-frontend/src/adjudication/__tests__/threePhase.test.ts docs-archive/DEVELOPMENT_LOG.md
+  - git commit -m "feat(adjudication): 螺丝对角紧固顺序判定"
+- Tests:
+  - 失败测试：定向运行识别 11 tests，2 failed / 1 passed / 8 skipped；错序和未完成均被旧 default 错误放行，符合预期。
+  - 实施后专用测试：11 passed / 0 failed。
+  - 前端全量：64 files / 495 passed / 2 skipped，0 failed；不低于 492 passed / 2 skipped 基线。
+  - 前端构建：tsc -b 与 vite build 均通过，6312 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - 只统计 actionHistory 中结果为 ALLOWED 的 TIGHTEN_SCREW 记录，按记录顺序与 expectedOrder 做前缀比对。
+  - 错序会指明第几颗、应为和实际值；正确前缀未完成时只提示剩余数量，测试明确断言消息不含「顺序错误」。
+  - 每个顺序用例前均 resetState()，避免 actionHistory 跨用例污染。
+  - 全量测试仍输出项目既有 React/jsdom/Three.js 警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
+- Next Step: 由用户验收并回填计划状态。不得进入 Task 2.4。
