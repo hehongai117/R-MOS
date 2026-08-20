@@ -6,9 +6,9 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-20 21:12 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-20 21:30 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** Task 2.4（阶段门）交 Codex 执行，完成后 Phase 2 收官。**动手前必读 §2.4**（11 条计划前提更正）。T2.4 的阶段门插入点为 `sopExecutor.ts:586` 的 `this.context.currentStepIndex = nextIndex;` 之前（该行号已核实准确）；注意 `completedSteps.push` 发生在推进之前，故当前步不计入未完成集。
+**下一步：** **Phase 2 已收官**。进入 Task 3.1（三段进度条），交 Codex 执行。T3.1 消费 T2.4 产出的 `getCurrentPhase()` / `getPhaseProgress()`，签名见 Task 2.4 的 Interfaces 节；新建的组件测试文件需按 `src/components/**/__tests__/**` 匹配现有 glob（该路径**已在** include 内，无需改 vitest.config.ts）。
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
@@ -17,8 +17,8 @@
 | 2.1 | 装配方向裁决 | ✅ 已验收 | `616c9ca5` | Codex 实现；7 passed；含方向反转变异测试验证判别力 |
 | 2.2 | 三个新 validation 分支 | ✅ 已验收 | `61c222ca` | Codex 实现；齐套+验收各正反 2 例，定向 8 passed |
 | 2.3 | 螺丝对角紧固顺序判定 | ✅ 已验收 | `679f9f1b` | Codex 实现；定向 11 passed；变异测试证明顺序检测有判别力 |
-| 2.4 | 阶段门 | ⬜ 未开始 | — | **下一个**；Phase 2 收官 |
-| 3.1 | 三段进度条 | ⬜ 未开始 | — | |
+| 2.4 | 阶段门 | ✅ 已验收 | `6db40437` | Codex 实现；定向 14 passed；变异测试证明门禁有效 |
+| 3.1 | 三段进度条 | ⬜ 未开始 | — | **下一个**；消费 getPhaseProgress() |
 | 3.2 | 齐套检查面板 | ⬜ 未开始 | — | |
 | 3.3 | 验收记录面板 | ⬜ 未开始 | — | |
 | 3.4 | `useSOPSceneSync` 读 `stepView` | ⬜ 未开始 | — | |
@@ -31,13 +31,14 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **495 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.3 新增 3 个 |
+| 前端 `npm test` | **498 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.4 新增 3 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
 **已知遗留问题（不在本计划范围，勿顺手修）：**
 
 - `src/adjudication/__tests__/` 下 8 个 `.test.ts` 不是 vitest 测试，从未执行，无外部调用方。存量 SOP 实际**没有**回归安全网。详见 §2.4 第 7 条。是否重写为独立工作项，**待决策**。
+- **存量兼容为间接覆盖**：T2.4 阶段门对单阶段 SOP 不触发，依据是条件 `nextStep.phase !== currentPhase` 恒为 false + 全量 498 绿（含 45 个走真实 SOP 流程的 characterization 测试），**无独立用例**。若将来修改阶段门触发条件，需补一个「单阶段 SOP 连续推进不被阻断」的显式用例。
 - `AGENTS.md:6` 引用的 `docs/testing/ACCEPTANCE_CHARTER.md` **不存在**（该目录下只有 `TEST_PLAN.md` 与一份 acceptance-matrix）。悬空引用会让每个新执行会话反复困惑。修不修**待决策**，本计划的验收门禁以任务书 + §8 为准。
 
 ---
@@ -1179,7 +1180,7 @@ git commit -m "feat(adjudication): 螺丝对角紧固顺序判定"
 
 **门禁语义**：跨段推进时（下一步的 `phase` 与当前步不同），必须当前段所有步骤的 `stepId` 都在 `context.completedSteps` 里，否则返回 `BLOCKED` / `reasonCode: 'PHASE_GATE'`。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 import { createSOPExecutor } from '../executor/sopExecutor';
@@ -1227,7 +1228,7 @@ describe('阶段门', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts -t 阶段门
@@ -1235,7 +1236,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.t
 
 Expected: FAIL —— `getCurrentPhase is not a function`
 
-- [ ] **Step 3: 实现两个方法**
+- [x] **Step 3: 实现两个方法**
 
 在 `SOPExecutor` 类中（`getExecutionReport` 之后）追加：
 
@@ -1266,7 +1267,7 @@ Expected: FAIL —— `getCurrentPhase is not a function`
     }
 ```
 
-- [ ] **Step 4: 在推进处加阶段门**
+- [x] **Step 4: 在推进处加阶段门**
 
 在 `validateAndAdvance()` 的「推进到下一步」之前（`sopExecutor.ts:586` 的 `this.context.currentStepIndex = nextIndex;` 之前）插入：
 
@@ -1301,7 +1302,7 @@ Expected: FAIL —— `getCurrentPhase is not a function`
 
 > ⚠️ 存量 SOP 全部步骤 `phase === 'execute'`，永不触发跨段分支，行为完全不变——这是向后兼容的保证点，回归必须验到。
 
-- [ ] **Step 5: 跑测试确认通过 + 存量回归（重点）**
+- [x] **Step 5: 跑测试确认通过 + 存量回归（重点）**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/ && npm test
@@ -1309,7 +1310,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/ && npm test
 
 Expected: 全绿。`sopExecutor.test.ts` / `hardwareSopsFlow.test.ts` / `examMode.test.ts` 一个都不能红。
 
-- [ ] **Step 6: 提交 + 追加开发日志**
+- [x] **Step 6: 提交 + 追加开发日志**
 
 ```bash
 git add r-mos-frontend/src/adjudication/executor/sopExecutor.ts \
@@ -1876,7 +1877,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 2.1 | `npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts`；`npm test` | 7 passed；全量不低于基线；**依赖方向取 `constrainingPart === X` 的 `constrainedPart`**；`vitest.config.ts` include 行已提交；未为测试新增 store API | ✅ |
 | 2.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts` | 齐套 2 用例通过；全量不低于基线 | ✅ |
 | 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ✅ |
-| 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ⬜ |
+| 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ✅ |
 | 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ⬜ |
 | 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ⬜ |
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ⬜ |

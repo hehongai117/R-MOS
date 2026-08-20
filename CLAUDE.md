@@ -33,7 +33,7 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 | Phase | Name | Tasks | Status |
 |-------|------|-------|--------|
 | 1 | 数据与类型 | 2 | ✅ Done |
-| 2 | 引擎（装配方向/validation/阶段门） | 4 | ⬜ Not started |
+| 2 | 引擎（装配方向/validation/阶段门） | 4 | ✅ Done |
 | 3 | 前端（进度条/齐套/验收/构图） | 4 | ⬜ Not started |
 | 4 | 标杆内容（膝关节 22 步） | 2 | ⬜ Not started |
 | 5 | 验收（E2E/报告页） | 2 | ⬜ Not started |
