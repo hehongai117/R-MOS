@@ -6,16 +6,16 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-18 17:20 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-20 20:50 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** Task 2.1 交 Codex 执行。**动手前必读 §2.4** —— T2.1 原始规格有致命错误（装配依赖方向反了），已整体更正，文中带 🛑 / ⚠️ 的段落为权威版本。
+**下一步：** Task 2.2（三个新 validation 分支）交 Codex 执行。**动手前必读 §2.4**（11 条计划前提更正）。T2.2 起改动集中在 `sopExecutor.ts` 的 `checkValidation`，测试追加到已存在的 `threePhase.test.ts`（该文件已在 include 白名单内，无需再加行）。
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
 | 1.1 | `sop_steps` 四列 + 迁移 + ADR | ✅ 已验收 | `50f15ed9` | 3 passed；迁移已 upgrade 到 head |
 | 1.2 | 前端裁决类型扩展 | ✅ 已验收 | `390f8104` | 4 passed；build PASS；由 Claude 实现（用户当时选定） |
-| 2.1 | 装配方向裁决 | ⬜ 未开始 | — | **规格已更正，见 §2.4**；待 Codex |
-| 2.2 | 三个新 validation 分支 | ⬜ 未开始 | — | |
+| 2.1 | 装配方向裁决 | ✅ 已验收 | `616c9ca5` | Codex 实现；7 passed；含方向反转变异测试验证判别力 |
+| 2.2 | 三个新 validation 分支 | ⬜ 未开始 | — | **下一个**；测试追加到已在白名单的 threePhase.test.ts |
 | 2.3 | 螺丝对角紧固顺序判定 | ⬜ 未开始 | — | |
 | 2.4 | 阶段门 | ⬜ 未开始 | — | |
 | 3.1 | 三段进度条 | ⬜ 未开始 | — | |
@@ -31,7 +31,7 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **481 passed / 2 skipped**（63 files） | 2026-08-18，含 T1.2 新增 4 个 |
+| 前端 `npm test` | **488 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.1 新增 7 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
@@ -140,6 +140,10 @@
 | 7 | `decisionEngine.test.ts`、`hardwareSopsFlow.test.ts` 守护 30 个存量 SOP | 该目录 9 个 `.test.ts` 中 **8 个不是 vitest 测试**（`describe/it/test` 计数为 0），导出 `runTC001()` 一类手写断言函数，属自制 runner 遗留物，已 grep 确认无外部调用方，从未执行 | **存量 SOP 无安全网**；T2.1 回归口径需改 |
 | 8 | 前端测试基线 465 | 实测 **477 passed / 2 skipped**（62 files，T1.2 前） | 各 Task 回归口径 |
 | 9 | `RequiredPart.bomCode`（驼峰） | 后端 `requiredParts` 原样透传 `required_parts` JSON，不做 key 转换，实际为 **`bom_code`** | T1.2 已按 snake_case 落地 |
+| 10 | 约束图里的零件/螺丝 ID 在测试中可直接查到 | **不成立**。`partRegistry` 是 manifest 注入层（默认 `null`），`constraintGraph` 是静态硬编码，两者数据源不同。不注入 manifest 则 `getScrewInstance()` 恒为 `undefined` | T2.1 螺丝用例全判 `UNKNOWN_SCREW`；**已由 Codex 执行时发现并上报** |
+| 11 | `resetState()` 会重建 `partStates` | **不成立**。`INITIAL_STATE` 是模块级常量（`stateManager.ts:141`），import 时求值一次；`getAllPartIds()` 无 manifest 时返回 `[]`，故 `partStates` 恒为 `{}`，注入 manifest 也改不了 | T2.1 首轮 4 个「通过」中有 2 个是 `undefined` 巧合造成的**假阳性** |
+
+> 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
 
@@ -620,7 +624,7 @@ git commit -m "feat(adjudication): 扩展三段式类型（StepView/SOPPhase/Req
 >
 > **不要**参照 `decisionEngine.test.ts` 抄夹具写法——该文件不是 vitest 测试（见 T2.1 Step 6 的更正说明）。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `r-mos-frontend/src/adjudication/__tests__/assemblyDirection.test.ts`。
 
@@ -634,7 +638,62 @@ constrainedPart: frame_torso_chest constrainingPart: screw_torso_m3x10_001 (FAST
 
 读作：胸甲 `frame_torso_chest` 压着电机与主板；螺丝 `screw_torso_m3x10_001` 固定胸甲。故装胸甲前电机与主板须先就位；拧该螺丝前胸甲须先就位。
 
-**store 写接口**：实际暴露的是 `setPartRemoved(partId)` / `setPartDetached(partId)`（`stateManager.ts:33-37`），**没有** `setPartState`。初始态 `createInitialPartStates()` 把所有零件置为 `isRemoved: false`（全部在位，`stateManager.ts:122`），因此「未就位」场景要用 `setPartRemoved` 主动构造。
+**store 写接口**：实际暴露的是 `setPartRemoved(partId)` / `setPartDetached(partId)`（`stateManager.ts:33-37`），**没有** `setPartState`。「未就位」场景用 `setPartRemoved` 主动构造。
+
+> 🛑 **必须注入 manifest 夹具，否则测试是假的（2026-08-18 第二轮更正）。**
+>
+> `partRegistry.ts` 是 **manifest 注入层**（`:11-32`），`_manifestPartRegistry` 默认 `null`；`constraintGraph.ts` 则是**纯静态硬编码**（`ALL_CONSTRAINTS`，`:317`，无注入层）。二者数据来源不同：**约束图里写着某个螺丝，不代表注册表能查到它**。不注入 manifest 时 `getScrewInstance()` 恒返回 `undefined`，所有螺丝用例被判 `UNKNOWN_SCREW`。
+>
+> 更隐蔽的一点：`getAllPartIds()` 在无 manifest 时返回 `[]`（`partRegistry.ts:77`），于是 `createInitialPartStates()` 产出**空对象**。而 `INITIAL_STATE` 是**模块级常量**（`stateManager.ts:141`），在 import 时求值一次，`resetState()` 恢复的就是它——**注入 manifest 也不会让 `partStates` 长出数据**。
+>
+> 由此，本测试中「零件在位」由**未对其调用 `setPartRemoved`** 表达（`partStates[id]` 为 `undefined`，实现里 `!== true` 视为在位），而非由 `isRemoved: false` 表达。这是既有设计，**不要为此改生产代码**。
+
+**夹具 ID 必须与静态约束图一致**，并用 `spec.required_tool` 固定工具值（从而无需猜测 `hex_2.5` 还是别的）：
+
+```typescript
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { injectManifestPartRegistry, clearManifestPartRegistry } from '../data/partRegistry';
+import type { RobotDataManifest } from '@/components/Viewer3D/assemblyManifest';
+
+/** 最小夹具：ID 与 constraintGraph.ts:273-298 的静态约束对齐 */
+function makeTorsoManifest(): RobotDataManifest {
+    const part = (id: string, category: string) => ({
+        id, category, bom_code: `BOM-${id}`, display_name: id,
+        parent_id: null, mesh_id: null,
+        local_position: [0, 0, 0], local_rotation: [0, 0, 0], group: 'torso',
+    });
+    return {
+        version: '1.0', robotId: '42', rootNodeId: 'base_link',
+        mesh_catalog: {}, nodes: [], fastener_instances: [],
+        parts_registry: [
+            part('frame_torso_chest', 'frame'),
+            part('torso_motor', 'motor'),
+            part('torso_pcb_main', 'pcb'),
+        ],
+        screw_instances: [{
+            id: 'screw_torso_m3x10_001',
+            bom_code: 'SCR-M3x10',
+            parent_id: 'frame_torso_chest',
+            position: [0, 0, 0], axis: [0, 0, 1],
+            spec: {
+                type: 'M3×10', pitch: 0.5, thread_length: 10,
+                required_tool: 'hex_2.5', torque_nm: 1.2,
+            },
+        }],
+    } as unknown as RobotDataManifest;
+}
+
+beforeEach(() => {
+    injectManifestPartRegistry(makeTorsoManifest());
+    useAdjudicationStore.getState().resetState();
+});
+
+afterEach(() => {
+    clearManifestPartRegistry();   // 防止污染同进程其它测试
+});
+```
+
+夹具已把 `required_tool` 定为 `hex_2.5`，故「工具匹配」用例传 `'hex_2.5'`、「工具不匹配」用例传 `'hex_3'`，无需再核对真实数据。
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -701,9 +760,9 @@ describe('装配方向裁决', () => {
 });
 ```
 
-> ⚠️ 上面第 6 个用例里 `'hex_2.5'` / `'hex_3'` 哪个才是该螺丝的匹配工具，**执行前需核对** `screw_torso_m3x10_001` 的 `screwSpec.requiredTool` 实际值（M3×10 按 `SCREW_GEOMETRY_CONDITIONS` 推测为 `hex_2.5`，但以数据为准），对不上就调换这两个用例的工具值。
+> ✅ 工具值不再需要核对：夹具的 `spec.required_tool` 已固定为 `hex_2.5`（见上方 manifest 夹具）。
 
-- [ ] **Step 1b: 把测试文件纳入 vitest include（否则不会被执行）**
+- [x] **Step 1b: 把测试文件纳入 vitest include（否则不会被执行）**
 
 `vitest.config.ts` 的 `include` 对 `src/adjudication/__tests__/` 是**单文件白名单**，不是 glob。仿照 T1.2 已加的 `threePhase.test.ts` 追加一行：
 
@@ -713,7 +772,7 @@ describe('装配方向裁决', () => {
 
 **不要**改成 `src/adjudication/__tests__/**/*.test.{ts,tsx}`——那会拖进 8 个非 vitest 的遗留文件，全部报 "No test suite found"。
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts
@@ -721,7 +780,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/assemblyDirection
 
 Expected: FAIL —— `canInstallPart is not a function`
 
-- [ ] **Step 3: 实现装配方向裁决**
+- [x] **Step 3: 实现装配方向裁决**
 
 在 `decisionEngine.ts` 的 `canDetachPart`（`:389`）之后追加。
 
@@ -826,7 +885,7 @@ export function canTightenScrew(screwId: string, toolId: string | null): Adjudic
 
 > 原文让依赖用 `.filter((id): id is string => Boolean(id))` 收窄类型——`constrainingPart` 本就是必填 `string`，该守卫是多余的，已去掉。
 
-- [ ] **Step 4: 接入 `adjudicateAction` 分发**
+- [x] **Step 4: 接入 `adjudicateAction` 分发**
 
 在 `decisionEngine.ts:458` 的 `adjudicateAction` switch 中加两个分支：
 
@@ -837,7 +896,7 @@ export function canTightenScrew(screwId: string, toolId: string | null): Adjudic
             return canTightenScrew(targetId, toolId ?? null);
 ```
 
-- [ ] **Step 5: 跑测试确认通过**
+- [x] **Step 5: 跑测试确认通过**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts
@@ -845,7 +904,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/assemblyDirection
 
 Expected: 7 passed（更正后的用例数）
 
-- [ ] **Step 6: 存量回归（必做）**
+- [x] **Step 6: 存量回归（必做）**
 
 ```bash
 cd r-mos-frontend && npm test
@@ -857,7 +916,7 @@ Expected: 全绿，基线 **477 passed | 2 skipped** 不退化。
 >
 > 结论：存量 SOP 目前**没有**这层安全网。T2.1 的回归以实际在跑的 477 为准。是否重写这 8 个文件为 vitest 格式，属计划外独立工作项，另行决策。
 
-- [ ] **Step 7: 提交 + 追加开发日志**
+- [x] **Step 7: 提交 + 追加开发日志**
 
 ```bash
 git add r-mos-frontend/src/adjudication/core/decisionEngine.ts \
@@ -1808,7 +1867,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 |---|---|---|---|
 | 1.1 | `pytest tests/test_sop_three_phase.py -v`；`alembic upgrade head && alembic current` | 3 passed；revision 为 `20260817_sop_three_phase`；ADR 文件存在且含六节 | ✅ |
 | 1.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts`；`npm run build` | 4 passed；build PASS | ✅ |
-| 2.1 | `npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts`；`npm test` | 7 passed；全量不低于基线；**依赖方向取 `constrainingPart === X` 的 `constrainedPart`**；`vitest.config.ts` include 行已提交；未为测试新增 store API | ⬜ |
+| 2.1 | `npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts`；`npm test` | 7 passed；全量不低于基线；**依赖方向取 `constrainingPart === X` 的 `constrainedPart`**；`vitest.config.ts` include 行已提交；未为测试新增 store API | ✅ |
 | 2.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts` | 齐套 2 用例通过；全量不低于基线 | ⬜ |
 | 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ⬜ |
 | 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ⬜ |
