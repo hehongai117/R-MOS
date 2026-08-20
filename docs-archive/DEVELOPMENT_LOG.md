@@ -6836,3 +6836,32 @@
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
   - 提交命令失败：fatal: Unable to create '.git/index.lock': Operation not permitted；未暂存文件，未产生 commit。
 - Next Step: 用户在具备 .git 写权限的环境中仅暂存本任务 3 个文件并提交，验收后回填计划状态；Task 2.4 通过后 Phase 2 收官。
+
+---
+
+- DateTime: 2026-08-20 21:33 CST
+- Task: SOP 三段式引导 Task 3.1 — 三段进度条
+- Scope (files changed):
+  - r-mos-frontend/src/components/Maintenance/sopPlayer/PhaseProgress.tsx
+  - r-mos-frontend/src/components/Maintenance/__tests__/PhaseProgress.test.tsx
+  - r-mos-frontend/src/components/Maintenance/sopPlayer/SOPPlayerView.tsx
+  - r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/components/Maintenance/__tests__/PhaseProgress.test.tsx
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --name-only
+  - git diff --check
+- Tests:
+  - 失败测试：测试文件被发现，因 PhaseProgress 组件尚不存在而失败，符合预期。
+  - 专用测试：1 file / 2 passed / 0 failed；覆盖三段标签与计数、未解锁标识、单阶段不渲染。
+  - 前端全量：65 files / 500 passed / 2 skipped，0 failed；不低于 498 passed / 2 skipped 基线。
+  - 前端构建：tsc -b 与 vite build 均通过，6313 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - 仅当阶段进度多于 1 项时展示；单阶段组件自身和页面挂载处均有明确保护，30 个存量单阶段 SOP 界面不增加进度条。
+  - PhaseProgress.tsx 共 66 行；沿用 Ant Design 与现有蓝、绿、灰配色，未新增依赖或 UI 库。
+  - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
+- Next Step: 由用户验收并回填计划状态；不得进入 Task 3.2。

@@ -145,6 +145,9 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         return Math.round((context.currentStepIndex / (selectedSOP.steps.length - 1)) * 100);
     }, [selectedSOP, context]);
 
+    const phaseProgress = executor?.getPhaseProgress() ?? [];
+    const currentPhase = executor?.getCurrentPhase() ?? null;
+
     // 是否完成
     const isCompleted = context?.executionState === SOPExecutionState.COMPLETE;
     const isFailed = context?.executionState === SOPExecutionState.FAILED;
@@ -332,6 +335,8 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             lastReport={lastReport}
             currentStep={currentStep}
             progress={progress}
+            phaseProgress={phaseProgress}
+            currentPhase={currentPhase}
             isCompleted={isCompleted}
             isBlocked={isBlocked}
             executingHint={executingHint}

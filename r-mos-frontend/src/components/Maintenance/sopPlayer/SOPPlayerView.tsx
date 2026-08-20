@@ -28,6 +28,7 @@ import {
     ExecutionStateText,
     difficultyColor,
 } from './sopPlayerConfig';
+import { PhaseProgress, type PhaseProgressItem } from './PhaseProgress';
 import { getToolById } from '@/data/toolData';
 import {
     SOPStepAdjudication,
@@ -47,6 +48,8 @@ export interface SOPPlayerViewProps {
     lastReport: AdjudicationReport | null;
     currentStep: SOPStepAdjudication | null;
     progress: number;
+    phaseProgress?: PhaseProgressItem[];
+    currentPhase?: PhaseProgressItem['phase'] | null;
     isCompleted: boolean;
     isBlocked: boolean;
     executingHint: string | null;
@@ -70,6 +73,8 @@ export const SOPPlayerView: React.FC<SOPPlayerViewProps> = ({
     lastReport,
     currentStep,
     progress,
+    phaseProgress = [],
+    currentPhase = null,
     isCompleted,
     isBlocked,
     executingHint,
@@ -127,6 +132,10 @@ export const SOPPlayerView: React.FC<SOPPlayerViewProps> = ({
                         size="small"
                         status={isCompleted ? 'success' : isBlocked ? 'exception' : 'active'}
                     />
+
+                    {phaseProgress.length > 1 && (
+                        <PhaseProgress progress={phaseProgress} currentPhase={currentPhase} />
+                    )}
 
                     {/* 阻断提示 */}
                     {isBlocked && lastReport && (
