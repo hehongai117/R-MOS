@@ -26,6 +26,7 @@ import {
     canReleaseConstraint,
 } from '../data/constraintGraph';
 import { getPartById, getPartScrews } from '../data/partRegistry';
+import { getScrewInstance } from '../data/screwInstances';
 import { useAdjudicationStore } from './stateManager';
 import {
     isScrewExtracted,
@@ -448,6 +449,97 @@ export function canDetachPart(partId: string): AdjudicationReport {
 }
 
 /**
+ * 装配依赖：本件在约束图中压着/固定着的那些零件，必须先于本件就位。
+ *
+ * 拆卸问「谁挡着我」（constrainedPart === X 的约束），
+ * 装配问「我压着谁」（constrainingPart === X 的约束）——二者互为逆序。
+ */
+function getInstallDependencies(partId: string): string[] {
+    return getAllConstraints()
+        .filter((c) => c.constrainingPart === partId)
+        .map((c) => c.constrainedPart);
+}
+
+/**
+ * 装配方向：判断零件能否装回。
+ *
+ * 拆卸判「约束是否已解除」，装配判「依赖件是否已就位」。
+ */
+export function canInstallPart(partId: string): AdjudicationReport {
+    const store = useAdjudicationStore.getState();
+
+    if (store.partStates[partId]?.isRemoved !== true) {
+        return createReport(
+            AdjudicationResult.INCOMPLETE,
+            partId,
+            '该零件已在位',
+            'ALREADY_INSTALLED'
+        );
+    }
+
+    const missing = getInstallDependencies(partId).filter(
+        (depId) => store.partStates[depId]?.isRemoved === true
+    );
+
+    if (missing.length > 0) {
+        return createReport(
+            AdjudicationResult.BLOCKED,
+            partId,
+            `装配顺序错误：需先装回 ${missing.join('、')}`,
+            'INSTALL_ORDER_VIOLATION',
+            [],
+            missing.map((id) => `先装回 ${id}`)
+        );
+    }
+
+    return createReport(AdjudicationResult.ALLOWED, partId, '可以安装', 'OK');
+}
+
+/**
+ * 装配方向：判断螺丝能否拧紧。
+ * 工具必须匹配，且螺丝所固定的零件必须已在位。
+ */
+export function canTightenScrew(screwId: string, toolId: string | null): AdjudicationReport {
+    if (!getScrewInstance(screwId)) {
+        return createReport(
+            AdjudicationResult.BLOCKED,
+            screwId,
+            '未知螺丝实例',
+            'UNKNOWN_SCREW'
+        );
+    }
+
+    const toolCheck = checkToolMatch(toolId, screwId);
+    if (!toolCheck.matched) {
+        return createReport(
+            AdjudicationResult.TOOL_MISMATCH,
+            screwId,
+            toolCheck.message,
+            'TOOL_MISMATCH',
+            [],
+            toolCheck.requiredTool ? [`选择 ${toolCheck.requiredTool}`] : []
+        );
+    }
+
+    const store = useAdjudicationStore.getState();
+    const missing = getInstallDependencies(screwId).filter(
+        (hostId) => store.partStates[hostId]?.isRemoved === true
+    );
+    if (missing.length > 0) {
+        return createReport(
+            AdjudicationResult.BLOCKED,
+            screwId,
+            `需先装回 ${missing.join('、')} 才能紧固`,
+            'HOST_NOT_INSTALLED',
+            [],
+            missing.map((id) => `先装回 ${id}`)
+        );
+    }
+
+    return createReport(AdjudicationResult.ALLOWED, screwId, '可以紧固', 'OK');
+}
+
+/**
  * 裁决操作结果（通用入口）
  * 
  * @param action - 操作类型
@@ -471,6 +563,12 @@ export function adjudicateAction(
         case ActionType.DETACH_PART:
         case ActionType.REMOVE_PART:
             return canDetachPart(targetId);
+
+        case ActionType.INSTALL_PART:
+            return canInstallPart(targetId);
+
+        case ActionType.TIGHTEN_SCREW:
+            return canTightenScrew(targetId, toolId ?? null);
 
         case ActionType.SELECT_TOOL:
             // 选择工具始终允许

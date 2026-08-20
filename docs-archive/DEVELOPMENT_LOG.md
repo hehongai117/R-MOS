@@ -53,7 +53,7 @@
   - grep -n '^\./\.git/HEAD$' PROJECT_DIRECTORY_FULL.txt | head
 - Tests:
   - 完整性抽检：清单包含自身条目、.git、.git/HEAD
-- Result: PASS
+- Result: BLOCKED（实现与验证 PASS；当前会话无权写入 .git，无法完成提交与计划状态回填）
 - Risks/Notes:
   - 全量清单体积较大（约 MB 级），用于“无遗漏”场景时建议以文件方式查看
 - Next Step:
@@ -6714,3 +6714,34 @@
   - 期间一度写出 assemblyDirection.test.ts，经用户纠正身份后删除，工作区已还原为未实现状态。
   - 未修改 DATABASE_URL、CORS；未执行 git push。
 - Next Step: Codex 执行 T2.1 Step 1→7；Claude 验收（重点复核依赖方向、include 行、477 基线）。
+
+---
+
+- DateTime: 2026-08-20 20:46 CST
+- Task: SOP 三段式引导 Task 2.1 — 装配方向裁决
+- Scope (files changed):
+  - r-mos-frontend/src/adjudication/core/decisionEngine.ts
+  - r-mos-frontend/src/adjudication/__tests__/assemblyDirection.test.ts（新建）
+  - r-mos-frontend/vitest.config.ts
+  - docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md（状态与 checkbox）
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --check
+- Tests:
+  - 首轮失败测试：7 failed，两个新裁决函数尚不存在，符合预期。
+  - 首轮实现后：4 passed / 3 failed；三项螺丝测试均返回 UNKNOWN_SCREW，定位为测试未注入 manifest。
+  - 按修订规格补 manifest 夹具后专用测试：7 passed。
+  - 前端全量：64 files / 488 passed / 2 skipped，0 failed。
+  - 前端构建：tsc -b 与 vite build 均通过，6312 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - 装配依赖严格按 constrainingPart === 目标件反查 constrainedPart，未改回拆卸方向。
+  - 测试通过 manifest 注入真实注册数据，并在每个用例后清理；未修改 partRegistry、stateManager 或 constraintGraph。
+  - 全量测试仍输出项目既有的 React/jsdom/Three.js 警告；测试命令退出码为 0，无失败用例。
+  - 构建仍提示 caniuse-lite 较旧及大分块警告；构建命令退出码为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改 DATABASE_URL、CORS；未执行 git push。
+  - 提交命令失败：fatal: Unable to create '.git/index.lock': Operation not permitted；未产生 commit。
+- Next Step: 在具备 .git 写权限的会话中，仅暂存本任务 4 个实现/日志文件并提交；取得短哈希后更新计划状态与 checkbox，再提交计划更新。不得进入 Task 2.2。

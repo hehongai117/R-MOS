@@ -15,6 +15,7 @@ export default defineConfig({
       "src/__tests__/**/*.test.{ts,tsx}",
       "src/adjudication/__tests__/adjudication.vitest.test.ts",
       "src/adjudication/__tests__/threePhase.test.ts",
+      "src/adjudication/__tests__/assemblyDirection.test.ts",
       "src/adjudication/*/__tests__/**/*.test.{ts,tsx}",
       "src/api/**/__tests__/**/*.test.{ts,tsx}",
       "src/components/**/__tests__/**/*.test.{ts,tsx}",
