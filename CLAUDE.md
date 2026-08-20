@@ -23,6 +23,26 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 - **Universal 3D Viewer** (done): Manifest-driven 3D renderer with URDF→GLB auto-pipeline
 - **Modularization** (in progress): Migrating hardcoded data to manifest/config-driven architecture
 
+## SOP 三段式引导改造 (In Progress)
+
+> **总控计划（含实时状态表）：** `docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md`
+> **接手方式：** 直接读该文档顶部的「📍 当前状态」一节，即可知道做到哪、下一步是什么、有哪些坑。**不要**靠 git log 或读代码反推进度。
+
+参照 Menlo Asimov-1 手册，把维保 SOP 改造成「准备 → 执行 → 验证」三段式门禁流程。**不新建表、不新建状态机**，复用现有 `SOPExecutor` 裁决引擎。
+
+| Phase | Name | Tasks | Status |
+|-------|------|-------|--------|
+| 1 | 数据与类型 | 2 | ✅ Done |
+| 2 | 引擎（装配方向/validation/阶段门） | 4 | ⬜ Not started |
+| 3 | 前端（进度条/齐套/验收/构图） | 4 | ⬜ Not started |
+| 4 | 标杆内容（膝关节 22 步） | 2 | ⬜ Not started |
+| 5 | 验收（E2E/报告页） | 2 | ⬜ Not started |
+
+**Branch:** `feat/sop-three-phase-flow`（未 push）
+**分工：** Plan/监督/验收 = Claude；Task 实现 = Codex CLI
+
+**已知遗留（勿顺手修）：** `src/adjudication/__tests__/` 下 8 个 `.test.ts` 不是 vitest 测试（`describe/it` 计数为 0，导出 `runTC001()` 一类函数），从未执行且无调用方 —— 存量 SOP 目前没有回归安全网。是否重写待决策。
+
 ## Modularization Progress
 
 > Master plan: `docs/superpowers/plans/2026-05-18-modularization-master-plan.md`

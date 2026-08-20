@@ -6686,3 +6686,31 @@
   - 误用 git stash 且 pathspec 在子目录下未匹配，导致 stash push 空转、随后的 pop 指向历史遗留的 stash@{0}；因 knowledge_store.json 冲突被 git 拒绝，工作区未受影响。首轮"基线 481"因此无效，已用 --exclude 重测。
   - 未修改 DATABASE_URL、CORS；未执行 git push。
 - Next Step: Task 2.1 装配方向裁决（canInstallPart/canTightenScrew）；开工前需先解决 T2.1 存量回归依赖死测试的问题。
+
+---
+
+- DateTime: 2026-08-18 17:20 CST
+- Task: SOP 三段式引导 Task 2.1 — 执行前规格预检（Claude 监督，未写实现）
+- Scope (files changed):
+  - docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md（新增 §2.4；重写 T2.1 Step 1/1b/3/5/6/7）
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - grep/sed 核对 decisionEngine.ts createReport(:44)、getBlockingConstraints(:143)、canDetachPart(:389)、adjudicateAction(:458) 与 import 块
+  - grep 核对 stateManager.ts 暴露的 setter 与 createInitialPartStates(:122)
+  - grep 核对 constraintGraph.ts 真实约束数据(:273-298)、adjudication.ts Constraint(:111)/AdjudicationResult(:188)
+  - grep 核对 screwInstances.ts getScrewInstance(:12)、geometryJudge.ts checkToolMatch(:252)
+  - 临时纳入 include 试跑 src/adjudication/__tests__/ 后 git checkout 还原配置
+  - grep -rn 反查 runTC001/runAllHardwareSOPFlowTests 等外部调用方（exit=1，无匹配）
+- Tests:
+  - 未运行新测试（本批不产出实现代码）。
+  - 遗留文件探测：8 failed | 63 passed (71 files)，Tests 数恒为 481 未变 ⇒ 8 个文件均为收集期 "No test suite found"，非断言失败。
+  - 探测后 vitest.config.ts 已还原，git status 确认工作区干净。
+- Result: PASS（规格更正完成，T2.1 待 Codex 执行）
+- Risks/Notes:
+  - 查出 9 项计划前提与代码不符，逐条录入计划 §2.4。其中第 1 项为致命：原文装配依赖取 constrainingPart，方向与装配相反，照写会使门禁对最外层件恒放行（依赖集为空）。
+  - 更正后依赖规则：装 X 的依赖 = 约束图中 constrainingPart === X 的那些 constrainedPart；canInstallPart 与 canTightenScrew 共用该 helper。
+  - 第 7 项：src/adjudication/__tests__/ 下 8 个 .test.ts 非 vitest 测试且无调用方，存量 SOP 实际无安全网。是否重写为独立工作项，未决策。
+  - 职责边界更正：本 Task 起 Claude 只做规划、监督与验收，实现由 Codex CLI 执行。此前 T1.2 由 Claude 直接实现（用户当时选定），已提交 390f8104，不回退。
+  - 期间一度写出 assemblyDirection.test.ts，经用户纠正身份后删除，工作区已还原为未实现状态。
+  - 未修改 DATABASE_URL、CORS；未执行 git push。
+- Next Step: Codex 执行 T2.1 Step 1→7；Claude 验收（重点复核依赖方向、include 行、477 基线）。
