@@ -24,7 +24,7 @@ class DeepSeekClient(BaseLLMClient):
     async def chat(
         self,
         messages: list[dict],
-        model: str = "deepseek-v4-pro",
+        model: str = "deepseek-v4-flash",
         tools: Optional[list[dict]] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
@@ -33,6 +33,8 @@ class DeepSeekClient(BaseLLMClient):
             "model": model,
             "messages": messages,
             "temperature": temperature,
+            # V4 系列思考模式默认开启（effort=high），显式关闭以控制时延与成本
+            "extra_body": {"thinking": {"type": "disabled"}},
         }
         if tools:
             kwargs["tools"] = tools

@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     LLM_FALLBACK_PROVIDER: str = "minimax"
     LLM_TIMEOUT_SECONDS: float = 10.0
     LLM_ENABLE_MOCK_FALLBACK: bool = True
-    LLM_MODEL_ADVANCED: str = "deepseek-chat"    # 复杂任务（诊断、生成、报告）
-    LLM_MODEL_BASIC: str = "deepseek-chat"       # 简单任务（意图识别、聊天、增强）
+    LLM_MODEL_ADVANCED: str = "deepseek-v4-flash"  # 复杂任务（诊断、生成、报告）
+    LLM_MODEL_BASIC: str = "deepseek-v4-flash"     # 简单任务（意图识别、聊天、增强）
 
     # AI Assistant
     AI_ASSISTANT_MAX_HISTORY: int = 20

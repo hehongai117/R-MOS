@@ -7,7 +7,7 @@ Usage:
     response = await router.chat(
         messages=[{"role": "user", "content": "Hello"}],
         provider="openai",
-        model="deepseek-chat"
+        model="deepseek-v4-flash"
     )
 """
 import os
@@ -267,7 +267,7 @@ class LLMRouter:
         self,
         messages: list[dict],
         provider: LLMProvider = LLMProvider.DEEPSEEK,
-        model: str = "deepseek-chat",
+        model: str = "deepseek-v4-flash",
         tools: Optional[list[dict]] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
@@ -344,7 +344,7 @@ class LLMRouter:
     async def chat_with_fallback(
         self,
         messages: list[dict],
-        model: str = "deepseek-v4-pro",
+        model: str = "deepseek-v4-flash",
         tools: Optional[list[dict]] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,

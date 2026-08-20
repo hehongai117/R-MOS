@@ -57,3 +57,25 @@ async def test_deepseek_chat_with_timeout():
             base_url="https://api.deepseek.com",
             timeout=5.0,
         )
+
+
+@pytest.mark.asyncio
+async def test_deepseek_chat_disables_thinking_mode():
+    """V4 系列思考模式默认开启，必须显式关闭——失效会静默产生推理成本与时延。"""
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "ok"
+    mock_response.usage.prompt_tokens = 1
+    mock_response.usage.completion_tokens = 1
+
+    with patch("app.services.llm.deepseek_provider.AsyncOpenAI") as MockClient:
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        MockClient.return_value = mock_client
+
+        client = DeepSeekClient(api_key="test-key")
+        await client.chat(messages=[{"role": "user", "content": "test"}])
+
+        kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+        assert kwargs["model"] == "deepseek-v4-flash"
