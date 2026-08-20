@@ -1,11 +1,12 @@
 import { beforeEach, describe, it, expect } from 'vitest';
-import { validateStepCompletion } from '../executor/sopExecutor';
+import { createSOPExecutor, validateStepCompletion } from '../executor/sopExecutor';
 import { useAdjudicationStore } from '../core/stateManager';
 import {
     AdjudicationResult,
     ActionType,
     ValidationType,
     type StepView,
+    type SOPPhase,
     type SOPStepAdjudication,
 } from '../types/adjudication';
 
@@ -173,5 +174,71 @@ describe('对角紧固顺序', () => {
         const result = validateStepCompletion(orderStep(DIAGONAL));
 
         expect(result.allPassed).toBe(true);
+    });
+});
+
+function phaseStep(id: string, phase: SOPPhase): SOPStepAdjudication {
+    return {
+        ...checklistStep(ValidationType.KIT_CONFIRMED, []),
+        stepId: id,
+        title: id,
+        action: ActionType.FOCUS_CAMERA,
+        phase,
+        validations: [],
+        targetParts: [],
+    } as SOPStepAdjudication;
+}
+
+function phaseSop(phases: SOPPhase[]) {
+    return {
+        sopId: 'sop-test-phases',
+        title: '阶段门测试',
+        version: '1.0',
+        targetModule: 'knee',
+        estimatedTime: 600,
+        difficulty: 'intermediate',
+        steps: phases.map((phase, index) => phaseStep(`step_${index + 1}`, phase)),
+    };
+}
+
+describe('阶段门', () => {
+    beforeEach(() => useAdjudicationStore.getState().resetState());
+
+    it('getCurrentPhase 返回当前步所在段', () => {
+        const executor = createSOPExecutor();
+        executor.loadSOP(phaseSop(['prep', 'execute', 'verify']) as never);
+
+        expect(executor.getCurrentPhase()).toBe('prep');
+    });
+
+    it('getPhaseProgress 给出三段进度并过滤单阶段空项', () => {
+        const executor = createSOPExecutor();
+        executor.loadSOP(phaseSop(['prep', 'prep', 'execute', 'verify']) as never);
+
+        const progress = executor.getPhaseProgress();
+        expect(progress.map((item) => item.phase)).toEqual(['prep', 'execute', 'verify']);
+        expect(progress[0]).toMatchObject({ total: 2, completed: 0, unlocked: true });
+        expect(progress[1].unlocked).toBe(false);
+
+        const singlePhaseExecutor = createSOPExecutor();
+        singlePhaseExecutor.loadSOP(phaseSop(['execute', 'execute']) as never);
+        expect(singlePhaseExecutor.getPhaseProgress()).toEqual([
+            { phase: 'execute', total: 2, completed: 0, unlocked: true },
+        ]);
+    });
+
+    it('当前段仍有未完成步骤时不能跨到下一段', () => {
+        const executor = createSOPExecutor();
+        executor.loadSOP(phaseSop(['prep', 'execute', 'prep']) as never);
+        executor.executeStep();
+
+        const result = executor.validateAndAdvance();
+
+        expect(result).toMatchObject({
+            result: AdjudicationResult.BLOCKED,
+            reasonCode: 'PHASE_GATE',
+        });
+        expect(executor.getContext()?.executionState).toBe('blocked');
+        expect(executor.getCurrentPhase()).toBe('prep');
     });
 });

@@ -21,6 +21,7 @@ import {
     AdjudicationResult,
     AdjudicationReport,
     SystemState,
+    type SOPPhase,
 } from '../types/adjudication';
 import { useAdjudicationStore } from '../core/stateManager';
 import { adjudicateAction, validateActionCompletion } from '../core/decisionEngine';
@@ -626,6 +627,31 @@ export class SOPExecutor {
             };
         }
 
+        // 阶段门：跨段推进前，当前段必须全部完成
+        const gateNextStep = this.currentSOP?.steps[nextIndex];
+        const currentPhase = step.phase;
+        if (gateNextStep && gateNextStep.phase !== currentPhase) {
+            const unfinished = (this.currentSOP?.steps ?? [])
+                .filter((candidate) => candidate.phase === currentPhase
+                    && !this.context!.completedSteps.includes(candidate.stepId));
+            if (unfinished.length > 0) {
+                const report: AdjudicationReport = {
+                    result: AdjudicationResult.BLOCKED,
+                    targetPart: '',
+                    reason: `${currentPhase} 阶段尚有 ${unfinished.length} 步未完成，不能进入下一阶段`,
+                    reasonCode: 'PHASE_GATE',
+                    blockingConstraints: [],
+                    requiredActions: unfinished.map((candidate) => `完成「${candidate.title}」`),
+                    timestamp: Date.now(),
+                };
+                this.context.lastReport = report;
+                this.context.executionState = SOPExecutionState.BLOCKED;
+                this.notifyStateChange();
+                this.onBlocked?.(report);
+                return report;
+            }
+        }
+
         // 推进到下一步
         this.context.currentStepIndex = nextIndex;
         this.context.executionState = SOPExecutionState.IDLE;
@@ -729,6 +755,31 @@ export class SOPExecutor {
             elapsedTime: Date.now() - this.context.startTime,
             status: this.context.executionState,
         };
+    }
+
+    /** 当前步骤所属阶段 */
+    getCurrentPhase(): SOPPhase | null {
+        return this.getCurrentStep()?.phase ?? null;
+    }
+
+    /** 三段进度：供 UI 渲染进度条与锁定态 */
+    getPhaseProgress(): Array<{
+        phase: SOPPhase; total: number; completed: number; unlocked: boolean;
+    }> {
+        const order: SOPPhase[] = ['prep', 'execute', 'verify'];
+        const steps = this.currentSOP?.steps ?? [];
+        const done = new Set(this.context?.completedSteps ?? []);
+
+        let prevComplete = true;
+        return order
+            .map((phase) => {
+                const inPhase = steps.filter((step) => step.phase === phase);
+                const completed = inPhase.filter((step) => done.has(step.stepId)).length;
+                const unlocked = prevComplete;
+                prevComplete = prevComplete && inPhase.length === completed;
+                return { phase, total: inPhase.length, completed, unlocked };
+            })
+            .filter((progress) => progress.total > 0);
     }
 
     private notifyStateChange(): void {

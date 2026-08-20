@@ -6805,3 +6805,34 @@
   - 全量测试仍输出项目既有 React/jsdom/Three.js 警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
 - Next Step: 由用户验收并回填计划状态。不得进入 Task 2.4。
+
+---
+
+- DateTime: 2026-08-20 21:24 CST
+- Task: SOP 三段式引导 Task 2.4 — 阶段门
+- Scope (files changed):
+  - r-mos-frontend/src/adjudication/executor/sopExecutor.ts
+  - r-mos-frontend/src/adjudication/__tests__/threePhase.test.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts -t 阶段门
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --name-only
+  - git diff --check
+- Tests:
+  - 失败测试：3 failed / 11 skipped；两个查询方法不存在，跨段场景被错误放行，符合预期。
+  - 首次实现后发现同一函数内变量重名，测试在转换阶段失败；确认根因后仅重命名新增局部变量。
+  - 专用测试：14 passed / 0 failed，其中新增阶段门 3 例全部通过。
+  - 前端全量：64 files / 498 passed / 2 skipped，0 failed；不低于 495 passed / 2 skipped 基线。
+  - 前端构建：tsc -b 与 vite build 均通过，6312 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - 跨段时检查当前段全部步骤；阻断结果为 BLOCKED，reasonCode 为 PHASE_GATE，当前步骤不推进。
+  - 单阶段 execute SOP 的进度仅返回 1 项，且所有相邻步骤同阶段，不触发跨段分支；覆盖存量兼容要求。
+  - 计划示例的第三个用例不能实际触发阶段门，改用交错阶段夹具，确保删除门禁会导致测试失败。
+  - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
+  - 提交命令失败：fatal: Unable to create '.git/index.lock': Operation not permitted；未暂存文件，未产生 commit。
+- Next Step: 用户在具备 .git 写权限的环境中仅暂存本任务 3 个文件并提交，验收后回填计划状态；Task 2.4 通过后 Phase 2 收官。
