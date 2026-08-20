@@ -6,9 +6,9 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-20 21:00 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-20 21:12 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** Task 2.3（螺丝对角紧固顺序判定）交 Codex 执行。**动手前必读 §2.4**（11 条计划前提更正）。T2.3 的 store 写法已更正为 `addActionRecord`（原文的 `recordAction` 不存在）。
+**下一步：** Task 2.4（阶段门）交 Codex 执行，完成后 Phase 2 收官。**动手前必读 §2.4**（11 条计划前提更正）。T2.4 的阶段门插入点为 `sopExecutor.ts:586` 的 `this.context.currentStepIndex = nextIndex;` 之前（该行号已核实准确）；注意 `completedSteps.push` 发生在推进之前，故当前步不计入未完成集。
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
@@ -16,8 +16,8 @@
 | 1.2 | 前端裁决类型扩展 | ✅ 已验收 | `390f8104` | 4 passed；build PASS；由 Claude 实现（用户当时选定） |
 | 2.1 | 装配方向裁决 | ✅ 已验收 | `616c9ca5` | Codex 实现；7 passed；含方向反转变异测试验证判别力 |
 | 2.2 | 三个新 validation 分支 | ✅ 已验收 | `61c222ca` | Codex 实现；齐套+验收各正反 2 例，定向 8 passed |
-| 2.3 | 螺丝对角紧固顺序判定 | ⬜ 未开始 | — | **下一个**；`addActionRecord` 非 `recordAction` |
-| 2.4 | 阶段门 | ⬜ 未开始 | — | |
+| 2.3 | 螺丝对角紧固顺序判定 | ✅ 已验收 | `679f9f1b` | Codex 实现；定向 11 passed；变异测试证明顺序检测有判别力 |
+| 2.4 | 阶段门 | ⬜ 未开始 | — | **下一个**；Phase 2 收官 |
 | 3.1 | 三段进度条 | ⬜ 未开始 | — | |
 | 3.2 | 齐套检查面板 | ⬜ 未开始 | — | |
 | 3.3 | 验收记录面板 | ⬜ 未开始 | — | |
@@ -31,13 +31,14 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **492 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.2 新增 4 个 |
+| 前端 `npm test` | **495 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.3 新增 3 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
 **已知遗留问题（不在本计划范围，勿顺手修）：**
 
 - `src/adjudication/__tests__/` 下 8 个 `.test.ts` 不是 vitest 测试，从未执行，无外部调用方。存量 SOP 实际**没有**回归安全网。详见 §2.4 第 7 条。是否重写为独立工作项，**待决策**。
+- `AGENTS.md:6` 引用的 `docs/testing/ACCEPTANCE_CHARTER.md` **不存在**（该目录下只有 `TEST_PLAN.md` 与一份 acceptance-matrix）。悬空引用会让每个新执行会话反复困惑。修不修**待决策**，本计划的验收门禁以任务书 + §8 为准。
 
 ---
 
@@ -1045,7 +1046,7 @@ git commit -m "feat(adjudication): 齐套与验收清单 validation 分支"
 
 **判定语义**：从 `actionHistory` 里筛出 `action === ActionType.TIGHTEN_SCREW` 且结果为 `ALLOWED` 的记录，按时间序取其 `targetParts[0]`，与 `expectedOrder` 逐位比对。**只比对已发生的部分**（前缀匹配），这样中途校验不会误报；全部拧完才要求长度相等。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 import { AdjudicationResult } from '../types/adjudication';
@@ -1108,7 +1109,7 @@ describe('对角紧固顺序', () => {
 >
 > 另注：`checkValidation` 开头已有 `const store = useAdjudicationStore.getState();`（`sopExecutor.ts:164`），实现 `SCREW_ORDER_MATCHED` 时直接用该变量即可，无需重复取。`ActionType` 与 `AdjudicationResult` 也都已导入（`:20-21`）。
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts -t 对角紧固顺序
@@ -1116,7 +1117,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.t
 
 Expected: FAIL
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 在 `checkValidation` 中追加：
 
@@ -1149,13 +1150,13 @@ Expected: FAIL
 
 需要在 `sopExecutor.ts` 顶部的 import 中补上 `AdjudicationResult`（若尚未导入）。
 
-- [ ] **Step 4: 跑测试确认通过 + 存量回归**
+- [x] **Step 4: 跑测试确认通过 + 存量回归**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts && npm test
 ```
 
-- [ ] **Step 5: 提交 + 追加开发日志**
+- [x] **Step 5: 提交 + 追加开发日志**
 
 ```bash
 git add r-mos-frontend/src/adjudication/executor/sopExecutor.ts \
@@ -1874,7 +1875,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 1.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts`；`npm run build` | 4 passed；build PASS | ✅ |
 | 2.1 | `npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts`；`npm test` | 7 passed；全量不低于基线；**依赖方向取 `constrainingPart === X` 的 `constrainedPart`**；`vitest.config.ts` include 行已提交；未为测试新增 store API | ✅ |
 | 2.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts` | 齐套 2 用例通过；全量不低于基线 | ✅ |
-| 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ⬜ |
+| 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ✅ |
 | 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ⬜ |
 | 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ⬜ |
 | 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ⬜ |
