@@ -6,17 +6,17 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-20 20:50 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-20 21:00 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** Task 2.2（三个新 validation 分支）交 Codex 执行。**动手前必读 §2.4**（11 条计划前提更正）。T2.2 起改动集中在 `sopExecutor.ts` 的 `checkValidation`，测试追加到已存在的 `threePhase.test.ts`（该文件已在 include 白名单内，无需再加行）。
+**下一步：** Task 2.3（螺丝对角紧固顺序判定）交 Codex 执行。**动手前必读 §2.4**（11 条计划前提更正）。T2.3 的 store 写法已更正为 `addActionRecord`（原文的 `recordAction` 不存在）。
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
 | 1.1 | `sop_steps` 四列 + 迁移 + ADR | ✅ 已验收 | `50f15ed9` | 3 passed；迁移已 upgrade 到 head |
 | 1.2 | 前端裁决类型扩展 | ✅ 已验收 | `390f8104` | 4 passed；build PASS；由 Claude 实现（用户当时选定） |
 | 2.1 | 装配方向裁决 | ✅ 已验收 | `616c9ca5` | Codex 实现；7 passed；含方向反转变异测试验证判别力 |
-| 2.2 | 三个新 validation 分支 | ⬜ 未开始 | — | **下一个**；测试追加到已在白名单的 threePhase.test.ts |
-| 2.3 | 螺丝对角紧固顺序判定 | ⬜ 未开始 | — | |
+| 2.2 | 三个新 validation 分支 | ✅ 已验收 | `61c222ca` | Codex 实现；齐套+验收各正反 2 例，定向 8 passed |
+| 2.3 | 螺丝对角紧固顺序判定 | ⬜ 未开始 | — | **下一个**；`addActionRecord` 非 `recordAction` |
 | 2.4 | 阶段门 | ⬜ 未开始 | — | |
 | 3.1 | 三段进度条 | ⬜ 未开始 | — | |
 | 3.2 | 齐套检查面板 | ⬜ 未开始 | — | |
@@ -31,7 +31,7 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **488 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.1 新增 7 个 |
+| 前端 `npm test` | **492 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.2 新增 4 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
@@ -943,7 +943,7 @@ git commit -m "feat(adjudication): 新增装配方向裁决（canInstallPart/can
 
 **验证语义**：齐套/验收面板把用户勾选结果写进 `validation.params.confirmedItems: string[]`，与 `params.requiredItems: string[]` 比对，必须全覆盖才通过。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 追加到 `threePhase.test.ts`：
 
@@ -981,7 +981,7 @@ describe('齐套与验收 validation', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts
@@ -989,7 +989,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.t
 
 Expected: FAIL —— 未知 validation 类型走 `default` 返回 `passed: true`，第一个用例断言失败
 
-- [ ] **Step 3: 实现两个分支**
+- [x] **Step 3: 实现两个分支**
 
 在 `sopExecutor.ts` 的 `checkValidation` switch 中，`STATE_CHECK` 之后、`default` 之前插入：
 
@@ -1015,7 +1015,7 @@ Expected: FAIL —— 未知 validation 类型走 `default` 返回 `passed: true
         }
 ```
 
-- [ ] **Step 4: 跑测试确认通过 + 存量回归**
+- [x] **Step 4: 跑测试确认通过 + 存量回归**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.ts && npm test
@@ -1023,7 +1023,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/__tests__/threePhase.test.t
 
 Expected: 新用例全过；全量 465 基线不退化
 
-- [ ] **Step 5: 提交 + 追加开发日志**
+- [x] **Step 5: 提交 + 追加开发日志**
 
 ```bash
 git add r-mos-frontend/src/adjudication/executor/sopExecutor.ts \
@@ -1064,11 +1064,14 @@ function orderStep(expected: string[]): SOPStepAdjudication {
 }
 
 function pushTighten(screwId: string) {
-    const store = useAdjudicationStore.getState();
-    store.recordAction({
-        id: `act_${screwId}`, action: ActionType.TIGHTEN_SCREW,
-        targetParts: [screwId], toolId: 'hex_3', timestamp: Date.now(),
-        result: AdjudicationResult.ALLOWED, stateSnapshot: '{}',
+    // 实际 API 是 addActionRecord，签名为
+    // Omit<ActionRecord, 'id' | 'timestamp' | 'stateSnapshot'>（stateManager.ts:52,241）
+    // ——id / timestamp / stateSnapshot 由 store 自动生成，不要传
+    useAdjudicationStore.getState().addActionRecord({
+        action: ActionType.TIGHTEN_SCREW,
+        targetParts: [screwId],
+        toolId: 'hex_3',
+        result: AdjudicationResult.ALLOWED,
     });
 }
 
@@ -1101,7 +1104,9 @@ describe('对角紧固顺序', () => {
 });
 ```
 
-> 若 stateManager 没有 `recordAction`，改用它实际暴露的写 `actionHistory` 的方法。**先读 `stateManager.ts` 确认**，不要新增 store API。
+> ✅ 已核实（2026-08-20）：store 没有 `recordAction`，实际是 `addActionRecord`，上面的夹具已用正确 API。不要新增 store API。
+>
+> 另注：`checkValidation` 开头已有 `const store = useAdjudicationStore.getState();`（`sopExecutor.ts:164`），实现 `SCREW_ORDER_MATCHED` 时直接用该变量即可，无需重复取。`ActionType` 与 `AdjudicationResult` 也都已导入（`:20-21`）。
 
 - [ ] **Step 2: 跑测试确认失败**
 
@@ -1868,7 +1873,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 1.1 | `pytest tests/test_sop_three_phase.py -v`；`alembic upgrade head && alembic current` | 3 passed；revision 为 `20260817_sop_three_phase`；ADR 文件存在且含六节 | ✅ |
 | 1.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts`；`npm run build` | 4 passed；build PASS | ✅ |
 | 2.1 | `npx vitest run src/adjudication/__tests__/assemblyDirection.test.ts`；`npm test` | 7 passed；全量不低于基线；**依赖方向取 `constrainingPart === X` 的 `constrainedPart`**；`vitest.config.ts` include 行已提交；未为测试新增 store API | ✅ |
-| 2.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts` | 齐套 2 用例通过；全量不低于基线 | ⬜ |
+| 2.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts` | 齐套 2 用例通过；全量不低于基线 | ✅ |
 | 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ⬜ |
 | 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ⬜ |
 | 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ⬜ |

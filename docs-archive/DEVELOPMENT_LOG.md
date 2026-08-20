@@ -6760,6 +6760,8 @@
   - cd r-mos-frontend && npm run build
   - git diff --name-only
   - git diff --check
+  - git add r-mos-frontend/src/adjudication/executor/sopExecutor.ts r-mos-frontend/src/adjudication/__tests__/threePhase.test.ts docs-archive/DEVELOPMENT_LOG.md
+  - git commit -m "feat(adjudication): 齐套与验收清单 validation 分支"
 - Tests:
   - 失败测试：8 tests 中 2 failed / 6 passed；齐套未满与验收未满均被旧 default 错误放行，符合预期。
   - 实施后专用测试：8 passed / 0 failed。
@@ -6771,4 +6773,4 @@
   - 全量测试仍输出项目既有 React/jsdom/Three.js 警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
   - docs/testing/ACCEPTANCE_CHARTER.md 在当前工作区不存在；本任务按用户明确验收判据与指定计划执行。
   - 保留用户原有计划文档、knowledge_store.json 修改及无关未跟踪文件；未修改 vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
-- Next Step: 尝试仅暂存本任务 3 个文件并本地提交；若 .git 写权限阻止，则由用户在外部提交并回填计划状态。不得进入 Task 2.3。
+- Next Step: 本任务 3 个文件已本地提交；由用户验收并回填计划状态。不得进入 Task 2.3。
