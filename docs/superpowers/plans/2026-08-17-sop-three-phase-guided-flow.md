@@ -6,9 +6,9 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-20 21:36 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-21 08:55 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** Task 3.2（齐套检查面板）交 Codex 执行。消费 T1.2 的 `RequiredPart`（字段是 snake_case **`bom_code`**，见 §2.4 第 9 条）与 T2.2 的 `KIT_CONFIRMED` validation（面板把勾选结果写进 `validation.params.confirmedItems`）。组件测试放 `src/components/Maintenance/__tests__/`，该路径已在 include glob 内，无需改 vitest.config.ts。
+**下一步：** Task 3.3（验收记录面板）交 Codex 执行。结构与 T3.2 同构：消费 `CHECKLIST_CONFIRMED` validation，勾选结果写进 `validation.params.confirmedItems`。可直接参照 `KitChecklistPanel.tsx`（77 行）的写法与挂载方式。
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
@@ -19,8 +19,8 @@
 | 2.3 | 螺丝对角紧固顺序判定 | ✅ 已验收 | `679f9f1b` | Codex 实现；定向 11 passed；变异测试证明顺序检测有判别力 |
 | 2.4 | 阶段门 | ✅ 已验收 | `6db40437` | Codex 实现；定向 14 passed；变异测试证明门禁有效 |
 | 3.1 | 三段进度条 | ✅ 已验收 | `0363e5c9` | Codex 实现；组件 66 行；单阶段守卫经变异测试验证 |
-| 3.2 | 齐套检查面板 | ⬜ 未开始 | — | **下一个**；注意 bom_code 是 snake_case |
-| 3.3 | 验收记录面板 | ⬜ 未开始 | — | |
+| 3.2 | 齐套检查面板 | ✅ 已验收 | `033af6d3` | Codex 实现；77 行；变异测试验证计数逻辑 |
+| 3.3 | 验收记录面板 | ⬜ 未开始 | — | **下一个**；与 T3.2 同构 |
 | 3.4 | `useSOPSceneSync` 读 `stepView` | ⬜ 未开始 | — | |
 | 4.1 | 膝关节 SOP 重编排为 22 步 | ⬜ 未开始 | — | |
 | 4.2 | 补 `step_view` 与 `required_parts` | ⬜ 未开始 | — | 最大成本项，见 §7 风险 |
@@ -31,13 +31,14 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **500 passed / 2 skipped**（65 files） | 2026-08-20，含 T3.1 新增 2 个 |
+| 前端 `npm test` | **503 passed / 2 skipped**（66 files） | 2026-08-21，含 T3.2 新增 3 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
 **已知遗留问题（不在本计划范围，勿顺手修）：**
 
 - `src/adjudication/__tests__/` 下 8 个 `.test.ts` 不是 vitest 测试，从未执行，无外部调用方。存量 SOP 实际**没有**回归安全网。详见 §2.4 第 7 条。是否重写为独立工作项，**待决策**。
+- **勾选结果直接 mutate SOP 脚本对象**：T3.2 的 `handleKitChange` 直接写 `kitValidation.params.confirmedItems`（T2.2/计划 §3.2 的设计就是让 executor 从这里读，故符合规格）。风险：若 SOP 脚本被 `useSOPScripts` 一类 hook 缓存或跨会话共享，勾选状态可能残留污染。T3.3 同构实现会放大该风险。**未验证，待观察**；若 Phase 3 联调发现串档，考虑改为 executor 侧的独立勾选状态。
 - **存量兼容为间接覆盖**：T2.4 阶段门对单阶段 SOP 不触发，依据是条件 `nextStep.phase !== currentPhase` 恒为 false + 全量 498 绿（含 45 个走真实 SOP 流程的 characterization 测试），**无独立用例**。若将来修改阶段门触发条件，需补一个「单阶段 SOP 连续推进不被阻断」的显式用例。
 - `AGENTS.md:6` 引用的 `docs/testing/ACCEPTANCE_CHARTER.md` **不存在**（该目录下只有 `TEST_PLAN.md` 与一份 acceptance-matrix）。悬空引用会让每个新执行会话反复困惑。修不修**待决策**，本计划的验收门禁以任务书 + §8 为准。
 
@@ -1416,7 +1417,7 @@ git commit -m "feat(maintenance): SOP 三段进度条"
   }
   ```
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```tsx
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -1450,19 +1451,19 @@ describe('齐套检查面板', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败** → **Step 3: 实现组件** → **Step 4: 挂载**
+- [x] **Step 2: 跑测试确认失败** → **Step 3: 实现组件** → **Step 4: 挂载**
 
 组件要求：工具区 + 备件区两组 checkbox；每项 `aria-label={`确认 ${标识} 已备齐`}`；底部显示剩余待确认数；全部勾选时显示「齐套完成」。沿用 Ant Design `Checkbox` / `Card`，单文件不超过 120 行。
 
 挂载：`SOPPlayerAdjudicated` 在当前步 `action === ActionType.CONFIRM_KIT` 时渲染此面板，把勾选结果写进该步 validation 的 `params.confirmedItems`，使 T2.2 的 `KIT_CONFIRMED` 能读到。
 
-- [ ] **Step 5: 跑测试 + 构建 + 存量回归**
+- [x] **Step 5: 跑测试 + 构建 + 存量回归**
 
 ```bash
 cd r-mos-frontend && npm test && npm run build
 ```
 
-- [ ] **Step 6: 提交 + 追加开发日志**
+- [x] **Step 6: 提交 + 追加开发日志**
 
 ---
 
@@ -1884,7 +1885,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ✅ |
 | 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ✅ |
 | 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ✅ |
-| 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ⬜ |
+| 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ✅ |
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ⬜ |
 | 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ⬜ |
 | 4.1 | `pytest tests/test_sop_three_phase.py -v`；curl 核对 | 22 步、4+14+4 分段正确；31 个 SOP 仍在，30 个存量步骤数不变 | ⬜ |
