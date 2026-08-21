@@ -1394,6 +1394,10 @@ git commit -m "feat(maintenance): SOP 三段进度条"
 
 ### Task 3.2: 齐套检查面板
 
+> ⚠️ **规格已更正（2026-08-20 预检）**：原文测试夹具与 Props 注释使用驼峰 `bomCode`，与 T1.2 落地的 `RequiredPart.bom_code` 不符（§2.4 第 9 条），照原文写会 TS 编译失败。下方已改为 snake_case。
+>
+> `src/components/Maintenance/index.ts` 已存在（导出 ToolSelector / ScrewInfo / SOPMaintenanceShell 四件），追加导出即可，注意其中既有 `export { default as X }` 与具名导出两种风格，按新组件的导出方式选择对应写法。
+
 **Files:**
 - Create: `r-mos-frontend/src/components/Maintenance/KitChecklistPanel.tsx`
 - Modify: `r-mos-frontend/src/components/Maintenance/index.ts`（导出）
@@ -1407,7 +1411,7 @@ git commit -m "feat(maintenance): SOP 三段进度条"
   export interface KitChecklistPanelProps {
     tools: string[];                 // 工具 ID 列表
     parts: RequiredPart[];           // 备件列表
-    confirmed: string[];             // 已勾选项（工具 ID 或 bomCode）
+    confirmed: string[];             // 已勾选项（工具 ID 或 bom_code）
     onChange: (confirmed: string[]) => void;
   }
   ```
@@ -1419,9 +1423,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { KitChecklistPanel } from '../KitChecklistPanel';
 
+// ⚠️ bom_code 是 snake_case（§2.4 第 9 条）——后端原样透传 JSON，不做 key 转换
 const parts = [
-    { bomCode: '6205-2RS', name: '深沟球轴承', qty: 1 },
-    { bomCode: 'GREASE-01', name: '润滑脂', qty: 1, note: '薄层涂抹' },
+    { bom_code: '6205-2RS', name: '深沟球轴承', qty: 1 },
+    { bom_code: 'GREASE-01', name: '润滑脂', qty: 1, note: '薄层涂抹' },
 ];
 
 describe('齐套检查面板', () => {
