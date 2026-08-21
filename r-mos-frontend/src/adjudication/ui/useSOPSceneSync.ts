@@ -4,6 +4,7 @@ import {
     getScrewInstance,
     type SOPScriptAdjudication,
     type SOPStepAdjudication,
+    type StepView,
     type AdjudicationReport,
     type SOPExecutionContext,
     SOPExecutionState,
@@ -14,6 +15,9 @@ export interface SOPSceneIntent {
     targetPart: string | null;
     explodeAmount: number;
     requiredTool: string | null;
+    camera?: StepView['camera'];
+    visibleLinks?: string[];
+    highlight?: string[];
 }
 
 export interface SOPSceneSyncState {
@@ -145,11 +149,15 @@ function deriveExplodeAmount(step: SOPStepAdjudication, targetPart: string | nul
 
 function buildIntent(step: SOPStepAdjudication | null): SOPSceneIntent {
     if (!step) return DEFAULT_INTENT;
-    const targetPart = resolveTargetPart(step);
+    const heuristicTarget = resolveTargetPart(step);
+    const view = step.stepView;
     return {
-        targetPart,
-        explodeAmount: deriveExplodeAmount(step, targetPart),
+        targetPart: view?.highlight?.[0] ?? heuristicTarget,
+        explodeAmount: view?.explode ?? deriveExplodeAmount(step, heuristicTarget),
         requiredTool: step.requiredTool ?? null,
+        camera: view?.camera,
+        visibleLinks: view?.visibleLinks,
+        highlight: view?.highlight,
     };
 }
 
@@ -192,6 +200,9 @@ export function useSOPSceneSync() {
                 targetPart: baseIntent.targetPart ?? prev.intent.targetPart,
                 explodeAmount: baseIntent.explodeAmount,
                 requiredTool: baseIntent.requiredTool,
+                camera: baseIntent.camera,
+                visibleLinks: baseIntent.visibleLinks,
+                highlight: baseIntent.highlight,
             };
             return {
                 ...prev,

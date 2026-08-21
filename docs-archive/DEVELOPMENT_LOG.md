@@ -6934,3 +6934,32 @@
   - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
 - Next Step: 由用户验收并回填计划状态；不得进入 Task 3.4。
+
+---
+
+- DateTime: 2026-08-21 09:49 CST
+- Task: SOP 三段式引导 Task 3.4 — useSOPSceneSync 读取 stepView
+- Scope (files changed):
+  - r-mos-frontend/src/adjudication/ui/useSOPSceneSync.ts
+  - r-mos-frontend/src/adjudication/__tests__/sceneSyncStepView.test.ts
+  - r-mos-frontend/vitest.config.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/adjudication/__tests__/sceneSyncStepView.test.ts
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --name-only
+  - git diff --check
+- Tests:
+  - 失败测试：1 file / 3 tests 中 2 failed、1 passed；作者化构图字段未返回，camera 为 undefined，证明测试能捕获缺失行为。
+  - 专用测试：1 file / 3 passed / 0 failed；覆盖作者化构图优先、无 stepView 时 targetPart 与 explodeAmount 的旧启发式回落、仅提供 camera 时 explodeAmount 继续回落。
+  - 前端全量：68 files / 509 passed / 2 skipped，0 failed；不低于 506 passed / 2 skipped 基线。
+  - 前端构建：tsc -b 与 vite build 均通过，6315 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - bindStep 显式保留 camera、visibleLinks、highlight，避免 buildIntent 产出的作者化构图在返回前丢失。
+  - targetPart 仍保留既有跨步回落；camera、visibleLinks、highlight 不跨步继承，缺省时保持 undefined。
+  - vitest.config.ts 只增加 sceneSyncStepView.test.ts 单文件白名单，未扩大为目录 glob。
+  - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
+- Next Step: 由用户验收并回填计划状态；Task 3.4 完成后 Phase 3 收官，不进入 Phase 4。
