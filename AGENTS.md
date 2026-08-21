@@ -17,7 +17,9 @@
 - 最近完成的功能专项：`docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md` 记录 14/14 Task 完成；其中 Task 5.1 仍为有条件通过，完整 22 步 E2E 未稳定跑通。
 - 最近一次记录的测试快照为 2026-08-21：后端 `822 passed, 3 skipped`，前端 `511 passed, 2 skipped`，前端构建 PASS。该数字属于对应提交的历史证据，本规则修复批次未重新执行，不得自动视为当前提交验收结果。
 - 单校五台真机验收矩阵中的 E1 至 E4 正式执行尚未在本批完成；`REL-BLOCK-01` 继续阻断 D0 与任何生产启用。
-- 当前下一步：规则事实源已修复；进入 Phase 1 六条链路审查前仍须获得用户确认。
+- Phase 1 六链路审查已完成（`docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md`）：六条链路全部 FAIL，登记 29 项（1 P0 / 24 P1 / 4 P2；28 事实 + 1 推断 `CTRL-105`）。审查执行完成 ≠ 功能通过。
+- Phase 2 安全架构与修复规格已完成（`docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md` + `docs/adr/ADR-2026-08-21-*.md` 五份 + Phase 3/4 TDD 计划）：29 项全部映射到六个门禁与执行批次，**但全部为 NOT_STARTED**。五份 ADR 状态均为 Proposed。
+- 当前下一步：Phase 2 待确认事项（公开路由白名单签字、`regression` 用例删除批准、存储命名空间口径、SOP 产品行为变更、审计事务改造范围）须先获用户确认；待定项 J（现场部署形态 / TLS / 备份目标 / RTO-RPO）保持 BLOCKED。**进入 Phase 3 实现前须获得用户明确批准。**
 - 每批闭环必须同步：
   1. 若当前任务有明确计划和状态表，更新对应状态；
   2. 影响验收时更新 `docs/testing/TEST_PLAN.md` 与/或 `docs/testing/TEST_REPORT.md`；

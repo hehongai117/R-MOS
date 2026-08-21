@@ -7491,3 +7491,45 @@
   - 本批没有修改应用、测试、依赖、配置或数据库，没有启动服务或操作真机，没有合并或推送。
   - E1 仍为 FAIL；E2 至 E4 与生产启用仍为 BLOCKED；`REL-BLOCK-01` 继续生效。
 - Next Step: 新窗口从 `codex/architecture-audit-phase1` 的最终交接提交创建 `codex/phase2-security-architecture` 独立工作区，先汇报 Phase 2 方案并等待用户确认。
+
+---
+
+- DateTime: 2026-08-21 20:40 CST
+- Task: Phase 2 安全架构与修复规格（29 项发现 → 5 份 ADR + 修复矩阵 + Phase 3/4 TDD 计划）；本阶段不改应用代码
+- Scope (files changed):
+  - docs/adr/ADR-2026-08-21-authn-default-deny-and-object-ownership.md（新增）
+  - docs/adr/ADR-2026-08-21-robot-binding-and-adapter-registry.md（新增）
+  - docs/adr/ADR-2026-08-21-evidence-integrity-and-sop-versioning.md（新增）
+  - docs/adr/ADR-2026-08-21-ai-approval-and-audit-gating.md（新增）
+  - docs/adr/ADR-2026-08-21-runtime-topology-and-production-deployment.md（新增）
+  - docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md（新增）
+  - docs/plans/2026-08-21-rmos-phase3-auth-control-realtime.md（新增）
+  - docs/plans/2026-08-21-rmos-phase4-evidence-ai-deployment.md（新增）
+  - docs/testing/TEST_PLAN.md（补门禁用例展开，全部 NOT_RUN）
+  - docs/testing/TEST_REPORT.md（追加 AUDIT-P2-DOC-001）
+  - docs-archive/DEVELOPMENT_LOG.md（本条）
+  - AGENTS.md（第 0 节状态快照）
+  - docs/ops/CODEX_RULES.md（镜像同步，SHA-256 与 AGENTS.md 一致）
+- Commands Run:
+  - `git worktree add .worktrees/phase2-security-architecture -b audit/phase2-security-architecture 09ec02a1`
+  - `git merge-base --is-ancestor b1db003c84dd974138290d6b6eaef7dc2c50030b HEAD`（退出 0）
+  - `git cat-file -e HEAD:docs/handover/2026-08-21-phase2-phase6-handover-v0.1.0.md`（退出 0）
+  - `grep -cE '^@router\.(get|post|put|patch|delete|websocket)' app/api/v1/endpoints/*.py`（182 个路由装饰器 / 37 个模块）
+  - `rg -c 'X-RMOS-Role|X-User-ID'`（生产代码 2 处：teaching_roster.py 10 处、access_control.py 1 处；前端 0 处）
+  - `rg -c '^[a-z_]+ = [A-Z][A-Za-z_]*\(\)$' r-mos-backend/app/`（62 个模块级单例 / 61 个文件）
+  - Alembic head 解析脚本（38 个 revision，唯一 head `20260817_sop_three_phase`）
+  - 只读读取：authz_guard.py、access_control.py、factory.py、preflight_check.py、evidence_*.py、sop_service.py、file_storage.py、policy_matrix.py、audit_event_service.py、approval_service.py、websocket*.py、config.py、main.py、health.py、Dockerfile、docker-compose.yml、nginx.conf、pytest.ini、test_auth_boundary.py 等
+- Tests:
+  - 本批只修改文档，不运行应用代码测试，不启动服务，不联网。
+  - 文档一致性自检：29 项编号与等级计数（1 P0 / 24 P1 / 4 P2；28 事实 + 1 推断）；五份 ADR 与修复矩阵、TEST_PLAN 门禁用例、Phase 3/4 计划的编号互引；AC/T/DR 编号取自现行验收矩阵与部署回滚计划原文。
+  - 并行只读取证 workflow（9 个 agent）中 7 个因会话额度失败、2 个成功；失败部分的取证范围由本人第一手读取全部补齐，未使用未完成的 agent 输出。
+- Result: PASS（仅 Phase 2 文档门禁）。**E1 仍为 FAIL；E2/E3/E4 与生产启用仍为 BLOCKED；`REL-BLOCK-01` 未清零；29 项全部为 NOT_STARTED。**
+- Risks/Notes:
+  - 修正了本人先前口头汇报中的一处错误：`ApprovalQueuePage.tsx` 并未消费旁路审批 API，它在更早批次已迁到 `/ai/approvals`；`agent-v2.ts:570-645` 的 4 个函数是零调用方的死代码。决策 G 的前端成本因此从"必须迁移页面"降为"删死代码"。
+  - 新发现三项 Phase 1 未记录、但会影响修复方案的事实：(1) 两套审批能力不对等，数据库那套只能绑 command_id/tool_call_id，无法为机器人控制这类通用资源提审批，故 `approvals` 表必须扩列，否则 CTRL-101 的审批要求无法落地；(2) 仓库存在第三套完全未使用的审批模型 `approval_records`/`decision_records`；(3) `/health` 的 docstring 声称 unhealthy 返回 503，实际从未设置状态码，恒返回 200。
+  - `http://127.0.0.1:55173` 这一 AGENTS.md 固定约束，全仓只出现在 AGENTS.md 自身；config.py 默认 CORS 与 docker-compose.yml 覆盖值均不含它，当前只靠未跟踪的本地 .env 维持。
+  - 删除旁路审批会连带删除 `tests/regression/test_p0_bugs_2026_07.py:241`，而 `pytest.ini:11` 把 regression 定义为"永不放松"。该规则冲突已列为待用户批准项，不做无声删除。
+  - 待定 J（现场部署形态、TLS 终结方、备份目标、RTO/RPO）已按用户指示写为 BLOCKED，并逐条标出被它卡住的设计点；未写默认值、未做假设。DEP-101 与 DEP-104 因此不得在 Phase 4 关闭。
+  - 五份 ADR 状态均为 Proposed，各自"待确认事项"未获用户确认前不得进入实现。
+  - 本批没有修改应用、测试、依赖、配置或数据库；没有启动服务或操作真机；没有合并或推送。
+- Next Step: 向用户汇报 Phase 2 产物与待确认事项（尤其公开路由白名单签字、regression 用例删除批准、存储命名空间口径、SOP 产品行为变更）；获确认后再进入 Phase 3，不提前实现。

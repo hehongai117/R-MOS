@@ -23,6 +23,111 @@
 
 修复涉及权限、审批、审计、机器人绑定或数据结构时，必须先由用户确认并新增 ADR。AUTH-GATE 至 AI-GATE 的自动测试不能替代 RT-GATE 的多机器人环境、DEP-GATE 的独立恢复区、E3 真机或 E4 课堂证据。
 
+### 门禁用例展开（2026-08-21 Phase 2 补充）
+
+下列用例由 Phase 2 依据五份 ADR 与 `docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md` 展开。**全部状态为 `NOT_RUN`；本节不包含任何当前 PASS。** 执行批次见 `docs/plans/2026-08-21-rmos-phase3-auth-control-realtime.md` 与 `docs/plans/2026-08-21-rmos-phase4-evidence-ai-deployment.md`。
+
+#### AUTH-GATE
+
+| 用例 | 场景 | 二元通过条件 | 批次 | 状态 |
+|---|---|---|---|---|
+| AUTH-GATE-01 | 遍历 `/api/v1` 全部路由，不在公开白名单者无令牌请求 | 401 率 100%，匿名成功 0 次 | P3-1 | NOT_RUN |
+| AUTH-GATE-02 | 门禁自检：临时移除一条白名单项 | 该测试必须变红 | P3-1 | NOT_RUN |
+| AUTH-GATE-03 | 学生令牌 + 伪造 `X-RMOS-Role: teacher` | 仍按学生范围，越权 0 次 | P3-2 | NOT_RUN |
+| AUTH-GATE-04 | 省略角色头访问 roster 读写入口 | 不得放宽范围 | P3-2 | NOT_RUN |
+| AUTH-GATE-05 | 跨学生/跨教师/跨班/跨校读取 | 对外 404 率 100%，审计含真实 resource_id 100% | P3-2 | NOT_RUN |
+| AUTH-GATE-06 | 跨对象写入 | 403 且写拒绝审计 | P3-2 | NOT_RUN |
+| AUTH-GATE-07 | 审计 `actor_user_id` 与令牌主体比对 | 恒等，100% | P3-2 | NOT_RUN |
+| AUTH-GATE-08 | 静态门禁：生产代码中身份头读取点 | 0 处 | P3-2 | NOT_RUN |
+| AUTH-GATE-09 | 匿名请求私有/草稿/他人/他校机器人资产清单与文件 | 404，且响应不含存储路径 | P3-3 | NOT_RUN |
+| AUTH-GATE-10 | 匿名读取 `status=READY` 且 `visibility=public` 的已发布资产 | 成功 | P3-3 | NOT_RUN |
+| AUTH-GATE-11 | 同账号连续 5 次错误密码后第 6 次 | 返回受限状态并写审计 | P3-3 | NOT_RUN |
+| AUTH-GATE-12 | 锁定期内提交正确密码 / 窗口结束后重试 / 成功登录后计数 | 前者拒绝、次者恢复、末者清零 | P3-3 | NOT_RUN |
+
+#### CTRL-GATE
+
+| 用例 | 场景 | 二元通过条件 | 批次 | 状态 |
+|---|---|---|---|---|
+| CTRL-GATE-01 | 两台机器人并行执行 | 跨机器人命令/快照/事件/报告 0 条 | P3-4 | NOT_RUN |
+| CTRL-GATE-02 | 任务创建后修改 `robot_model_id` | 拒绝并审计 | P3-4 | NOT_RUN |
+| CTRL-GATE-03 | 前检查六情形：缺机器人/离线/被占用/维护中/工具状态未知/缺工具 | 六项全部 BLOCK | P3-4 | NOT_RUN |
+| CTRL-GATE-04 | 不带 `user_id` 的任务创建请求 | 仍执行前检查 | P3-4 | NOT_RUN |
+| CTRL-GATE-05 | 匿名/学生注入故障；教师对非授权机器人注入 | 全部拒绝并审计 | P3-4 | NOT_RUN |
+| CTRL-GATE-06 | 故障注入成功路径 | 存在审批记录，`trace_id` 贯穿命令/审批/执行/审计 | P3-4（依赖 P4-4 审批表） | NOT_RUN |
+| CTRL-GATE-07 | 进行中与暂停任务执行停止 | 100% 可用 | P3-5 | NOT_RUN |
+| CTRL-GATE-08 | 重复停止请求；终态任务停止 | 幂等、不产生重复动作；返回当前状态而非报错 | P3-5 | NOT_RUN |
+| CTRL-GATE-09 | 无权/跨机器人停止 | 拒绝并审计 | P3-5 | NOT_RUN |
+| CTRL-GATE-10 | **CTRL-105 复现**：同任务同步骤 20 轮 × 5 并发 | 每轮最多 1 个成功副作用；检查 `events`、`snapshots`、`current_step_index` 三处唯一性 | P3-5 | NOT_RUN |
+| CTRL-GATE-11 | 静态门禁：业务路径读取 `DEFAULT_ROBOT_MODEL_ID` | 0 处 | P3-4 | NOT_RUN |
+
+> `CTRL-GATE-10` 未复现**不等于**已修复。关闭条件见修复矩阵 CTRL-105 一节。软件停止不替代物理急停，`DR-03` 真机部分属 E3。
+
+#### RT-GATE
+
+| 用例 | 场景 | 二元通过条件 | 批次 | 状态 |
+|---|---|---|---|---|
+| RT-GATE-01 | 匿名 / 过期令牌 / 无权机器人握手 | 拒绝 0 次通过，且写审计 | P3-6 | NOT_RUN |
+| RT-GATE-02 | 两台机器人 + 两个用户并行推送 | 跨机器人、跨用户消息 0 条 | P3-6 | NOT_RUN |
+| RT-GATE-03 | 可控时钟连续运行 > 4 个心跳周期，客户端正常回 pong | 保持健康且持续 5 Hz 推送 | P3-6 | NOT_RUN |
+| RT-GATE-04 | 客户端停止回 pong | 按阈值关闭；连接与后台任务均清理 | P3-6 | NOT_RUN |
+| RT-GATE-05 | ping 与 telemetry 时间严格 RFC 3339 解析、往返、时序 | 100% 可解析；双后缀 `+00:00Z` 输入必须失败 | P3-6 | NOT_RUN |
+| RT-GATE-06 | 前端同组件内切换两个 `robotId` | 旧连接关闭 1 次、新地址正确、旧连接消息不再更新页面 | P3-6 | NOT_RUN |
+
+> RT-GATE 全部为软件侧。`AC-07` 要求的五台真机 72 小时连续运行属 E3，本门禁**不能**替代它。
+
+#### EVID-GATE
+
+| 用例 | 场景 | 二元通过条件 | 批次 | 状态 |
+|---|---|---|---|---|
+| EVID-GATE-01 | 提交不存在的证据包编号完成步骤 | 判 FAIL，通过 0 次 | P4-1 | NOT_RUN |
+| EVID-GATE-02 | 其他用户 / 其他会话 / 其他步骤 / 未封存 / 哈希不一致证据 | 四类全部拒绝 | P4-1 | NOT_RUN |
+| EVID-GATE-03 | 跨会话同名 `step_id` 并行 | 互不污染 | P4-1 | NOT_RUN |
+| EVID-GATE-04 | 伪 `evidence_type` / 伪 `evidence_id` / 进程重启前后 | 均不满足步骤门禁 | P4-1 | NOT_RUN |
+| EVID-GATE-05 | 篡改事件载荷 / 快照传感器值 / 底层文件后校验 | 三种均失败 | P4-1 | NOT_RUN |
+| EVID-GATE-06 | 伪造 URI 或 content_hash 创建封存包 | 拒绝创建 | P4-1 | NOT_RUN |
+| EVID-GATE-07 | 关键步骤无证据完成任务 | 完成成功 0 次 | P4-2 | NOT_RUN |
+| EVID-GATE-08 | 非关键证据缺失 | 按策略降级且报告显示"证据缺口" | P4-2 | NOT_RUN |
+| EVID-GATE-09 | SOP 发布新版本后读取旧任务报告 | 完整回放原步骤、版本与哈希 | P4-2 | NOT_RUN |
+| EVID-GATE-10 | 物理删除已被任务引用的 SOP 版本 | 数据库层阻断 | P4-2 | NOT_RUN |
+| EVID-GATE-11 | 迁移 1 / 迁移 2 升级与回滚 | 各一次，回填计数核对一致 | P4-1/P4-2 | NOT_RUN |
+
+#### AI-GATE
+
+| 用例 | 场景 | 二元通过条件 | 批次 | 状态 |
+|---|---|---|---|---|
+| AI-GATE-01 | 未知动作 / 缺规则动作 | 默认拒绝，进入模块执行 0 次 | P4-3 | NOT_RUN |
+| AI-GATE-02 | 策略判定 `requires_approval=True` 的动作 | 进入等待审批状态；批准前副作用 0 次 | P4-3 | NOT_RUN |
+| AI-GATE-03 | 请求体伪造 `user_id` | 不改变任何运行时或审计主体 | P4-3 | NOT_RUN |
+| AI-GATE-04 | 删除客户端 `side_effects` 后调用写工具 | 仍强制创建审批 | P4-3 | NOT_RUN |
+| AI-GATE-05 | 未知 / 未发布工具 | 拒绝并审计 | P4-3 | NOT_RUN |
+| AI-GATE-06 | 申请人本人批准自己的审批 | 拒绝，理由 `self_approval_forbidden` 并写 deny 审计 | P4-4 | NOT_RUN |
+| AI-GATE-07 | 非教师角色批准 | 拒绝 | P4-4 | NOT_RUN |
+| AI-GATE-08 | 已决 / 已过期 / 状态已变化的审批再次批准 | 拒绝 | P4-4 | NOT_RUN |
+| AI-GATE-09 | 审批重启后读取 | 仍存在（持久化） | P4-4 | NOT_RUN |
+| AI-GATE-10 | 人为使审计写入失败后执行批准 | 批准与所有写副作用 0 次 | P4-4 | NOT_RUN |
+| AI-GATE-11 | 审计不可用时发生越权拒绝 | 拒绝仍生效，且可在独立通道找到真实 resource_id | P4-4 | NOT_RUN |
+| AI-GATE-12 | 随机 UUID / 他人 / 他课程 / 已撤销引用 | 进入 hits/citations 0 条 | P4-5 | NOT_RUN |
+| AI-GATE-13 | 有效引用由同一用户回放 | 成功 | P4-5 | NOT_RUN |
+| AI-GATE-14 | `trace_id` 贯穿 Command → ToolCall → Approval → Audit | 单一 trace_id 可检出完整链路 | P4-4 | NOT_RUN |
+
+#### DEP-GATE（静态部分；真实演练属 E2/E3，见下方说明）
+
+| 用例 | 场景 | 二元通过条件 | 批次 | 状态 |
+|---|---|---|---|---|
+| DEP-GATE-01 | 干净环境缺任一生产必填变量启动 | 启动失败 | P4-6 | NOT_RUN |
+| DEP-GATE-02 | 静态扫描生产编排与镜像 | 默认口令 / `latest` 浮动 tag / `DEBUG=true` / 模拟回退 / 错误 CORS 命中 0 次 | P4-6 | NOT_RUN |
+| DEP-GATE-03 | 生产镜像 worker 数与副本数 | worker=1 且不提供 replicas | P4-6 | NOT_RUN |
+| DEP-GATE-04 | 空库 / 上一版库 / 缺字段库启动 | 前两者成功；缺契约时 `/readyz` 返回 503 且不放量 | P4-6 | NOT_RUN |
+| DEP-GATE-05 | 重复执行发布流程 | 不产生副作用 | P4-6 | NOT_RUN |
+| DEP-GATE-06 | 重建后端容器后读取训练证据 | 100% 可读且哈希一致 | P4-5/P4-6 | NOT_RUN |
+| DEP-GATE-07 | 生产环境访问 `/docs` 与 `/openapi.json` | 不可访问 | P4-6 | NOT_RUN |
+| DEP-GATE-08 | 生产依赖 critical/high 可达风险分类 | **需用户授权联网后于 Phase 5 执行**；未取得明细前保持未关闭 | P4-7 准备 / Phase 5 执行 | NOT_RUN |
+| DEP-GATE-09 | `DR-01` 至 `DR-06` 真实演练 | 六项全部真实 PASS | **Phase 6** | NOT_RUN |
+
+> `DEP-GATE-09` 属 E2/E3。本地隔离环境的工具可用性演练**不得**记为 DR 通过。`REL-BLOCK-01` 在六项全部真实 PASS 前持续阻断 D0 与任何生产启用。
+>
+> 附带影响：P4-6 会把 `/health` 在 `overall_status="unhealthy"` 时改为返回 503。本文件"任务4"一节的 **API-02 当前断言 200**，届时需同步更新。
+
 ## 全量清单（页面/按钮/权限）
 
 ### 页面清单（按角色与入口）

@@ -16,6 +16,7 @@
 | 范围 | 当前状态 | 说明 |
 |---|---|---|
 | 规则事实源修复 | PASS | DOC-RULE-001 文档门禁已通过；不代表 E1 至 E4 应用验收通过 |
+| Phase 2 修复规格 | PASS | AUDIT-P2-DOC-001 文档门禁已通过；29 项发现全部映射到可复现门禁，但**全部为 NOT_STARTED**，不代表任何一项已修复 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -113,3 +114,43 @@
   - 测试生成的时间戳变化和构建生成的声明文件均已移除；没有把测试副作用带入审查提交。
   - 收口提交复验再次改写 `r-mos-backend/data/knowledge_store.json` 的测试编号和时间；核对差异只含本次测试生成值后恢复，最终 Git 状态无文件改动。
 - Notes：全量自动测试通过不覆盖静态反证。E2、E3、E4 和生产启用未执行且继续 BLOCKED；`REL-BLOCK-01` 未清零。
+
+### AUDIT-P2-DOC-001｜Phase 2 安全架构与修复规格
+
+- 基线提交：`09ec02a19488504449a3f6f8439d3a4f73d33774`
+- 结果提交：本报告所在提交
+- 环境：`audit/phase2-security-architecture` 隔离工作区（`/Users/xuhehong/Desktop/r-mos/.worktrees/phase2-security-architecture`）
+- 范围：五份修复 ADR、29 项修复矩阵、Phase 3/4 TDD 计划、六个门禁的可执行用例展开
+- Commands Run：
+  - `git merge-base --is-ancestor b1db003c84dd974138290d6b6eaef7dc2c50030b HEAD`
+  - `git cat-file -e HEAD:docs/handover/2026-08-21-phase2-phase6-handover-v0.1.0.md`
+  - `grep -cE '^@router\.(get|post|put|patch|delete|websocket)' app/api/v1/endpoints/*.py`
+  - `rg -c 'X-RMOS-Role|X-User-ID'`（全仓）
+  - `rg -c '^[a-z_]+ = [A-Z][A-Za-z_]*\(\)$' r-mos-backend/app/`
+  - Alembic revision 链解析（只读脚本，未连接数据库）
+  - 对 authz_guard / access_control / factory / preflight_check / evidence_* / sop_service / file_storage / policy_matrix / audit_event_service / approval_service / websocket* / config / main / health / Dockerfile / docker-compose / nginx.conf / pytest.ini / test_auth_boundary 的只读读取
+- Key Output：
+  - 路由规模：`/api/v1` 下 182 个路由装饰器、37 个 endpoint 模块；`app/api/v1/__init__.py:39-70` 的 28 次 `include_router` **无一处 router 级 `dependencies=`**。静态 AST 扫描得 111 个路由函数无认证依赖，与 Phase 1 动态探针的 109 接近；**两者均为待分类路由数，都不是漏洞数**。
+  - 身份头爆炸半径：生产代码仅 2 处（`teaching_roster.py` 10 处、`access_control.py:21` 1 处）；**前端 0 处**，且 `r-mos-frontend/src/api/client.ts:60-68` 已为每个请求挂 Bearer 令牌并实现 401 刷新。
+  - 进程内单例：后端 `app/` 下 62 个模块级单例、分布于 61 个文件——单进程约束的量化依据。
+  - Alembic：38 个 revision，唯一 head 为 `20260817_sop_three_phase`。
+  - 既有可复用组件已登记：`access_control.py:37` 的拒绝语义与拒绝审计（读 404 / 写 403 + 真实 resource_id）、`authz_guard.py:105` 的 `require_permission`、`storage/__init__.py:9` 的 `get_storage()`、`tests/e2e/conftest.py:34` 的 `e2e_env`、`tests/e2e/helpers.py:16` 的 `register_and_login`、`tests/unit/test_deny_audit_entrypoint_gate.py:30` 的架构门禁范式。
+  - 29 项计数复核：1 个 P0、24 个 P1、4 个 P2；28 项事实、1 项推断（CTRL-105）。全部映射到 AUTH/CTRL/RT/EVID/AI/DEP 六个门禁与 P3-1～P3-6、P4-1～P4-7 批次。
+  - 门禁用例展开：AUTH-GATE 12 条、CTRL-GATE 11 条、RT-GATE 6 条、EVID-GATE 11 条、AI-GATE 14 条、DEP-GATE 9 条，**全部状态 NOT_RUN**。
+- Evidence：
+  - `docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md`
+  - `docs/adr/ADR-2026-08-21-*.md`（5 份）
+  - `docs/plans/2026-08-21-rmos-phase3-auth-control-realtime.md`
+  - `docs/plans/2026-08-21-rmos-phase4-evidence-ai-deployment.md`
+  - `docs-archive/DEVELOPMENT_LOG.md`
+- Result：PASS（**仅 AUDIT-P2-DOC-001 文档门禁**）
+- Failure Handling：
+  - 并行只读取证 workflow 的 9 个 agent 中 7 个因会话额度中断（0 次结构化输出），2 个成功。未采用任何未完成 agent 的中间产物；失败部分的取证范围全部由本人第一手读取补齐并在上方 Commands Run 中列明。
+  - 成功的 agent 反证了本人先前一处口头结论：`ApprovalQueuePage.tsx:11` 实际 import `@/api/approvals`（数据库审批），并非旁路审批的消费方。经独立核实后更正 ADR-AI，决策 G 的前端影响由"必须迁移页面"改为"删除 `agent-v2.ts:570-645` 的死代码"。
+  - 取证中发现三项 Phase 1 未记录但影响方案的事实，已写入对应 ADR：两套审批能力不对等（数据库那套无法为通用资源提审批，`approvals` 表须扩列）；存在第三套完全未使用的审批模型 `approval_records`/`decision_records`；`/health` 的 docstring 声称 503 而实现恒返回 200。
+- Notes：
+  - **本批只写文档，没有修改应用代码、测试、依赖、运行配置或数据库结构；没有启动前端、后端、数据库、浏览器或真机；没有联网或运行 `npm audit`；没有合并或推送。**
+  - 29 项发现全部为 `NOT_STARTED`。ADR 写完不等于修复完成。
+  - E1 仍为 FAIL；E2、E3、E4 与生产启用仍为 BLOCKED；`REL-BLOCK-01` 未清零；`DR-01` 至 `DR-06` 仍未真实执行。
+  - 五份 ADR 状态均为 Proposed。其"待确认事项"（公开路由白名单签字、`regression` 用例删除批准、存储命名空间口径、SOP 产品行为变更、审计事务改造范围等）未获用户确认前，不得进入 Phase 3/4 实现。
+  - 待定项 J（现场部署形态、TLS 终结方、备份目标、RTO/RPO）保持 BLOCKED；`DEP-101` 与 `DEP-104` 不得在 Phase 4 关闭。
