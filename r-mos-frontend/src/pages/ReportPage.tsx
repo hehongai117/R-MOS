@@ -9,11 +9,25 @@ import { Button } from '@/components/ui/button'
 import type { TaskReport } from '@/types/report'
 import { formatDateTime } from '@/utils/format'
 
+type ChecklistEvidence = {
+  step_index: number
+  evidence_type: 'kit_checklist' | 'verify_checklist'
+  evidence_value?: {
+    required_items?: string[]
+    confirmed_items?: string[]
+  }
+  is_compliant: boolean
+}
+
+type ReportWithChecklistEvidence = TaskReport & {
+  checklist_evidence?: ChecklistEvidence[]
+}
+
 const ReportPage = () => {
   const { taskId } = useParams<{ taskId: string }>()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [report, setReport] = useState<TaskReport | null>(null)
+  const [report, setReport] = useState<ReportWithChecklistEvidence | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -70,6 +84,37 @@ const ReportPage = () => {
       render: (value: string | undefined) => value || '-',
     },
   ]
+
+  const checklistEvidence = report?.checklist_evidence ?? []
+  const kitEvidence = checklistEvidence.filter((item) => item.evidence_type === 'kit_checklist')
+  const verifyEvidence = checklistEvidence.filter((item) => item.evidence_type === 'verify_checklist')
+
+  const renderEvidence = (items: ChecklistEvidence[]) => (
+    <div className="space-y-3">
+      {items.map((item) => {
+        const requiredItems = item.evidence_value?.required_items ?? []
+        const confirmedItems = new Set(item.evidence_value?.confirmed_items ?? [])
+        return (
+          <div key={`${item.evidence_type}-${item.step_index}`} className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-text-secondary">步骤 {item.step_index}</span>
+              <StatusBadge label={item.is_compliant ? '通过' : '未通过'} status={item.is_compliant ? 'success' : 'error'} />
+            </div>
+            <div className="space-y-2">
+              {requiredItems.map((requiredItem) => (
+                <div key={requiredItem} className="flex items-center justify-between gap-3 text-sm text-text-primary">
+                  <span>{requiredItem}</span>
+                  <span className={confirmedItems.has(requiredItem) ? 'text-status-success' : 'text-status-error'}>
+                    {confirmedItems.has(requiredItem) ? '已确认' : '未确认'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 
   if (!report && !loading) {
     return (
@@ -153,6 +198,14 @@ const ReportPage = () => {
               <Table columns={columns} dataSource={report.step_scores} pagination={false} rowKey="step_index" />
             )}
           </SectionCard>
+
+          {kitEvidence.length > 0 ? (
+            <SectionCard title="齐套记录">{renderEvidence(kitEvidence)}</SectionCard>
+          ) : null}
+
+          {verifyEvidence.length > 0 ? (
+            <SectionCard title="验收记录">{renderEvidence(verifyEvidence)}</SectionCard>
+          ) : null}
 
           <SectionCard title="改进建议">
             {report.recommendations.length === 0 ? (

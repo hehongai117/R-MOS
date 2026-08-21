@@ -2,6 +2,7 @@
 Task API端点（V2.3完整版）
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -15,12 +16,13 @@ from app.schemas.task import (
     StepExecutionRequest,
     StepExecutionResponse,
 )
-from app.schemas.report import TaskReport
+from app.schemas.report import ChecklistEvidence, TaskReport
 from app.services.task_service import TaskService
 from app.services.event_service import EventService
 from app.services.scoring_service import ScoringService
 from app.services.preflight_check import preflight_check_service
 from app.models.task import TaskStatus
+from app.models.task_execution import TaskExecution, TaskStepResult
 from app.core.exceptions import BusinessRuleViolation
 
 router = APIRouter()
@@ -174,6 +176,25 @@ async def get_task_report(
         events = await event_service.get_task_events(task_id)
         error_count = sum(1 for e in events if e.is_error)
 
+        evidence_result = await db.execute(
+            select(TaskStepResult)
+            .join(TaskExecution, TaskExecution.id == TaskStepResult.execution_id)
+            .where(
+                TaskExecution.task_id == task_id,
+                TaskStepResult.evidence_type.in_(("kit_checklist", "verify_checklist")),
+            )
+            .order_by(TaskStepResult.step_index)
+        )
+        checklist_evidence = [
+            ChecklistEvidence(
+                step_index=item.step_index,
+                evidence_type=item.evidence_type,
+                evidence_value=item.evidence_value,
+                is_compliant=item.is_compliant,
+            )
+            for item in evidence_result.scalars().all()
+        ]
+
         # 5. 构造报告
         # V2.3.1 修复: 防御性检查 started_at 和 completed_at
         total_duration = 0
@@ -199,7 +220,8 @@ async def get_task_report(
             skipped_steps=sum(1 for s in score_result["step_scores"] if s.remarks == "已跳过"),
             error_count=error_count,
             recommendations=score_result["recommendations"],
-            generated_at=datetime.now(timezone.utc)
+            generated_at=datetime.now(timezone.utc),
+            checklist_evidence=checklist_evidence or None,
         )
     else:
         raise BusinessRuleViolation(

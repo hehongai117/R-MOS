@@ -24,6 +24,14 @@ class StepScore(BaseModel):
     remarks: Optional[str] = None
 
 
+class ChecklistEvidence(BaseModel):
+    """齐套或验收步骤的证据明细。"""
+    step_index: int
+    evidence_type: str
+    evidence_value: Optional[Dict[str, Any]] = None
+    is_compliant: bool
+
+
 class TaskReport(BaseModel):
     """任务报告"""
     task_id: int
@@ -45,6 +53,7 @@ class TaskReport(BaseModel):
     error_count: int
     recommendations: List[str]
     generated_at: datetime
+    checklist_evidence: Optional[List[ChecklistEvidence]] = None
 
 
 # ============ P2-2: LLM Evaluation Report Schema ============

@@ -7238,3 +7238,35 @@
   - 后续执行段定位来自真实步骤编号和播放器按钮；验证段标题来自 22 步种子数据；报告标题和查看按钮已与生产页面源码核对，未发现同类猜测性定位。
   - 未修改生产代码；保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
 - Next Step: 用户在真实环境重新执行 npx playwright test sop-three-phase.spec.ts。
+- DateTime: 2026-08-21 11:55 CST
+- Task: Task 5.2 报告页两节
+- Scope (files changed):
+  - r-mos-backend/app/schemas/report.py
+  - r-mos-backend/app/api/v1/endpoints/tasks.py
+  - r-mos-backend/tests/e2e/test_e2e_task_report_evidence.py
+  - r-mos-frontend/src/pages/ReportPage.tsx
+  - r-mos-frontend/src/pages/__tests__/ReportPage.test.tsx
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/e2e/test_e2e_task_report_evidence.py -v
+  - cd r-mos-frontend && npx vitest run src/pages/__tests__/ReportPage.test.tsx
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/ -v
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --check
+- Tests:
+  - TDD red：后端 2 failed（缺少 checklist_evidence）；前端 1 failed / 1 passed（有证据两节尚不存在，无证据兼容用例通过）。
+  - 后端定向：2 passed，29 warnings，0 failed。
+  - 前端定向：2 passed，0 failed。
+  - 后端全量：822 passed，3 skipped，1959 warnings，0 failed（66.97s）。
+  - 前端全量：511 passed，2 skipped，0 failed（69 files）。
+  - 前端构建：PASS，6315 modules transformed，built in 9.79s。
+- Result: PASS
+- Risks/Notes:
+  - 报告接口仅返回真实 TaskStepResult 中 evidence_type 为 kit_checklist / verify_checklist 的记录；photo 等其他证据不混入。
+  - TaskReport.checklist_evidence 为可选字段且默认 None；无证据时前端不渲染“齐套记录”“验收记录”，显式兼容用例已通过。
+  - docs/testing/TEST_REPORT.md 不存在，按任务要求跳过，未创建替代文件。
+  - 全量测试保留仓库既有警告：React/jsdom、Pydantic/时间 API 弃用提示、aiosqlite 线程提示，以及后台分析任务在沙箱中访问外部数据库被拒；命令退出码均为 0。
+  - git commit 尝试失败：无法创建 .git/index.lock（Operation not permitted）；没有文件被暂存或提交。
+  - 未修改计划状态表；未暂存 knowledge_store.json 或任何无关未跟踪文件；未执行 git push。
+- Next Step: Task 5.2 为本计划最后一个 Task；由用户复跑验收命令并决定是否允许后续 push。
