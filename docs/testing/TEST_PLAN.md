@@ -1,5 +1,13 @@
 # 测试计划
 
+## 当前使用说明（2026-08-21）
+
+- 上位验收规则为 `docs/testing/ACCEPTANCE_CHARTER.md`。
+- 本文件是覆盖清单和历史测试路径集合，不是当前提交的执行报告。
+- 文中已有的“PASS”保留为对应历史批次记录；没有当前提交、环境、命令和原始输出时，统一按 HISTORICAL 处理。
+- 新执行结果必须写入 `docs/testing/TEST_REPORT.md`，并同步追加 `docs-archive/DEVELOPMENT_LOG.md`。
+- 单校五台真机交付的详细二元标准以 `docs/testing/2026-08-10-rmos-single-school-five-robot-acceptance-matrix-v0.1.0.md` 为准。
+
 ## 全量清单（页面/按钮/权限）
 
 ### 页面清单（按角色与入口）
@@ -848,7 +856,7 @@
 
 ### Phase1 UI 冒烟
 
-- 用例编号：UI-01（PASS）
+- 用例编号：UI-01（HISTORICAL）
   - 角色：学生/教师
   - 前置数据/种子命令：
     ```bash
@@ -1044,7 +1052,7 @@
 
 ### 任务14（Phase2 P2 步骤诊断下钻）
 
-- 用例编号：T14-API-01（stepDiagnoses 长度与字段）（PASS）
+- 用例编号：T14-API-01（stepDiagnoses 长度与字段）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：completed attempt_id=`22`；backend_port=`8000`
   - 接口验收（curl）：
@@ -1059,7 +1067,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `主目录回归验收（Phase2 基线冻结）`
   - 标签：P2
 
-- 用例编号：T14-UI-01（步骤诊断区块下钻）（PASS）
+- 用例编号：T14-UI-01（步骤诊断区块下钻）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：completed attempt_id=`22`；frontend_port=`55173`
   - UI 路径验收：
@@ -1074,7 +1082,7 @@
 
 ### 任务15（Phase3 Step 1 规则真实触发闭环）
 
-- 用例编号：T15-RULE-01（R-DIAG-001 error_count）（PASS）
+- 用例编号：T15-RULE-01（R-DIAG-001 error_count）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：attempt_id=`23`
     ```bash
@@ -1097,7 +1105,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step1 规则命中证据（R-DIAG-001/002/003）`
   - 标签：P3
 
-- 用例编号：T15-RULE-02（R-DIAG-002 skip_count）（PASS）
+- 用例编号：T15-RULE-02（R-DIAG-002 skip_count）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：attempt_id=`24`
     ```bash
@@ -1120,7 +1128,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step1 规则命中证据（R-DIAG-001/002/003）`
   - 标签：P3
 
-- 用例编号：T15-RULE-03（R-DIAG-003 duration_ms）（PASS）
+- 用例编号：T15-RULE-03（R-DIAG-003 duration_ms）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：attempt_id=`25`
     ```bash
@@ -1145,7 +1153,7 @@
 
 ### 任务16（Phase3 Step2 触发步骤定位）
 
-- 用例编号：T16-STEPDIAG-01（R-DIAG-001 触发步骤非 OK）（PASS）
+- 用例编号：T16-STEPDIAG-01（R-DIAG-001 触发步骤非 OK）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：attempt_id=`23`
   - 接口验收（curl）：
@@ -1160,7 +1168,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step2 步骤诊断下钻证据`
   - 标签：P3
 
-- 用例编号：T16-STEPDIAG-02（R-DIAG-002 触发步骤非 OK）（PASS）
+- 用例编号：T16-STEPDIAG-02（R-DIAG-002 触发步骤非 OK）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：attempt_id=`24`
   - 接口验收（curl）：
@@ -1175,7 +1183,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step2 步骤诊断下钻证据`
   - 标签：P3
 
-- 用例编号：T16-STEPDIAG-03（R-DIAG-003 触发步骤非 OK）（PASS）
+- 用例编号：T16-STEPDIAG-03（R-DIAG-003 触发步骤非 OK）（HISTORICAL）
   - 角色：教师
   - 前置数据/种子命令：attempt_id=`25`
   - 接口验收（curl）：
@@ -1192,7 +1200,7 @@
 
 ### 任务17（Phase3 Step3 运行入口稳态化）
 
-- 用例编号：T17-OPS-01（端口降级与开放接口验证）（PASS）
+- 用例编号：T17-OPS-01（端口降级与开放接口验证）（HISTORICAL）
   - 角色：开发
   - 前置条件：主目录后端启动；8000 绑定失败时降级到 18000
   - 验收命令（curl）：
@@ -1205,7 +1213,7 @@
   - 标签：P3
 ### 任务18（Phase3 Step4 单命令回归）
 
-- 用例编号：T18-AUTO-01（单命令 Phase3 回归）（PASS）
+- 用例编号：T18-AUTO-01（单命令 Phase3 回归）（HISTORICAL）
   - 角色：开发
   - 前置条件：后端可启动并生成诊断样本
   - 命令：`bash r-mos-backend/scripts/run_phase3_regression.sh`
@@ -1215,7 +1223,7 @@
 
 ### 任务19（Phase3 Step5 全栈端到端回归）
 
-- 用例编号：T19-E2E-API-01（规则命中与步骤诊断 API 回归）（PASS）
+- 用例编号：T19-E2E-API-01（规则命中与步骤诊断 API 回归）（HISTORICAL）
   - 角色：开发
   - 前置条件：后端启动；已生成本次回归 attempt_id
   - 实测端口与样本：backend_port=8000，attempt_id error=35 skip=36 slow=37
@@ -1234,7 +1242,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step5 全栈端到端回归证据`
   - 标签：P3
 
-- 用例编号：T19-E2E-UI-01（诊断页 UI 冒烟）（PASS）
+- 用例编号：T19-E2E-UI-01（诊断页 UI 冒烟）（HISTORICAL）
   - 角色：教师
   - 前置条件：前端 dev server 启动；后端可用
   - 实测端口与样本：frontend_port=3000，attempt_id error=35 skip=36 slow=37
@@ -1248,7 +1256,7 @@
   - 证据落点：`docs/testing/TEST_REPORT.md` → `Phase3 Step5 全栈端到端回归证据`
   - 标签：P3
 
-- 用例编号：T19-E2E-OPS-01（端口策略与入口验证）（PASS）
+- 用例编号：T19-E2E-OPS-01（端口策略与入口验证）（HISTORICAL）
   - 角色：开发
   - 前置条件：按照 RUNBOOK 启动后端/前端
   - 验收点：

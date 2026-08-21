@@ -7306,3 +7306,49 @@
   - 第一次 git diff --cached --check 检出 3 份新文档末尾多余空行；删除多余空行后重新暂存并复验通过。
   - 仅改审查文档和当前实际使用的开发记录；主工作区保持原分支和零改动；未执行 git push。
 - Next Step: 由用户决定是否先批准“规则修复批次”：新建当前验收章程、同步更新 AGENTS.md 与镜像、统一 Python 环境和开发记录路径；完成后再进入 Phase 1 六条链路审查。
+
+---
+
+- DateTime: 2026-08-21 15:08 CST
+- Task: 规则事实源修复批次——重建当前验收章程、统一环境与记录口径、接通 Claude Code 只读复核
+- Scope (files changed):
+  - AGENTS.md
+  - docs/ops/CODEX_RULES.md
+  - docs/testing/ACCEPTANCE_CHARTER.md
+  - docs/testing/TEST_PLAN.md
+  - docs/testing/TEST_REPORT.md
+  - docs/testing/2026-08-10-rmos-single-school-five-robot-acceptance-matrix-v0.1.0.md
+  - docs/audit/README.md
+  - docs/audit/2026-08-21-phase0-audit-charter-v0.1.0.md
+  - docs/audit/2026-08-21-phase0-source-register-v0.1.0.md
+  - docs/audit/2026-08-21-claude-code-readonly-evidence-v0.1.0.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - claude auth status
+  - claude -p --model sonnet --permission-mode plan --tools Read,Glob,Grep --no-session-persistence --output-format json --max-budget-usd 1.00 <只读登录样例>
+  - claude -p --model sonnet --permission-mode dontAsk --tools Read,Glob,Grep --no-session-persistence --output-format json --max-budget-usd 1.00 <第一轮陌生读者复核>
+  - claude -p --model sonnet --permission-mode dontAsk --tools Read,Glob,Grep --no-session-persistence --output-format json --max-budget-usd 1.20 <第二轮陌生读者复核>
+  - shasum -a 256 AGENTS.md docs/ops/CODEX_RULES.md
+  - test -f <全部现行事实源和审查索引链接目标>
+  - rg --pcre2 -n <旧优先级路径> AGENTS.md docs/ops/CODEX_RULES.md
+  - rg -n <验收状态、证据等级、G1-G6、REL-BLOCK-01、HISTORICAL>
+  - git diff --cached --check
+  - git status --short --branch
+- Tests:
+  - Claude Code 登录：隔离限制之外 `loggedIn=true`；真实只读样例退出码0，仓库零改动。
+  - Claude 第一轮读者复核：FAIL，发现4项有效问题；逐项核对并修正。
+  - Claude 第二轮读者复核：PASS_NO_NEW_P0_P1_P2；原4项全部关闭，无新P0/P1/P2。
+  - 规则镜像：AGENTS.md 与 docs/ops/CODEX_RULES.md SHA-256 完全一致。
+  - 路径与链接：现行具体事实源和审查索引目标全部存在；旧悬空优先级路径命中0项。
+  - 章程结构：6个验收状态、E0至E4、G1至G6、REL-BLOCK-01及其来源均检出。
+  - 历史状态：TEST_PLAN.md 14个历史PASS标题全部改为HISTORICAL，当前PASS标题命中0项。
+  - 代码测试：未运行。本批仅修改文档，未启动前后端、数据库、浏览器或真机。
+- Result: PASS（仅 DOC-RULE-001 规则文档门禁；E1至E4及生产启用状态未提升）
+- Risks/Notes:
+  - 隔离环境无法读取 Claude 登录信息，曾返回 loggedIn=false；在隔离限制之外复核为已登录，未记录任何凭据。
+  - Claude 默认模型首次调用因0.30美元预算不足中止，实际费用约0.62031美元；改用Sonnet后样例成功。两轮读者复核费用分别约0.97922和0.73346美元。
+  - 第一次规则补丁因原文匹配差异未写入；拆分小补丁后成功。第一次旧路径检索因默认模式不支持后向判断失败；改用PCRE2后重跑。
+  - 标准后端环境已统一为r-mos-backend/venv，但本批没有执行B1前置的解释器、依赖、测试数据库、对象存储和固定身份数据核对。
+  - REL-BLOCK-01仍未清零；DR-01至DR-06未全部真实PASS前继续阻断D0和任何生产启用。
+  - 未执行git push。
+- Next Step: 等待用户确认是否进入Phase 1六条链路审查；开始前先按新规则现场核对Python环境，并把应用验收状态保持为NOT_RUN或BLOCKED，直到取得当前提交证据。

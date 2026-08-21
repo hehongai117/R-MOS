@@ -2,28 +2,27 @@
 > 权威源：本文件是 Codex 开发规则的唯一真相源（Single Source of Truth）。  
 > 镜像：docs/ops/CODEX_RULES.md 必须与本文件一致，但不作为权威源。  
 > 适用范围：所有对 r-mos 仓库的开发/测试/文档修改。  
-> 生效优先级：AGENTS.md > docs/plans/2026-03-05-review-test-cleanup-execution.md > R-MOS_Review_Test_Cleanup_Plan.md > docs/review/review-checklist.md > docs/testing/backend-test-report.md > docs/testing/TEST_REPORT.md > docs/testing/TEST_PLAN.md > docs/ops/RUNBOOK.md > docs/adr/* > DEVELOPMENT_LOG.md
+> 生效优先级：AGENTS.md > docs/testing/ACCEPTANCE_CHARTER.md > 已批准且适用的 docs/adr/* > 当前任务明确指定的 docs/superpowers/plans/* 或 docs/plans/* > docs/testing/2026-08-10-rmos-single-school-five-robot-acceptance-matrix-v0.1.0.md > docs/plans/2026-08-10-rmos-single-school-five-robot-deployment-rollback-v0.1.0.md > docs/testing/TEST_PLAN.md > docs/testing/TEST_REPORT.md > docs/audit/* > docs-archive/DEVELOPMENT_LOG.md > docs-archive/* 与 Git 历史
 > “任何任务必须对齐 docs/testing/ACCEPTANCE_CHARTER.md 的门禁与证据要求。”
 
 ---
 
-## 0) 当前项目状态快照（2026-03-05）
+## 0) 当前项目状态快照（2026-08-21）
 
-- 专项执行计划：`docs/plans/2026-03-05-review-test-cleanup-execution.md`
-- 源计划文件：`R-MOS_Review_Test_Cleanup_Plan.md`
-- 已完成并打标：
-  - `R-04-3`（阻塞项修复）
-  - `T-01` / `T-02` / `T-03` / `T-04` / `T-05`
-- 当前测试基线（最近一次可追溯证据）：
-  - 后端基线：`collected 239`，`236 passed, 3 skipped, 0 failed, 0 error`
-  - 后端核心 14 服务覆盖率门禁：`378 passed, 1 skipped, 0 failed`，覆盖率 `74.63%`（`>= 70%`）
-  - 前端：`npm test`（Vitest）`8 passed`；`npm run build` PASS
-- 当前下一步：进入 `T-06`（前端核心组件测试补全）
-- 专项批次闭环（每批必须同步）：
-  1. 更新 `R-MOS_Review_Test_Cleanup_Plan.md` 勾选状态
-  2. 更新 `docs/review/review-checklist.md`
-  3. 追加 `DEVELOPMENT_LOG.md`（命令、结果、失败处理）
-  4. 输出可复现最小验证命令与结果摘要
+- 当前规则与记录：
+  - 验收总纲：`docs/testing/ACCEPTANCE_CHARTER.md`
+  - 当前测试报告：`docs/testing/TEST_REPORT.md`
+  - 开发记录：`docs-archive/DEVELOPMENT_LOG.md`
+  - 架构审查基线：`docs/audit/README.md`
+- 最近完成的功能专项：`docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md` 记录 14/14 Task 完成；其中 Task 5.1 仍为有条件通过，完整 22 步 E2E 未稳定跑通。
+- 最近一次记录的测试快照为 2026-08-21：后端 `822 passed, 3 skipped`，前端 `511 passed, 2 skipped`，前端构建 PASS。该数字属于对应提交的历史证据，本规则修复批次未重新执行，不得自动视为当前提交验收结果。
+- 单校五台真机验收矩阵中的 E1 至 E4 正式执行尚未在本批完成；`REL-BLOCK-01` 继续阻断 D0 与任何生产启用。
+- 当前下一步：规则事实源已修复；进入 Phase 1 六条链路审查前仍须获得用户确认。
+- 每批闭环必须同步：
+  1. 若当前任务有明确计划和状态表，更新对应状态；
+  2. 影响验收时更新 `docs/testing/TEST_PLAN.md` 与/或 `docs/testing/TEST_REPORT.md`；
+  3. 追加 `docs-archive/DEVELOPMENT_LOG.md`（命令、结果、失败处理）；
+  4. 输出可复现最小验证命令与结果摘要。
 
 ---
 
@@ -31,7 +30,12 @@
 Codex 每次开始任务前，必须在回复中逐条输出并确认（✅/❌）：
 
 1. ✅ 当前仓库目录：`/Users/xuhehong/Desktop/r-mos`
-2. ✅ Python 环境：仅在 `.venv` 内执行（不得用系统 Python）
+2. ✅/❌ Python 环境（每次任务现场检查，不得预填为已就绪）：
+   - 标准后端环境：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv`
+   - 主工作区使用 `r-mos-backend/venv/bin/python -m pytest ...`
+   - 隔离 worktree 若没有本地 `venv`，可调用上述绝对路径解释器，但工作目录必须是该 worktree 的 `r-mos-backend`，并先核对解释器与依赖
+   - 不得使用系统 Python
+   - 只有解释器路径和当前任务所需依赖实际核对通过后才能输出 ✅；否则输出 ❌ 并停止 Python 相关执行
 3. ✅ 代理/网络：
    - 代理：V2rayN `10808`
    - 本机 HTTP 调用：必须 `curl --noproxy 127.0.0.1,localhost`
@@ -44,16 +48,17 @@ Codex 每次开始任务前，必须在回复中逐条输出并确认（✅/❌�
    - 允许 commit
    - **git push 必须事先获得用户许可（严禁擅自 push）**
 7. ✅ 事实源优先级（冲突时按此为准）：
-   - docs/plans/2026-03-05-review-test-cleanup-execution.md
-   - R-MOS_Review_Test_Cleanup_Plan.md
-   - docs/review/review-checklist.md
-   - docs/review/service-test-gap-2026-03-05.md
-   - docs/testing/backend-test-report.md
-   - docs/testing/TEST_REPORT.md
-   - docs/testing/TEST_PLAN.md
-   - docs/ops/RUNBOOK.md
-   - docs/adr/ADR.md
-   - DEVELOPMENT_LOG.md
+   - `AGENTS.md`
+   - `docs/testing/ACCEPTANCE_CHARTER.md`
+   - 已批准且适用的 `docs/adr/*`
+   - 当前任务明确指定的 `docs/superpowers/plans/*` 或 `docs/plans/*`
+   - `docs/testing/2026-08-10-rmos-single-school-five-robot-acceptance-matrix-v0.1.0.md`
+   - `docs/plans/2026-08-10-rmos-single-school-five-robot-deployment-rollback-v0.1.0.md`
+   - `docs/testing/TEST_PLAN.md`
+   - `docs/testing/TEST_REPORT.md`
+   - `docs/audit/*`
+   - `docs-archive/DEVELOPMENT_LOG.md`
+   - `docs-archive/*` 与 Git 历史仅作历史证据
 
 ---
 
@@ -71,9 +76,9 @@ Codex 每次开始任务前，必须在回复中逐条输出并确认（✅/❌�
   - 关键差异片段（只截关键段落/关键函数）
 - 必须给出可复现命令（可复制）
 - 必须跑与变更相关的“最小测试集”，并记录结果（见第 4 节）
-- 必须更新 `DEVELOPMENT_LOG.md`（见第 5 节）
-- 若属于 Review/Test Cleanup 专项批次：每完成一组必须同步更新计划勾选、review-checklist、DEVELOPMENT_LOG，并输出最小验证命令摘要
-- 若变更影响验收：必须同步更新 `docs/testing/TEST_PLAN.md` 或 `TEST_REPORT.md`
+- 必须更新 `docs-archive/DEVELOPMENT_LOG.md`（见第 5 节）
+- 若当前任务有明确计划和状态表：每完成一组必须同步更新计划状态、开发记录，并输出最小验证命令摘要
+- 若变更影响验收：必须同步更新 `docs/testing/TEST_PLAN.md` 与/或 `docs/testing/TEST_REPORT.md`
 
 ### 2.3 不能做（出现即判失败）
 - 不能编造测试结果；不能“假设通过”
@@ -100,7 +105,7 @@ Codex 每次开始任务前，必须在回复中逐条输出并确认（✅/❌�
 ### 3.3 任务结束（必做）
 1. 输出 `git diff --name-only`
 2. 跑测试并输出结果（第 4 节）
-3. 更新 `DEVELOPMENT_LOG.md`（第 5 节）
+3. 更新 `docs-archive/DEVELOPMENT_LOG.md`（第 5 节）
 4. 允许 commit，输出 commit hash
 5. **停止在 push 前：询问用户是否允许 push**
 
@@ -114,7 +119,7 @@ Codex 每次开始任务前，必须在回复中逐条输出并确认（✅/❌�
 - 前端变更：至少执行 `npm test`（Vitest）或 `npm run build`，提供命令与输出摘要
 - 回归变更：跑对应回归脚本（如 scripts/run_phase3_regression.sh 等）
 
-### 4.2 测试证据格式（必须写进 DEVELOPMENT_LOG）
+### 4.2 测试证据格式（必须写进 `docs-archive/DEVELOPMENT_LOG.md`；影响验收时同步写入当前测试报告）
 - Commands Run（可复制）
 - Output 摘要（失败时贴关键错误栈）
 - Result：PASS/FAIL
@@ -124,7 +129,7 @@ Codex 每次开始任务前，必须在回复中逐条输出并确认（✅/❌�
 
 ---
 
-## 5) 开发记录标准（DEVELOPMENT_LOG.md）
+## 5) 开发记录标准（`docs-archive/DEVELOPMENT_LOG.md`）
 每次任务结束必须新增一条记录，格式必须一致：
 
 - DateTime:
@@ -151,7 +156,7 @@ ADR 最小内容：背景、决策、备选、影响、迁移策略、回滚策�
 
 ---
 
-## 7) AI/权限/审批（v0.3 强制规则）
+## 7) AI/权限/审批（强制规则）
 - 任意 write tool：必须 `risk_level >= medium` 且走审批（teacher confirm 起）
 - 任意 deny：必须写审计；对外 404 也必须记录真实 `resource_id`
 - RAG：对象级后过滤“返回空”属于检索层；HTTP GET 越权仍返回 404
