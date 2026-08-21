@@ -25,6 +25,7 @@
 - [Phase 1 六链路审查报告](./2026-08-21-phase1-six-chain-review-v0.1.0.md)：29 项发现、当前测试基线、六条链路裁决和建议修复顺序。
 - [Phase 1 Claude Code 只读复核证据](./2026-08-21-phase1-claude-code-readonly-evidence-v0.1.0.md)：两轮独立复核、采纳过程、费用和文件保护证据。
 - [Phase 1 执行计划](../plans/2026-08-21-rmos-architecture-audit-phase1.md)：固定范围、九项执行任务和收口要求。
+- [Phase 2 至 Phase 6 新窗口交接](../handover/2026-08-21-phase2-phase6-handover-v0.1.0.md)：精确恢复点、29 项发现地图、推荐阶段门槛和新窗口启动提示词。
 
 ## 当前结论
 
