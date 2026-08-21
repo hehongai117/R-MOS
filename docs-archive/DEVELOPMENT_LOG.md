@@ -7132,3 +7132,28 @@
   - 后续 14 个执行步骤已转换为无阻断桥接步骤；后续 4 个验收步骤均先全选再验证，不会主动打开同类阻断弹窗。报告页断言也不依赖覆盖层按钮。
   - 未修改生产代码；保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
 - Next Step: 用户在真实环境重新执行 npx playwright test sop-three-phase.spec.ts，继续验证执行段、验证段及报告记录。
+
+---
+
+- DateTime: 2026-08-21 11:04 CST
+- Task: Task 5.1 E2E 修复 — 按真实 DOM 定位齐套重试按钮
+- Scope (files changed):
+  - r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx eslint e2e/sop-three-phase.spec.ts --report-unused-disable-directives --max-warnings 0
+  - cd r-mos-frontend && npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM --skipLibCheck e2e/sop-three-phase.spec.ts
+  - rg -n "教学提示|force: true|getByRole\\('button', \\{ name: '重试'|齐套完成|scrollIntoViewIfNeeded|toBeEnabled" r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - git diff --check
+- Tests:
+  - 用户真实环境验证：动态 SOP、阶段锁、断电验收与齐套门禁通过；四项齐套 checkbox 已全部勾满，旧脚本因不存在的“教学提示”定位超时。
+  - ESLint：PASS，0 warning / 0 error。
+  - TypeScript 单文件检查：PASS，0 error。
+  - Playwright E2E：按任务分工未运行；未启动任何服务。
+- Result: PASS（按真实 DOM 完成静态修复；真实 Playwright 结果待用户复验）
+- Risks/Notes:
+  - 删除对“教学提示”文本及 alert 内嵌按钮的错误假设，直接使用页面唯一的重试按钮。
+  - 点击前依次等待“齐套完成”、滚动按钮到视区、确认可见且可用；未使用 force 点击。
+  - 后续执行段定位来自真实步骤编号和播放器按钮；验证段标题来自 22 步种子数据；报告标题和查看按钮已与生产页面源码核对，未发现同类猜测性定位。
+  - 未修改生产代码；保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
+- Next Step: 用户在真实环境重新执行 npx playwright test sop-three-phase.spec.ts。

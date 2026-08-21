@@ -135,11 +135,13 @@ test('三段式 SOP：阶段门、齐套门与完成记录', async ({ page }) =>
     while (await remaining.count()) {
       await remaining.first().check()
     }
+    await expect(kitCard.getByText('齐套完成', { exact: true })).toBeVisible()
 
-    const teachingHint = page.locator('.ant-alert').filter({
-      has: page.getByText('教学提示', { exact: true }),
-    })
-    await teachingHint.getByRole('button', { name: '重试' }).click()
+    const retryButton = page.getByRole('button', { name: '重试' }).first()
+    await retryButton.scrollIntoViewIfNeeded()
+    await expect(retryButton).toBeVisible()
+    await expect(retryButton).toBeEnabled()
+    await retryButton.click()
     await expect(page.getByRole('button', { name: '下一步' }).first()).toBeVisible()
 
     const evidenceRequest = page.waitForRequest((request) => {
