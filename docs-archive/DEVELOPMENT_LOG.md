@@ -6963,3 +6963,33 @@
   - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
 - Next Step: 由用户验收并回填计划状态；Task 3.4 完成后 Phase 3 收官，不进入 Phase 4。
+
+---
+
+- DateTime: 2026-08-21 10:00 CST
+- Task: SOP 三段式引导 Task 4.1 — 膝关节轴承更换 SOP 重编排为 22 步
+- Scope (files changed):
+  - r-mos-backend/scripts/seed_adjudication_sops.py
+  - r-mos-backend/tests/test_sop_three_phase.py
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py -v
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/ -k "sop" -v
+  - git diff --name-only
+  - git diff --check
+- Tests:
+  - 变更前基线：3 passed，0 failed。
+  - 失败测试：新增结构用例后 7 tests 中 2 failed、5 passed；失败原因是旧膝关节 SOP 只有 6 步且没有校验，符合预期。
+  - 专用测试：7 passed，0 failed；覆盖 22 步、4+14+4 分段、标题与动作顺序、逐步校验类型、齐套项、备件、关键步骤、对角紧固顺序、验收期望值、旧辅助调用兼容，以及其余 30 个 SOP 的固定步骤数。
+  - SOP 回归：37 passed，780 deselected，0 failed；高于 33 passed 验收下限。
+- Result: PASS
+- Risks/Notes:
+  - 仅重编排膝关节 SOP；其余 30 个 SOP 均未修改，测试逐一核对其步骤数仍为变更前基线。
+  - `_make_knee_step` 新参数均有默认值；旧调用仍生成 focus_camera、空校验、非关键步骤。
+  - 22 步未填写相机位；step_view 全部保持 None，留给 Task 4.2。
+  - SOP 回归命令退出码为 0，但输出两条项目既有 aiosqlite 后台线程在事件循环关闭后结束的警告，以及现有弃用警告；没有测试失败。
+  - 未运行 seed，避免在本次仅结构编排任务中改写本地数据库；结构由直接 import 常量的测试验证。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
+  - 仅对 3 个授权文件执行 git add，并尝试本地提交；因 `.git/index.lock` 无写权限失败，未产生 commit，也未暂存任何文件。
+  - 本任务在一个执行轮次内完成，经历一次明确的失败测试、一次最小实现和两组通过验证；实际约 5-10 分钟。手工逐步填写 22 步的标题、动作、校验参数与前后链接，占本任务绝大部分精力，内容编排的重复性和漏项风险明显高于普通小型代码改动。
+- Next Step: 由用户验收并回填计划状态；不得进入 Task 4.2。

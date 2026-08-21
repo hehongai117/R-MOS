@@ -82,3 +82,150 @@ def test_adjudication_mapper_emits_three_phase_fields():
     assert result.steps[1].groupPath is None
     assert result.steps[1].stepView is None
     assert result.steps[1].requiredParts == []
+
+
+def test_knee_bearing_sop_is_three_phase_22_steps():
+    """膝关节标杆 SOP 必须严格匹配计划规定的 22 步结构。"""
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+
+    steps = SOP_KNEE_BEARING["steps"]
+    assert len(steps) == 22
+    assert [step["phase"] for step in steps] == (
+        ["prep"] * 4 + ["execute"] * 14 + ["verify"] * 4
+    )
+    assert [step["title"] for step in steps] == [
+        "故障确认",
+        "断电隔离确认",
+        "工具齐套",
+        "备件齐套",
+        "定位膝关节作业区",
+        "选择 3mm 内六角",
+        "拆膝部覆盖件螺丝组（4 颗 M4×8）",
+        "移除膝部覆盖件",
+        "选择拔取器",
+        "拆轴承座固定螺丝（4 颗 M4×8）",
+        "分离轴承座",
+        "拔取旧轴承",
+        "清洁轴座配合面",
+        "新轴承涂抹润滑脂",
+        "压入新轴承 6205-2RS",
+        "装回轴承座",
+        "对角拧紧轴承座 4 颗螺丝",
+        "装回膝部覆盖件",
+        "外观间隙复核",
+        "紧固扭矩复核",
+        "通电",
+        "±90° 全行程活动度测试",
+    ]
+    assert [step["expected_action"] for step in steps] == [
+        "focus_camera",
+        "verify_check",
+        "confirm_kit",
+        "confirm_kit",
+        "focus_camera",
+        "select_tool",
+        "rotate_screw",
+        "remove_part",
+        "select_tool",
+        "rotate_screw",
+        "detach_part",
+        "remove_part",
+        "focus_camera",
+        "focus_camera",
+        "install_part",
+        "install_part",
+        "tighten_screw",
+        "install_part",
+        "verify_check",
+        "verify_check",
+        "verify_check",
+        "verify_check",
+    ]
+
+
+def test_knee_bearing_sop_has_required_validations_and_content():
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+
+    steps = SOP_KNEE_BEARING["steps"]
+    validation_types = [
+        [item["type"] for item in step["validation_rules"]["validations"]]
+        for step in steps
+    ]
+    assert validation_types == [
+        [],
+        ["checklist_confirmed"],
+        ["kit_confirmed"],
+        ["kit_confirmed"],
+        [],
+        [],
+        ["all_screws_extracted"],
+        [],
+        [],
+        ["all_screws_extracted"],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        ["screw_order_matched"],
+        [],
+        ["checklist_confirmed"],
+        ["checklist_confirmed"],
+        ["checklist_confirmed"],
+        ["checklist_confirmed"],
+    ]
+
+    assert [step["group_path"] for step in steps[:4]] == ["knee/prep"] * 4
+    assert steps[2]["validation_rules"]["validations"][0]["params"]["requiredItems"] == [
+        "hex_2.5", "hex_3", "bearing_puller", "torque_wrench",
+    ]
+    assert steps[3]["required_parts"] == [
+        {"bom_code": "6205-2RS", "name": "轴承", "qty": 1},
+        {"bom_code": "grease", "name": "润滑脂", "qty": 1},
+        {"bom_code": "threadlocker", "name": "螺纹胶", "qty": 1},
+    ]
+    assert steps[11]["is_critical"] is True
+
+    expected_order = steps[16]["validation_rules"]["validations"][0]["params"]["expectedOrder"]
+    assert len(expected_order) == 4
+    assert expected_order == [
+        "knee_bearing_seat_screw_1",
+        "knee_bearing_seat_screw_3",
+        "knee_bearing_seat_screw_2",
+        "knee_bearing_seat_screw_4",
+    ]
+
+    verify_expectations = [
+        step["validation_rules"]["validations"][0]["params"]["items"][0]["expected"]
+        for step in steps[18:21]
+    ]
+    assert verify_expectations == [
+        "间隙 ≤ 0.5mm",
+        "2.5 N·m",
+        "低速空载 5 分钟无异响",
+    ]
+
+
+def test_other_30_sop_step_counts_are_unchanged():
+    """膝关节编排不能改变另外 30 个 SOP 的步骤数。"""
+    from scripts.seed_adjudication_sops import HARDWARE_SOP_SCRIPTS
+
+    expected_counts = [
+        8, 9, 10, 10, 8, 16, 18, 16, 15, 18,
+        18, 20, 20, 19, 15, 24, 24, 23, 23, 26,
+        22, 22, 32, 22, 24, 23, 21, 22, 25, 30,
+    ]
+    assert len(HARDWARE_SOP_SCRIPTS) == 30
+    assert [len(sop["steps"]) for sop in HARDWARE_SOP_SCRIPTS] == expected_counts
+
+
+def test_make_knee_step_defaults_preserve_old_behavior():
+    """新增参数必须有默认值，旧调用仍生成原有 focus_camera 步骤。"""
+    from scripts.seed_adjudication_sops import _make_knee_step
+
+    step = _make_knee_step("legacy", 1, "旧步骤", "旧描述", ["left_knee_link"], "COMPLETE")
+    assert step["expected_action"] == "focus_camera"
+    assert step["action_params"]["action"] == "focus_camera"
+    assert step["validation_rules"]["validations"] == []
+    assert step["is_critical"] is False

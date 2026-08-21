@@ -677,15 +677,32 @@ def build_h28_master_flow() -> list:
 KNEE_BEARING_FAILURE_REASONS_JSON = KNEE_BEARING_DEFAULT_FAILURE_REASONS
 KNEE_BEARING_BLOCK_ON_FAILURE = {"action": "block", "message": "裁决未通过，操作被阻断"}
 
-def _make_knee_step(step_id: str, step_index: int, title: str, description: str, target_parts: list, next_step_id: str) -> dict:
+def _make_knee_step(
+    step_id: str,
+    step_index: int,
+    title: str,
+    description: str,
+    target_parts: list,
+    next_step_id: str,
+    phase: str = "execute",
+    group_path: str = None,
+    step_view: dict = None,
+    required_parts: list = None,
+    expected_action: str = "focus_camera",
+    validations: list = None,
+    is_critical: bool = False,
+    tools_required: list = None,
+) -> dict:
+    validations = validations or []
+    tools_required = tools_required or []
     return {
         "step_index": step_index,
         "title": title,
         "description": description,
         "target_part": target_parts[0] if target_parts else None,
-        "expected_action": "focus_camera",
+        "expected_action": expected_action,
         "action_params": {
-            "action": "focus_camera",
+            "action": expected_action,
             "target_parts": target_parts,
             "stepId": step_id,
             "preconditions": [],
@@ -696,15 +713,19 @@ def _make_knee_step(step_id: str, step_index: int, title: str, description: str,
             "onFailure": KNEE_BEARING_BLOCK_ON_FAILURE,
         },
         "validation_rules": {
-            "validations": [],
+            "validations": validations,
             "failureReasons": KNEE_BEARING_FAILURE_REASONS_JSON,
         },
-        "is_critical": False,
+        "is_critical": is_critical,
         "severity_level": "WARN",
         "timeout_seconds": 300,
         "allow_skip": False,
         "hints": [],
-        "tools_required": [],
+        "tools_required": tools_required,
+        "phase": phase,
+        "group_path": group_path,
+        "step_view": step_view,
+        "required_parts": required_parts,
     }
 
 
@@ -719,24 +740,177 @@ SOP_KNEE_BEARING = {
     "target_module": "left_knee",
     "robot_model_id": 1,
     "steps": [
-        _make_knee_step("kbr-01", 1, "安全确认",
-            "断电并确认维保隔离，确保机器人处于安全停机状态。确认电源指示灯熄灭，检查急停按钮已锁定。",
-            ["left_knee_link"], "kbr-02"),
-        _make_knee_step("kbr-02", 2, "工具准备",
-            "确认 M3 内六角扳手、轴承拔取器、锂基润滑脂就位。",
-            [], "kbr-03"),
-        _make_knee_step("kbr-03", 3, "外壳拆卸",
-            "拆卸左膝关节保护外壳，共 4 颗 M3 内六角螺丝，按对角线顺序拆卸，注意保管垫片。",
-            ["left_knee_link"], "kbr-04"),
-        _make_knee_step("kbr-04", 4, "轴承定位",
-            "定位磨损轴承，观察并记录磨损状态（划痕、变色、异响）。检查滚珠表面是否有凹坑，记录磨损照片作为证据。",
-            ["left_knee_link"], "kbr-05"),
-        _make_knee_step("kbr-05", 5, "轴承更换",
-            "使用拔取器取出旧轴承，安装新轴承（型号 6205-2RS），涂抹润滑脂。拔取时保持垂直用力，避免损伤轴座，新轴承安装前涂抹薄层润滑脂。",
-            ["left_knee_link"], "kbr-06"),
-        _make_knee_step("kbr-06", 6, "回装验证",
-            "回装保护外壳，通电，执行关节活动度测试（±90° 全范围旋转）。螺丝按对角线顺序紧固，通电后先低速空载运行 5 分钟。",
-            ["left_knee_link"], "COMPLETE"),
+        _make_knee_step(
+            "kbr-01", 1, "故障确认",
+            "读取诊断轨迹，确认左膝异响或轴承磨损故障与本作业相符。",
+            ["left_knee_link"], "kbr-02", phase="prep", group_path="knee/prep",
+        ),
+        _make_knee_step(
+            "kbr-02", 2, "断电隔离确认",
+            "逐项确认主电源断开、挂牌上锁且余电已释放。",
+            ["left_knee_link"], "kbr-03", phase="prep", group_path="knee/prep",
+            expected_action="verify_check",
+            validations=[{
+                "type": "checklist_confirmed",
+                "params": {
+                    "requiredItems": ["主电源已断开", "挂牌上锁", "余电释放"],
+                    "confirmedItems": [],
+                    "items": [
+                        {"key": "主电源已断开", "label": "主电源已断开"},
+                        {"key": "挂牌上锁", "label": "挂牌上锁"},
+                        {"key": "余电释放", "label": "余电释放"},
+                    ],
+                },
+                "isRequired": True,
+            }],
+        ),
+        _make_knee_step(
+            "kbr-03", 3, "工具齐套",
+            "确认 2.5mm、3mm 内六角、轴承拔取器和扭矩扳手已备齐。",
+            [], "kbr-04", phase="prep", group_path="knee/prep",
+            expected_action="confirm_kit",
+            validations=[{
+                "type": "kit_confirmed",
+                "params": {
+                    "requiredItems": ["hex_2.5", "hex_3", "bearing_puller", "torque_wrench"],
+                    "confirmedItems": [],
+                },
+                "isRequired": True,
+            }],
+        ),
+        _make_knee_step(
+            "kbr-04", 4, "备件齐套",
+            "确认 6205-2RS 轴承、润滑脂和螺纹胶各一份已备齐。",
+            [], "kbr-05", phase="prep", group_path="knee/prep",
+            expected_action="confirm_kit",
+            validations=[{
+                "type": "kit_confirmed",
+                "params": {
+                    "requiredItems": ["6205-2RS", "grease", "threadlocker"],
+                    "confirmedItems": [],
+                },
+                "isRequired": True,
+            }],
+            required_parts=[
+                {"bom_code": "6205-2RS", "name": "轴承", "qty": 1},
+                {"bom_code": "grease", "name": "润滑脂", "qty": 1},
+                {"bom_code": "threadlocker", "name": "螺纹胶", "qty": 1},
+            ],
+        ),
+        _make_knee_step(
+            "kbr-05", 5, "定位膝关节作业区", "定位左膝关节并确认覆盖件与轴承座位置。",
+            ["left_knee_link"], "kbr-06", group_path="knee/execute",
+        ),
+        _make_knee_step(
+            "kbr-06", 6, "选择 3mm 内六角", "选择 3mm 内六角工具。",
+            [], "kbr-07", group_path="knee/execute", expected_action="select_tool",
+            tools_required=["hex_3"],
+        ),
+        _make_knee_step(
+            "kbr-07", 7, "拆膝部覆盖件螺丝组（4 颗 M4×8）",
+            "依次完全退出膝部覆盖件的 4 颗 M4×8 螺丝。",
+            ["knee_cover_screw_1", "knee_cover_screw_2", "knee_cover_screw_3", "knee_cover_screw_4"],
+            "kbr-08", group_path="knee/execute", expected_action="rotate_screw",
+            validations=[{
+                "type": "all_screws_extracted",
+                "params": {"screwIds": ["knee_cover_screw_1", "knee_cover_screw_2", "knee_cover_screw_3", "knee_cover_screw_4"]},
+                "isRequired": True,
+            }],
+            tools_required=["hex_3"],
+        ),
+        _make_knee_step(
+            "kbr-08", 8, "移除膝部覆盖件", "平稳移除膝部覆盖件并妥善放置。",
+            ["left_knee_cover"], "kbr-09", group_path="knee/execute", expected_action="remove_part",
+        ),
+        _make_knee_step(
+            "kbr-09", 9, "选择拔取器", "选择轴承拔取器并检查其状态。",
+            [], "kbr-10", group_path="knee/execute", expected_action="select_tool",
+            tools_required=["bearing_puller"],
+        ),
+        _make_knee_step(
+            "kbr-10", 10, "拆轴承座固定螺丝（4 颗 M4×8）",
+            "依次完全退出轴承座的 4 颗 M4×8 固定螺丝。",
+            ["knee_bearing_seat_screw_1", "knee_bearing_seat_screw_2", "knee_bearing_seat_screw_3", "knee_bearing_seat_screw_4"],
+            "kbr-11", group_path="knee/execute", expected_action="rotate_screw",
+            validations=[{
+                "type": "all_screws_extracted",
+                "params": {"screwIds": ["knee_bearing_seat_screw_1", "knee_bearing_seat_screw_2", "knee_bearing_seat_screw_3", "knee_bearing_seat_screw_4"]},
+                "isRequired": True,
+            }],
+            tools_required=["hex_3"],
+        ),
+        _make_knee_step(
+            "kbr-11", 11, "分离轴承座", "沿装配方向分离轴承座。",
+            ["left_knee_bearing_seat"], "kbr-12", group_path="knee/execute", expected_action="detach_part",
+        ),
+        _make_knee_step(
+            "kbr-12", 12, "拔取旧轴承", "保持拔取器垂直用力，拔出旧轴承，避免损伤轴座。",
+            ["left_knee_bearing_6205"], "kbr-13", group_path="knee/execute",
+            expected_action="remove_part", is_critical=True, tools_required=["bearing_puller"],
+        ),
+        _make_knee_step(
+            "kbr-13", 13, "清洁轴座配合面", "清除轴座配合面的旧油脂和异物并检查表面。",
+            ["left_knee_bearing_seat"], "kbr-14", group_path="knee/execute",
+        ),
+        _make_knee_step(
+            "kbr-14", 14, "新轴承涂抹润滑脂", "在新轴承 6205-2RS 配合面均匀涂抹薄层润滑脂。",
+            ["left_knee_bearing_6205"], "kbr-15", group_path="knee/execute",
+        ),
+        _make_knee_step(
+            "kbr-15", 15, "压入新轴承 6205-2RS", "保持新轴承端面平正，将其压入轴座。",
+            ["left_knee_bearing_6205"], "kbr-16", group_path="knee/execute", expected_action="install_part",
+        ),
+        _make_knee_step(
+            "kbr-16", 16, "装回轴承座", "对正安装基准并装回轴承座。",
+            ["left_knee_bearing_seat"], "kbr-17", group_path="knee/execute", expected_action="install_part",
+        ),
+        _make_knee_step(
+            "kbr-17", 17, "对角拧紧轴承座 4 颗螺丝", "按 1→3→2→4 的对角顺序紧固轴承座螺丝。",
+            ["knee_bearing_seat_screw_1", "knee_bearing_seat_screw_3", "knee_bearing_seat_screw_2", "knee_bearing_seat_screw_4"],
+            "kbr-18", group_path="knee/execute", expected_action="tighten_screw",
+            validations=[{
+                "type": "screw_order_matched",
+                "params": {"expectedOrder": ["knee_bearing_seat_screw_1", "knee_bearing_seat_screw_3", "knee_bearing_seat_screw_2", "knee_bearing_seat_screw_4"]},
+                "isRequired": True,
+            }],
+            tools_required=["torque_wrench"],
+        ),
+        _make_knee_step(
+            "kbr-18", 18, "装回膝部覆盖件", "对正覆盖件安装位置并完成回装。",
+            ["left_knee_cover"], "kbr-19", group_path="knee/execute", expected_action="install_part",
+        ),
+        _make_knee_step(
+            "kbr-19", 19, "外观间隙复核", "测量并确认回装后的外观间隙符合要求。",
+            ["left_knee_link"], "kbr-20", phase="verify", group_path="knee/verify", expected_action="verify_check",
+            validations=[{"type": "checklist_confirmed", "params": {
+                "requiredItems": ["gap"], "confirmedItems": [],
+                "items": [{"key": "gap", "label": "外观间隙复核", "expected": "间隙 ≤ 0.5mm"}],
+            }, "isRequired": True}],
+        ),
+        _make_knee_step(
+            "kbr-20", 20, "紧固扭矩复核", "复核轴承座固定螺丝的紧固扭矩。",
+            ["left_knee_bearing_seat"], "kbr-21", phase="verify", group_path="knee/verify", expected_action="verify_check",
+            validations=[{"type": "checklist_confirmed", "params": {
+                "requiredItems": ["torque"], "confirmedItems": [],
+                "items": [{"key": "torque", "label": "紧固扭矩复核", "expected": "2.5 N·m"}],
+            }, "isRequired": True}],
+        ),
+        _make_knee_step(
+            "kbr-21", 21, "通电", "解除隔离后通电，低速空载运行并听检异响。",
+            ["left_knee_link"], "kbr-22", phase="verify", group_path="knee/verify", expected_action="verify_check",
+            validations=[{"type": "checklist_confirmed", "params": {
+                "requiredItems": ["power_on"], "confirmedItems": [],
+                "items": [{"key": "power_on", "label": "通电运行复核", "expected": "低速空载 5 分钟无异响"}],
+            }, "isRequired": True}],
+        ),
+        _make_knee_step(
+            "kbr-22", 22, "±90° 全行程活动度测试", "确认左膝关节在 ±90° 全行程内运动顺畅。",
+            ["left_knee_link"], "COMPLETE", phase="verify", group_path="knee/verify", expected_action="verify_check",
+            validations=[{"type": "checklist_confirmed", "params": {
+                "requiredItems": ["full_range"], "confirmedItems": [],
+                "items": [{"key": "full_range", "label": "±90° 全行程活动度测试"}],
+            }, "isRequired": True}],
+        ),
     ],
 }
 
