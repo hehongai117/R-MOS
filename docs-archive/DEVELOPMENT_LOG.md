@@ -6883,6 +6883,8 @@
   - git diff --name-only
   - git diff --check
   - rg -n "bomCode|bom_code|CONFIRM_KIT|KitChecklistPanel" <Task 3.2 files>
+  - git add <Task 3.2 授权的 5 个文件>
+  - git commit -m "feat(maintenance): add kit checklist panel"
 - Tests:
   - 失败测试：组件不存在，测试文件收集失败，退出码 1，符合预期。
   - 首次实现后：3 tests 中 2 passed / 1 failed；两个数量同为 1 的备件产生重复文本。将带备注项合并为“数量 + 备注”说明后复跑。
@@ -6896,4 +6898,6 @@
   - KitChecklistPanel.tsx 共 77 行，沿用 Ant Design，未新增依赖。
   - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
+  - 本任务 5 个授权文件已本地提交；未暂存 knowledge_store.json 或无关文件。
+  - 追加提交命令记录后尝试 amend 失败：fatal: Unable to create '.git/index.lock': Operation not permitted；当前 commit 为 033af6d3，日志末尾两行仍未提交。
 - Next Step: 由用户验收并回填计划状态；不得进入 Task 3.3。
