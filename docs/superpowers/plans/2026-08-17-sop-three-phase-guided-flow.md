@@ -6,7 +6,7 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-21 09:55 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-21 10:05 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
 **下一步：** **Phase 1-3 已全部收官（引擎与前端就绪）**。进入 **Phase 4 标杆内容**，Task 4.1（膝关节 SOP 重编排为 22 步）。
 
@@ -24,8 +24,8 @@
 | 3.2 | 齐套检查面板 | ✅ 已验收 | `033af6d3` | Codex 实现；77 行；变异测试验证计数逻辑 |
 | 3.3 | 验收记录面板 | ✅ 已验收 | `ad52ed71` | Codex 实现；55 行；两面板状态独立不串档 |
 | 3.4 | `useSOPSceneSync` 读 `stepView` | ✅ 已验收 | `0cad4662` | Codex 实现；bindStep 陷阱已避开，经变异验证 |
-| 4.1 | 膝关节 SOP 重编排为 22 步 | ⬜ 未开始 | — | **下一个**；内容编排非代码，见 §7 风险 |
-| 4.2 | 补 `step_view` 与 `required_parts` | ⬜ 未开始 | — | 最大成本项，见 §7 风险 |
+| 4.1 | 膝关节 SOP 重编排为 22 步 | ✅ 已验收 | `603b48bf` | 22 步实证 4+14+4；存量 30 个 SOP 步骤数零变化 |
+| 4.2 | 补 `step_view` 与 `required_parts` | ⏸ **待用户决策** | — | 相机位需对真实 3D 模型标定，验收判据是「目视逐步验收」，Codex 只能估算数值 |
 | 5.1 | E2E 与记录落库 | ⬜ 未开始 | — | |
 | 5.2 | 报告页两节 | ⬜ 未开始 | — | |
 
@@ -35,7 +35,7 @@
 |---|---|---|
 | 前端 `npm test` | **509 passed / 2 skipped**（68 files） | 2026-08-21，含 T3.4 新增 3 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
-| 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
+| 后端 `pytest -k sop` | **37 passed** | 2026-08-21，T4.1 后 |
 
 **已知遗留问题（不在本计划范围，勿顺手修）：**
 
@@ -1663,7 +1663,7 @@ Expected: 全绿。第二个用例（回落启发式）是存量兼容的守门�
 21. 通电 —— `verify_check`，expected「低速空载 5 分钟无异响」
 22. ±90° 全行程活动度测试 —— `verify_check`，`CHECKLIST_CONFIRMED`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 追加到 `r-mos-backend/tests/test_sop_three_phase.py`：
 
@@ -1696,7 +1696,7 @@ def test_knee_bearing_sop_has_kit_and_order_validations():
     assert len(order["params"]["expectedOrder"]) == 4
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py -v
@@ -1704,19 +1704,19 @@ cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phas
 
 Expected: FAIL —— `cannot import name 'build_knee_bearing_sop'`
 
-- [ ] **Step 3: 重编排 seed**
+- [x] **Step 3: 重编排 seed**
 
 在 `seed_adjudication_sops.py` 中把膝关节 SOP 抽成 `build_knee_bearing_sop() -> dict` 函数，按上表 22 步编排。同时把 `to_sop_steps()` 扩展为透传 `phase` / `group_path` / `step_view` / `required_parts`（`step_drafts` 里给了就带上，没给则 `phase="execute"`、其余 `None`）。
 
 > ⚠️ **不要动 30 个 `focus_step` SOP 的 builder**。`to_sop_steps` 的缺省行为必须让它们产出与改造前**逐字节一致**的 step dict（除新增的 `phase="execute"` 字段）。
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py -v
 ```
 
-- [ ] **Step 5: 实跑 seed 并核对入库**
+- [x] **Step 5: 实跑 seed 并核对入库**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && python -m scripts.seed_adjudication_sops
@@ -1734,7 +1734,7 @@ curl --noproxy 127.0.0.1,localhost -s \
 
 Expected: `22 ['prep','prep','prep','prep','execute',...,'verify','verify','verify','verify']`
 
-- [ ] **Step 6: 存量 SOP 回归（必做）**
+- [x] **Step 6: 存量 SOP 回归（必做）**
 
 ```bash
 cd r-mos-backend && source venv/bin/activate && pytest tests/ -v -k "sop"
@@ -1742,7 +1742,7 @@ cd r-mos-backend && source venv/bin/activate && pytest tests/ -v -k "sop"
 
 再确认裁决列表仍返回 31 个 SOP，30 个存量 SOP 的步骤数与改造前一致。
 
-- [ ] **Step 7: 提交 + 追加开发日志**
+- [x] **Step 7: 提交 + 追加开发日志**
 
 ```bash
 git commit -m "feat(sop): 膝关节轴承更换 SOP 重编排为 22 步三段式"
@@ -1880,7 +1880,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 
 | 风险 | 应对 |
 |---|---|
-| **内容编排成本被低估**（最大风险）。引擎新逻辑只有 Phase 2 四个 Task，但 22 步的 `step_view` 相机位与 `required_parts` 是纯手工活。30 个 SOP 全量升级约 660 步。 | 本轮只打穿一条。T4.2 完成后记录实际耗时，据此决定是否要做可视化编排器。**不要在本轮扩大范围。** |
+| **内容编排成本被低估**（最大风险）。引擎新逻辑只有 Phase 2 四个 Task，但 22 步的 `step_view` 相机位与 `required_parts` 是纯手工活。30 个 SOP 全量升级约 660 步。 | 本轮只打穿一条。**T4.1 实测（2026-08-21）**：22 步结构编排耗时约 5–10 分钟／1 个执行轮次，执行方反馈「重复内容多、漏项风险明显」，660 步的人工核对成本会迅速放大——**风险判断成立**。T4.2 的相机位标定成本更高（需对真实 3D 模型逐步取值）。**不要在本轮扩大范围。** |
 | **存量 31 个 SOP 被打破** | 每个 Task 的验收都含存量回归。三道保险：`phase` 的 `server_default="execute"`、`step_view` 为空回落启发式、`getPhaseProgress().length > 1` 才渲染进度条。 |
 | **装配方向裁决与拆卸约束图不自洽**（T2.1 最可能出问题） | T2.1 的测试必须覆盖「依赖未就位被拒 / 依赖就位放行 / 工具不匹配被拒」三种路径。若约束图不足以推导装配依赖，**停下来报告**，不要自造一套并行的依赖表。 |
 | Alembic 迁移在已有数据库上失败 | `downgrade()` 已写全，`alembic downgrade -1` 直接删 4 列，存量数据不使用这些列，无数据损失。 |
@@ -1904,7 +1904,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ✅ |
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ✅ |
 | 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ✅ |
-| 4.1 | `pytest tests/test_sop_three_phase.py -v`；curl 核对 | 22 步、4+14+4 分段正确；31 个 SOP 仍在，30 个存量步骤数不变 | ⬜ |
+| 4.1 | `pytest tests/test_sop_three_phase.py -v`；curl 核对 | 22 步、4+14+4 分段正确；31 个 SOP 仍在，30 个存量步骤数不变 | ✅ |
 | 4.2 | `pytest` + **目视逐步验收** | 22 步全带 `step_view`；开发日志记录真实目视观察，不得写「应该正常」 | ⬜ |
 | 5.1 | `npm run e2e -- sop-three-phase.spec.ts`；后端 `pytest tests/ -v` | E2E 通过；后端 ≥791；前端不低于 §📍 基线 | ⬜ |
 | 5.2 | `npx vitest run .../ReportPage.test.tsx`；`npm run build` | 两节正确渲染；无证据时不渲染 | ⬜ |
