@@ -7081,3 +7081,54 @@
   - 后端全量输出沙箱禁止后台 PostgreSQL 连接、弃用与 aiosqlite 线程清理等既有警告；最终退出码为 0。前端仍有既有 React/jsdom/Three.js、caniuse-lite 与大分块警告；测试和构建退出码均为 0。
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
 - Next Step: 用户在真实环境启动后端后执行 npm run e2e -- sop-three-phase.spec.ts，再执行其负责的 Step 5 全量回归并回填计划状态。
+
+---
+
+- DateTime: 2026-08-21 10:57 CST
+- Task: Task 5.1 E2E 修复 — 动态定位 22 步膝关节 SOP
+- Scope (files changed):
+  - r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx eslint e2e/sop-three-phase.spec.ts --report-unused-disable-directives --max-warnings 0
+  - cd r-mos-frontend && npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM --skipLibCheck e2e/sop-three-phase.spec.ts
+  - rg -n "SOP_ID|knee-bearing-replace|KNEE_SOP_TITLE|resolveKneeSopId|sop-db" r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - git diff --check
+- Tests:
+  - 用户真实环境失败证据：页面加载“主维保流程（综合版）”而非目标 SOP；根因是接口只返回 sop-db-{id}，旧 E2E 使用不存在的 knee-bearing-replace。
+  - ESLint：PASS，0 warning / 0 error。
+  - TypeScript 单文件检查：PASS，0 error。
+  - Playwright E2E：按任务分工未运行；未启动任何服务。
+- Result: PASS（静态修复完成；真实 Playwright 结果待用户复验）
+- Risks/Notes:
+  - 已核实 GET /api/v1/sops/adjudication 的正式响应模型为 {total, items}，不是顶层数组；条目字段为 sopId、title、steps。
+  - 按完整标题“ATOM-01 左膝关节轴承更换”且 steps.length === 22 双重定位，避免误选 8 步旧版。
+  - 页面 URL 与 E2E 响应转换均使用接口返回的同一个真实 sopId，不依赖数据库编号，也不改生产 sopId 规则。
+  - 未修改生产代码；保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
+  - 仅对本次两个授权文件尝试 git add 与本地提交；因 .git/index.lock 无写权限失败，未产生提交，也未暂存文件。
+- Next Step: 用户在真实环境重新执行 npx playwright test sop-three-phase.spec.ts。
+
+---
+
+- DateTime: 2026-08-21 11:01 CST
+- Task: Task 5.1 E2E 修复 — 阻断弹窗遮挡重试按钮
+- Scope (files changed):
+  - r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx eslint e2e/sop-three-phase.spec.ts --report-unused-disable-directives --max-warnings 0
+  - cd r-mos-frontend && npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM --skipLibCheck e2e/sop-three-phase.spec.ts
+  - rg -n "force: true|操作被阻断|我知道了|教学提示|重试" r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - git diff --check
+- Tests:
+  - 用户真实环境验证：动态 sopId、22 步加载、准备阶段锁定、断电验收清单及齐套门禁均通过；失败停在阻断弹窗覆盖底层重试按钮。
+  - ESLint：PASS，0 warning / 0 error。
+  - TypeScript 单文件检查：PASS，0 error。
+  - Playwright E2E：按任务分工未运行；未启动任何服务。
+- Result: PASS（静态交互修复完成；真实 Playwright 结果待用户复验）
+- Risks/Notes:
+  - 新路径按真实页面层级先点击弹窗“我知道了”，待弹窗消失后补齐 checkbox，再精确点击“教学提示”区域内的重试按钮，并等待“下一步”恢复。
+  - 未使用 force 点击，没有绕过 Playwright 的真实可点击性检查。
+  - 后续 14 个执行步骤已转换为无阻断桥接步骤；后续 4 个验收步骤均先全选再验证，不会主动打开同类阻断弹窗。报告页断言也不依赖覆盖层按钮。
+  - 未修改生产代码；保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
+- Next Step: 用户在真实环境重新执行 npx playwright test sop-three-phase.spec.ts，继续验证执行段、验证段及报告记录。

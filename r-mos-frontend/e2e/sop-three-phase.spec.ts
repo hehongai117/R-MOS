@@ -2,9 +2,33 @@ import { test, expect, type Page } from '@playwright/test'
 import { ACCOUNTS, login, ensureRobotSelected } from './helpers'
 
 const API_BASE = 'http://localhost:8000/api/v1'
-const SOP_ID = 'knee-bearing-replace'
+const KNEE_SOP_TITLE = 'ATOM-01 左膝关节轴承更换'
 
 type PipelineTask = { task_id: number; execution_id: number }
+type AdjudicationSOP = {
+  sopId: string
+  title: string
+  steps: Array<Record<string, unknown> & { action: string }>
+}
+type AdjudicationSOPList = { total: number; items: AdjudicationSOP[] }
+
+async function resolveKneeSopId(page: Page): Promise<string> {
+  const token = await page.evaluate(() => localStorage.getItem('rmos_access_token'))
+  expect(token).toBeTruthy()
+
+  const response = await page.request.get(`${API_BASE}/sops/adjudication`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(response.ok()).toBeTruthy()
+  const body = await response.json() as AdjudicationSOPList
+  expect(Array.isArray(body.items)).toBe(true)
+
+  const knee = body.items.find(
+    (sop) => sop.title === KNEE_SOP_TITLE && sop.steps.length === 22,
+  )
+  expect(knee, '未找到 22 步膝关节 SOP，请先运行 seed_adjudication_sops.py').toBeTruthy()
+  return knee!.sopId
+}
 
 async function createExecution(page: Page): Promise<PipelineTask> {
   const token = await page.evaluate(() => localStorage.getItem('rmos_access_token'))
@@ -33,17 +57,11 @@ async function createExecution(page: Page): Promise<PipelineTask> {
  * screw rows are not stable E2E selectors; their adjudication is covered by unit
  * tests. Pipeline requests still go to the real backend and database.
  */
-async function makePhysicalStepsDeterministic(page: Page) {
+async function makePhysicalStepsDeterministic(page: Page, sopId: string) {
   await page.route('**/api/v1/sops/adjudication**', async (route) => {
     const response = await route.fetch()
-    const body = await response.json() as {
-      total: number
-      items: Array<{
-        sopId: string
-        steps: Array<Record<string, unknown> & { action: string }>
-      }>
-    }
-    const target = body.items.find((item) => item.sopId === SOP_ID)
+    const body = await response.json() as AdjudicationSOPList
+    const target = body.items.find((item) => item.sopId === sopId)
     if (target) {
       target.steps = target.steps.map((step) => {
         if (step.action === 'confirm_kit' || step.action === 'verify_check') return step
@@ -79,10 +97,11 @@ async function expectCurrentStep(page: Page, title: string) {
 test('三段式 SOP：阶段门、齐套门与完成记录', async ({ page }) => {
   await login(page, ACCOUNTS.student.email, ACCOUNTS.student.password)
   await ensureRobotSelected(page)
+  const kneeSopId = await resolveKneeSopId(page)
   const { task_id: taskId, execution_id: executionId } = await createExecution(page)
-  await makePhysicalStepsDeterministic(page)
+  await makePhysicalStepsDeterministic(page, kneeSopId)
 
-  await page.goto(`/maintenance?sop=${SOP_ID}&execution_id=${executionId}`)
+  await page.goto(`/maintenance?sop=${encodeURIComponent(kneeSopId)}&execution_id=${executionId}`)
   await expect(page.getByText('SOP 播放器 (裁决级)')).toBeVisible({ timeout: 20_000 })
   await expectCurrentStep(page, '故障确认')
 
@@ -107,11 +126,21 @@ test('三段式 SOP：阶段门、齐套门与完成记录', async ({ page }) =>
     await expect(page.getByText('操作被阻断').first()).toBeVisible()
     await expectCurrentStep(page, '工具齐套')
 
-    await page.getByRole('button', { name: '重试' }).first().click()
+    const blockedDialog = page.getByRole('dialog', { name: /操作被阻断/ })
+    await expect(blockedDialog).toBeVisible()
+    await blockedDialog.getByRole('button', { name: '我知道了' }).click()
+    await expect(blockedDialog).toBeHidden()
+
     const remaining = kitCard.locator('.ant-checkbox-input:not(:checked)')
     while (await remaining.count()) {
       await remaining.first().check()
     }
+
+    const teachingHint = page.locator('.ant-alert').filter({
+      has: page.getByText('教学提示', { exact: true }),
+    })
+    await teachingHint.getByRole('button', { name: '重试' }).click()
+    await expect(page.getByRole('button', { name: '下一步' }).first()).toBeVisible()
 
     const evidenceRequest = page.waitForRequest((request) => {
       if (!request.url().endsWith(`/pipeline/executions/${executionId}/steps/complete`)) return false
