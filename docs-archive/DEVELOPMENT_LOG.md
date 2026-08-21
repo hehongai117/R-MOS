@@ -7270,3 +7270,39 @@
   - git commit 尝试失败：无法创建 .git/index.lock（Operation not permitted）；没有文件被暂存或提交。
   - 未修改计划状态表；未暂存 knowledge_store.json 或任何无关未跟踪文件；未执行 git push。
 - Next Step: Task 5.2 为本计划最后一个 Task；由用户复跑验收命令并决定是否允许后续 push。
+
+---
+
+- DateTime: 2026-08-21 14:38 CST
+- Task: 架构审查 Phase 0——固定审查基线、清点事实源并验证 Claude Code 只读协作
+- Scope (files changed):
+  - docs/audit/README.md
+  - docs/audit/2026-08-21-phase0-audit-charter-v0.1.0.md
+  - docs/audit/2026-08-21-phase0-source-register-v0.1.0.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - git status --short --branch
+  - git worktree add .worktrees/architecture-audit-phase0 -b codex/architecture-audit-phase0 9e778dc0118fd6f5de671eb55dad3506ce34fbe6
+  - shasum -a 256 AGENTS.md docs/ops/CODEX_RULES.md
+  - git log --all --diff-filter=D --summary -- <AGENTS.md 中的缺失路径>
+  - git log --all --follow --summary -- docs-archive/root-plans-archive/R-MOS_Review_Test_Cleanup_Plan.md
+  - claude auth status
+  - claude -p --permission-mode plan --tools Read,Glob,Grep --no-session-persistence --output-format json --max-budget-usd 0.30 <只读审查指令>
+  - test -f <审查文档内部链接及关键事实源路径>
+  - rg -n <版本、必备章节、冲突编号和不当通过声明> docs/audit
+  - git diff --cached --check
+- Tests:
+  - 文档内部链接：2/2 个目标存在。
+  - 版本与结构检查：3/3 份文档版本均为 0.1.0；章程 6 个必备章节和来源表 3 个冲突编号均检出。
+  - 规则镜像：AGENTS.md 与 docs/ops/CODEX_RULES.md 的 SHA-256 完全一致。
+  - 历史追溯：9 个现行引用路径缺失；Git 历史确认 7 个文件在 c2383e1f 有意删除、主清理计划在 78805ee3 归档、根开发记录在 8ac26512 迁移。
+  - Claude Code：版本 2.1.220；主目录与隔离目录均显示 loggedIn=false；真实只读样例退出码 1、API token 0、费用 0，返回 Not logged in；调用后工作区零改动。
+  - 代码测试：未运行。本批只改文档，且隔离工作区没有已确认可用的项目 Python 环境；未启动服务、数据库或浏览器。
+- Result: PASS（Phase 0 文档基线完成；Claude 协作能力未接通，已作为阻塞项如实保留）
+- Risks/Notes:
+  - AGENTS.md 的 2026-03-05 事实源链与 2026-06-22 的有意归档/删除冲突；旧文档没有被恢复，也没有被当作当前规则。
+  - Python 环境口径冲突：AGENTS.md 指定根目录 .venv，最近专项计划指定 r-mos-backend/venv；本批没有绕开规则运行测试。
+  - 第一次在隔离工作区读取 git status 时，Git LFS 因沙箱禁止写入共享 .git/lfs/tmp 而失败；只放宽该只读检查所需权限后确认分支干净，未更改文件。
+  - 第一次 git diff --cached --check 检出 3 份新文档末尾多余空行；删除多余空行后重新暂存并复验通过。
+  - 仅改审查文档和当前实际使用的开发记录；主工作区保持原分支和零改动；未执行 git push。
+- Next Step: 由用户决定是否先批准“规则修复批次”：新建当前验收章程、同步更新 AGENTS.md 与镜像、统一 Python 环境和开发记录路径；完成后再进入 Phase 1 六条链路审查。
