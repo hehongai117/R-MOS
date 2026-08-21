@@ -44,6 +44,7 @@
 - 改用 `python -m dotenv -f ... run -- ...` 后配置探针输出 `config_parse=ok debug=True cors_count=4`。
 - 沙箱内全量运行：`822 passed, 3 failed`。三项失败均为本机 PostgreSQL 连接被沙箱拒绝；对应测试只读取索引或写入唯一临时记录后自行删除。
 - 获批后在沙箱限制外先复验三项数据库门禁：`3 passed`；再运行后端全量：`825 passed, 1964 warnings in 55.46s`，0 failed、0 error。
+- 收口提交 `0fc48878` 上再次运行后端全量：`825 passed, 1971 warnings in 64.03s`，0 failed、0 error；结论与首次有效基线一致。
 - 警告未隐藏：主要包含 Pydantic 旧接口、`datetime.utcnow` 和个别关闭事件循环后的 aiosqlite 线程警告。
 
 有效全量命令：
@@ -59,6 +60,7 @@
 - `npm install` 仅还原当前锁文件依赖，没有改动依赖声明；安装报告 18 个已知依赖风险（5 moderate、11 high、2 critical），将在部署链路中单独分类。
 - `npm test`：69 个测试文件通过，`511 passed, 2 skipped`，0 failed。
 - `npm run build`：6315 个模块完成构建，耗时 7.88 秒，退出码 0。
+- 收口提交 `0fc48878` 上再次复验：前端仍为 69 个文件、`511 passed, 2 skipped`；构建仍为 6315 个模块，耗时 8.89 秒，退出码 0。
 - 构建警告未隐藏：Browserslist 数据过期，且存在超过 500 kB 的输出块。
 
 ### 3.3 第一批定向回归
