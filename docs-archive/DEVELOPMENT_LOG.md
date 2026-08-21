@@ -6901,3 +6901,36 @@
   - 本任务 5 个授权文件已本地提交；未暂存 knowledge_store.json 或无关文件。
   - 追加提交命令记录后尝试 amend 失败：fatal: Unable to create '.git/index.lock': Operation not permitted；当前 commit 为 033af6d3，日志末尾两行仍未提交。
 - Next Step: 由用户验收并回填计划状态；不得进入 Task 3.3。
+
+---
+
+- DateTime: 2026-08-21 09:34 CST
+- Task: SOP 三段式引导 Task 3.3 — 验收记录面板
+- Scope (files changed):
+  - r-mos-frontend/src/components/Maintenance/VerifyChecklistPanel.tsx
+  - r-mos-frontend/src/components/Maintenance/__tests__/VerifyChecklistPanel.test.tsx
+  - r-mos-frontend/src/components/Maintenance/index.ts
+  - r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/components/Maintenance/__tests__/VerifyChecklistPanel.test.tsx
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --name-only
+  - git diff --check
+  - rg -n -C 4 "confirmedKitItems|checklistValidation|confirmedVerifyItems|CONFIRM_KIT|VERIFY_CHECK" r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
+- Tests:
+  - 失败测试：组件不存在，测试文件收集失败，退出码 1，符合预期。
+  - 专用测试：1 file / 3 passed / 0 failed。
+  - 前端全量：67 files / 506 passed / 2 skipped，0 failed；不低于 503 passed / 2 skipped 基线。
+  - 前端构建：tsc -b 与 vite build 均通过，6315 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - 挂载条件严格为 currentStep.action === ActionType.VERIFY_CHECK；无该动作的 30 个存量 SOP 不渲染面板。
+  - 验收项来自当前 CHECKLIST_CONFIRMED 校验；勾选结果写入该校验的 confirmedItems，供现有校验逻辑读取。
+  - 齐套与验收使用独立状态及不同校验类型，步骤切换时分别从当前步骤重新载入，未发现两个面板互相串档。
+  - 按计划保留直接修改 validation.params.confirmedItems 的模式；同一 SOP 脚本对象跨步骤或跨会话缓存时仍可能保留历史勾选，这是既有待观察风险，本任务未扩大范围修改。
+  - VerifyChecklistPanel.tsx 共 55 行，沿用 Ant Design，未新增依赖。
+  - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
+- Next Step: 由用户验收并回填计划状态；不得进入 Task 3.4。

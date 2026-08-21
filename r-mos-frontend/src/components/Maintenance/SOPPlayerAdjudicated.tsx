@@ -24,6 +24,7 @@ import { useSOPActionResolver } from './sopPlayer/useSOPActionResolver';
 import { useSOPExecutorBridge } from './sopPlayer/useSOPExecutorBridge';
 import { SOPPlayerView } from './sopPlayer/SOPPlayerView';
 import { KitChecklistPanel } from './KitChecklistPanel';
+import { VerifyChecklistPanel, type VerifyItem } from './VerifyChecklistPanel';
 import {
     ActionType,
     ValidationType,
@@ -154,6 +155,28 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         kitValidation.params.confirmedItems = confirmedItems;
         setConfirmedKitItems(confirmedItems);
     }, [currentStep]);
+
+    const checklistValidation = useMemo(() => currentStep?.validations.find(
+        validation => validation.type === ValidationType.CHECKLIST_CONFIRMED,
+    ), [currentStep]);
+    const verifyItems = useMemo(() => {
+        const configuredItems = checklistValidation?.params.items as VerifyItem[] | undefined;
+        if (configuredItems) return configuredItems;
+        const requiredItems = (checklistValidation?.params.requiredItems as string[]) ?? [];
+        return requiredItems.map(item => ({ key: item, label: item }));
+    }, [checklistValidation]);
+    const [confirmedVerifyItems, setConfirmedVerifyItems] = useState<string[]>([]);
+    useEffect(() => {
+        setConfirmedVerifyItems(
+            (checklistValidation?.params.confirmedItems as string[]) ?? [],
+        );
+    }, [checklistValidation]);
+
+    const handleVerifyChange = useCallback((confirmedItems: string[]) => {
+        if (!checklistValidation) return;
+        checklistValidation.params.confirmedItems = confirmedItems;
+        setConfirmedVerifyItems(confirmedItems);
+    }, [checklistValidation]);
 
     // Action resolver hook
     const { handleActionEvent } = useSOPActionResolver(currentStep);
@@ -378,6 +401,13 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
                     parts={currentStep.requiredParts ?? []}
                     confirmed={confirmedKitItems}
                     onChange={handleKitChange}
+                />
+            )}
+            {currentStep?.action === ActionType.VERIFY_CHECK && (
+                <VerifyChecklistPanel
+                    items={verifyItems}
+                    confirmed={confirmedVerifyItems}
+                    onChange={handleVerifyChange}
                 />
             )}
         </>
