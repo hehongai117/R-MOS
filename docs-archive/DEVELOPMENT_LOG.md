@@ -6993,3 +6993,54 @@
   - 仅对 3 个授权文件执行 git add，并尝试本地提交；因 `.git/index.lock` 无写权限失败，未产生 commit，也未暂存任何文件。
   - 本任务在一个执行轮次内完成，经历一次明确的失败测试、一次最小实现和两组通过验证；实际约 5-10 分钟。手工逐步填写 22 步的标题、动作、校验参数与前后链接，占本任务绝大部分精力，内容编排的重复性和漏项风险明显高于普通小型代码改动。
 - Next Step: 由用户验收并回填计划状态；不得进入 Task 4.2。
+
+---
+
+- DateTime: 2026-08-21 10:21 CST
+- Task: SOP 三段式引导 Task 4.2 — 补 step_view 与 required_parts，Phase 4 收官
+- Scope (files changed):
+  - r-mos-backend/scripts/seed_adjudication_sops.py
+  - r-mos-backend/tests/test_sop_three_phase.py
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py -v
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/ -k "sop" -v
+  - source r-mos-backend/venv/bin/activate && PYTHONPATH=r-mos-backend python <22 步形状、阶段、物料步骤及 30 个存量 SOP 空值核查脚本>
+  - git diff --name-only
+  - git diff --check
+- Tests:
+  - 失败测试：新增 4 个用例后共 11 个，3 failed / 8 passed；22 步全部缺 step_view、相机形状无法读取、14/15/17 三个实际用料步骤缺 required_parts，失败原因符合预期；存量 30 个 SOP 空值兼容用例当时已通过。
+  - 专用测试：11 passed，0 failed；覆盖 22 步 step_view 完整性、camera position/target 三元组、fov 20–90、explode 0–1、物料步骤精确范围、其余 30 个 SOP 的 step_view 与 required_parts 均为空。
+  - SOP 回归：41 passed，780 deselected，0 failed；不低于 37 passed 基线。
+  - 独立数据核查：22 步、4+14+4 分段、22 个有效相机；物料步骤为 4/14/15/17；其余 30 个 SOP 共 583 步，583 个 step_view 全为空。
+- Result: PASS
+- Risks/Notes:
+  - 标定基准：准备段使用 L0_overview（position [1.5, 1.0, 1.5]、target [0.0, 0.3, 0.0]、fov 45）；执行段使用 left_knee_link（position [0.4, -0.3, 0.4]、target [0.1, -0.45, 0.0]、fov 40）；验证段在两者之间线性取中景。
+  - 第 1 步“故障确认”：camera position [1.5, 1.0, 1.5] / target [0.0, 0.3, 0.0] / fov 45；直接使用 L0_overview 全景，保留左腿上下游链路以确认故障位置。
+  - 第 2 步“断电隔离确认”：camera position [1.4, 0.9, 1.4] / target [0.0, 0.25, 0.0] / fov 44；从 L0_overview 向膝部小幅收近，仍保持隔离确认所需全局范围。
+  - 第 3 步“工具齐套”：camera position [1.5, 1.0, 1.5] / target [0.0, 0.3, 0.0] / fov 45；直接使用 L0_overview，工具清点不需要进入膝内层。
+  - 第 4 步“备件齐套”：camera position [1.4, 0.9, 1.4] / target [0.0, 0.25, 0.0] / fov 44；从 L0_overview 小幅收近，保持准备段全景；required_parts 为轴承、润滑脂、螺纹胶各 1。
+  - 第 5 步“定位膝关节作业区”：camera position [0.4, -0.3, 0.4] / target [0.1, -0.45, 0.0] / fov 40；直接使用 left_knee_link 标定预设建立执行段基准。
+  - 第 6 步“选择 3mm 内六角”：camera position [0.4, -0.3, 0.4] / target [0.1, -0.45, 0.0] / fov 40；沿用 left_knee_link 基准，选工具阶段不提前进入爆炸视图。
+  - 第 7 步“拆覆盖件螺丝”：camera position [0.34, -0.33, 0.32] / target [0.1, -0.45, -0.02] / fov 35；沿基准视线推近并收窄视野，explode 0.15，聚焦 4 颗覆盖件螺丝。
+  - 第 8 步“移除覆盖件”：camera position [0.36, -0.32, 0.34] / target [0.1, -0.45, -0.02] / fov 36；相对基准轻度推近，explode 提至 0.3 展开覆盖件。
+  - 第 9 步“选择拔取器”：camera position [0.36, -0.32, 0.34] / target [0.1, -0.45, -0.02] / fov 36；延续覆盖件移除后的中近景与 explode 0.3，显示下一层轴承座。
+  - 第 10 步“拆轴承座螺丝”：camera position [0.3, -0.35, 0.27] / target [0.1, -0.45, -0.05] / fov 32；继续沿基准视线推近，explode 0.45，聚焦 4 颗轴承座螺丝。
+  - 第 11 步“分离轴承座”：camera position [0.29, -0.36, 0.24] / target [0.1, -0.45, -0.06] / fov 30；进一步推近，explode 0.55 展示轴承座分离方向。
+  - 第 12 步“拔取旧轴承”：camera position [0.25, -0.38, 0.2] / target [0.1, -0.45, -0.08] / fov 28；深入轴承层并收窄视野，explode 0.7 显露旧轴承。
+  - 第 13 步“清洁轴座配合面”：camera position [0.24, -0.38, 0.19] / target [0.1, -0.45, -0.08] / fov 28；保持轴承层近景与 explode 0.7，改为高亮轴承座配合面。
+  - 第 14 步“新轴承涂脂”：camera position [0.23, -0.39, 0.18] / target [0.1, -0.45, -0.09] / fov 26；继续推近并收窄，explode 0.75 聚焦新轴承表面；required_parts 仅润滑脂 1。
+  - 第 15 步“压入新轴承”：camera position [0.22, -0.39, 0.17] / target [0.1, -0.45, -0.1] / fov 25；执行段最深近景，explode 0.75 同时显示轴承与轴承座；required_parts 仅 6205-2RS 轴承 1。
+  - 第 16 步“装回轴承座”：camera position [0.28, -0.36, 0.25] / target [0.1, -0.45, -0.06] / fov 31；沿相同视线拉回，explode 降至 0.5 表达回装收拢。
+  - 第 17 步“对角拧紧”：camera position [0.31, -0.34, 0.28] / target [0.1, -0.45, -0.04] / fov 33；继续拉回，explode 降至 0.35，按 1→3→2→4 聚焦螺丝；required_parts 仅螺纹胶 1。
+  - 第 18 步“装回覆盖件”：camera position [0.36, -0.32, 0.34] / target [0.1, -0.45, -0.02] / fov 36；接近执行段初始中近景，explode 降至 0.15 表达覆盖件归位。
+  - 第 19 步“外观间隙复核”：camera position [0.75, 0.15, 0.75] / target [0.075, -0.25, 0.0] / fov 40；在两个标定预设之间取偏膝部的中景，兼顾间隙与腿部上下文。
+  - 第 20 步“紧固扭矩复核”：camera position [0.65, 0.05, 0.65] / target [0.075, -0.3, 0.0] / fov 39；验证段中最靠近膝部的中景，突出轴承座紧固区。
+  - 第 21 步“通电”：camera position [0.95, 0.35, 0.95] / target [0.05, -0.075, 0.0] / fov 42；两个预设的近似中点，拉回观察低速运行时的整段左腿。
+  - 第 22 步“±90° 全行程测试”：camera position [1.05, 0.45, 1.05] / target [0.05, 0.0, 0.0] / fov 43；在中点基础上再向 L0_overview 拉远，给全行程运动留出更大画面范围。
+  - 相机位均为基于标定预设的推导值，未经逐步目视确认；按用户裁决未启动前后端，交付后由用户运行查看并决定是否调整个别步骤。
+  - 只为语义上实际消耗或核对物料的第 4、14、15、17 步填写 required_parts，其余步骤保持空值。
+  - 回归有项目既有弃用警告，命令退出码为 0；未把警告写成验收失败，也未作范围外修复。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
+  - 仅指定本任务 3 个授权文件执行 git add 并尝试本地提交；因 `.git/index.lock` 无写权限失败，未产生 commit，也未暂存任何文件。
+- Next Step: 由用户运行 22 步页面并验收相机位；如无调整，Phase 4 收官。计划状态表由用户回填，不进入 Phase 5。

@@ -229,3 +229,55 @@ def test_make_knee_step_defaults_preserve_old_behavior():
     assert step["action_params"]["action"] == "focus_camera"
     assert step["validation_rules"]["validations"] == []
     assert step["is_critical"] is False
+
+
+def test_knee_bearing_steps_have_step_view():
+    """22 步必须全部带 step_view，否则 3D 展示会退回启发式猜测。"""
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+
+    steps = SOP_KNEE_BEARING["steps"]
+    missing = [step["title"] for step in steps if not step.get("step_view")]
+    assert missing == [], f"以下步骤缺 step_view：{missing}"
+
+
+def test_knee_bearing_step_view_shape_is_valid():
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+
+    for step in SOP_KNEE_BEARING["steps"]:
+        view = step["step_view"]
+        camera = view["camera"]
+        assert len(camera["position"]) == 3
+        assert len(camera["target"]) == 3
+        assert 20 <= camera["fov"] <= 90
+        if "explode" in view:
+            assert 0 <= view["explode"] <= 1
+
+
+def test_knee_bearing_required_parts_only_mark_material_steps():
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+
+    steps = SOP_KNEE_BEARING["steps"]
+    populated = {
+        step["step_index"]: step["required_parts"]
+        for step in steps
+        if step["required_parts"]
+    }
+    assert populated == {
+        4: [
+            {"bom_code": "6205-2RS", "name": "轴承", "qty": 1},
+            {"bom_code": "grease", "name": "润滑脂", "qty": 1},
+            {"bom_code": "threadlocker", "name": "螺纹胶", "qty": 1},
+        ],
+        14: [{"bom_code": "grease", "name": "润滑脂", "qty": 1}],
+        15: [{"bom_code": "6205-2RS", "name": "轴承", "qty": 1}],
+        17: [{"bom_code": "threadlocker", "name": "螺纹胶", "qty": 1}],
+    }
+
+
+def test_other_30_sops_keep_step_view_and_required_parts_empty():
+    """存量 SOP 必须继续依赖 T3.4 回落逻辑，不得被标杆内容污染。"""
+    from scripts.seed_adjudication_sops import HARDWARE_SOP_SCRIPTS
+
+    steps = [step for sop in HARDWARE_SOP_SCRIPTS for step in sop["steps"]]
+    assert all(step.get("step_view") is None for step in steps)
+    assert all(step.get("required_parts") is None for step in steps)
