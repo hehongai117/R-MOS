@@ -6865,3 +6865,35 @@
   - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
 - Next Step: 由用户验收并回填计划状态；不得进入 Task 3.2。
+
+---
+
+- DateTime: 2026-08-21 08:37 CST
+- Task: SOP 三段式引导 Task 3.2 — 齐套检查面板
+- Scope (files changed):
+  - r-mos-frontend/src/components/Maintenance/KitChecklistPanel.tsx
+  - r-mos-frontend/src/components/Maintenance/__tests__/KitChecklistPanel.test.tsx
+  - r-mos-frontend/src/components/Maintenance/index.ts
+  - r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx vitest run src/components/Maintenance/__tests__/KitChecklistPanel.test.tsx
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - git diff --name-only
+  - git diff --check
+  - rg -n "bomCode|bom_code|CONFIRM_KIT|KitChecklistPanel" <Task 3.2 files>
+- Tests:
+  - 失败测试：组件不存在，测试文件收集失败，退出码 1，符合预期。
+  - 首次实现后：3 tests 中 2 passed / 1 failed；两个数量同为 1 的备件产生重复文本。将带备注项合并为“数量 + 备注”说明后复跑。
+  - 专用测试：1 file / 3 passed / 0 failed。
+  - 前端全量：66 files / 503 passed / 2 skipped，0 failed；不低于 500 passed / 2 skipped 基线。
+  - 前端构建：tsc -b 与 vite build 均通过，6314 modules transformed。
+- Result: PASS
+- Risks/Notes:
+  - 组件只使用 snake_case 的 bom_code；工具与备件分组展示，勾选结果写入当前 KIT_CONFIRMED 校验的 confirmedItems。
+  - 挂载条件严格为 currentStep.action === ActionType.CONFIRM_KIT；没有该动作的 30 个存量 SOP 不渲染面板。
+  - KitChecklistPanel.tsx 共 77 行，沿用 Ant Design，未新增依赖。
+  - 全量测试仍输出项目既有 React/jsdom/Three.js 与网络警告；构建仍提示 caniuse-lite 较旧及大分块警告；测试与构建命令退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、vitest.config.ts、DATABASE_URL 或 CORS；未执行 git push。
+- Next Step: 由用户验收并回填计划状态；不得进入 Task 3.3。

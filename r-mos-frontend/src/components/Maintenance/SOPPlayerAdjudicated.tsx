@@ -14,7 +14,7 @@
  * - A.3：禁止绕过裁决层推进 SOP
  */
 
-import React, { useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { completeStep as pipelineCompleteStep, completeTask as pipelineCompleteTask } from '@/api/pipeline';
 import {
@@ -23,8 +23,10 @@ import {
 import { useSOPActionResolver } from './sopPlayer/useSOPActionResolver';
 import { useSOPExecutorBridge } from './sopPlayer/useSOPExecutorBridge';
 import { SOPPlayerView } from './sopPlayer/SOPPlayerView';
+import { KitChecklistPanel } from './KitChecklistPanel';
 import {
     ActionType,
+    ValidationType,
     SOPStepAdjudication,
     SOPScriptAdjudication,
     AdjudicationResult,
@@ -135,6 +137,23 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         if (!selectedSOP || context === null) return null;
         return selectedSOP.steps[context.currentStepIndex] || null;
     }, [selectedSOP, context]);
+
+    const [confirmedKitItems, setConfirmedKitItems] = useState<string[]>([]);
+    useEffect(() => {
+        const kitValidation = currentStep?.validations.find(
+            validation => validation.type === ValidationType.KIT_CONFIRMED,
+        );
+        setConfirmedKitItems((kitValidation?.params.confirmedItems as string[]) ?? []);
+    }, [currentStep]);
+
+    const handleKitChange = useCallback((confirmedItems: string[]) => {
+        const kitValidation = currentStep?.validations.find(
+            validation => validation.type === ValidationType.KIT_CONFIRMED,
+        );
+        if (!kitValidation) return;
+        kitValidation.params.confirmedItems = confirmedItems;
+        setConfirmedKitItems(confirmedItems);
+    }, [currentStep]);
 
     // Action resolver hook
     const { handleActionEvent } = useSOPActionResolver(currentStep);
@@ -328,30 +347,40 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     }, [setCurrentTool]);
 
     return (
-        <SOPPlayerView
-            selectedSOP={selectedSOP}
-            context={context}
-            executor={executor}
-            lastReport={lastReport}
-            currentStep={currentStep}
-            progress={progress}
-            phaseProgress={phaseProgress}
-            currentPhase={currentPhase}
-            isCompleted={isCompleted}
-            isBlocked={isBlocked}
-            executingHint={executingHint}
-            operationMode={operationMode}
-            showBlockedModal={showBlockedModal}
-            setShowBlockedModal={setShowBlockedModal}
-            availableSOPs={availableSOPs}
-            isToolMatched={isToolMatched}
-            handleSelectSOP={handleSelectSOP}
-            handleNext={handleNext}
-            handleRetry={handleRetry}
-            handlePrev={handlePrev}
-            handleReset={handleReset}
-            handleSelectTool={handleSelectTool}
-        />
+        <>
+            <SOPPlayerView
+                selectedSOP={selectedSOP}
+                context={context}
+                executor={executor}
+                lastReport={lastReport}
+                currentStep={currentStep}
+                progress={progress}
+                phaseProgress={phaseProgress}
+                currentPhase={currentPhase}
+                isCompleted={isCompleted}
+                isBlocked={isBlocked}
+                executingHint={executingHint}
+                operationMode={operationMode}
+                showBlockedModal={showBlockedModal}
+                setShowBlockedModal={setShowBlockedModal}
+                availableSOPs={availableSOPs}
+                isToolMatched={isToolMatched}
+                handleSelectSOP={handleSelectSOP}
+                handleNext={handleNext}
+                handleRetry={handleRetry}
+                handlePrev={handlePrev}
+                handleReset={handleReset}
+                handleSelectTool={handleSelectTool}
+            />
+            {currentStep?.action === ActionType.CONFIRM_KIT && (
+                <KitChecklistPanel
+                    tools={currentStep.requiredTool ? [currentStep.requiredTool] : []}
+                    parts={currentStep.requiredParts ?? []}
+                    confirmed={confirmedKitItems}
+                    onChange={handleKitChange}
+                />
+            )}
+        </>
     );
 };
 
