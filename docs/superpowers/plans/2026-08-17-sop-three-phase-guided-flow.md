@@ -160,6 +160,10 @@
 >
 > **遗留**：若将来要做真正的「对角紧固」交互教学（让学生逐颗点击），必须先让 `ScrewInfo` 支持单颗粒度——当前引擎侧 `SCREW_ORDER_MATCHED` 已就绪，缺的是 UI 与数据。**待决策**。
 
+| 15 | E2E 可用 `?sop=knee-bearing-replace` 定位膝关节 SOP | **不成立**。`sop_service.py:303` 硬编码 `sopId=f"sop-db-{sop.id}"`，**完全忽略** seed 脚本 `description: "sopId:knee-bearing-replace"` 的约定。API 实际返回 `sop-db-37` 一类自动 ID，`useSOPExecutorBridge:163` 的 `find(s => s.sopId === initialSopId)` 必然落空，页面回落到默认 SOP（主维保流程 30 步） | **由 Claude 在真实环境跑 E2E 时发现**（Codex 未跑 E2E，无从发现）；E2E 需改为动态解析 |
+
+> **第 15 项的设计断层说明**：seed 脚本用 `description: "sopId:xxx"` 表达业务逻辑 ID，但后端映射器不解析它。二者约定脱节，属**既有问题**，不是本计划引入。修 `sop_service` 会改变全部 SOP 的 `sopId`（前端可能有依赖 `sop-db-N` 的地方），影响面大，**不在本计划范围**——E2E 改为按标题动态查 sopId 即可。**是否统一 sopId 约定，待决策。**
+
 > 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
