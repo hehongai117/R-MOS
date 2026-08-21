@@ -154,6 +154,12 @@
 
 | 13 | T5.1「`StepCompleteRequest` 增 `evidence_type` / `evidence_value` / `is_compliant`，写入 `TaskStepResult`」 | 前两个字段**端点层已存在**（`pipeline.py:46-47`，连同 `duration_seconds`），只缺 `is_compliant`；且真正的落库在 `services/pipeline/task_pipeline_service.py:97`，那里把 `is_compliant=True` **硬编码**。只改端点层无法落 `False` | T5.1 授权清单需加 `task_pipeline_service.py`；**由 Codex 执行时发现并上报** |
 
+| 14 | T5.1 E2E 场景「螺丝乱序拧紧被拒」可在 UI 上复现 | **不可行**。`ScrewInfo.tsx:60-90` 的 `screwData` 是**按规格聚合**的（标题显示「N 种」，每项显示 `×quantity`），`item.screwId` 只是该规格的代表性 ID，UI 上**没有单颗螺丝粒度**，无法表达「先拧第 1 颗再拧第 2 颗」。加 `data-testid` 也无济于事——数据本身就没有这个维度 | **该 E2E 场景已裁决剔除**（见下）；由 Codex 执行时发现并上报 |
+
+> **第 14 项的裁决（2026-08-21，Claude）**：E2E **不覆盖**「螺丝乱序被拒」场景，其余三个场景照常覆盖。理由：① 该判定已由 T2.3 的 3 个单测覆盖，并经方向变异测试（移除错位检测 → 用例变红）证明有判别力，E2E 重复测它属冗余；② E2E 的价值在验证集成链路（前端→后端→落库），不在重复裁决逻辑；③ 改造 `ScrewInfo` 支持单颗螺丝交互会改变 UI 与数据结构，属产品决策，不应塞进验收 Task。
+>
+> **遗留**：若将来要做真正的「对角紧固」交互教学（让学生逐颗点击），必须先让 `ScrewInfo` 支持单颗粒度——当前引擎侧 `SCREW_ORDER_MATCHED` 已就绪，缺的是 UI 与数据。**待决策**。
+
 > 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
@@ -1824,7 +1830,9 @@ def test_step_view_shape_is_valid():
 
 - [ ] **Step 1: 后端接收证据** —— 先写后端测试（构造带 evidence 的 step complete 请求，断言落库），确认失败，再实现，确认通过。
 - [ ] **Step 2: 前端上报证据** —— `syncStepCompletion` 在齐套/验收步骤带上 `evidence_type: 'kit_checklist' | 'verify_checklist'` 与勾选结果。
-- [ ] **Step 3: 写 E2E** —— Playwright 走通 22 步：验证 prep 段没做完时 execute 段被挡、齐套没勾满时不能推进、螺丝乱序拧紧被拒、全程走完后报告页可见记录。
+- [ ] **Step 3: 写 E2E** —— Playwright 走通 22 步：验证 prep 段没做完时 execute 段被挡、齐套没勾满时不能推进、全程走完后报告页可见记录。
+
+  > ⚠️ 原文第三个场景「螺丝乱序拧紧被拒」**已剔除**——UI 无单颗螺丝粒度，无法复现该交互（§2.4 第 14 条）。该逻辑由 T2.3 单测覆盖。
 - [ ] **Step 4: 跑 E2E**
 
 ```bash
