@@ -7421,3 +7421,40 @@
   - `npm audit --omit=dev` 首次因沙箱代理限制失败；联网复核因会把依赖清单发送给外部服务而未获安全授权。未绕过限制，未执行完整在线审计或自动修复；当前只保留安装阶段的 18 项风险总数，生产影响待分类。
   - 本批没有修改应用、测试、依赖、配置或数据库，没有启动外部服务、浏览器或真机，没有执行 git push。
 - Next Step: 由 Claude Code 按受限只读模式独立复核六条链路；Codex 逐条回到代码核验后再完成 Phase 1 收口。
+
+---
+
+- DateTime: 2026-08-21 16:17 CST
+- Task: 架构审查 Phase 1 收口——Claude Code 两轮只读复核、验收计划同步与最终文档门禁
+- Scope (files changed):
+  - docs/audit/README.md
+  - docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md
+  - docs/audit/2026-08-21-phase1-claude-code-readonly-evidence-v0.1.0.md
+  - docs/testing/TEST_PLAN.md
+  - docs/testing/TEST_REPORT.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - `claude --version`
+  - `claude auth status`
+  - `claude -p --model sonnet --permission-mode dontAsk --tools Read,Glob,Grep --no-session-persistence --output-format json --max-budget-usd 1.80 <第一轮独立审查>`
+  - `rg -n <AUTH-105 登录失败限制相关代码、配置和测试>`
+  - `claude -p --model sonnet --permission-mode dontAsk --tools Read,Glob,Grep --no-session-persistence --output-format json --max-budget-usd 1.80 <第二轮清单复核>`
+  - `shasum -a 256 <第二轮前后两份在改文档>`
+  - `rg -c <发现总数、P0/P1/P2、Claude 状态和六链路状态>`
+  - `test -f <Phase 1 计划、主报告、Claude 证据和验收章程>`
+  - `git diff --check`
+  - `git diff --name-only <Phase 1 基线> HEAD`
+- Tests:
+  - Claude Code 状态：2.1.220，登录有效；两轮均退出 0，权限拒绝 0，网络搜索和抓取 0。
+  - Claude 第一轮：费用约 1.25977 美元，提出 AUTH-105；Codex 独立核对后采纳为 P2，原报告修正 0。
+  - Claude 第二轮：费用约 0.85955 美元，再次确认 11 个代表性编号，修正 0、新发现 0；前后文件 SHA-256 和 Git 状态完全一致。
+  - 发现清单：29 项；P0=1、P1=24、P2=4；每项均有 Claude 状态，11 项为两轮确认、18 项为第一轮确认且第二轮未抽查。
+  - 状态口径：六条链路全部 FAIL，E1 FAIL，E2 至 E4 与生产启用 BLOCKED，`REL-BLOCK-01` 保持生效。
+  - 文档路径：Phase 1 计划、主报告、Claude 证据和验收章程均存在；测试计划新增六组后续强制门禁且全部保持 NOT_RUN。
+- Result: PASS（仅 Phase 1 审查执行与文档门禁）；产品 E1 裁决为 FAIL，不代表修复、预生产、真机、课堂或上线通过。
+- Risks/Notes:
+  - 第一轮返回后、Codex 采纳建议前没有单独保存一次 Git 状态快照；该证据限制已写入 Claude 证据文件。第二轮使用文件哈希和 Git 状态完整证明零改动。
+  - Claude 第二轮总结文字把代表性编号覆盖误写为五条链路，但列出的 11 个编号实际横跨六条；报告按“六链路有抽样、不是全量二次复核”记录。
+  - 前端 18 项依赖风险仍缺在线明细分类；未获外发依赖清单授权，没有绕过或执行自动修复。
+  - 本批没有修改应用、测试、依赖、配置或数据库，没有操作真机，没有执行 git push。
+- Next Step: 创建 Phase 1 最终本地提交并停止在 push 前；由用户确认是否进入权限、机器人绑定、证据、AI 审批和部署恢复的分阶段修复方案。
