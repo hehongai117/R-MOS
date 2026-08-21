@@ -164,6 +164,12 @@
 
 > **第 15 项的设计断层说明**：seed 脚本用 `description: "sopId:xxx"` 表达业务逻辑 ID，但后端映射器不解析它。二者约定脱节，属**既有问题**，不是本计划引入。修 `sop_service` 会改变全部 SOP 的 `sopId`（前端可能有依赖 `sop-db-N` 的地方），影响面大，**不在本计划范围**——E2E 改为按标题动态查 sopId 即可。**是否统一 sopId 约定，待决策。**
 
+| 16 | T4.1 的 22 步清单可直接编排 | **清单只给了语义、未约束零件 ID 来源**。执行方按语义虚构了 11 个 ID：`knee_cover_screw_1~4`、`knee_bearing_seat_screw_1~4`、`left_knee_bearing_6205`、`left_knee_bearing_seat`、`left_knee_cover`。而 `assembly_manifest.json` 的 `parts_registry` 中 knee 相关零件**只有** `left_knee_link` / `right_knee_link` | E2E 走到第 20 步阻断：「零件 `left_knee_bearing_seat` 不存在」。**由 Claude 在真实环境跑 E2E 时发现**；单测只校验结构不校验 ID 可解析性，无从发现 |
+
+> **第 16 项的性质**：这是**规格疏漏**（计划未要求零件 ID 必须来自 `parts_registry`），不是执行错误。修复涉及产品决策——要么扩展 manifest 增加膝关节子零件（需真实 3D 几何数据），要么把这些步骤降级为不依赖零件解析的 action。**待用户决策。**
+>
+> **教训**：内容编排类 Task 的验收判据必须包含「所有引用的零件/螺丝 ID 均可在 `parts_registry` / `screw_instances` 中解析」，否则单测全绿而真实环境必挂。
+
 > 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
