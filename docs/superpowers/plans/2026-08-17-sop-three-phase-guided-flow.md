@@ -152,6 +152,8 @@
 
 | 12 | T4.1 测试 `from ... import build_knee_bearing_sop` | **该函数不存在**。膝关节 SOP 是模块级字典常量 `SOP_KNEE_BEARING`（`:711`），步骤由 `_make_knee_step(:680)` 构造，后者把 `expected_action` 写死为 `focus_camera`、`validations` 写死为 `[]` | T4.1 需改为 import 常量，并扩展 `_make_knee_step` 参数 |
 
+| 13 | T5.1「`StepCompleteRequest` 增 `evidence_type` / `evidence_value` / `is_compliant`，写入 `TaskStepResult`」 | 前两个字段**端点层已存在**（`pipeline.py:46-47`，连同 `duration_seconds`），只缺 `is_compliant`；且真正的落库在 `services/pipeline/task_pipeline_service.py:97`，那里把 `is_compliant=True` **硬编码**。只改端点层无法落 `False` | T5.1 授权清单需加 `task_pipeline_service.py`；**由 Codex 执行时发现并上报** |
+
 > 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
@@ -1814,7 +1816,8 @@ def test_step_view_shape_is_valid():
 **Files:**
 - Modify: `r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx:216`（`syncStepCompletion` 带上证据）
 - Create: `r-mos-frontend/e2e/sop-three-phase.spec.ts`
-- Modify: `r-mos-backend/app/api/v1/endpoints/pipeline.py`（`StepCompleteRequest` 接收证据字段）
+- Modify: `r-mos-backend/app/api/v1/endpoints/pipeline.py`（`StepCompleteRequest` 加 `is_compliant`；`evidence_type` / `evidence_value` / `duration_seconds` **已存在**）
+- Modify: `r-mos-backend/app/services/pipeline/task_pipeline_service.py`（`complete_step` 的 `is_compliant=True` 是硬编码，需改为接收参数——见 §2.4 第 13 条）
 
 **Interfaces:**
 - `StepCompleteRequest` 增 `evidence_type: Optional[str]`、`evidence_value: Optional[dict]`、`is_compliant: bool = True`，写入 `TaskStepResult` 同名字段（该表字段已存在，无需迁移）
