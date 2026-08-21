@@ -7110,6 +7110,31 @@
 
 ---
 
+- DateTime: 2026-08-21 11:08 CST
+- Task: Task 5.1 E2E 修复 — 按执行状态选择推进按钮
+- Scope (files changed):
+  - r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-frontend && npx eslint e2e/sop-three-phase.spec.ts --report-unused-disable-directives --max-warnings 0
+  - cd r-mos-frontend && npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM --skipLibCheck e2e/sop-three-phase.spec.ts
+  - rg -n "name: '下一步'|name: '完成'|name: '手动验证'|name: '重试'|name: '上一步'|reload" r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - git diff --check
+- Tests:
+  - 用户真实环境验证：齐套重试按钮点击成功；重试后真实状态为执行中，页面只提供“手动验证”，旧脚本错误等待“下一步”。
+  - ESLint：PASS，0 warning / 0 error。
+  - TypeScript 单文件检查：PASS，0 error。
+  - Playwright E2E：按任务分工未运行；未启动任何服务。
+- Result: PASS（按真实状态完成静态修复；真实 Playwright 结果待用户复验）
+- Risks/Notes:
+  - 阻断恢复后直接等待并点击“手动验证”，不再重复点击“下一步”。
+  - 清单辅助流程在 IDLE 状态接受“下一步”或末步“完成”，进入 EXECUTING 后统一等待“手动验证”。
+  - 普通桥接步骤仍只使用“下一步”；“重试”只用于解除阻断；“上一步”和 reload 不属于本 E2E 主路径。
+  - 未修改生产代码；保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未执行 git push。
+- Next Step: 用户在真实环境进行最后一次 npx playwright test sop-three-phase.spec.ts；若后续仍有脚本定位问题，按用户裁决记录为主链路已验证、脚本待打磨。
+
+---
+
 - DateTime: 2026-08-21 11:01 CST
 - Task: Task 5.1 E2E 修复 — 阻断弹窗遮挡重试按钮
 - Scope (files changed):

@@ -86,8 +86,15 @@ async function completeChecklistStep(page: Page) {
   while (await unchecked.count()) {
     await unchecked.first().check()
   }
-  await page.getByRole('button', { name: '下一步' }).first().click()
-  await page.getByRole('button', { name: '手动验证' }).first().click()
+  const startButton = page
+    .getByRole('button', { name: '下一步' })
+    .or(page.getByRole('button', { name: '完成' }))
+    .first()
+  await expect(startButton).toBeVisible()
+  await startButton.click()
+  const validateButton = page.getByRole('button', { name: '手动验证' }).first()
+  await expect(validateButton).toBeVisible()
+  await validateButton.click()
 }
 
 async function expectCurrentStep(page: Page, title: string) {
@@ -142,15 +149,15 @@ test('三段式 SOP：阶段门、齐套门与完成记录', async ({ page }) =>
     await expect(retryButton).toBeVisible()
     await expect(retryButton).toBeEnabled()
     await retryButton.click()
-    await expect(page.getByRole('button', { name: '下一步' }).first()).toBeVisible()
+    const validateButton = page.getByRole('button', { name: '手动验证' }).first()
+    await expect(validateButton).toBeVisible()
 
     const evidenceRequest = page.waitForRequest((request) => {
       if (!request.url().endsWith(`/pipeline/executions/${executionId}/steps/complete`)) return false
       const payload = request.postDataJSON() as { evidence_type?: string }
       return payload.evidence_type === 'kit_checklist'
     })
-    await page.getByRole('button', { name: '下一步' }).first().click()
-    await page.getByRole('button', { name: '手动验证' }).first().click()
+    await validateButton.click()
     const request = await evidenceRequest
     expect(request.postDataJSON()).toMatchObject({
       evidence_type: 'kit_checklist',
