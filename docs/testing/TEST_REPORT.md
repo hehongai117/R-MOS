@@ -86,6 +86,8 @@
   - 第一批定向回归：`147 passed, 334 warnings in 7.80s`。
   - 路由清单发现 109 个路由未声明 `get_current_actor`；其中包含公开入口，不能整体记为漏洞，但任务、教学、训练、机器人资产和适配器写入口已确认存在高影响缺口。
   - 第一批登记 1 个 P0、7 个 P1 和 1 个 P2 推断；身份/对象归属链与任务/机器人控制链均为 FAIL。
+  - 第二批现有定向测试分两组通过：`41 passed` 和 `85 passed`；临时服务探针同时复现不存在的证据包仍判 PASS、伪证据类型放行、未知动作默认放行及伪 UUID 引用被返回。
+  - 第二批新增 10 个 P1；SOP/证据/报告链与 AI/审批/审计链均为 FAIL。
 - Evidence：
   - `docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md`
   - `docs/plans/2026-08-21-rmos-architecture-audit-phase1.md`
