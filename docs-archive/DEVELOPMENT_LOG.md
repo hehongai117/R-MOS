@@ -7044,3 +7044,40 @@
   - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
   - 仅指定本任务 3 个授权文件执行 git add 并尝试本地提交；因 `.git/index.lock` 无写权限失败，未产生 commit，也未暂存任何文件。
 - Next Step: 由用户运行 22 步页面并验收相机位；如无调整，Phase 4 收官。计划状态表由用户回填，不进入 Phase 5。
+
+---
+
+- DateTime: 2026-08-21 10:38 CST
+- Task: SOP 三段式引导 Task 5.1 Step 1–3 — E2E 与证据记录落库代码
+- Scope (files changed):
+  - r-mos-backend/app/api/v1/endpoints/pipeline.py
+  - r-mos-backend/app/services/pipeline/task_pipeline_service.py
+  - r-mos-backend/tests/unit/test_task_pipeline_service.py
+  - r-mos-frontend/src/components/Maintenance/SOPPlayerAdjudicated.tsx
+  - r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/unit/test_task_pipeline_service.py -v
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/ -v
+  - cd r-mos-frontend && npm test
+  - cd r-mos-frontend && npm run build
+  - cd r-mos-frontend && npx eslint e2e/sop-three-phase.spec.ts src/components/Maintenance/SOPPlayerAdjudicated.tsx --report-unused-disable-directives --max-warnings 0
+  - git diff --name-only
+  - git diff --check
+- Tests:
+  - 失败测试：3 项中 2 failed / 1 passed；失败分别证明请求对象缺少 is_compliant，以及服务不接收 is_compliant。
+  - 后端定向：3 passed，0 failed；覆盖证据、时长与 false 合规状态落库，以及旧调用省略全部可选字段时默认 True。
+  - 后端全量：822 collected；819 passed / 3 skipped / 0 failed，1949 warnings，68.63s。
+  - 前端全量：68 files；509 passed / 2 skipped / 0 failed。
+  - 前端构建：tsc -b 与 vite build 通过，6315 modules transformed。
+  - 目标文件静态检查：ESLint 通过，0 warning / 0 error。
+  - Playwright E2E：按任务分工未运行；未启动前端或后端服务。
+- Result: PASS（仅 Task 5.1 Step 1–3 代码与单测/构建；真实 Playwright E2E 待用户执行）
+- Risks/Notes:
+  - evidence_type、evidence_value、duration_seconds 在端点原本已存在，本次只新增可选且默认 True 的 is_compliant，并由服务层真实落库；未在端点二次查询数据库。
+  - 播放器仅在齐套或验收校验步骤附带 evidence_type 与 required_items/confirmed_items；普通步骤请求保持原样。
+  - 工具齐套项来自 KIT_CONFIRMED.requiredItems；备件编码从中排除并继续由 requiredParts 渲染，修复种子数据中 tools_required 为空时清单不显示的问题。
+  - E2E 覆盖准备段锁定、齐套未完成阻断、22 步完成后报告列表出现记录。按用户裁决不覆盖螺丝乱序，物理 3D 步骤在 E2E 响应中转为确定性桥接步骤；真实后端任务、步骤证据与报告链路不拦截。
+  - 后端全量输出沙箱禁止后台 PostgreSQL 连接、弃用与 aiosqlite 线程清理等既有警告；最终退出码为 0。前端仍有既有 React/jsdom/Three.js、caniuse-lite 与大分块警告；测试和构建退出码均为 0。
+  - 保留用户原有 knowledge_store.json 修改及无关未跟踪文件；未修改计划状态表、DATABASE_URL 或 CORS；未执行 git push。
+- Next Step: 用户在真实环境启动后端后执行 npm run e2e -- sop-three-phase.spec.ts，再执行其负责的 Step 5 全量回归并回填计划状态。

@@ -85,6 +85,7 @@ class TaskPipelineService:
         evidence_type: Optional[str] = None,
         evidence_value: Optional[dict] = None,
         duration_seconds: Optional[int] = None,
+        is_compliant: bool = True,
     ) -> dict[str, Any]:
         """Record step completion with evidence."""
         step_result = TaskStepResult(
@@ -94,7 +95,7 @@ class TaskPipelineService:
             duration_seconds=duration_seconds,
             evidence_type=evidence_type,
             evidence_value=evidence_value,
-            is_compliant=True,
+            is_compliant=is_compliant,
         )
         self.db.add(step_result)
         await self.db.commit()

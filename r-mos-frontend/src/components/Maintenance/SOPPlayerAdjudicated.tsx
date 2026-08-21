@@ -140,21 +140,26 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
     }, [selectedSOP, context]);
 
     const [confirmedKitItems, setConfirmedKitItems] = useState<string[]>([]);
+    const kitValidation = useMemo(() => currentStep?.validations.find(
+        validation => validation.type === ValidationType.KIT_CONFIRMED,
+    ), [currentStep]);
+    const kitRequiredItems = useMemo(
+        () => (kitValidation?.params.requiredItems as string[]) ?? [],
+        [kitValidation],
+    );
+    const kitTools = useMemo(() => {
+        const partCodes = new Set((currentStep?.requiredParts ?? []).map(part => part.bom_code));
+        return kitRequiredItems.filter(item => !partCodes.has(item));
+    }, [currentStep?.requiredParts, kitRequiredItems]);
     useEffect(() => {
-        const kitValidation = currentStep?.validations.find(
-            validation => validation.type === ValidationType.KIT_CONFIRMED,
-        );
         setConfirmedKitItems((kitValidation?.params.confirmedItems as string[]) ?? []);
-    }, [currentStep]);
+    }, [kitValidation]);
 
     const handleKitChange = useCallback((confirmedItems: string[]) => {
-        const kitValidation = currentStep?.validations.find(
-            validation => validation.type === ValidationType.KIT_CONFIRMED,
-        );
         if (!kitValidation) return;
         kitValidation.params.confirmedItems = confirmedItems;
         setConfirmedKitItems(confirmedItems);
-    }, [currentStep]);
+    }, [kitValidation]);
 
     const checklistValidation = useMemo(() => currentStep?.validations.find(
         validation => validation.type === ValidationType.CHECKLIST_CONFIRMED,
@@ -264,11 +269,33 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
         if (!executionId) return;
 
         const durationSeconds = Math.round((Date.now() - stepStartTimeRef.current) / 1000);
+        const kitValidation = currentStep?.validations.find(
+            validation => validation.type === ValidationType.KIT_CONFIRMED,
+        );
+        const verifyValidation = currentStep?.validations.find(
+            validation => validation.type === ValidationType.CHECKLIST_CONFIRMED,
+        );
+        const evidenceValidation = kitValidation ?? verifyValidation;
+        const requiredItems = (evidenceValidation?.params.requiredItems as string[]) ?? [];
+        const confirmedItems = (evidenceValidation?.params.confirmedItems as string[]) ?? [];
+        const evidenceType = kitValidation
+            ? 'kit_checklist'
+            : verifyValidation
+                ? 'verify_checklist'
+                : undefined;
+
         pipelineCompleteStep(Number(executionId), {
             step_index: stepIndex,
             duration_seconds: durationSeconds,
+            ...(evidenceType ? {
+                evidence_type: evidenceType,
+                evidence_value: {
+                    required_items: requiredItems,
+                    confirmed_items: confirmedItems,
+                },
+            } : {}),
         }).catch(console.error);
-    }, []);
+    }, [currentStep]);
 
     // Sync task completion to backend pipeline
     const syncTaskCompletion = useCallback(() => {
@@ -397,7 +424,7 @@ export const SOPPlayerAdjudicated: React.FC<SOPPlayerAdjudicatedProps> = ({
             />
             {currentStep?.action === ActionType.CONFIRM_KIT && (
                 <KitChecklistPanel
-                    tools={currentStep.requiredTool ? [currentStep.requiredTool] : []}
+                    tools={kitTools}
                     parts={currentStep.requiredParts ?? []}
                     confirmed={confirmedKitItems}
                     onChange={handleKitChange}

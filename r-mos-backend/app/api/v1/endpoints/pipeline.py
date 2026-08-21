@@ -46,6 +46,7 @@ class StepCompleteRequest(BaseModel):
     evidence_type: Optional[str] = None
     evidence_value: Optional[dict] = None
     duration_seconds: Optional[int] = None
+    is_compliant: bool = True
 
 
 class StepCompleteResponse(BaseModel):
@@ -100,6 +101,7 @@ async def complete_step(
         evidence_type=request.evidence_type,
         evidence_value=request.evidence_value,
         duration_seconds=request.duration_seconds,
+        is_compliant=request.is_compliant,
     )
     return StepCompleteResponse(**result)
 

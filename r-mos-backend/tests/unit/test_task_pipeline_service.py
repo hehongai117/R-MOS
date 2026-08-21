@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.api.v1.endpoints.pipeline import StepCompleteRequest
 from app.services.pipeline.task_pipeline_service import TaskPipelineService
 
 
@@ -56,7 +57,8 @@ async def test_create_task_from_diagnosis():
 async def test_complete_step_records_result():
     """Completing a step persists evidence and duration."""
     mock_db = AsyncMock()
-    mock_db.add = MagicMock()
+    added_results = []
+    mock_db.add = MagicMock(side_effect=added_results.append)
     mock_db.commit = AsyncMock()
 
     # Mock execution query
@@ -73,7 +75,41 @@ async def test_complete_step_records_result():
         evidence_type="photo",
         evidence_value={"url": "https://example.com/photo.jpg"},
         duration_seconds=45,
+        is_compliant=False,
+    )
+
+    assert result["is_compliant"] is False
+    assert len(added_results) == 1
+    persisted = added_results[0]
+    assert persisted.evidence_type == "photo"
+    assert persisted.evidence_value == {"url": "https://example.com/photo.jpg"}
+    assert persisted.duration_seconds == 45
+    assert persisted.is_compliant is False
+
+
+@pytest.mark.asyncio
+async def test_complete_step_without_evidence_remains_backward_compatible():
+    """Legacy callers may omit every optional evidence field."""
+    mock_db = AsyncMock()
+    added_results = []
+    mock_db.add = MagicMock(side_effect=added_results.append)
+    mock_db.commit = AsyncMock()
+
+    request = StepCompleteRequest(step_index=2)
+    service = TaskPipelineService(mock_db)
+    result = await service.complete_step(
+        execution_id=1,
+        step_index=request.step_index,
+        evidence_type=request.evidence_type,
+        evidence_value=request.evidence_value,
+        duration_seconds=request.duration_seconds,
+        is_compliant=request.is_compliant,
     )
 
     assert result["is_compliant"] is True
-    assert mock_db.add.called
+    assert len(added_results) == 1
+    persisted = added_results[0]
+    assert persisted.evidence_type is None
+    assert persisted.evidence_value is None
+    assert persisted.duration_seconds is None
+    assert persisted.is_compliant is True
