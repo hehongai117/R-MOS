@@ -1,4 +1,7 @@
 """SOP 三段式字段的模型与映射测试。"""
+import json
+from pathlib import Path
+
 from app.models.sop import SOP, SOPStep
 from app.services.sop_service import SOPService
 
@@ -124,23 +127,53 @@ def test_knee_bearing_sop_is_three_phase_22_steps():
         "confirm_kit",
         "focus_camera",
         "select_tool",
-        "rotate_screw",
-        "remove_part",
+        "verify_check",
+        "focus_camera",
         "select_tool",
-        "rotate_screw",
-        "detach_part",
-        "remove_part",
+        "verify_check",
         "focus_camera",
         "focus_camera",
-        "install_part",
-        "install_part",
-        "tighten_screw",
-        "install_part",
+        "focus_camera",
+        "focus_camera",
+        "focus_camera",
+        "focus_camera",
+        "verify_check",
+        "focus_camera",
         "verify_check",
         "verify_check",
         "verify_check",
         "verify_check",
     ]
+
+
+def test_knee_bearing_sop_part_and_screw_ids_exist_in_assembly_manifest():
+    """标杆 SOP 引用的零件和螺丝必须能被真实装配清单解析。"""
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+
+    manifest_path = (
+        Path(__file__).parents[1]
+        / "data/robot-assets/1/manifests/assembly_manifest.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    resolvable_ids = {
+        item["id"]
+        for registry_name in ("parts_registry", "screw_instances")
+        for item in manifest[registry_name]
+    }
+
+    referenced_ids = set()
+    for step in SOP_KNEE_BEARING["steps"]:
+        referenced_ids.update(step["action_params"]["target_parts"])
+        view = step["step_view"]
+        for field in ("visibleLinks", "highlight", "screwFocus"):
+            referenced_ids.update(view.get(field, []))
+        for validation in step["validation_rules"]["validations"]:
+            params = validation["params"]
+            referenced_ids.update(params.get("screwIds", []))
+            referenced_ids.update(params.get("expectedOrder", []))
+
+    missing_ids = sorted(referenced_ids - resolvable_ids)
+    assert missing_ids == [], f"SOP 引用了装配清单中不存在的 ID：{missing_ids}"
 
 
 def test_knee_bearing_sop_has_required_validations_and_content():
@@ -158,17 +191,17 @@ def test_knee_bearing_sop_has_required_validations_and_content():
         ["kit_confirmed"],
         [],
         [],
-        ["all_screws_extracted"],
+        ["checklist_confirmed"],
         [],
         [],
-        ["all_screws_extracted"],
-        [],
-        [],
-        [],
+        ["checklist_confirmed"],
         [],
         [],
         [],
-        ["screw_order_matched"],
+        [],
+        [],
+        [],
+        ["checklist_confirmed"],
         [],
         ["checklist_confirmed"],
         ["checklist_confirmed"],
@@ -187,14 +220,12 @@ def test_knee_bearing_sop_has_required_validations_and_content():
     ]
     assert steps[11]["is_critical"] is True
 
-    expected_order = steps[16]["validation_rules"]["validations"][0]["params"]["expectedOrder"]
-    assert len(expected_order) == 4
-    assert expected_order == [
-        "knee_bearing_seat_screw_1",
-        "knee_bearing_seat_screw_3",
-        "knee_bearing_seat_screw_2",
-        "knee_bearing_seat_screw_4",
-    ]
+    screw_order_check = steps[16]["validation_rules"]["validations"][0]["params"]
+    assert screw_order_check["requiredItems"] == ["diagonal_order_confirmed"]
+    assert screw_order_check["items"] == [{
+        "key": "diagonal_order_confirmed",
+        "label": "已按 1→3→2→4 对角顺序紧固",
+    }]
 
     verify_expectations = [
         step["validation_rules"]["validations"][0]["params"]["items"][0]["expected"]

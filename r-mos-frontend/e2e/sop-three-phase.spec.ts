@@ -175,7 +175,7 @@ test('三段式 SOP：阶段门、齐套门与完成记录', async ({ page }) =>
     // kbr-05..kbr-18: physical adjudication is replaced by deterministic
     // document bridges above, preserving all 14 execute-phase boundaries.
     for (let stepIndex = 5; stepIndex <= 18; stepIndex += 1) {
-      await expect(page.getByText(`步骤 ${stepIndex}`, { exact: true }).first()).toBeVisible()
+      await expect(page.getByText(new RegExp(`步骤\\s+${stepIndex}/22`)).first()).toBeVisible()
       await page.getByRole('button', { name: '下一步' }).first().click()
     }
 

@@ -7110,6 +7110,62 @@
 
 ---
 
+- DateTime: 2026-08-21 11:27 CST
+- Task: Task 5.1 E2E 内容修复 — 左膝轴承 SOP 降级到真实零件粒度
+- Scope (files changed):
+  - r-mos-backend/scripts/seed_adjudication_sops.py
+  - r-mos-backend/tests/test_sop_three_phase.py
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py::test_knee_bearing_sop_part_and_screw_ids_exist_in_assembly_manifest -v
+  - cd r-mos-backend && source venv/bin/activate && pytest tests/test_sop_three_phase.py -v
+  - rg -n "knee_cover_screw|knee_bearing_seat_screw|left_knee_bearing_6205|left_knee_bearing_seat|left_knee_cover|screw_order_matched|all_screws_extracted" r-mos-backend/scripts/seed_adjudication_sops.py r-mos-backend/tests/test_sop_three_phase.py
+  - git diff --check
+- Tests:
+  - RED：新增 ID 可解析性测试后单独运行，按预期失败并准确列出 11 个不存在的 ID：8 个虚构螺丝、left_knee_bearing_6205、left_knee_bearing_seat、left_knee_cover。
+  - 清单核实：assembly_manifest.json 的 screw_instances 为 []，不存在可用于左膝对角紧固的真实螺丝实例。
+  - GREEN：ID 可解析性单测 1 passed；完整 tests/test_sop_three_phase.py 为 12 passed，0 failed。
+- Result: PASS（种子定义与自动测试完成；数据库未修改，真实 E2E 需用户删除旧记录并重新 seed 后复验）
+- Risks/Notes:
+  - 第 7、10、17 步从虚构螺丝几何判定降级为 checklist_confirmed；第 17 步仍在原描述和清单标签中保留 1→3→2→4 对角紧固教学语义。
+  - 第 8、11 至 16、18 步改为 focus_camera；第 9、20 步仅将 step_view 或目标中的虚构零件改为真实 left_knee_link。
+  - 22 步三段式结构、标题、描述、相机参数、required_parts、关键步骤标记、工具需求及既有准备/验收清单保持不变。
+  - 新测试统一检查 target_parts、visibleLinks、highlight、screwFocus、screwIds、expectedOrder，所有引用必须存在于 parts_registry 或 screw_instances。
+  - 未运行 seed、未修改数据库、未执行 git add/commit/push；用户原有 r-mos-backend/data/knowledge_store.json 修改及无关未跟踪文件保持不变。
+- Next Step: 用户删除数据库中的旧 SOP 记录并重新 seed，然后从真实环境 E2E 第 20 步继续复验。
+
+---
+
+- DateTime: 2026-08-21 11:44 CST
+- Task: Task 5.1 E2E 最后修复 — 执行段步骤状态选择器对齐真实文本
+- Scope (files changed):
+  - r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - rg -n "exact:\\s*true|getByText\\(|getByRole\\([^\\n]*name:" r-mos-frontend/e2e/sop-three-phase.spec.ts
+  - rg -n -F "齐套检查" r-mos-frontend/src
+  - rg -n -F "验收记录" r-mos-frontend/src
+  - rg -n -F "齐套完成" r-mos-frontend/src
+  - rg -n "步骤.*\\/|已完成:|当前步骤：" r-mos-frontend/src
+  - cd r-mos-frontend && npx eslint e2e/sop-three-phase.spec.ts --report-unused-disable-directives --max-warnings 0
+  - cd r-mos-frontend && npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM --skipLibCheck e2e/sop-three-phase.spec.ts
+  - git diff --check
+- Tests:
+  - 用户真实环境证据：执行段已推进到步骤 7/22；旧断言因页面不存在精确文本“步骤 5”失败。
+  - 源码核对：顶部状态使用“步骤 N/总步数”；左侧列表由组件生成序号；完成计数为“已完成: N/22 步骤”。
+  - ESLint：PASS，0 warning / 0 error。
+  - TypeScript 单文件检查：PASS，0 error。
+  - Playwright E2E：遵照用户要求未运行；真实结果待用户最终复验。
+- Result: PASS（静态修复与检查完成，不代表真实 E2E 通过）
+- Risks/Notes:
+  - 循环断言改为正则匹配“步骤 N/22”，不依赖独立文本节点、左侧两位数补零或步骤标题完整显示。
+  - 正则包含“/22”边界，因此步骤 5 不会误匹配步骤 15。
+  - 全量复查 exact 文本断言后未改其余三处：当前步骤标题已在用户真实流程通过前 4 步；齐套检查、验收记录、齐套完成均由源码确认为独立文本，前序真实流程也已通过相关断言。
+  - 未启动服务、未运行 E2E、未修改数据库、未执行 git add/commit/push；用户原有 knowledge_store.json 与其他未提交内容保持不变。
+- Next Step: 用户在真实环境完成最后一次 E2E 复验，并按实际通过程度收尾记录。
+
+---
+
 - DateTime: 2026-08-21 11:08 CST
 - Task: Task 5.1 E2E 修复 — 按执行状态选择推进按钮
 - Scope (files changed):
