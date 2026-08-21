@@ -148,6 +148,8 @@
 | 10 | 约束图里的零件/螺丝 ID 在测试中可直接查到 | **不成立**。`partRegistry` 是 manifest 注入层（默认 `null`），`constraintGraph` 是静态硬编码，两者数据源不同。不注入 manifest 则 `getScrewInstance()` 恒为 `undefined` | T2.1 螺丝用例全判 `UNKNOWN_SCREW`；**已由 Codex 执行时发现并上报** |
 | 11 | `resetState()` 会重建 `partStates` | **不成立**。`INITIAL_STATE` 是模块级常量（`stateManager.ts:141`），import 时求值一次；`getAllPartIds()` 无 manifest 时返回 `[]`，故 `partStates` 恒为 `{}`，注入 manifest 也改不了 | T2.1 首轮 4 个「通过」中有 2 个是 `undefined` 巧合造成的**假阳性** |
 
+| 12 | T4.1 测试 `from ... import build_knee_bearing_sop` | **该函数不存在**。膝关节 SOP 是模块级字典常量 `SOP_KNEE_BEARING`（`:711`），步骤由 `_make_knee_step(:680)` 构造，后者把 `expected_action` 写死为 `focus_camera`、`validations` 写死为 `[]` | T4.1 需改为 import 常量，并扩展 `_make_knee_step` 参数 |
+
 > 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
@@ -1611,6 +1613,19 @@ Expected: 全绿。第二个用例（回落启发式）是存量兼容的守门�
 
 ### Task 4.1: 膝关节轴承更换 SOP 重编排为 22 步
 
+> ⚠️ **规格已更正（2026-08-21 预检）**：计划原文的测试 `from scripts.seed_adjudication_sops import build_knee_bearing_sop` —— **该函数不存在**。膝关节 SOP 是模块级字典常量 `SOP_KNEE_BEARING`（`seed_adjudication_sops.py:711`），步骤由 `_make_knee_step(...)` 构造。
+>
+> **不要**为迎合测试新建一个 `build_knee_bearing_sop()` 包装函数（无谓抽象）。测试直接 import 常量：
+>
+> ```python
+> from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
+> steps = SOP_KNEE_BEARING["steps"]
+> ```
+>
+> `_make_knee_step` 现签名（`:680`）为
+> `(step_id, step_index, title, description, target_parts, next_step_id)`，
+> 内部把 `expected_action` 硬编码为 `"focus_camera"`、`validations` 硬编码为 `[]`。22 步需要多种 action 与 validation，**需扩展该辅助函数的参数**（加 `phase` / `group_path` / `step_view` / `required_parts` / `expected_action` / `validations` 等，给默认值以保持现有调用兼容）。
+
 **Files:**
 - Modify: `r-mos-backend/scripts/seed_adjudication_sops.py`（膝关节 SOP 段落，当前 `:712` 起）
 - Test: `r-mos-backend/tests/test_sop_three_phase.py`（追加 seed 结构校验）
@@ -1655,10 +1670,9 @@ Expected: 全绿。第二个用例（回落启发式）是存量兼容的守门�
 ```python
 def test_knee_bearing_sop_is_three_phase_22_steps():
     """膝关节标杆 SOP 必须是 4+14+4 的三段式结构。"""
-    from scripts.seed_adjudication_sops import build_knee_bearing_sop
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
 
-    sop = build_knee_bearing_sop()
-    steps = sop["steps"]
+    steps = SOP_KNEE_BEARING["steps"]
     assert len(steps) == 22
 
     phases = [s["phase"] for s in steps]
@@ -1668,9 +1682,9 @@ def test_knee_bearing_sop_is_three_phase_22_steps():
 
 
 def test_knee_bearing_sop_has_kit_and_order_validations():
-    from scripts.seed_adjudication_sops import build_knee_bearing_sop
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
 
-    steps = build_knee_bearing_sop()["steps"]
+    steps = SOP_KNEE_BEARING["steps"]
     kit_steps = [s for s in steps if s["expected_action"] == "confirm_kit"]
     assert len(kit_steps) == 2
     assert any(s["required_parts"] for s in kit_steps)
@@ -1747,9 +1761,9 @@ git commit -m "feat(sop): 膝关节轴承更换 SOP 重编排为 22 步三段式
 ```python
 def test_knee_bearing_steps_have_step_view():
     """22 步必须全部带 step_view，否则 3D 展示会退回启发式猜测。"""
-    from scripts.seed_adjudication_sops import build_knee_bearing_sop
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
 
-    steps = build_knee_bearing_sop()["steps"]
+    steps = SOP_KNEE_BEARING["steps"]
     missing = [s["title"] for s in steps if not s.get("step_view")]
     assert missing == [], f"以下步骤缺 step_view：{missing}"
 
