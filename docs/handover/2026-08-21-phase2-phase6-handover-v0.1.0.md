@@ -25,7 +25,7 @@
 | Phase 1 工作区 | `/Users/xuhehong/Desktop/r-mos/.worktrees/architecture-audit-phase1` |
 | Phase 1 分支 | `codex/architecture-audit-phase1` |
 | 写本交接前提交 | `fe9139c7b94da505c834cbe65a74a9e3e7b0a4ec` |
-| 交接内容最低锚点 | `<HANDOFF_ANCHOR_COMMIT>`；新窗口使用的提交必须包含该提交 |
+| 交接内容最低锚点 | `b1db003c84dd974138290d6b6eaef7dc2c50030b`；新窗口使用的提交必须包含该提交 |
 | 推荐新窗口起点 | `codex/architecture-audit-phase1` 的最新干净提交，并验证它包含最低锚点和本交接文件 |
 | 远端状态 | 未推送；不得未经用户许可推送 |
 | 应用代码状态 | Phase 1 只读审查未修改应用代码、测试、依赖、配置或数据库结构 |
@@ -250,7 +250,7 @@
 
 **生产解除条件**：E1 至 E4 全部按当前章程 PASS；DR-01 至 DR-06 全部真实 PASS；`REL-BLOCK-01` 经正式决策解除；AI 直接真机动作仍为 0；用户明确批准生产启用。
 
-**完成条件**：E2、E3、E4 和 DR-01 至 DR-06 均有真实、可追溯的执行裁决；全部通过时才能申请生产启用。若外部资源或任一门禁未满足，Phase 6 的当前结果必须是 BLOCKED，并准确记录阻塞原因和已取得证据，不能宣称交付通过。
+**完成条件**：E2、E3、E4 和 DR-01 至 DR-06 均有真实、可追溯的执行裁决；全部通过时才能申请生产启用。缺少环境、设备、权限或人员等外部资源而无法执行时，当前结果为 BLOCKED；已经执行但任一门禁未达到时，当前结果为 FAIL。两种情况都必须准确记录原因和已取得证据，不能宣称交付通过。
 
 **不得越界**：不得用模拟器、自动测试、文档或录像样例替代真实预生产、真机和课堂；不得远程绕过现场检查或物理急停；不得让 AI 直接控制真机；不得在用户正式批准前启用生产。
 
@@ -266,7 +266,7 @@ git -C /Users/xuhehong/Desktop/r-mos/.worktrees/architecture-audit-phase1 status
 git -C /Users/xuhehong/Desktop/r-mos/.worktrees/architecture-audit-phase1 rev-parse HEAD
 git -C /Users/xuhehong/Desktop/r-mos worktree list --porcelain
 git -C /Users/xuhehong/Desktop/r-mos/.worktrees/architecture-audit-phase1 merge-base --is-ancestor \
-  <HANDOFF_ANCHOR_COMMIT> HEAD
+  b1db003c84dd974138290d6b6eaef7dc2c50030b HEAD
 git -C /Users/xuhehong/Desktop/r-mos/.worktrees/architecture-audit-phase1 cat-file -e \
   HEAD:docs/handover/2026-08-21-phase2-phase6-handover-v0.1.0.md
 ```
