@@ -72,13 +72,18 @@
 - 基线提交：`cd9422d6fa6d3fc818ade1c45cb932197b95f0dc`
 - 结果提交：本报告所在提交
 - 环境：`codex/architecture-audit-phase1` 隔离工作区；后端使用 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv`
-- 范围：当前提交的后端全量、前端全量与构建；身份、对象归属、任务和机器人控制第一批静态审查
+- 范围：当前提交的后端全量、前端全量与构建；六条架构链路的静态审查和定向验证
 - Commands Run：
   - `python -m dotenv -f <主工作区 .env> run -- <venv python> -m pytest`
   - `npm test`
   - `npm run build`
   - `python -m pytest <10 个身份与控制定向测试文件> -o addopts='' --disable-warnings -q`
+  - `python -m pytest <WebSocket 协议与遥测上下文测试> -o addopts='' --disable-warnings -q`
+  - `docker compose config --quiet`
+  - `npm ls --omit=dev --depth=0`
+  - `npm audit --omit=dev`（网络与外发授权受限，未取得漏洞明细）
   - FastAPI `/api/v1` 路由依赖树只读清单脚本
+  - FastAPI `TestClient` WebSocket 匿名连接临时探针
 - Key Output：
   - 后端全量：`825 passed, 1964 warnings in 55.46s`，0 failed、0 error。
   - 前端全量：69 个文件通过，`511 passed, 2 skipped`，0 failed。
@@ -88,6 +93,10 @@
   - 第一批登记 1 个 P0、7 个 P1 和 1 个 P2 推断；身份/对象归属链与任务/机器人控制链均为 FAIL。
   - 第二批现有定向测试分两组通过：`41 passed` 和 `85 passed`；临时服务探针同时复现不存在的证据包仍判 PASS、伪证据类型放行、未知动作默认放行及伪 UUID 引用被返回。
   - 第二批新增 10 个 P1；SOP/证据/报告链与 AI/审批/审计链均为 FAIL。
+  - 第三批实时通道定向测试：`12 passed, 27 warnings in 0.21s`；临时探针复现匿名连接任意机器人编号成功、载荷无机器人编号和双 UTC 后缀时间。
+  - 第三批新增 7 个 P1 和 2 个 P2；遥测/实时通道链、部署/恢复/交付链均为 FAIL。
+  - 当前开发编排可以解析，运行依赖树没有缺包；但生产编排、发布与恢复脚本不存在，训练证据目录未持久化，DR-01 至 DR-06 均未执行。
+  - 当前完整前端依赖树安装报告 18 个已知风险（5 moderate、11 high、2 critical）；未获外发依赖清单授权，无法区分生产和开发依赖明细。
 - Evidence：
   - `docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md`
   - `docs/plans/2026-08-21-rmos-architecture-audit-phase1.md`
@@ -96,5 +105,7 @@
   - 首次后端运行因隔离工作区没有未跟踪 `.env`，触发生产默认密钥保护，结果为 `673 passed, 3 skipped, 149 errors`；改用 `python-dotenv` 从主工作区只读加载环境。
   - shell `source` 会改变 CORS 列表格式，配置解析失败；该方式废弃，并用配置探针确认 `debug=True`、CORS 共 4 项。
   - 沙箱内三项 PostgreSQL 门禁因本机连接限制失败；核对测试清理行为后，在获批范围外先复验 `3 passed`，再运行后端全量并得到 825 项通过。
+  - WebSocket 临时探针启动应用生命周期时，分析任务尝试连接本机 PostgreSQL 并被沙箱拒绝；探针未操作数据库，匿名连接和首条实时消息已独立取得，该错误不参与裁决。
+  - `npm audit --omit=dev` 在沙箱内因代理连接限制失败；联网只读复核又因会向外部服务发送依赖清单而未获安全授权，未绕过限制，也未执行后续完整审计或自动修复。
   - 测试生成的时间戳变化和构建生成的声明文件均已移除；没有把测试副作用带入审查提交。
 - Notes：全量自动测试通过不覆盖静态反证。E2、E3、E4 和生产启用未执行且继续 BLOCKED；`REL-BLOCK-01` 未清零。

@@ -7387,3 +7387,37 @@
   - 本次没有拉取、推送、启动服务、连接数据库、运行浏览器或操作真机。
   - REL-BLOCK-01 仍未清零；E1 至 E4 与生产启用状态没有提升。
 - Next Step: 提交本条记录后，删除已合并的临时工作区和本地功能分支；等待用户另行确认是否进入 Phase 1。
+
+---
+
+- DateTime: 2026-08-21 16:06 CST
+- Task: 架构审查 Phase 1 第三批——遥测、实时通道、部署、恢复与依赖风险
+- Scope (files changed):
+  - docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md
+  - docs/testing/TEST_REPORT.md
+  - docs-archive/DEVELOPMENT_LOG.md
+- Commands Run:
+  - `<后端 venv + dotenv> python -m pytest <WebSocket 协议与遥测上下文测试> -o addopts='' --disable-warnings -q`
+  - `<后端 venv + dotenv> python /tmp/rmos_phase1_websocket_probe.py`
+  - `rg -n <WebSocket 认证、机器人过滤、广播、心跳、时间和前端重连证据>`
+  - `rg -n <开发编排、生产校验、进程数、持久化、迁移、发布脚本和 DR 状态证据>`
+  - `docker compose config --quiet`
+  - `npm ls --omit=dev --depth=0`
+  - `npm audit --omit=dev`
+  - `test ! -e docker-compose.production.yml`
+  - `test ! -e scripts/release/preflight.sh`
+  - `git diff --check`
+  - `git diff --name-only`
+- Tests:
+  - WebSocket 与遥测上下文定向测试：`12 passed, 27 warnings in 0.21s`，0 failed、0 error。
+  - 临时探针：匿名连接任意机器人编号成功；载荷没有机器人编号；时间值为 `...+00:00Z` 双 UTC 后缀。
+  - 开发编排静态解析：退出码 0，仅报告顶层 `version` 字段已过时。
+  - 运行依赖树：`npm ls --omit=dev --depth=0` 退出码 0，没有缺包；不等同漏洞核查。
+  - 文件存在性：生产编排和发布预检脚本均不存在；部署计划中的 DR-01 至 DR-06 仍全部未执行。
+  - 文档差异格式：`git diff --check` 退出码 0；变更范围只有三份允许修改的文档。
+- Result: FAIL（实时通道链与部署、恢复、交付链当前裁决）；定向自动测试本身 PASS，E2 至 E4 和生产启用继续 BLOCKED。
+- Risks/Notes:
+  - WebSocket 探针启动应用生命周期时，后台分析任务连接本机 PostgreSQL 被沙箱拒绝；探针没有执行数据库操作，实时连接与首条消息已独立取得。
+  - `npm audit --omit=dev` 首次因沙箱代理限制失败；联网复核因会把依赖清单发送给外部服务而未获安全授权。未绕过限制，未执行完整在线审计或自动修复；当前只保留安装阶段的 18 项风险总数，生产影响待分类。
+  - 本批没有修改应用、测试、依赖、配置或数据库，没有启动外部服务、浏览器或真机，没有执行 git push。
+- Next Step: 由 Claude Code 按受限只读模式独立复核六条链路；Codex 逐条回到代码核验后再完成 Phase 1 收口。
