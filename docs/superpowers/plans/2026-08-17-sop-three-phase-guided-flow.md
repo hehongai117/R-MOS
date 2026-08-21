@@ -6,9 +6,11 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-21 09:45 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-21 09:55 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** Task 3.4（`useSOPSceneSync` 读 `stepView`）交 Codex 执行，完成后 Phase 3 收官。核心是让作者化构图优先于现有启发式，且 `stepView` 为空时**必须**回落到既有推断逻辑（存量 30 个 SOP 全部无 `stepView`，行为必须零变化）。
+**下一步：** **Phase 1-3 已全部收官（引擎与前端就绪）**。进入 **Phase 4 标杆内容**，Task 4.1（膝关节 SOP 重编排为 22 步）。
+
+> ⚠️ **Phase 4 与前三个 Phase 性质不同**：4.1/4.2 是**内容编排**（改 `seed_adjudication_sops.py`，22 步的分段、BOM、相机位全是手工活），不是写引擎代码。§7 已把「内容编排成本被低估」列为**最大风险**，T4.2 完成后需记录实际耗时，据此决定是否要做可视化编排器。**本轮只打穿膝关节这一条 SOP，不要扩大到其余 30 个。**
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
@@ -21,8 +23,8 @@
 | 3.1 | 三段进度条 | ✅ 已验收 | `0363e5c9` | Codex 实现；组件 66 行；单阶段守卫经变异测试验证 |
 | 3.2 | 齐套检查面板 | ✅ 已验收 | `033af6d3` | Codex 实现；77 行；变异测试验证计数逻辑 |
 | 3.3 | 验收记录面板 | ✅ 已验收 | `ad52ed71` | Codex 实现；55 行；两面板状态独立不串档 |
-| 3.4 | `useSOPSceneSync` 读 `stepView` | ⬜ 未开始 | — | **下一个**；Phase 3 收官；回落启发式是硬要求 |
-| 4.1 | 膝关节 SOP 重编排为 22 步 | ⬜ 未开始 | — | |
+| 3.4 | `useSOPSceneSync` 读 `stepView` | ✅ 已验收 | `0cad4662` | Codex 实现；bindStep 陷阱已避开，经变异验证 |
+| 4.1 | 膝关节 SOP 重编排为 22 步 | ⬜ 未开始 | — | **下一个**；内容编排非代码，见 §7 风险 |
 | 4.2 | 补 `step_view` 与 `required_parts` | ⬜ 未开始 | — | 最大成本项，见 §7 风险 |
 | 5.1 | E2E 与记录落库 | ⬜ 未开始 | — | |
 | 5.2 | 报告页两节 | ⬜ 未开始 | — | |
@@ -31,7 +33,7 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **506 passed / 2 skipped**（67 files） | 2026-08-21，含 T3.3 新增 3 个 |
+| 前端 `npm test` | **509 passed / 2 skipped**（68 files） | 2026-08-21，含 T3.4 新增 3 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
@@ -1514,7 +1516,7 @@ cd r-mos-frontend && npm test && npm run build
 
 **核心要求**：`stepView` 有值时优先用它；**任何缺省字段回落到现有启发式**。这是存量 30 个 SOP 零影响的保证点。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```typescript
 import { describe, it, expect } from 'vitest';
@@ -1563,13 +1565,13 @@ describe('stepView 优先于启发式', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/__tests__/sceneSyncStepView.test.ts
 ```
 
-- [ ] **Step 3: 改 `buildIntent`**
+- [x] **Step 3: 改 `buildIntent`**
 
 ```typescript
 function buildIntent(step: SOPStepAdjudication | null): SOPSceneIntent {
@@ -1589,11 +1591,11 @@ function buildIntent(step: SOPStepAdjudication | null): SOPSceneIntent {
 }
 ```
 
-- [ ] **Step 4: 消费端接线**
+- [x] **Step 4: 消费端接线**
 
 `r-mos-frontend/src/pages/sopMaintenance/useSOPPlaybackBridge.ts` 里，当 intent 带 `camera` 时套用相机预设，带 `visibleLinks` 时收敛可见集。**先读该文件确认既有的相机与可见集设置入口**，复用它们，不要新增并行通路。
 
-- [ ] **Step 5: 跑测试 + 构建 + 存量回归（重点）**
+- [x] **Step 5: 跑测试 + 构建 + 存量回归（重点）**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/adjudication/ && npm test && npm run build
@@ -1601,7 +1603,7 @@ cd r-mos-frontend && npx vitest run src/adjudication/ && npm test && npm run bui
 
 Expected: 全绿。第二个用例（回落启发式）是存量兼容的守门测试，必须过。
 
-- [ ] **Step 6: 提交 + 追加开发日志**
+- [x] **Step 6: 提交 + 追加开发日志**
 
 ---
 
@@ -1887,7 +1889,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ✅ |
 | 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ✅ |
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ✅ |
-| 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ⬜ |
+| 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ✅ |
 | 4.1 | `pytest tests/test_sop_three_phase.py -v`；curl 核对 | 22 步、4+14+4 分段正确；31 个 SOP 仍在，30 个存量步骤数不变 | ⬜ |
 | 4.2 | `pytest` + **目视逐步验收** | 22 步全带 `step_view`；开发日志记录真实目视观察，不得写「应该正常」 | ⬜ |
 | 5.1 | `npm run e2e -- sop-three-phase.spec.ts`；后端 `pytest tests/ -v` | E2E 通过；后端 ≥791；前端不低于 §📍 基线 | ⬜ |
