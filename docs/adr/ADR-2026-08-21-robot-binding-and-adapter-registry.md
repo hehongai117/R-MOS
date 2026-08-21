@@ -1,6 +1,6 @@
 # ADR-2026-08-21：机器人不可变绑定与适配器隔离
 
-- 状态：Proposed（待用户确认存量回填口径后转 Accepted）
+- 状态：**Accepted**（2026-08-21 用户确认存量回填口径；WebSocket 令牌传递与旧路由下线口径由本 ADR 定案，见"已确认决议"）
 - 覆盖发现：`CTRL-101`、`CTRL-102`、`CTRL-103`、`CTRL-104`、`CTRL-105`，以及 `RT-101`/`RT-104` 的机器人隔离面
 - 上位规则：`AGENTS.md`、`docs/testing/ACCEPTANCE_CHARTER.md` 的 G2、G5
 - 落地阶段：Phase 3（本 ADR 不改代码）
@@ -90,9 +90,9 @@ async def close_adapter(cls, robot_model_id: int | None = None) -> None
 
 `app/api/v1/endpoints/websocket.py:13-34` 的 `_handle_websocket` 增加握手认证与订阅授权：
 
-- 令牌通过查询参数传递（浏览器原生 `WebSocket` 无法设置请求头，`r-mos-frontend/src/hooks/useWebSocket.ts` 使用原生 API），服务端校验后立即建立连接上下文；令牌不得写入访问日志。
-- 无令牌、令牌失效、目标机器人无权订阅 → 拒绝握手并写审计。
-- 向后兼容路由 `/ws/robot/status`（不带 `robot_id`）**下线**：它天然无法做机器人隔离。前端改用 `/ws/robot/{robot_id}/status`。
+- **令牌走连接后首帧，不走查询参数。** 浏览器原生 `WebSocket` 无法设置请求头（`r-mos-frontend/src/hooks/useWebSocket.ts` 用的就是原生 API），但查询参数会把令牌写进服务端访问日志、反向代理日志与浏览器历史。改为：接受连接后等待客户端首帧 `{"type":"auth","token":"..."}`，超时（建议 5 秒）或校验失败即以明确关闭码断开，认证通过前不推送任何遥测。这样无需额外配置日志脱敏。
+- 无令牌、令牌失效、目标机器人无权订阅 → 拒绝并写审计。
+- 向后兼容路由 `/ws/robot/status`（不带 `robot_id`）**直接下线，不设并存期**：它天然无法做机器人隔离。前端 `useWebSocket.ts:112-113` 已经在 `robotId` 存在时走 `/ws/robot/{robotId}/status`，只需把 `robotId` 变为必填并删掉 113 行的回退分支；`r-mos-frontend/scripts/perf/ws-probe.mjs:33` 的默认 `WS_URL` 同批改为带 `robot_id` 的地址（该文件已支持 `WS_URL` 环境变量覆盖）。这两处是仅有的消费方。
 - 客户端消息交给已存在但从未被调用的 `ConnectionManager.handle_client_message`（`websocket_manager.py:82-137`），使 `last_pong` 生效（RT-102）。
 - 时间戳统一：`websocket_manager.py:109,149-152` 当前对已含 `+00:00` 的时间再追加 `"Z"`，产生 `...+00:00Z`。改为由消息模型负责序列化，只输出一种 UTC 形式（RT-103）。
 - 前端 `useWebSocket.ts:200-203` 的空依赖数组 effect 改为显式依赖 `robotId`，切换时先清理旧重连定时器与旧连接（RT-104）。
@@ -151,8 +151,13 @@ Phase 3 先写并发复现测试，**不预先假定 CTRL-105 成立**：
 - 适配器注册表、停止通道、前检查阻断、WebSocket 隔离均为代码改动，`git revert` 即可。
 - 回滚后系统回到"无机器人绑定"的原状态，**CTRL 链路重新变为 FAIL**，不得因回滚成功而认为风险已关闭。
 
-## 待确认事项（阻塞本 ADR 转 Accepted）
+## 已确认决议（2026-08-21）
 
-1. **`tasks.user_id` 存量为 NULL 的行如何处理**：回填到系统账号并置 legacy 标记，还是保留可空并在服务层拒绝这类历史任务的新操作。建议前者。
-2. **`/ws/robot/status` 下线的时间点**：是否需要一个版本的并存期供外部工具迁移（`r-mos-frontend/scripts/perf/ws-probe.mjs` 使用该地址）。
-3. **WebSocket 令牌通过查询参数传递**是否可接受（会进入服务端访问日志，需同步配置日志脱敏）；若不接受，替代方案是连接后首帧发送令牌、超时未认证即断开。
+1. **`tasks.user_id` 存量 NULL 行**：用户确认——回填到系统账号并置 legacy 标记，不采用"保留可空 + 豁免"。
+2. **`/ws/robot/status` 下线时间点**：直接下线，不设并存期。经取证，消费方只有前端 `useWebSocket.ts:113` 的回退分支与 `ws-probe.mjs:33` 的默认值，两处均在同批改掉，无外部工具依赖。
+3. **WebSocket 令牌传递**：采用**连接后首帧认证**，不用查询参数。查询参数会把令牌写进访问日志、代理日志与浏览器历史，首帧方案多约 10 行代码但消除整类泄漏，且不需要额外配置日志脱敏。
+4. **`is_legacy_robot_binding` 的定位**：只用于让报告与审计区分"当时真的绑定了这台机器人"与"迁移时推定的"，**不是归属校验的豁免开关**。
+
+## 迁移执行前的强制核对
+
+回填目标 `robot_model_id=1` 的前提是 ATOM-01 确为 id=1。执行迁移前必须在目标库运行 `SELECT id, brand, model_name FROM robot_models WHERE id=1` 并人工确认；不一致即停止迁移。此项属实施步骤，不是待决策项。

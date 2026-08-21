@@ -9,9 +9,9 @@
 
 ## 0. 进入条件（全部满足才能开工）
 
-1. ADR-AUTHN 与 ADR-ROBOT 的"待确认事项"已由用户逐条确认，状态转为 Accepted。
-2. **ADR-AUTHN D1 的公开路由白名单已由用户签字。** 这是安全边界，不能由实施方决定。
-3. 用户明确批准 Phase 3 的权限、数据结构与控制边界实现。
+1. ✅ **已满足**（2026-08-21）：ADR-AUTHN 与 ADR-ROBOT 状态均为 Accepted。
+2. ✅ **已满足**（2026-08-21）：公开路由白名单已由用户确认，共 6 条；机器人已发布资产明确排除，须另行单独审批。
+3. ⬜ **未满足**：用户明确批准 Phase 3 的权限、数据结构与控制边界实现。**这是独立于 ADR 确认的第二道门，尚未取得——不得据"ADR 已 Accepted"自行开工。**
 4. 从已确认的 Phase 2 最终提交建立独立工作区与分支。
 5. 现场核对 Python 环境（`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv`），输出 Read-first Checkpoint。
 
@@ -103,10 +103,12 @@
 - 匿名请求私有/草稿/其他教师/其他学校机器人的资产清单与文件 → 404；资产清单响应中不得出现存储路径字段。
 - 匿名可读取明确发布（`status=READY` 且 `visibility=public`）的资产。
 - 同一账号连续 5 次错误密码后第 6 次返回受限状态并写审计；15 分钟窗口结束后恢复；锁定期内正确密码同样被拒；成功登录清零计数。
+- **`AUTH-SCHOOLS-PII`**：匿名请求 `GET /api/v1/schools/{school_name}/teachers` 返回的 `email` 必须全部为脱敏形式；完整邮箱只对已认证且有权的调用者可见。
 
 **实现**
 - `robots.py:498,516,543` 拆成私有（认证 + 归属）与公开发布（不可猜测标识 + 状态校验）两条路径。可用字段：`robot_models.owner_teacher_id` / `visibility` / `status`（`app/models/robot_model.py:27-40`）。
 - `auth.py:197-262` 增加按 `(账号, 来源 IP)` 的进程内 TTL 计数。**不引入 Redis**（与 ADR-RUNTIME D1 单进程一致）。
+- `app/api/v1/endpoints/schools.py:30-53` 对 `email` 做服务端脱敏（保留首字符与域名）。该路由与 `GET /api/v1/schools` 同为白名单公开路由，注册流程必需（`RegisterPage.tsx:11`；`src/api/schools.ts:19,25` 用裸 axios，天然不带令牌）。
 
 **通过条件**
 - `AUTH-GATE` 全部满足；对应 `AC-06` / `T-06-E` 的"越权成功 0 次、404 率 100%、审计率 100%"。
@@ -169,8 +171,8 @@
 - 前端：同一组件内依次切换两个 `robotId`，旧连接关闭一次、新连接地址正确、旧连接后续消息不再更新页面。
 
 **实现**
-- `websocket.py:13-34` 增加握手认证与订阅授权；令牌走查询参数（浏览器原生 `WebSocket` 无法设请求头），**令牌不得写入访问日志**。
-- 下线 `/ws/robot/status`（无 `robot_id`，天然无法隔离）；前端改用 `/ws/robot/{robot_id}/status`。同步确认 `r-mos-frontend/scripts/perf/ws-probe.mjs` 的地址。
+- `websocket.py:13-34` 增加认证与订阅授权。**令牌走连接后首帧**（`{"type":"auth","token":"..."}`，5 秒超时即断开），**不走查询参数**——查询参数会把令牌写进访问日志、代理日志与浏览器历史。认证通过前不推送任何遥测。
+- 下线 `/ws/robot/status`（无 `robot_id`，天然无法隔离），**不设并存期**。前端 `useWebSocket.ts:112-113` 已在 `robotId` 存在时走带 id 的地址，只需把 `robotId` 变必填并删掉 113 行的回退分支；`ws-probe.mjs:33` 的默认 `WS_URL` 同批改掉。经取证，这两处是仅有的消费方。
 - 调用已存在但从未被调用的 `ConnectionManager.handle_client_message`（`websocket_manager.py:82-137`）。
 - 连接表按 `robot_model_id` 分组；`broadcast_to_channel`（195-207）与 `send_to_user`（209-223）的"目前简化为向所有连接广播"改为真实映射。
 - 时间戳由消息模型统一序列化（修 `websocket_manager.py:109,149-152`）。

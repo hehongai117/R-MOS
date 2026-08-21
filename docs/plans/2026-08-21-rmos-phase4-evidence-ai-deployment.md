@@ -10,10 +10,10 @@
 ## 0. 进入条件
 
 1. Phase 3 已完成并由用户确认。
-2. ADR-EVID、ADR-AI、ADR-RUNTIME 的"待确认事项"已逐条确认，状态转为 Accepted。其中三项是硬阻塞：
-   - ADR-EVID：存储命名空间口径（方案 A 泛化 `FileStorageBase` 首参）；SOP 产品行为变更（改 SOP = 发新版本）。
-   - ADR-AI：删除 `tests/regression/test_p0_bugs_2026_07.py:241` 这条 `regression` 标记用例（`pytest.ini:11` 定义为"永不放松"）。
-   - ADR-RUNTIME：**待定 J 未答复时，DEP-101 与 DEP-104 不得关闭**，但其余部分可推进。
+2. ✅ **已满足**（2026-08-21）：ADR-EVID、ADR-AI、ADR-RUNTIME 状态均为 Accepted。用户已确认存储命名空间口径（方案 A）、SOP 产品行为变更、以及删除 `tests/regression/test_p0_bugs_2026_07.py:241` 这条 `regression` 用例。
+3. ⬜ **Phase 4 开工前仍须补齐的两项**：
+   - **`critical` 多人确认阈值**（两名教师 or 一名管理员）——ADR-AI D4 剩余待定。给出前 `critical` 按最严格解释拒绝执行，**不得降级为单人教师确认**。
+   - **待定 J** 未答复时 `DEP-101` 与 `DEP-104` 不得关闭，其余部分可推进。
 3. 从已确认的 Phase 3 最终提交建立独立工作区与分支。
 4. 现场核对 Python 环境，输出 Read-first Checkpoint。
 

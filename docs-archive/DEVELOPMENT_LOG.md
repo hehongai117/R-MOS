@@ -7533,3 +7533,42 @@
   - 五份 ADR 状态均为 Proposed，各自"待确认事项"未获用户确认前不得进入实现。
   - 本批没有修改应用、测试、依赖、配置或数据库；没有启动服务或操作真机；没有合并或推送。
 - Next Step: 向用户汇报 Phase 2 产物与待确认事项（尤其公开路由白名单签字、regression 用例删除批准、存储命名空间口径、SOP 产品行为变更）；获确认后再进入 Phase 3，不提前实现。
+
+---
+
+- DateTime: 2026-08-21 21:20 CST
+- Task: Phase 2 决策确认——用户批准五项决策，五份 ADR 由 Proposed 转 Accepted，同步下游文档
+- Scope (files changed):
+  - docs/adr/ADR-2026-08-21-authn-default-deny-and-object-ownership.md
+  - docs/adr/ADR-2026-08-21-robot-binding-and-adapter-registry.md
+  - docs/adr/ADR-2026-08-21-evidence-integrity-and-sop-versioning.md
+  - docs/adr/ADR-2026-08-21-ai-approval-and-audit-gating.md
+  - docs/adr/ADR-2026-08-21-runtime-topology-and-production-deployment.md
+  - docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md
+  - docs/plans/2026-08-21-rmos-phase3-auth-control-realtime.md
+  - docs/plans/2026-08-21-rmos-phase4-evidence-ai-deployment.md
+  - docs/testing/TEST_PLAN.md（新增 AUTH-GATE-13，修订 RT-GATE-01 令牌口径）
+  - docs/testing/TEST_REPORT.md（新增 AUDIT-P2-DOC-002）
+  - AGENTS.md + docs/ops/CODEX_RULES.md（镜像同步）
+  - docs-archive/DEVELOPMENT_LOG.md（本条）
+- Commands Run:
+  - `rg -n 'schools' r-mos-frontend/src/api/ r-mos-frontend/src/pages/`
+  - `cat r-mos-backend/app/api/v1/endpoints/schools.py`
+  - `sed -n '268,286p' r-mos-frontend/src/pages/RegisterPage.tsx`
+  - `grep -n 'WS_URL' r-mos-frontend/scripts/perf/ws-probe.mjs`
+  - `grep -n 'ws://' r-mos-frontend/src/hooks/useWebSocket.ts`
+  - `grep -h '^- 状态：' docs/adr/ADR-2026-08-21-*.md`
+  - `shasum -a 256 AGENTS.md docs/ops/CODEX_RULES.md`
+  - `grep -rn 'Proposed' <全部 Phase 2 文档>`
+- Tests:
+  - 本批只修改文档，不运行应用代码测试，不启动服务，不联网。
+  - 一致性自检：五份 ADR 状态行全部为 Accepted；全仓无残留 "Proposed" 表述（DOC-001 的历史记录已加标注，未改写）；AGENTS.md 与镜像 SHA-256 一致；29 项计数未变。
+- Result: PASS（**仅决策确认与文档一致性；不是实现，不是验收**）
+- Risks/Notes:
+  - 用户答复的第 1e 项带条件。未回问，改为自行取证：`RegisterPage.tsx:11` 同时使用 `searchSchools` 与 `listSchoolTeachers`，`src/api/schools.ts:19,25` 用裸 axios 天然不带令牌，`auth.py` 注册校验学校存在性——两条 schools 路由确为注册必需，均入白名单。
+  - 由此发现新暴露面 `AUTH-SCHOOLS-PII`：`schools.py:30-53` 对匿名调用者返回教师 email，`RegisterPage.tsx:280` 直接渲染，知道学校名即可枚举全校教师邮箱。裁定为保持公开 + 服务端邮箱脱敏，落在 P3-3，门禁 `AUTH-GATE-13`。**不计入 29 项，单独跟踪。**
+  - 本人先前声称"答完 5 条即可全部转 Accepted"不准确：ADR 中另有 7 项待确认。处理方式：2 项由用户答复覆盖；4 项由本人依据取证裁定并在 ADR 写明理由（`/ws/robot/status` 直接下线不设并存期；WebSocket 令牌改走连接后首帧而非查询参数；legacy 证据仅作历史展示；`/health` unhealthy 改返 503 并同批更新 API-02）；1 项（`critical` 多人确认阈值）确认无法自行裁定，保留为剩余待定，并写明"给出前按最严格解释拒绝执行，不得降级为单人确认"。
+  - 待定项 J 仍为 BLOCKED；`DEP-101`、`DEP-104` 不得在 Phase 4 关闭。
+  - 29 项仍全部 NOT_STARTED；E1 仍 FAIL；E2/E3/E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
+  - 本批没有修改应用、测试、依赖、配置或数据库；没有启动服务或操作真机；没有合并或推送。
+- Next Step: 等待用户单独批准进入 Phase 3。**不得以"ADR 已 Accepted"推导开工许可。** 开工后第一步为 Phase 3 批次 0（测试基建上提），再进 P3-1。

@@ -26,7 +26,20 @@
 | ADR-AI | `docs/adr/ADR-2026-08-21-ai-approval-and-audit-gating.md` | AI-101～105 |
 | ADR-RUNTIME | `docs/adr/ADR-2026-08-21-runtime-topology-and-production-deployment.md` | DEP-101～105 |
 
-五份 ADR 状态均为 **Proposed**，各自"待确认事项"未获用户确认前不得进入实现。
+五份 ADR 于 2026-08-21 全部转为 **Accepted**（用户确认公开路由白名单、`regression` 用例删除、存储命名空间口径、SOP 产品行为变更、`tasks.user_id` 回填口径）。
+
+**仍未定案、但不阻塞 Phase 3 的两项：**
+
+| 项 | 归属 | 处置 |
+|---|---|---|
+| `critical` 级别的多人确认阈值（两名教师 or 一名管理员） | ADR-AI D4 | 属 Phase 4；给出前 `critical` 按最严格解释拒绝执行，不得降级为单人确认 |
+| 待定项 J（现场形态 / TLS / 备份目标 / RTO-RPO） | ADR-RUNTIME 第 8 节 | 保持 BLOCKED；`DEP-101`、`DEP-104` 不得在 Phase 4 关闭 |
+
+**Phase 2 取证发现、不属于原 29 项的新暴露面（单独跟踪，不计入 29 的计数）：**
+
+| 编号 | 说明 | 处置 |
+|---|---|---|
+| `AUTH-SCHOOLS-PII` | `app/api/v1/endpoints/schools.py:30-53` 的 `list_school_teachers` 对匿名调用者返回教师 `email`，`RegisterPage.tsx:280` 直接渲染；知道学校名即可枚举全校教师邮箱 | 该路由保持公开（注册流程必需），但服务端对 `email` 脱敏后返回。落在 P3-3，门禁用例 `AUTH-GATE-13` |
 
 ## 2. 总表
 

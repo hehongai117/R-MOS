@@ -1,6 +1,6 @@
 # ADR-2026-08-21：默认拒绝认证与对象归属
 
-- 状态：Proposed（待用户确认公开路由白名单后转 Accepted）
+- 状态：**Accepted**（2026-08-21 用户确认公开路由白名单与 `tasks.user_id` 回填口径）
 - 覆盖发现：`AUTH-101`、`AUTH-102`、`AUTH-103`、`AUTH-104`、`AUTH-105`，以及 `RT-101` 的握手认证面
 - 上位规则：`AGENTS.md`、`docs/testing/ACCEPTANCE_CHARTER.md` 的 G1
 - 落地阶段：Phase 3（本 ADR 不改代码）
@@ -39,7 +39,7 @@ app.include_router(api_router, prefix="/api/v1",
 
 为避免网关与端点重复查库，在 `app/services/authz_guard.py` 的 `get_current_actor` 增加 `request: Request` 参数并做请求级缓存（首次解析后写 `request.state.actor`，后续直接返回）。这是约 4 行改动，端点侧继续写 `Depends(get_current_actor)` 不变。
 
-**白名单初稿（须由用户逐条确认后才生效）：**
+**白名单（2026-08-21 用户确认，生效）：**
 
 | 方法 | 路径 | 理由 |
 |---|---|---|
@@ -47,12 +47,27 @@ app.include_router(api_router, prefix="/api/v1",
 | POST | `/api/v1/auth/register` | 注册入口 |
 | POST | `/api/v1/auth/login` | 登录入口 |
 | POST | `/api/v1/auth/refresh` | 刷新入口，自带刷新令牌校验 |
-| GET | `/api/v1/schools` | 注册页学校选择；须先确认返回字段不含敏感信息 |
-| GET | `/api/v1/robots/{robot_id}/assets/{file_path:path}` | **仅**在 D3 拆分出"已发布公开资产"专用路径后适用；当前形态不得列入 |
+| GET | `/api/v1/schools` | 注册页学校自动补全，**确认必需**（见下） |
+| GET | `/api/v1/schools/{school_name}/teachers` | 学生注册时选择导师，**确认必需**；但须先做字段脱敏（见下） |
 
-`POST /api/v1/auth/logout`（`auth.py:346`）不列入白名单——注销必须能定位到具体令牌主体。`/`、`/docs`、`/openapi.json` 在 `api_router` 之外，由 `main.py` 单独裁定；生产环境应关闭 `/docs`（见 ADR-runtime）。
+**已排除：** `GET /api/v1/robots/{robot_id}/assets/{file_path:path}` 不列入白名单。公开发布资产须等 D3 拆出专用只读路径后**另行单独审批**，当前形态一律要求认证。
 
-其余 176 个路由默认进入必须认证集合。
+`POST /api/v1/auth/logout`（`auth.py:346`）不列入——注销必须能定位到具体令牌主体。`/`、`/docs`、`/openapi.json` 在 `api_router` 之外，由 `main.py` 单独裁定；生产环境应关闭 `/docs`（见 ADR-runtime）。
+
+其余路由默认进入必须认证集合。
+
+**两条 schools 路由的必需性核实（Phase 2 取证）：**
+
+- `r-mos-frontend/src/pages/RegisterPage.tsx:11` 同时 import `searchSchools` 与 `listSchoolTeachers`；`src/api/schools.ts:19,25` 使用**裸 `axios`**（不是挂了 Bearer 拦截器的 `apiClient`），因此这两个调用天然不带令牌。
+- `app/api/v1/endpoints/auth.py` 的注册会校验 `school_name` 必须存在于 `schools` 表，注册流程确实依赖学校选择，不能改为登录后再选。
+
+**新暴露面与随附决策（AUTH-SCHOOLS-PII，Phase 2 取证发现，不属于 Phase 1 的 29 项）：**
+
+`app/api/v1/endpoints/schools.py:30-53` 的 `list_school_teachers` 对匿名调用者返回教师的 `id`、`full_name` 和 **`email`**；`RegisterPage.tsx:280` 把邮箱渲染在教师卡片上。任何人只要知道学校名即可枚举全校教师邮箱。
+
+决策：**该路由保持公开，但服务端对 `email` 做脱敏后再返回**（例如保留首字符与域名，`zh***@example.edu`）。理由：注册页需要邮箱来区分同名教师，脱敏后仍可区分，但批量采集价值归零。这是端点内的一处字段处理，不改路由结构、不改前端。
+
+复验：匿名请求该路由返回的 `email` 字段必须全部为脱敏形式；完整邮箱只对已认证且有权的调用者可见。
 
 ### D2：身份只来自服务端令牌，客户端头降级为非安全元数据
 
@@ -136,8 +151,8 @@ app.include_router(api_router, prefix="/api/v1",
 - D5 的计数为进程内结构，重启即清空，无持久化残留。
 - 唯一带迁移的是 `tasks.user_id`，回滚方式随 ADR-robot-binding 的同一迁移 `alembic downgrade -1`。
 
-## 待确认事项（阻塞本 ADR 转 Accepted）
+## 已确认决议（2026-08-21）
 
-1. **公开路由白名单逐条确认**（D1 表格）。这是安全边界，必须由用户签字，不能由实施方单方面决定。
-2. `GET /api/v1/schools` 是否真的需要匿名可读；若注册流程不需要，应移出白名单。
-3. `tasks.user_id` 存量为 NULL 的行是否允许豁免归属校验，还是一律回填到某个系统账号。豁免会留下永久后门，建议回填。
+1. **公开路由白名单**：按 D1 表格 6 条生效；机器人已发布资产明确排除，须另行单独审批。
+2. **`GET /api/v1/schools` 与 `/schools/{name}/teachers`**：经取证确认注册流程真实依赖，保留公开；随附 `AUTH-SCHOOLS-PII` 的邮箱脱敏决策一并落地。
+3. **`tasks.user_id` 存量 NULL 行**：回填到系统账号并置 legacy 标记，**不采用"保留可空 + 豁免归属校验"**（该方案会留下永久后门）。回填与 `robot_model_id` 合并为同一个 Alembic 迁移。

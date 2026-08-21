@@ -17,6 +17,7 @@
 |---|---|---|
 | 规则事实源修复 | PASS | DOC-RULE-001 文档门禁已通过；不代表 E1 至 E4 应用验收通过 |
 | Phase 2 修复规格 | PASS | AUDIT-P2-DOC-001 文档门禁已通过；29 项发现全部映射到可复现门禁，但**全部为 NOT_STARTED**，不代表任何一项已修复 |
+| Phase 2 决策确认 | PASS | AUDIT-P2-DOC-002：五份 ADR 已转 Accepted；**这是设计定案，不是实现，更不是验收** |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -152,5 +153,34 @@
   - **本批只写文档，没有修改应用代码、测试、依赖、运行配置或数据库结构；没有启动前端、后端、数据库、浏览器或真机；没有联网或运行 `npm audit`；没有合并或推送。**
   - 29 项发现全部为 `NOT_STARTED`。ADR 写完不等于修复完成。
   - E1 仍为 FAIL；E2、E3、E4 与生产启用仍为 BLOCKED；`REL-BLOCK-01` 未清零；`DR-01` 至 `DR-06` 仍未真实执行。
-  - 五份 ADR 状态均为 Proposed。其"待确认事项"（公开路由白名单签字、`regression` 用例删除批准、存储命名空间口径、SOP 产品行为变更、审计事务改造范围等）未获用户确认前，不得进入 Phase 3/4 实现。
+  - 五份 ADR 状态均为 Proposed。其"待确认事项"（公开路由白名单签字、`regression` 用例删除批准、存储命名空间口径、SOP 产品行为变更、审计事务改造范围等）未获用户确认前，不得进入 Phase 3/4 实现。**（该状态已由后续批次 AUDIT-P2-DOC-002 更新为 Accepted；本条保留为 `db4f6367` 提交上的历史记录，不改写。）**
   - 待定项 J（现场部署形态、TLS 终结方、备份目标、RTO/RPO）保持 BLOCKED；`DEP-101` 与 `DEP-104` 不得在 Phase 4 关闭。
+
+### AUDIT-P2-DOC-002｜Phase 2 决策确认与 ADR 定案
+
+- 基线提交：`db4f6367`
+- 结果提交：本报告所在提交
+- 环境：`audit/phase2-security-architecture` 隔离工作区
+- 范围：五份 ADR 的待确认事项裁定、白名单生效、下游文档同步
+- Commands Run：
+  - `rg -n 'schools' r-mos-frontend/src/api/ r-mos-frontend/src/pages/`（核实注册页依赖）
+  - `cat r-mos-backend/app/api/v1/endpoints/schools.py`
+  - `sed -n '268,286p' r-mos-frontend/src/pages/RegisterPage.tsx`（核实教师卡片渲染字段）
+  - `grep -n 'WS_URL' r-mos-frontend/scripts/perf/ws-probe.mjs`、`grep -n 'ws://' r-mos-frontend/src/hooks/useWebSocket.ts`（核实 WebSocket 消费方）
+  - `grep -h '^- 状态：' docs/adr/ADR-2026-08-21-*.md`
+- Key Output：
+  - 用户于 2026-08-21 确认五项决策：公开路由白名单、删除 `regression` 标记用例、存储命名空间口径（方案 A）、SOP 产品行为变更、`tasks.user_id` 回填口径。五份 ADR 全部转为 **Accepted**。
+  - 白名单最终 6 条；`GET /api/v1/robots/{robot_id}/assets/{file_path:path}` 明确排除，须另行单独审批。
+  - 核实 `GET /api/v1/schools` 与 `/schools/{name}/teachers` 确为注册流程必需：`RegisterPage.tsx:11` 同时使用两者，`src/api/schools.ts:19,25` 用裸 `axios` 天然不带令牌，`auth.py` 注册会校验学校存在性。
+  - **新暴露面 `AUTH-SCHOOLS-PII`**：`schools.py:30-53` 对匿名调用者返回教师 `email`，`RegisterPage.tsx:280` 直接渲染。裁定为保持公开 + 服务端邮箱脱敏，落在 P3-3，门禁用例 `AUTH-GATE-13`。**该项不属于 Phase 1 的 29 项，单独跟踪，29 的计数不变。**
+  - 由本人依据取证裁定、未上抛用户的四项：`/ws/robot/status` 直接下线不设并存期（消费方仅 `useWebSocket.ts:113` 与 `ws-probe.mjs:33`）；WebSocket 令牌改走连接后首帧而非查询参数（避免令牌进日志）；legacy 证据仅作历史展示不参与新判定；`/health` unhealthy 改返 503 且同批更新 TEST_PLAN 的 API-02。
+- Evidence：`docs/adr/ADR-2026-08-21-*.md`（5 份，状态行均为 Accepted）、`docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md`、`docs-archive/DEVELOPMENT_LOG.md`
+- Result：PASS（**仅决策确认与文档一致性；不是实现，不是验收**）
+- Failure Handling：
+  - 用户答复的第 1e 项带条件（"注册页真要选学校才留"）。未回问用户，改为自行取证核实后裁定，并把随之发现的 `AUTH-SCHOOLS-PII` 一并处置。
+  - 本人先前声称"答完 5 条五份 ADR 即可全部转 Accepted"，实际 ADR 中另有 7 项待确认。已逐项处理：2 项由用户答复覆盖，4 项由本人依据取证裁定并在 ADR 中写明理由，1 项（`critical` 多人确认阈值）确认无法自行裁定，保留为剩余待定并写明"给出前按最严格解释拒绝执行"。
+- Notes：
+  - **ADR 转 Accepted 只代表设计定案。29 项仍全部 `NOT_STARTED`。**
+  - E1 仍 FAIL；E2/E3/E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
+  - **进入 Phase 3 需要用户单独批准**，不得以"ADR 已 Accepted"推导开工许可。
+  - 剩余待定两项：`critical` 多人确认阈值（属 Phase 4）、待定项 J（`DEP-101`/`DEP-104` 不得关闭）。

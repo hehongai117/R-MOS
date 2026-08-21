@@ -1,6 +1,6 @@
 # ADR-2026-08-21：运行拓扑与生产部署
 
-- 状态：Proposed（**部分决策被"待定 J"阻塞，见第 8 节**）
+- 状态：**Accepted**（2026-08-21）；**J 相关部分保持 BLOCKED，见第 8 节**
 - 覆盖发现：`DEP-101`、`DEP-102`、`DEP-103`、`DEP-104`、`DEP-105`
 - 上位规则：`AGENTS.md`、`docs/testing/ACCEPTANCE_CHARTER.md` 的 G6、`docs/plans/2026-08-10-rmos-single-school-five-robot-deployment-rollback-v0.1.0.md` 的 `REL-BLOCK-01`
 - 落地阶段：Phase 4（静态部分）；真实演练属 Phase 6，本 ADR 不解除任何生产阻断
@@ -160,7 +160,9 @@ Phase 4 只做不联网的部分：
 - `DEP-104` 不得关闭（备份目标未定，恢复演练无法设计）。
 - E2 保持 BLOCKED。
 
-## 其他待确认事项
+## 9. 已确认决议（2026-08-21）
 
-1. **`/health` 在 unhealthy 时改返 503** 是否会影响现有监控或编排集成（当前无生产集成，但 `docs/testing/TEST_PLAN.md` 的 API-02 断言 200）。
-2. **`--workers 1` 的性能是否需要实测背书**：建议 Phase 4 用现有 `r-mos-backend/scripts/backend_stress_test.py` 取一次单进程基线，而不是仅凭推断。
+1. **`/health` 在 unhealthy 时改返 503**：定案执行。经核实当前无任何生产监控或编排集成依赖该端点；唯一受影响的是 `docs/testing/TEST_PLAN.md` 的 API-02（当前断言 200），在同批同步更新。
+2. **`--workers 1` 的性能背书**：定为 Phase 4 的强制工作项而非可选项——用现有 `r-mos-backend/scripts/backend_stress_test.py` 取一次单进程基线并记录，**不得仅凭推断把 DEP-102 写成关闭**。
+
+除第 8 节的待定项 J 外，本 ADR 无其他阻塞项。

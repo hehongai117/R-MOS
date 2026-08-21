@@ -18,8 +18,11 @@
 - 最近一次记录的测试快照为 2026-08-21：后端 `822 passed, 3 skipped`，前端 `511 passed, 2 skipped`，前端构建 PASS。该数字属于对应提交的历史证据，本规则修复批次未重新执行，不得自动视为当前提交验收结果。
 - 单校五台真机验收矩阵中的 E1 至 E4 正式执行尚未在本批完成；`REL-BLOCK-01` 继续阻断 D0 与任何生产启用。
 - Phase 1 六链路审查已完成（`docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md`）：六条链路全部 FAIL，登记 29 项（1 P0 / 24 P1 / 4 P2；28 事实 + 1 推断 `CTRL-105`）。审查执行完成 ≠ 功能通过。
-- Phase 2 安全架构与修复规格已完成（`docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md` + `docs/adr/ADR-2026-08-21-*.md` 五份 + Phase 3/4 TDD 计划）：29 项全部映射到六个门禁与执行批次，**但全部为 NOT_STARTED**。五份 ADR 状态均为 Proposed。
-- 当前下一步：Phase 2 待确认事项（公开路由白名单签字、`regression` 用例删除批准、存储命名空间口径、SOP 产品行为变更、审计事务改造范围）须先获用户确认；待定项 J（现场部署形态 / TLS / 备份目标 / RTO-RPO）保持 BLOCKED。**进入 Phase 3 实现前须获得用户明确批准。**
+- Phase 2 安全架构与修复规格已完成（`docs/audit/2026-08-21-phase2-remediation-matrix-v0.1.0.md` + `docs/adr/ADR-2026-08-21-*.md` 五份 + Phase 3/4 TDD 计划）：29 项全部映射到六个门禁与执行批次，**但全部为 NOT_STARTED**。
+- 2026-08-21 用户已确认 Phase 2 的五项决策，五份 ADR 全部转为 **Accepted**（设计定案，非实现）。公开路由白名单 6 条生效；机器人已发布资产明确排除，须另行单独审批。
+- 剩余待定：`critical` 多人确认阈值（属 Phase 4，给出前按最严格解释拒绝执行）；待定项 J（现场部署形态 / TLS / 备份目标 / RTO-RPO）保持 BLOCKED，`DEP-101`、`DEP-104` 不得关闭。
+- Phase 2 取证另发现新暴露面 `AUTH-SCHOOLS-PII`（匿名可枚举全校教师邮箱），**不计入 29 项**，单独跟踪，落在 Phase 3 第 3 批。
+- 当前下一步：**进入 Phase 3 实现前须获得用户单独明确批准；不得以"ADR 已 Accepted"推导开工许可。**
 - 每批闭环必须同步：
   1. 若当前任务有明确计划和状态表，更新对应状态；
   2. 影响验收时更新 `docs/testing/TEST_PLAN.md` 与/或 `docs/testing/TEST_REPORT.md`；
