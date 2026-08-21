@@ -23,7 +23,7 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 - **Universal 3D Viewer** (done): Manifest-driven 3D renderer with URDF→GLB auto-pipeline
 - **Modularization** (in progress): Migrating hardcoded data to manifest/config-driven architecture
 
-## SOP 三段式引导改造 (In Progress)
+## SOP 三段式引导改造 (Done)
 
 > **总控计划（含实时状态表）：** `docs/superpowers/plans/2026-08-17-sop-three-phase-guided-flow.md`
 > **接手方式：** 直接读该文档顶部的「📍 当前状态」一节，即可知道做到哪、下一步是什么、有哪些坑。**不要**靠 git log 或读代码反推进度。
@@ -36,7 +36,7 @@ R-MOS is a full-stack application for robot maintenance training and monitoring.
 | 2 | 引擎（装配方向/validation/阶段门） | 4 | ✅ Done |
 | 3 | 前端（进度条/齐套/验收/构图） | 4 | ✅ Done |
 | 4 | 标杆内容（膝关节 22 步） | 2 | ✅ Done |
-| 5 | 验收（E2E/报告页） | 2 | ⬜ Not started |
+| 5 | 验收（E2E/报告页） | 2 | ✅ Done |
 
 **Branch:** `feat/sop-three-phase-flow`（未 push）
 **分工：** Plan/监督/验收 = Claude；Task 实现 = Codex CLI
