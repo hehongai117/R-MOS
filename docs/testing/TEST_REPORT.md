@@ -16,7 +16,7 @@
 | 范围 | 当前状态 | 说明 |
 |---|---|---|
 | 规则事实源修复 | PASS | DOC-RULE-001 文档门禁已通过；不代表 E1 至 E4 应用验收通过 |
-| E1 软件安全与主链路 | NOT_RUN | 本批不执行应用测试 |
+| E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
 | E4 课堂试点 | BLOCKED | 20 场课堂试点未在本批核实 |
@@ -66,3 +66,33 @@
   - 第一次规则补丁因原文匹配差异未写入；拆成小补丁后成功，并用哈希验证镜像一致。
   - 第一次旧路径检索因默认模式不支持后向判断而失败；改用明确支持该语法的 PCRE2 后重跑。
 - Notes：本批未运行后端、前端、浏览器、数据库、预生产、真机或课堂测试；E1 至 E4 和生产启用状态没有被提升。
+
+### AUDIT-P1-E1-001｜Phase 1 当前软件基线与第一批六链路审查
+
+- 基线提交：`cd9422d6fa6d3fc818ade1c45cb932197b95f0dc`
+- 结果提交：本报告所在提交
+- 环境：`codex/architecture-audit-phase1` 隔离工作区；后端使用 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv`
+- 范围：当前提交的后端全量、前端全量与构建；身份、对象归属、任务和机器人控制第一批静态审查
+- Commands Run：
+  - `python -m dotenv -f <主工作区 .env> run -- <venv python> -m pytest`
+  - `npm test`
+  - `npm run build`
+  - `python -m pytest <10 个身份与控制定向测试文件> -o addopts='' --disable-warnings -q`
+  - FastAPI `/api/v1` 路由依赖树只读清单脚本
+- Key Output：
+  - 后端全量：`825 passed, 1964 warnings in 55.46s`，0 failed、0 error。
+  - 前端全量：69 个文件通过，`511 passed, 2 skipped`，0 failed。
+  - 前端构建：6315 个模块，7.88 秒，退出码 0。
+  - 第一批定向回归：`147 passed, 334 warnings in 7.80s`。
+  - 路由清单发现 109 个路由未声明 `get_current_actor`；其中包含公开入口，不能整体记为漏洞，但任务、教学、训练、机器人资产和适配器写入口已确认存在高影响缺口。
+  - 第一批登记 1 个 P0、7 个 P1 和 1 个 P2 推断；身份/对象归属链与任务/机器人控制链均为 FAIL。
+- Evidence：
+  - `docs/audit/2026-08-21-phase1-six-chain-review-v0.1.0.md`
+  - `docs/plans/2026-08-21-rmos-architecture-audit-phase1.md`
+- Result：FAIL（E1 当前裁决）；自动测试基线本身 PASS。
+- Failure Handling：
+  - 首次后端运行因隔离工作区没有未跟踪 `.env`，触发生产默认密钥保护，结果为 `673 passed, 3 skipped, 149 errors`；改用 `python-dotenv` 从主工作区只读加载环境。
+  - shell `source` 会改变 CORS 列表格式，配置解析失败；该方式废弃，并用配置探针确认 `debug=True`、CORS 共 4 项。
+  - 沙箱内三项 PostgreSQL 门禁因本机连接限制失败；核对测试清理行为后，在获批范围外先复验 `3 passed`，再运行后端全量并得到 825 项通过。
+  - 测试生成的时间戳变化和构建生成的声明文件均已移除；没有把测试副作用带入审查提交。
+- Notes：全量自动测试通过不覆盖静态反证。E2、E3、E4 和生产启用未执行且继续 BLOCKED；`REL-BLOCK-01` 未清零。
