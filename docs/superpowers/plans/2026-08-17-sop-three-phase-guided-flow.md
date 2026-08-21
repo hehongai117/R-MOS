@@ -1752,6 +1752,20 @@ git commit -m "feat(sop): 膝关节轴承更换 SOP 重编排为 22 步三段式
 
 ### Task 4.2: 补 `step_view` 与 `required_parts`
 
+> ⚠️ **规格已更正 + 验收口径已由用户裁决（2026-08-21）**
+>
+> 1. 原文残留 `build_knee_bearing_sop()` —— 该函数不存在（§2.4 第 12 条），已改为 import `SOP_KNEE_BEARING` 常量。
+>
+> 2. **相机位有真实基准，不要凭空编数值。** `data/robot-assets/1/manifests/assembly_manifest.json` 的 `camera_presets` 里已有 11 个标定过的预设（3D 查看器正在使用），其中：
+>
+>    ```json
+>    "left_knee_link": { "position": [0.4, -0.3, 0.4], "target": [0.1, -0.45, 0.0], "fov": 40 }
+>    ```
+>
+>    22 步一律**以该预设为基准**，按步骤语义在其上做有据可依的微调：准备段用全景（可参考 `L0_overview`: position [1.5,1.0,1.5] / target [0,0.3,0] / fov 45），执行段随作业深度推近（缩短 position 到 target 的距离、或收窄 fov），验证段拉回中景。**不要发明与该基准无关的坐标系。**
+>
+> 3. **Step 5「目视逐步验收」的口径**：用户已裁决采用「基于真实预设推导」方案，**不要求执行方启动前后端逐步目视**。改为：在开发日志中逐步列出每步的 `step_view` 取值**及其推导依据**（基于哪个预设、为何这样微调），并如实说明「相机位为基于标定预设的推导值，未经逐步目视确认」。用户会在交付后自行运行查看，不满意的步骤再行调整。**仍然严禁写「应该正常」这类未经证实的断言。**
+
 **Files:**
 - Modify: `r-mos-backend/scripts/seed_adjudication_sops.py`（22 步逐一补构图）
 - Test: `r-mos-backend/tests/test_sop_three_phase.py`（追加覆盖率断言）
@@ -1769,9 +1783,9 @@ def test_knee_bearing_steps_have_step_view():
 
 
 def test_step_view_shape_is_valid():
-    from scripts.seed_adjudication_sops import build_knee_bearing_sop
+    from scripts.seed_adjudication_sops import SOP_KNEE_BEARING
 
-    for s in build_knee_bearing_sop()["steps"]:
+    for s in SOP_KNEE_BEARING["steps"]:
         view = s["step_view"]
         if "camera" in view:
             assert len(view["camera"]["position"]) == 3
@@ -1905,7 +1919,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ✅ |
 | 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ✅ |
 | 4.1 | `pytest tests/test_sop_three_phase.py -v`；curl 核对 | 22 步、4+14+4 分段正确；31 个 SOP 仍在，30 个存量步骤数不变 | ✅ |
-| 4.2 | `pytest` + **目视逐步验收** | 22 步全带 `step_view`；开发日志记录真实目视观察，不得写「应该正常」 | ⬜ |
+| 4.2 | `pytest` | 22 步全带 `step_view`；相机位以 `camera_presets.left_knee_link` 为基准推导；开发日志逐步记录取值与推导依据，并声明未经目视确认 | ⬜ |
 | 5.1 | `npm run e2e -- sop-three-phase.spec.ts`；后端 `pytest tests/ -v` | E2E 通过；后端 ≥791；前端不低于 §📍 基线 | ⬜ |
 | 5.2 | `npx vitest run .../ReportPage.test.tsx`；`npm run build` | 两节正确渲染；无证据时不渲染 | ⬜ |
 
