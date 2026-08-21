@@ -7352,3 +7352,38 @@
   - REL-BLOCK-01仍未清零；DR-01至DR-06未全部真实PASS前继续阻断D0和任何生产启用。
   - 未执行git push。
 - Next Step: 等待用户确认是否进入Phase 1六条链路审查；开始前先按新规则现场核对Python环境，并把应用验收状态保持为NOT_RUN或BLOCKED，直到取得当前提交证据。
+
+---
+
+- DateTime: 2026-08-21 15:13 CST
+- Task: 将已确认的架构审查 Phase 0 成果本地合并回基础分支，并清理临时开发分支
+- Scope (files changed):
+  - docs-archive/DEVELOPMENT_LOG.md（本次合并操作记录）
+  - 本地合并引入前两次已审核提交中的 11 份规则、验收、审查与开发记录文档
+- Commands Run:
+  - git status --short --branch
+  - git rev-parse HEAD
+  - git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'
+  - git merge-base feat/sop-three-phase-flow codex/architecture-audit-phase0
+  - git merge-base --is-ancestor feat/sop-three-phase-flow codex/architecture-audit-phase0
+  - git worktree list --porcelain
+  - git merge --ff-only codex/architecture-audit-phase0
+  - git diff --check 9e778dc0118fd6f5de671eb55dad3506ce34fbe6 HEAD
+  - shasum -a 256 AGENTS.md docs/ops/CODEX_RULES.md
+  - test -f <现行事实源路径>
+  - rg --pcre2 -n <旧优先级路径和旧环境口径>
+  - rg -n <历史状态与当前验收状态>
+- Tests:
+  - 基础分支未配置上游；因此没有执行拉取，也没有发生网络写入。
+  - 本地合并：从 9e778dc0 快速前进到 f341b18f，无内容冲突。
+  - 差异格式：git diff --check 退出码 0。
+  - 规则镜像：AGENTS.md 与 docs/ops/CODEX_RULES.md SHA-256 完全一致。
+  - 路径与口径：现行事实源全部存在；旧悬空优先级路径和旧环境口径均命中 0 项。
+  - 验收状态：TEST_PLAN.md 的 14 个历史结果仍标为 HISTORICAL；当前报告为规则文档门禁 PASS、E1 NOT_RUN、E2 至 E4 BLOCKED、生产启用 BLOCKED。
+  - 应用测试：未运行。本次仅执行本地文档合并和记录，没有修改应用代码。
+- Result: PASS（已完成本地快速合并与合并后文档核查；不代表应用验收或生产启用通过）
+- Risks/Notes:
+  - 首次合并因隔离环境无权创建共享 Git 锁文件而失败；放宽该次 Git 写入权限后，同一快速合并命令成功。
+  - 本次没有拉取、推送、启动服务、连接数据库、运行浏览器或操作真机。
+  - REL-BLOCK-01 仍未清零；E1 至 E4 与生产启用状态没有提升。
+- Next Step: 提交本条记录后，删除已合并的临时工作区和本地功能分支；等待用户另行确认是否进入 Phase 1。
