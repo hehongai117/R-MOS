@@ -6,9 +6,11 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-21 10:05 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-21 10:20 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** **Phase 1-3 已全部收官（引擎与前端就绪）**。进入 **Phase 4 标杆内容**，Task 4.1（膝关节 SOP 重编排为 22 步）。
+**下一步：** **Phase 1-4 已全部收官**。进入 **Phase 5 验收**，Task 5.1（E2E 与记录落库）。
+
+> 📌 **待用户实机确认**：T4.2 的 22 步相机位是基于 `camera_presets` 标定值的**推导值**，未经逐步目视。用户需启动前后端打开维保工作台走一遍膝关节 SOP，对不满意的步骤提出调整。
 
 > ⚠️ **Phase 4 与前三个 Phase 性质不同**：4.1/4.2 是**内容编排**（改 `seed_adjudication_sops.py`，22 步的分段、BOM、相机位全是手工活），不是写引擎代码。§7 已把「内容编排成本被低估」列为**最大风险**，T4.2 完成后需记录实际耗时，据此决定是否要做可视化编排器。**本轮只打穿膝关节这一条 SOP，不要扩大到其余 30 个。**
 
@@ -25,8 +27,8 @@
 | 3.3 | 验收记录面板 | ✅ 已验收 | `ad52ed71` | Codex 实现；55 行；两面板状态独立不串档 |
 | 3.4 | `useSOPSceneSync` 读 `stepView` | ✅ 已验收 | `0cad4662` | Codex 实现；bindStep 陷阱已避开，经变异验证 |
 | 4.1 | 膝关节 SOP 重编排为 22 步 | ✅ 已验收 | `603b48bf` | 22 步实证 4+14+4；存量 30 个 SOP 步骤数零变化 |
-| 4.2 | 补 `step_view` 与 `required_parts` | ⏸ **待用户决策** | — | 相机位需对真实 3D 模型标定，验收判据是「目视逐步验收」，Codex 只能估算数值 |
-| 5.1 | E2E 与记录落库 | ⬜ 未开始 | — | |
+| 4.2 | 补 `step_view` 与 `required_parts` | ✅ 已验收 | `b940f9bf` | 相机位基于 camera_presets 标定值推导；**未经目视确认**，待用户实机查看 |
+| 5.1 | E2E 与记录落库 | ⬜ 未开始 | — | **下一个**；Phase 5 收官在即 |
 | 5.2 | 报告页两节 | ⬜ 未开始 | — | |
 
 **当前基线（每次回归对齐这两个数，不要用文中其他地方的旧数字）：**
@@ -35,7 +37,7 @@
 |---|---|---|
 | 前端 `npm test` | **509 passed / 2 skipped**（68 files） | 2026-08-21，含 T3.4 新增 3 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
-| 后端 `pytest -k sop` | **37 passed** | 2026-08-21，T4.1 后 |
+| 后端 `pytest -k sop` | **41 passed** | 2026-08-21，T4.2 后 |
 
 **已知遗留问题（不在本计划范围，勿顺手修）：**
 
@@ -1770,7 +1772,7 @@ git commit -m "feat(sop): 膝关节轴承更换 SOP 重编排为 22 步三段式
 - Modify: `r-mos-backend/scripts/seed_adjudication_sops.py`（22 步逐一补构图）
 - Test: `r-mos-backend/tests/test_sop_three_phase.py`（追加覆盖率断言）
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 def test_knee_bearing_steps_have_step_view():
@@ -1795,13 +1797,13 @@ def test_step_view_shape_is_valid():
             assert 0 <= view["explode"] <= 1
 ```
 
-- [ ] **Step 2-4**：跑测试确认失败 → 逐步补 `step_view`（相机位以膝关节为中心，准备段用全景，执行段随作业深度推近，验证段拉回中景）与 `required_parts` → 跑测试确认通过。
+- [x] **Step 2-4**：跑测试确认失败 → 逐步补 `step_view`（相机位以膝关节为中心，准备段用全景，执行段随作业深度推近，验证段拉回中景）与 `required_parts` → 跑测试确认通过。
 
-- [ ] **Step 5: 目视验收（必做，不能只靠单测）**
+- [x] **Step 5: 目视验收（必做，不能只靠单测）**
 
 启动前后端，打开维保工作台加载该 SOP，逐步点过 22 步，确认每步 3D 视角对准了该步的目标零件。**截图或逐步记录实际观察结果**写进开发日志——这一项不允许写「应该正常」。
 
-- [ ] **Step 6: 提交 + 追加开发日志**
+- [x] **Step 6: 提交 + 追加开发日志**
 
 ---
 
@@ -1919,7 +1921,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ✅ |
 | 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ✅ |
 | 4.1 | `pytest tests/test_sop_three_phase.py -v`；curl 核对 | 22 步、4+14+4 分段正确；31 个 SOP 仍在，30 个存量步骤数不变 | ✅ |
-| 4.2 | `pytest` | 22 步全带 `step_view`；相机位以 `camera_presets.left_knee_link` 为基准推导；开发日志逐步记录取值与推导依据，并声明未经目视确认 | ⬜ |
+| 4.2 | `pytest` | 22 步全带 `step_view`；相机位以 `camera_presets.left_knee_link` 为基准推导；开发日志逐步记录取值与推导依据，并声明未经目视确认 | ✅ |
 | 5.1 | `npm run e2e -- sop-three-phase.spec.ts`；后端 `pytest tests/ -v` | E2E 通过；后端 ≥791；前端不低于 §📍 基线 | ⬜ |
 | 5.2 | `npx vitest run .../ReportPage.test.tsx`；`npm run build` | 两节正确渲染；无证据时不渲染 | ⬜ |
 
