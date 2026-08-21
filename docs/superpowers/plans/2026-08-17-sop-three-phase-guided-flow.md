@@ -170,6 +170,8 @@
 >
 > **教训**：内容编排类 Task 的验收判据必须包含「所有引用的零件/螺丝 ID 均可在 `parts_registry` / `screw_instances` 中解析」，否则单测全绿而真实环境必挂。
 
+| 17 | T5.2「报告页两节」只需改 `ReportPage.tsx` | **数据源不存在**。`TaskReport` schema（`app/schemas/report.py:27`）只有 `step_scores` / `total_steps` / `completed_steps` / `error_count` / `recommendations` 等汇总字段，**没有 `evidence_type` / `evidence_value`**，`GET /tasks/{id}/report` 也不查 `TaskStepResult`。前端拿不到齐套/验收证据，无从渲染 | T5.2 授权清单需扩至后端 schema + 报告端点；**由 Claude 派工前预检发现** |
+
 > 第 10、11 项是 §2.4 首轮核查（第 1-9 项）**遗漏**的：当时核对了函数签名与约束数据，但未验证测试运行时这些 ID 是否真能被解析。教训：**验签名不等于验数据可达性**，涉及注入式 registry 的测试要单独确认夹具注入路径。
 
 > 第 7 项衍生出一个**计划外独立工作项**：是否把这 8 个遗留文件重写为 vitest 测试，从而真正建立存量 SOP 安全网。工作量未评估，需单独决策，不在本计划范围内。
@@ -1864,9 +1866,14 @@ Expected: 后端 ≥791 通过，前端 ≥465 通过，build PASS
 
 ### Task 5.2: 报告页两节
 
+> ⚠️ **规格已更正（2026-08-21 预检）**：原文只列前端文件，但**数据源不存在**——`TaskReport` schema 没有证据字段，报告端点也不查 `TaskStepResult`（§2.4 第 17 条）。授权清单已扩展到后端。
+
 **Files:**
+- Modify: `r-mos-backend/app/schemas/report.py`（`TaskReport` 增证据明细字段，**必须可选**以保证存量报告零影响）
+- Modify: `r-mos-backend/app/api/v1/endpoints/tasks.py:151`（`get_task_report` 查 `TaskStepResult` 的 `evidence_type` / `evidence_value` / `is_compliant`）
 - Modify: `r-mos-frontend/src/pages/ReportPage.tsx`
-- Test: `r-mos-frontend/src/pages/__tests__/ReportPage.test.tsx`（若不存在则新建）
+- Test: `r-mos-frontend/src/pages/__tests__/ReportPage.test.tsx`（新建，当前不存在）
+- Test: 后端报告证据字段测试（文件位置自选）
 
 - [ ] **Step 1: 写失败测试** —— 断言报告页在有 `kit_checklist` / `verify_checklist` 证据时渲染「齐套记录」「验收记录」两节，无证据时不渲染（存量报告零变化）。
 - [ ] **Step 2-4**：确认失败 → 实现 → 确认通过。
