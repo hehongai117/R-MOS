@@ -1,6 +1,6 @@
 {
-  "kb-1782105386904": {
-    "id": "kb-1782105386904",
+  "kb-1787284693674": {
+    "id": "kb-1787284693674",
     "type": "solution",
     "status": "APPROVED",
     "title": "ABB motor handling",
@@ -34,20 +34,20 @@
         "version": 1,
         "change": "Created",
         "author": "2",
-        "timestamp": 1782105386904
+        "timestamp": 1787284693674
       }
     ],
     "source_task_id": null,
     "source_evidence_ids": [],
-    "created_at": 1782105386904,
+    "created_at": 1787284693674,
     "created_by": "2",
     "approved_by": "2",
-    "approved_at": 1782105386911,
+    "approved_at": 1787284693681,
     "tags": [],
     "category": ""
   },
-  "kb-1782105386907": {
-    "id": "kb-1782105386907",
+  "kb-1787284693676": {
+    "id": "kb-1787284693676",
     "type": "solution",
     "status": "APPROVED",
     "title": "FANUC motor handling",
@@ -81,15 +81,15 @@
         "version": 1,
         "change": "Created",
         "author": "2",
-        "timestamp": 1782105386907
+        "timestamp": 1787284693676
       }
     ],
     "source_task_id": null,
     "source_evidence_ids": [],
-    "created_at": 1782105386907,
+    "created_at": 1787284693676,
     "created_by": "2",
     "approved_by": "2",
-    "approved_at": 1782105386915,
+    "approved_at": 1787284693685,
     "tags": [],
     "category": ""
   }
