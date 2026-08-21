@@ -6,9 +6,9 @@
 
 ## 📍 当前状态（接手先读这里）
 
-**最后更新：** 2026-08-20 21:30 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
+**最后更新：** 2026-08-20 21:36 CST ｜ **分支：** `feat/sop-three-phase-flow` ｜ **未 push**
 
-**下一步：** **Phase 2 已收官**。进入 Task 3.1（三段进度条），交 Codex 执行。T3.1 消费 T2.4 产出的 `getCurrentPhase()` / `getPhaseProgress()`，签名见 Task 2.4 的 Interfaces 节；新建的组件测试文件需按 `src/components/**/__tests__/**` 匹配现有 glob（该路径**已在** include 内，无需改 vitest.config.ts）。
+**下一步：** Task 3.2（齐套检查面板）交 Codex 执行。消费 T1.2 的 `RequiredPart`（字段是 snake_case **`bom_code`**，见 §2.4 第 9 条）与 T2.2 的 `KIT_CONFIRMED` validation（面板把勾选结果写进 `validation.params.confirmedItems`）。组件测试放 `src/components/Maintenance/__tests__/`，该路径已在 include glob 内，无需改 vitest.config.ts。
 
 | Task | 名称 | 状态 | Commit | 备注 |
 |---|---|---|---|---|
@@ -18,8 +18,8 @@
 | 2.2 | 三个新 validation 分支 | ✅ 已验收 | `61c222ca` | Codex 实现；齐套+验收各正反 2 例，定向 8 passed |
 | 2.3 | 螺丝对角紧固顺序判定 | ✅ 已验收 | `679f9f1b` | Codex 实现；定向 11 passed；变异测试证明顺序检测有判别力 |
 | 2.4 | 阶段门 | ✅ 已验收 | `6db40437` | Codex 实现；定向 14 passed；变异测试证明门禁有效 |
-| 3.1 | 三段进度条 | ⬜ 未开始 | — | **下一个**；消费 getPhaseProgress() |
-| 3.2 | 齐套检查面板 | ⬜ 未开始 | — | |
+| 3.1 | 三段进度条 | ✅ 已验收 | `0363e5c9` | Codex 实现；组件 66 行；单阶段守卫经变异测试验证 |
+| 3.2 | 齐套检查面板 | ⬜ 未开始 | — | **下一个**；注意 bom_code 是 snake_case |
 | 3.3 | 验收记录面板 | ⬜ 未开始 | — | |
 | 3.4 | `useSOPSceneSync` 读 `stepView` | ⬜ 未开始 | — | |
 | 4.1 | 膝关节 SOP 重编排为 22 步 | ⬜ 未开始 | — | |
@@ -31,7 +31,7 @@
 
 | 项 | 数值 | 测定时间 |
 |---|---|---|
-| 前端 `npm test` | **498 passed / 2 skipped**（64 files） | 2026-08-20，含 T2.4 新增 3 个 |
+| 前端 `npm test` | **500 passed / 2 skipped**（65 files） | 2026-08-20，含 T3.1 新增 2 个 |
 | 前端基线（不含本计划新增） | **477 passed / 2 skipped** | 2026-08-18 实测；计划初稿所写 465 已作废 |
 | 后端 `pytest -k sop` | 33 passed | 2026-08-17，T1.1 后 |
 
@@ -1335,7 +1335,7 @@ git commit -m "feat(adjudication): 三段式阶段门（getCurrentPhase/getPhase
 
 **动手前先读** `SOPPlayerView.tsx` 与 `sopPlayerConfig.ts`，沿用其既有 Ant Design 用法与配色，不要引入新 UI 库。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -1364,27 +1364,27 @@ describe('三段进度条', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/components/Maintenance/__tests__/PhaseProgress.test.tsx
 ```
 
-- [ ] **Step 3: 实现 `PhaseProgress` 组件**
+- [x] **Step 3: 实现 `PhaseProgress` 组件**
 
 创建 `r-mos-frontend/src/components/Maintenance/sopPlayer/PhaseProgress.tsx`。要求：三段横向排列；当前段高亮；已完成段打勾；`unlocked === false` 的段置灰且 `aria-label={`${标签} 阶段未解锁`}`；标签映射 `{ prep: '准备', execute: '执行', verify: '验证' }`；每段显示 `completed/total`。单文件不超过 80 行。
 
-- [ ] **Step 4: 挂到 SOPPlayer**
+- [x] **Step 4: 挂到 SOPPlayer**
 
 `SOPPlayerAdjudicated.tsx` 从 executor 取 `getPhaseProgress()` 与 `getCurrentPhase()`，经 `SOPPlayerView` 传给 `PhaseProgress`。只有当 `phaseProgress.length > 1` 时才渲染——**存量单段 SOP 不显示进度条，UI 零变化**。
 
-- [ ] **Step 5: 跑测试 + 构建 + 存量回归**
+- [x] **Step 5: 跑测试 + 构建 + 存量回归**
 
 ```bash
 cd r-mos-frontend && npx vitest run src/components/Maintenance/__tests__/PhaseProgress.test.tsx && npm test && npm run build
 ```
 
-- [ ] **Step 6: 提交 + 追加开发日志**
+- [x] **Step 6: 提交 + 追加开发日志**
 
 ```bash
 git commit -m "feat(maintenance): SOP 三段进度条"
@@ -1878,7 +1878,7 @@ AGENTS.md §6 的 ADR 触发条件依然有效：Task 1.1 改表结构且影响�
 | 2.2 | `npx vitest run src/adjudication/__tests__/threePhase.test.ts` | 齐套 2 用例通过；全量不低于基线 | ✅ |
 | 2.3 | 同上 `-t 对角紧固顺序` | 3 用例通过（顺序错/前缀匹配/全序通过） | ✅ |
 | 2.4 | 同上 `-t 阶段门`；`npm test` | 3 用例通过；全量不低于基线 | ✅ |
-| 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ⬜ |
+| 3.1 | `npx vitest run .../PhaseProgress.test.tsx`；`npm run build` | 2 用例通过；单段 SOP 不渲染进度条 | ✅ |
 | 3.2 | `npx vitest run .../KitChecklistPanel.test.tsx` | 3 用例通过 | ⬜ |
 | 3.3 | `npx vitest run .../VerifyChecklistPanel.test.tsx` | ≥3 用例通过 | ⬜ |
 | 3.4 | `npx vitest run src/adjudication/`；`npm test` | 3 用例通过，**含回落启发式的存量兼容用例** | ⬜ |
