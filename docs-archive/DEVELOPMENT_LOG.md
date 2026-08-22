@@ -7572,3 +7572,34 @@
   - 29 项仍全部 NOT_STARTED；E1 仍 FAIL；E2/E3/E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
   - 本批没有修改应用、测试、依赖、配置或数据库；没有启动服务或操作真机；没有合并或推送。
 - Next Step: 等待用户单独批准进入 Phase 3。**不得以"ADR 已 Accepted"推导开工许可。** 开工后第一步为 Phase 3 批次 0（测试基建上提），再进 P3-1。
+
+---
+
+- DateTime: 2026-08-22 02:40 CST
+- Task: Phase 3 第 1 批（P3-1）——默认拒绝网关 + 显式公开白名单，关闭 AUTH-101（P0）与 AUTH-102 的机制缺口
+- Scope (files changed):
+  - r-mos-backend/app/core/public_routes.py（新增，6 条白名单）
+  - r-mos-backend/app/services/authz_guard.py（enforce_authenticated 网关 + get_current_actor 请求级缓存）
+  - r-mos-backend/main.py（include_router 挂网关）
+  - r-mos-backend/tests/unit/test_auth_boundary.py（收集器反转 + 3 条新门禁自检）
+  - r-mos-backend/tests/test_api_student_robots.py、tests/e2e/test_agent_diagnosis_flow.py（6 处伪造身份的测试补显式网关豁免）
+- Commands Run:
+  - 环境现场核对：`venv/bin/python --version`（3.13.13）+ pytest 9.0.3 / fastapi 0.136.1 / sqlalchemy 2.0.49 / alembic 1.18.4 / pydantic 2.13.4 / httpx 0.28.1 / aiosqlite 0.22.1 / asyncpg 0.31.0 / python-dotenv 1.2.2
+  - 基线：`python -m dotenv -f <主工作区 .env> run -- python -m pytest`
+  - 定向：`python -m dotenv ... run -- python -m pytest tests/unit/test_auth_boundary.py -o addopts='' --disable-warnings -q`
+  - 全量复测：同基线命令
+- Tests:
+  - **基线（本提交起点 361eaac8）**：`825 passed, 0 failed, 0 error in 58.79s`。
+  - **反转后（实现前，必须为红）**：`103 failed, 76 passed in 2.32s`。103 = 扣除 6 条白名单后当前可匿名访问的路由-方法组合数。这是比 Phase 1「109 待分类路由」更精确的实测值。
+  - **实现后（定向）**：`tests/unit/test_auth_boundary.py 179 passed in 1.34s`，含公开路由匿名可达性验证（`{school_name}` 模板匹配走通，证明 router 级依赖里 `request.scope["route"]` 可用）。
+  - **实现后（全量）**：`154 failed, 777 passed in 56.34s`。
+- Result: PARTIAL——网关本身 PASS；后端全量为红，属设计内中间状态。**AUTH-101 与 AUTH-102 均未关闭**，须待 P3-2 全量转绿后才能给结论。
+- Risks/Notes:
+  - 154 条红已逐类核对，**全部同源**：测试以匿名方式调用现在需要认证的接口。145 条直接断言 401；9 条 `KeyError: 'id'` 是 401 错误体的下游影响；无其他失败类别。分布：test_teaching_characterization 49、test_training_characterization 39、test_teaching_api 22、test_e2e_sop_adjudication 8，其余 24 个文件共 36。
+  - 其中 41 条形如 `assert 401 == 404` 的越权测试，在 P3-2 补令牌后会变成真正的跨对象 404 掩蔽验证，覆盖强度提高。
+  - **发现白名单判断错误（待用户裁决，未自行修改）**：`POST /api/v1/auth/logout` 与已列入白名单的 `/auth/refresh` 同类——`logout(payload: RefreshTokenRequest)` 靠请求体里的 refresh token 自证身份，不需要 access token。要求 access token 才能登出，意味着 access token 过期后无法吊销 refresh token，属安全负收益。对应 `tests/unit/test_auth_api.py` 的 2 条红。白名单是用户签字的安全边界，未经批准不改。
+  - 伪造身份的测试改为必须显式 `dependency_overrides[enforce_authenticated]`：网关是独立于 `get_current_actor` 的安全控制，不被 override 静默穿透——绕过在测试里因此可见。
+  - 前端风险经静态核对为低：`App.tsx:79` 全部路由在 `ProtectedRoute` 内，`App.tsx:69` 挂载只读 localStorage 不发网络请求，登录/注册页只调白名单接口且用裸 axios。仍须在 P3-3 用浏览器主流程实测复验，不以静态分析代替。
+  - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
+  - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
+- Next Step: P3-2——服务端身份、对象归属与拒绝审计；同批把 154 条红转绿（含 51 处身份头改令牌）。开工前需用户对 `/auth/logout` 白名单一项给出裁决。

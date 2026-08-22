@@ -18,6 +18,7 @@
 | 规则事实源修复 | PASS | DOC-RULE-001 文档门禁已通过；不代表 E1 至 E4 应用验收通过 |
 | Phase 2 修复规格 | PASS | AUDIT-P2-DOC-001 文档门禁已通过；29 项发现全部映射到可复现门禁，但**全部为 NOT_STARTED**，不代表任何一项已修复 |
 | Phase 2 决策确认 | PASS | AUDIT-P2-DOC-002：五份 ADR 已转 Accepted；**这是设计定案，不是实现，更不是验收** |
+| Phase 3 第 1 批（P3-1） | PARTIAL | AUTH-GATE-01/02 定向通过；**后端全量为红（154 failed / 777 passed），属设计内中间状态**；AUTH-101、AUTH-102 均未关闭 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -184,3 +185,26 @@
   - E1 仍 FAIL；E2/E3/E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
   - **进入 Phase 3 需要用户单独批准**，不得以"ADR 已 Accepted"推导开工许可。
   - 剩余待定两项：`critical` 多人确认阈值（属 Phase 4）、待定项 J（`DEP-101`/`DEP-104` 不得关闭）。
+
+### AUTH-P3-1｜默认拒绝网关与公开白名单
+
+- 基线提交：`361eaac8`（该提交上后端全量 `825 passed, 0 failed, 0 error in 58.79s`）
+- 结果提交：`341dc20c`
+- 环境：`audit/phase3-auth-control-realtime` 隔离工作区；`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv`（Python 3.13.13，pytest 9.0.3）
+- 范围：`AUTH-101`（P0）、`AUTH-102` 的机制实现；对应门禁 `AUTH-GATE-01`、`AUTH-GATE-02`
+- Commands Run：
+  - `python -m dotenv -f <主工作区 .env> run -- python -m pytest`
+  - `python -m dotenv ... run -- python -m pytest tests/unit/test_auth_boundary.py -o addopts='' --disable-warnings -q`
+- Key Output：
+  - 收集器反转后、实现前：`103 failed, 76 passed` —— **扣除 6 条白名单后，当前有 103 个路由-方法组合可匿名访问**。这是对 Phase 1「109 个待分类路由」的精确化实测，两者口径不同：109 是未声明 `get_current_actor` 的路由数（含公开入口），103 是排除白名单后实测可匿名访问的路由-方法组合数。
+  - 实现后定向：`tests/unit/test_auth_boundary.py 179 passed`。含三条新门禁自检：白名单死条目检测、公开路由匿名可达性（`{school_name}` 模板匹配通过，证明 router 级依赖可读到 `request.scope["route"]`）、AUTH-102 回归断言（`POST /api/v1/tasks` 必须在必须认证矩阵内）。
+  - 实现后全量：`154 failed, 777 passed`。逐类核对确认全部同源（匿名调用需认证接口）：145 条直接断言 401，9 条 `KeyError: 'id'` 为 401 错误体的下游影响，**无其他失败类别**。
+- Evidence：提交 `341dc20c`；`docs-archive/DEVELOPMENT_LOG.md` 2026-08-22 条目
+- Result：**PARTIAL**。网关实现与定向门禁 PASS；**后端全量为红，`AUTH-101` 与 `AUTH-102` 均未关闭**，须待 P3-2 全量转绿后才能对这两项给出结论。
+- Failure Handling：
+  - 154 条红是设计内的中间状态，已在 Phase 3 计划 P3-1 一节预先声明并要求逐类列出原因，已列出。
+  - 发现白名单判断错误：`POST /api/v1/auth/logout` 与白名单内的 `/auth/refresh` 同为「请求体 refresh token 自证身份」类端点，排除它会导致 access token 过期后无法吊销 refresh token。**白名单是用户签字的安全边界，未经批准未自行修改**；对应 2 条红保留，待用户裁决。
+- Notes：
+  - **AUTH-101（P0）与 AUTH-102 状态仍为未关闭。** 本批只完成机制落地。
+  - 前端影响经静态核对为低（全部路由在 `ProtectedRoute` 内、挂载不发请求、登录注册只调白名单接口），**但不以静态分析代替实测**，浏览器主流程复验安排在 P3-3。
+  - E1 仍 FAIL；E2、E3、E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
