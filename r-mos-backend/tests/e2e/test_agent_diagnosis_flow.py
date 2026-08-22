@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, enforce_authenticated, get_current_actor
 from main import app
 
 
@@ -48,6 +48,9 @@ def test_agent_execute_diagnosis_flow_returns_diagnosis_plan_and_verification(
 ):
     client, _ = e2e_env
     app.dependency_overrides[get_current_actor] = _actor
+    # 网关是独立于 get_current_actor 的安全控制：伪造身份的测试必须显式豁免它，
+    # 这样"绕过认证"在测试里是可见的，而不是被 override 悄悄带过。
+    app.dependency_overrides[enforce_authenticated] = lambda: None
 
     try:
         start = time.perf_counter()
@@ -106,6 +109,9 @@ def test_get_user_preference_uses_actor_user_id(
 ):
     client, _ = e2e_env
     app.dependency_overrides[get_current_actor] = _actor
+    # 网关是独立于 get_current_actor 的安全控制：伪造身份的测试必须显式豁免它，
+    # 这样"绕过认证"在测试里是可见的，而不是被 override 悄悄带过。
+    app.dependency_overrides[enforce_authenticated] = lambda: None
     captured: dict[str, int] = {}
 
     async def _fake_get_or_create_preference(self, user_id: int):

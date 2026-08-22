@@ -17,6 +17,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     RoleRequiredError,
 )
+from app.core.public_routes import PUBLIC_ROUTES
 from app.core.security import hash_token
 from app.models.access_token import AccessToken
 from app.models.rbac import Permission, Role, RolePermission, UserRole
@@ -50,10 +51,20 @@ def _parse_bearer_token(authorization: str | None) -> str | None:
 
 
 async def get_current_actor(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> ActorContext:
-    """从 Access Token 持久化表解析当前用户与权限上下文。"""
+    """从 Access Token 持久化表解析当前用户与权限上下文。
+
+    结果缓存在 `request.state.actor`：默认拒绝网关（`enforce_authenticated`）
+    与端点自身的 `Depends(get_current_actor)` 会在同一个请求里各要一次上下文，
+    缓存后整个请求只查一次库。
+    """
+    cached = getattr(request.state, "actor", None)
+    if cached is not None:
+        return cached
+
     token = _parse_bearer_token(authorization)
     if token is None:
         raise AuthenticationRequiredError("未登录，请先登录后重试")
@@ -94,12 +105,40 @@ async def get_current_actor(
     )
     permissions = {row[0] for row in permission_rows.all()}
 
-    return ActorContext(
+    actor = ActorContext(
         user_id=user.id,
         email=user.email,
         roles=roles,
         permissions=permissions,
     )
+    request.state.actor = actor
+    return actor
+
+
+async def enforce_authenticated(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> None:
+    """默认拒绝网关（AUTH-101 / AUTH-102）。
+
+    挂在 `main.py` 的 `include_router(api_router, prefix="/api/v1", ...)` 上，
+    对 `/api/v1` 下**每一条**路由生效。因此某个端点函数是否声明
+    `Depends(get_current_actor)` 不再决定它是否受保护——漏加认证也拦得住。
+
+    只有登记在 `app.core.public_routes.PUBLIC_ROUTES` 的
+    (方法, 路由模板) 组合可以匿名通过。
+
+    按**路由模板**匹配而不是具体请求路径，这样 `/schools/{school_name}/teachers`
+    这类带参数的公开路由才能正确豁免。
+    """
+    route = request.scope.get("route")
+    route_path = getattr(route, "path", None) or request.url.path
+    if (request.method.upper(), route_path) in PUBLIC_ROUTES:
+        return
+
+    # 复用同一份解析逻辑；结果写入 request.state.actor，端点侧不会重复查库。
+    await get_current_actor(request=request, db=db, authorization=authorization)
 
 
 def require_permission(permission_key: str, *, required_role: str | None = None) -> Callable:

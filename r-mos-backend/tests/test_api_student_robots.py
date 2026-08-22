@@ -16,7 +16,7 @@ from app.core.database import get_db
 from app.models.base import Base
 from app.models.robot_model import RobotModel, RobotStatus, RobotVisibility, TeacherRobotBinding
 from app.models.user import User
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, enforce_authenticated, get_current_actor
 from main import app
 
 
@@ -156,6 +156,12 @@ def test_student_robots_returns_only_ready(student_robots_env):
     student_id = asyncio.run(_create_student(session_factory, teacher_id=teacher_id))
 
     app.dependency_overrides[get_current_actor] = _make_actor_override(student_id, "student")
+
+    # 网关是独立于 get_current_actor 的安全控制：伪造身份的测试必须显式豁免它，
+
+    # 这样"绕过认证"在测试里是可见的，而不是被 override 悄悄带过。
+
+    app.dependency_overrides[enforce_authenticated] = lambda: None
     try:
         response = client.get(f"/api/v1/students/{student_id}/robots")
         assert response.status_code == 200
@@ -174,6 +180,12 @@ def test_student_robots_no_teacher_returns_empty(student_robots_env):
     orphan_id = asyncio.run(_create_student(session_factory, teacher_id=None))
 
     app.dependency_overrides[get_current_actor] = _make_actor_override(orphan_id, "student")
+
+    # 网关是独立于 get_current_actor 的安全控制：伪造身份的测试必须显式豁免它，
+
+    # 这样"绕过认证"在测试里是可见的，而不是被 override 悄悄带过。
+
+    app.dependency_overrides[enforce_authenticated] = lambda: None
     try:
         response = client.get(f"/api/v1/students/{orphan_id}/robots")
         assert response.status_code == 200
@@ -191,6 +203,9 @@ def test_student_robots_forbidden_for_other_student(student_robots_env):
 
     # 以 other_id 身份请求 student_id 的机器人列表
     app.dependency_overrides[get_current_actor] = _make_actor_override(other_id, "student")
+    # 网关是独立于 get_current_actor 的安全控制：伪造身份的测试必须显式豁免它，
+    # 这样"绕过认证"在测试里是可见的，而不是被 override 悄悄带过。
+    app.dependency_overrides[enforce_authenticated] = lambda: None
     try:
         response = client.get(f"/api/v1/students/{student_id}/robots")
         assert response.status_code == 403
@@ -207,6 +222,9 @@ def test_student_robots_teacher_can_view_any_student(student_robots_env):
 
     # 以教师身份请求学生的机器人列表
     app.dependency_overrides[get_current_actor] = _make_actor_override(teacher_id, "teacher")
+    # 网关是独立于 get_current_actor 的安全控制：伪造身份的测试必须显式豁免它，
+    # 这样"绕过认证"在测试里是可见的，而不是被 override 悄悄带过。
+    app.dependency_overrides[enforce_authenticated] = lambda: None
     try:
         response = client.get(f"/api/v1/students/{student_id}/robots")
         assert response.status_code == 200

@@ -10,7 +10,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -28,6 +28,7 @@ from app.core.exceptions import (
 )
 from app.adapters.factory import AdapterFactory
 from app.api.v1 import api_router, websocket_router
+from app.services.authz_guard import enforce_authenticated
 from app.services.analysis.worker import analysis_worker
 
 # 配置日志
@@ -333,8 +334,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ===== 路由注册（V2.2强制约束）=====
 
 # HTTP API路由（添加 /api/v1 前缀）
-app.include_router(api_router, prefix="/api/v1")
-logger.info("HTTP API路由已注册: /api/v1")
+# ⚠️ 安全边界：默认拒绝。enforce_authenticated 对每条 /api/v1 路由生效，
+#    只有 app/core/public_routes.py 白名单里的路由允许匿名访问。
+#    不要在此处移除该依赖——它是 AUTH-101 的唯一兜底。
+app.include_router(
+    api_router,
+    prefix="/api/v1",
+    dependencies=[Depends(enforce_authenticated)],
+)
+logger.info("HTTP API路由已注册: /api/v1（默认拒绝 + 公开白名单）")
 
 # WebSocket路由（不添加前缀）
 app.include_router(websocket_router)
