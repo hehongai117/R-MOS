@@ -49,10 +49,23 @@ app.include_router(api_router, prefix="/api/v1",
 | POST | `/api/v1/auth/refresh` | 刷新入口，自带刷新令牌校验 |
 | GET | `/api/v1/schools` | 注册页学校自动补全，**确认必需**（见下） |
 | GET | `/api/v1/schools/{school_name}/teachers` | 学生注册时选择导师，**确认必需**；但须先做字段脱敏（见下） |
+| POST | `/api/v1/auth/logout` | 令牌交换入口，凭请求体 refresh token 自证身份（**2026-08-22 修订加入，见下**） |
+
+**判定规则（用于评审后续新增申请）：** 只有「自带凭据校验、且不依赖 access token」的端点才可能入选——认证入口（register / login）、令牌交换入口（refresh / logout），加上不返回业务数据的探针与注册流程必需的公开查询。任何读写业务数据、教学数据、任务、训练、证据、机器人、适配器或管理的入口一律不得入选。
 
 **已排除：** `GET /api/v1/robots/{robot_id}/assets/{file_path:path}` 不列入白名单。公开发布资产须等 D3 拆出专用只读路径后**另行单独审批**，当前形态一律要求认证。
 
-`POST /api/v1/auth/logout`（`auth.py:346`）不列入——注销必须能定位到具体令牌主体。`/`、`/docs`、`/openapi.json` 在 `api_router` 之外，由 `main.py` 单独裁定；生产环境应关闭 `/docs`（见 ADR-runtime）。
+`/`、`/docs`、`/openapi.json` 在 `api_router` 之外，由 `main.py` 单独裁定；生产环境应关闭 `/docs`（见 ADR-runtime）。
+
+**2026-08-22 白名单修订：加入 `POST /api/v1/auth/logout`**
+
+初版排除它的理由是"注销必须能定位到具体令牌主体"。该理由不成立，属分类错误：
+
+- `auth.py:346` 的 `logout(payload: RefreshTokenRequest)` 与已列入白名单的 `auth.py:276` 的 `refresh_token(payload: RefreshTokenRequest)` **是同一类端点**——都以请求体里的 refresh token 哈希查库自证身份，都不读 `Authorization` 头。refresh token 本身已经定位了主体。
+- 要求 access token 才能登出会产生安全**负**收益：access token 过期后用户无法吊销自己的 refresh token，refresh token 因此存活更久；而用户恰恰常在 access token 过期时才去登出。
+- 攻击面未扩大：持有 refresh token 的调用者本就能用它换新令牌，让他吊销该令牌不构成新的攻击能力。
+
+该缺陷由 P3-1 的实测暴露（`tests/unit/test_auth_api.py` 的 2 条红），经用户于 2026-08-22 确认后修订。白名单条目数由 6 增至 7。
 
 其余路由默认进入必须认证集合。
 
