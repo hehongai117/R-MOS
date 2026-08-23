@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.models.base import Base
 from app.models.school import School
 from main import app
-from tests.e2e.helpers import E2E_SCHOOL_NAME
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login
 
 
 def _make_engine():
@@ -55,6 +55,12 @@ def e2e_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
     app.state.test_sessionmaker = session_factory
 
     with TestClient(app) as client:
+        # AUTH-101 默认拒绝网关生效后，/api/v1 下的调用一律需要令牌。
+        # 预置一位默认教师作为客户端默认身份，使"只验业务链路"的 E2E 用例
+        # 不必各自造用户；需要特定身份的用例调用 helpers.register_and_login
+        # 切换（它会覆盖默认身份），或用单次 headers= 覆盖。
+        # 专门验证匿名行为的用例应先 client.headers.pop("Authorization", None)。
+        register_and_login(client, email_prefix="e2e_default_actor")
         yield client, session_factory
 
     app.dependency_overrides.clear()

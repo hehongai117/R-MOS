@@ -69,7 +69,11 @@ def _register_and_login(client: TestClient, *, email: str) -> tuple[int, str]:
         json={"email": email, "password": "StrongPass123"},
     )
     assert login_resp.status_code == 200
-    return user_id, login_resp.json()["access_token"]
+    token = login_resp.json()["access_token"]
+    # AUTH-101 默认拒绝网关生效后把登录身份设为客户端默认身份；
+    # 需要别的身份时用单次 headers= 覆盖，验证匿名行为时先 pop("Authorization")。
+    client.headers["Authorization"] = f"Bearer {token}"
+    return user_id, token
 
 
 def _seed_llm_preference(client: TestClient, token: str) -> None:

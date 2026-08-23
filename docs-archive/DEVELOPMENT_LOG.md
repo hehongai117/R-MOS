@@ -7603,3 +7603,29 @@
   - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
   - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
 - Next Step: P3-2——服务端身份、对象归属与拒绝审计；同批把 154 条红转绿（含 51 处身份头改令牌）。开工前需用户对 `/auth/logout` 白名单一项给出裁决。
+
+---
+
+- DateTime: 2026-08-23 03:20 CST
+- Task: Phase 3 第 2 批前半（P3-2a）——把默认拒绝网关落地后的测试红转绿；同时按用户裁决把 `/auth/logout` 加入公开白名单
+- Scope (files changed):
+  - r-mos-backend/app/core/public_routes.py（白名单 6 → 7 条，补判定规则）
+  - docs/adr/ADR-2026-08-21-authn-default-deny-and-object-ownership.md（记录白名单修订与理由）
+  - r-mos-backend/tests/e2e/helpers.py、tests/e2e/conftest.py（登录后设为客户端默认身份 + fixture 预置默认教师）
+  - r-mos-backend/tests/unit/test_training_characterization.py、test_api_training_flow.py、test_training_workbench_execution_api.py、test_training_workbench_draft_api.py、test_robot_sop_draft_api.py、test_training_phase2_api.py（同一模式）
+- Commands Run:
+  - `python -m dotenv -f <主工作区 .env> run -- python -m pytest -o addopts='' --disable-warnings -q`（全量）
+  - 各文件定向复跑同命令加文件路径
+- Tests:
+  - `/auth/logout` 修订后：`tests/unit/test_auth_boundary.py + test_auth_api.py 187 passed`。
+  - e2e + regression：`39 passed`（此前该范围约 20 条红）。
+  - 全量：**从 `154 failed, 777 passed` 降到 `81 failed, 849 passed`**，本批修复 73 条。
+- Result: PARTIAL——AUTH-101、AUTH-102 仍未关闭（须全量转绿后才能给结论）。
+- Risks/Notes:
+  - 采用的模式：登录 helper 把令牌写进 `client.headers["Authorization"]` 作为默认身份；`_build_client` / `e2e_env` 预置一位默认教师。这样"只验业务行为"的用例不必各自造用户，而"以自己用户行事"的用例（原先拿到 token 却丢弃）自动获得正确身份——对 P3-2b 的服务端身份改造免疫，不会返工。
+  - 专门验证匿名行为的用例（如 `test_generate_workbench_draft_requires_auth`）必须先 `client.headers.pop("Authorization", None)`，已在该用例落实并写明注释。这类用例是本模式唯一的例外，改动时需留意。
+  - 复用 `tests/e2e/helpers.register_and_login`（其 `E2E_SCHOOL_NAME` 与单测的 `TEST_SCHOOL_NAME` 同为"测试学校"），未新造第 15 份登录 helper。
+  - **剩余 81 条红全部落在 5 个使用 `X-RMOS-Role` / `X-User-ID` 的文件里**（共 50 处头）：test_teaching_characterization 49、test_teaching_api 22、test_attempt_replay_api 4、test_evidence_cards_api 3、test_api_teaching 3。这些固化的是"头即身份"的旧语义，必须随 `teaching_roster.py` 的头移除一起按新规格重写，现在补令牌是白做——故留给 P3-2b。
+  - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
+  - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
+- Next Step: P3-2b——`teaching_roster.py` 10 处身份头改 `ActorContext`、`access_control.py` 去掉头兜底、`ActorContext` 加 `school_name`，并按新规格重写上述 81 条用例。

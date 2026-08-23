@@ -49,8 +49,15 @@ def register_and_login(
         json={"email": email, "password": password},
     )
     assert login_resp.status_code == 200
+    login_json = login_resp.json()
 
-    return user_id, email, login_resp.json()
+    # AUTH-101 默认拒绝网关生效后，/api/v1 下的调用一律需要令牌。
+    # 把刚登录的身份设为客户端默认身份——这也让"当前以谁的身份行事"在用例里
+    # 与最后一次 register_and_login 调用一致；需要别的身份时用单次 headers= 覆盖。
+    # 注意：学生分支会先递归创建一位教师，因此这里必须在递归返回之后再设置。
+    client.headers["Authorization"] = f"Bearer {login_json['access_token']}"
+
+    return user_id, email, login_json
 
 
 def parse_sse_events(raw_text: str) -> list[dict]:

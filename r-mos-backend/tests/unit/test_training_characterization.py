@@ -68,7 +68,12 @@ def _build_client(
 
     app.dependency_overrides[get_db] = override_get_db
     app.state.test_sessionmaker = session_factory
-    return TestClient(app, raise_server_exceptions=raise_server_exceptions), session_factory
+    client = TestClient(app, raise_server_exceptions=raise_server_exceptions)
+    # AUTH-101 默认拒绝网关生效后，/api/v1 下的调用一律需要令牌。
+    # 预置一个默认用户作为客户端默认身份，使"只验业务行为"的用例不必各自造用户；
+    # 需要特定身份的用例调用 _register_and_login* 切换即可。
+    _register_and_login(client, email="default-actor@x.com", full_name="Default Actor")
+    return client, session_factory
 
 
 def _register_and_login(
@@ -91,7 +96,11 @@ def _register_and_login(
         json={"email": email, "password": password},
     )
     assert login_resp.status_code == 200
-    return login_resp.json()["access_token"]
+    token = login_resp.json()["access_token"]
+    # 默认拒绝网关生效后，把刚登录的身份设为客户端默认身份；
+    # 需要以别的用户行事的用例仍可用单次 headers= 覆盖。
+    client.headers["Authorization"] = f"Bearer {token}"
+    return token
 
 
 def _register_and_login_with_id(
@@ -116,7 +125,9 @@ def _register_and_login_with_id(
         json={"email": email, "password": password},
     )
     assert login_resp.status_code == 200
-    return user_id, login_resp.json()["access_token"]
+    token = login_resp.json()["access_token"]
+    client.headers["Authorization"] = f"Bearer {token}"
+    return user_id, token
 
 
 def _seed_training_data(session_factory: async_sessionmaker) -> dict:
@@ -476,6 +487,8 @@ def test_generate_workbench_draft_requires_auth() -> None:
     """POST /training/workbench/draft — 无 token 返回 401."""
     client, sf = _build_client()
     try:
+        # 本用例专门验证匿名行为，必须清掉 _build_client 预置的默认身份
+        client.headers.pop("Authorization", None)
         resp = client.post(
             "/api/v1/training/workbench/draft",
             json={"robot_model": "ABB", "task_summary": "x", "focus_prompt": "y"},

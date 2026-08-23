@@ -52,7 +52,9 @@ from app.models.skill_profile import StudentSkillProfile, StudentWeakStep
 from app.models.training import SessionStepRecord, TrainingSession
 from app.models.training_submission import TrainingSubmission
 from app.models.user import User
+from app.models.school import School
 from main import app
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login  # 复用既有登录基建（该模块与 e2e 无耦合，只是造用户/拿令牌）
 import app.models as app_models  # noqa: F401  # Ensure all models are registered
 import app.api.v1.endpoints.training as training_endpoints
 
@@ -67,6 +69,7 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -77,7 +80,11 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
 
     app.dependency_overrides[get_db] = override_get_db
     app.state.test_sessionmaker = session_factory
-    return TestClient(app), session_factory
+    client = TestClient(app)
+    # AUTH-101 默认拒绝网关生效后，/api/v1 调用一律需要令牌；
+    # 预置一位默认教师作为客户端默认身份。
+    register_and_login(client, email_prefix="training_phase2_actor")
+    return client, session_factory
 
 
 def _seed_phase2_data(session_factory: async_sessionmaker) -> dict:
