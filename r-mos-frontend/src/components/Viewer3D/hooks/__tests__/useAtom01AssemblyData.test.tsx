@@ -4,6 +4,13 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 
 import { useAtom01AssemblyData } from '../useAtom01AssemblyData'
 
+const apiClientGetMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/api/client', () => ({
+  API_BASE_URL: '',
+  apiClient: { get: (...args: unknown[]) => apiClientGetMock(...args) },
+}))
+
 const MOCK_ASSEMBLY_MANIFEST = {
   version: '2026-03-13',
   robotId: '1',
@@ -123,29 +130,25 @@ function ToggleProbe({ enabled }: { enabled: boolean }) {
 
 describe('useAtom01AssemblyData', () => {
   afterEach(() => {
+    apiClientGetMock.mockReset()
     vi.restoreAllMocks()
   })
 
   it('loads the robot assembly and explode manifests into a unified adapter', async () => {
     const requestCounts = new Map<string, number>()
 
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input)
+    apiClientGetMock.mockImplementation(
+      async (url: string, config?: { headers?: Record<string, string> }) => {
         const nextCount = (requestCounts.get(url) ?? 0) + 1
         requestCounts.set(url, nextCount)
         const payload = url.endsWith('explode_manifest.json') ? MOCK_EXPLODE_MANIFEST : MOCK_ASSEMBLY_MANIFEST
 
-        if (nextCount > 1 && init?.cache !== 'no-store') {
-          return new Response(null, { status: 304 })
+        if (nextCount > 1 && config?.headers?.['Cache-Control'] !== 'no-store') {
+          throw new Error('cached response reused')
         }
 
-        return new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }),
+        return { data: payload }
+      },
     )
 
     render(
@@ -161,23 +164,21 @@ describe('useAtom01AssemblyData', () => {
     expect(screen.getByTestId('root-id').textContent).toBe('base_link')
     expect(screen.getByTestId('node-count').textContent).toBe('2')
     expect(screen.getByTestId('view-count').textContent).toBe('2')
-    expect(fetch).toHaveBeenCalledWith(
+    expect(apiClientGetMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/api\/v1\/robots\/1\/assets\/.*assembly_manifest\.json/),
-      expect.objectContaining({ cache: 'no-store' }),
+      expect.objectContaining({
+        baseURL: '',
+        headers: expect.objectContaining({ 'Cache-Control': 'no-store' }),
+      }),
     )
   })
 
   it('loads manifests when enabled flips from false to true', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input)
+    apiClientGetMock.mockImplementation(
+      async (url: string) => {
         const payload = url.endsWith('explode_manifest.json') ? MOCK_EXPLODE_MANIFEST : MOCK_ASSEMBLY_MANIFEST
-        return new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }),
+        return { data: payload }
+      },
     )
 
     const { rerender } = render(<ToggleProbe enabled={false} />)

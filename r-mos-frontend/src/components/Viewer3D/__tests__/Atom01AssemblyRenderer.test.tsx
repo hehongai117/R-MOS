@@ -7,12 +7,12 @@ import type { ExplodeManifest } from '@/components/Viewer3D/assemblyManifest'
 import type { Atom01AssemblyAdapter } from '@/components/Viewer3D/hooks/useAtom01AssemblyData'
 import { Atom01AssemblyRenderer, collectAssemblyRenderItems } from '@/components/Viewer3D/Atom01AssemblyRenderer'
 
-const useGLTFMock = vi.hoisted(() => vi.fn(() => ({
+const useAuthedGLTFMock = vi.hoisted(() => vi.fn(() => ({
   scene: new THREE.Group(),
 })))
 
-vi.mock('@react-three/drei', () => ({
-  useGLTF: useGLTFMock,
+vi.mock('@/components/Viewer3D/useAuthedGLTF', () => ({
+  useAuthedGLTF: useAuthedGLTFMock,
 }))
 
 function buildAdapter(): Atom01AssemblyAdapter {
@@ -154,11 +154,11 @@ describe('Atom01AssemblyRenderer', () => {
   })
 
   it('renders assembly descendants under their parent nodes', () => {
-    useGLTFMock.mockClear()
+    useAuthedGLTFMock.mockClear()
     render(<Atom01AssemblyRenderer adapter={buildAdapter()} rootLinkName="torso_link" />)
 
-    expect(useGLTFMock).toHaveBeenCalledWith('/models/parts/frames/胸腔胸部.glb')
-    expect(useGLTFMock).toHaveBeenCalledWith('/models/parts/screws/内六角圆柱头螺钉M4x12.glb')
+    expect(useAuthedGLTFMock).toHaveBeenCalledWith('/models/parts/frames/胸腔胸部.glb')
+    expect(useAuthedGLTFMock).toHaveBeenCalledWith('/models/parts/screws/内六角圆柱头螺钉M4x12.glb')
   })
 
   it('applies authored explode offsets to targeted assembly nodes', () => {

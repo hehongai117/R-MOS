@@ -14,11 +14,11 @@
 
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
 import { getRobotModelBase } from '../../config/robots';
 import * as THREE from 'three';
 import type { RobotDataManifest } from './assemblyManifest';
 import { buildJointAxisMap } from './manifestHelpers';
+import { useAuthedGLTF } from './useAuthedGLTF';
 
 // Props 接口
 export interface Atom01ModelProps {
@@ -40,7 +40,7 @@ const LinkMesh: React.FC<{
     isHighlighted?: boolean;
 }> = ({ name, modelBasePath, isFault = false, isHighlighted = false }) => {
     const meshRef = useRef<THREE.Group>(null);
-    const { scene } = useGLTF(`${modelBasePath}/${name}.glb`);
+    const { scene } = useAuthedGLTF(`${modelBasePath}/${name}.glb`);
 
     const clonedScene = useMemo(() => {
         const cloned = scene.clone();

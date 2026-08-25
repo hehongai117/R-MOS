@@ -7,9 +7,10 @@
 
 import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Center, OrbitControls, useGLTF } from '@react-three/drei';
+import { Center, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Empty, List, Tag, Typography } from 'antd';
+import { useAuthedGLTF } from './useAuthedGLTF';
 
 import {
   CATEGORY_COLORS,
@@ -26,7 +27,7 @@ const PartModel: React.FC<{ partPath: string; category: DetailPart['category'] }
   partPath,
   category,
 }) => {
-  const { scene } = useGLTF(`${PARTS_BASE_PATH}/${partPath}`);
+  const { scene } = useAuthedGLTF(`${PARTS_BASE_PATH}/${partPath}`);
 
   const clonedScene = useMemo(() => {
     const cloned = scene.clone();

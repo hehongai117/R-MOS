@@ -8,9 +8,9 @@
  */
 
 import React, { useMemo, Suspense } from 'react';
-import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { CATEGORY_COLORS, getCorePartsForLink, type DetailPart } from './partsManifest';
+import { useAuthedGLTF } from './useAuthedGLTF';
 
 const PARTS_BASE_PATH = '/models/parts';
 
@@ -21,7 +21,7 @@ const SingleDetailPart: React.FC<{
     part: DetailPart;
     highlighted?: boolean;
 }> = ({ part, highlighted = false }) => {
-    const { scene } = useGLTF(`${PARTS_BASE_PATH}/${part.path}`);
+    const { scene } = useAuthedGLTF(`${PARTS_BASE_PATH}/${part.path}`);
 
     const clonedScene = useMemo(() => {
         const cloned = scene.clone();

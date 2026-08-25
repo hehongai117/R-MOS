@@ -7,6 +7,7 @@ import { message } from 'antd'
 
 import {
   AUTH_STORAGE_KEYS,
+  getAccessToken,
   type AuthTokenResponse,
   useAuthStore,
 } from '@/store/authStore'
@@ -59,10 +60,7 @@ installRetry(apiClient)
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token =
-      useAuthStore.getState().accessToken ??
-      localStorage.getItem(AUTH_STORAGE_KEYS.accessToken) ??
-      localStorage.getItem(AUTH_STORAGE_KEYS.legacyAccessToken)
+    const token = getAccessToken()
 
     if (token) {
       config.headers.set('Authorization', `Bearer ${token}`)

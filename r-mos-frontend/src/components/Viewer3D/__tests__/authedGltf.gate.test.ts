@@ -23,8 +23,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AUTH_STORAGE_KEYS, useAuthStore } from '@/store/authStore'
 
 const useGLTFMock = vi.hoisted(() => {
-  const fn = vi.fn(() => ({ scene: {}, nodes: {}, materials: {} }))
-  return Object.assign(fn, { preload: vi.fn(), clear: vi.fn() })
+  type ExtendLoader = (loader: unknown) => void
+  const fn = vi.fn((
+    _path: string | string[],
+    _useDraco?: boolean | string,
+    _useMeshopt?: boolean,
+    _extendLoader?: ExtendLoader,
+  ) => ({ scene: {}, nodes: {}, materials: {} }))
+  const preload = vi.fn((
+    _path: string | string[],
+    _useDraco?: boolean | string,
+    _useMeshopt?: boolean,
+    _extendLoader?: ExtendLoader,
+  ) => undefined)
+  return Object.assign(fn, { preload, clear: vi.fn() })
 })
 
 vi.mock('@react-three/drei', () => ({ useGLTF: useGLTFMock }))

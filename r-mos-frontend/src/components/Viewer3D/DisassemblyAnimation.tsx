@@ -10,7 +10,6 @@
 
 import React, { useState, useRef, useMemo, useCallback, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
 import {
@@ -22,6 +21,7 @@ import {
     getTotalDuration,
     type ScrewAnimConfig,
 } from './disassemblyConfig';
+import { useAuthedGLTF } from './useAuthedGLTF';
 
 // ============================================================
 // 单颗螺丝 GLB 渲染
@@ -33,7 +33,7 @@ const ScrewModel: React.FC<{
     config: ScrewAnimConfig;
     progress: number; // -1=未开始, 0~1=动画中
 }> = ({ config, progress }) => {
-    const { scene } = useGLTF(`${PARTS_BASE}/${config.glbPath}`);
+    const { scene } = useAuthedGLTF(`${PARTS_BASE}/${config.glbPath}`);
 
     const clonedScene = useMemo(() => {
         const cloned = scene.clone();

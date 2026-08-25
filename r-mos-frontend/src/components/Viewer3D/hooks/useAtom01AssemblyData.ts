@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { isAxiosError } from 'axios'
 
+import { apiClient } from '@/api/client'
 import { getRobotModelBase } from '@/config/robots'
 import {
   buildAssemblyIndex,
@@ -30,11 +32,18 @@ export interface UseAtom01AssemblyDataResult {
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error(`failed to load ${url}: ${response.status}`)
+  try {
+    const response = await apiClient.get<unknown>(url, {
+      baseURL: '',
+      headers: { 'Cache-Control': 'no-store' },
+    })
+    return response.data
+  } catch (cause) {
+    if (isAxiosError(cause) && cause.response) {
+      throw new Error(`failed to load ${url}: ${cause.response.status}`)
+    }
+    throw cause
   }
-  return response.json()
 }
 
 export function createStaticAssemblyAdapter(manifest: AssemblyManifest): Atom01AssemblyAdapter {

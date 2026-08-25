@@ -119,6 +119,10 @@ function getStoredAccessToken() {
   )
 }
 
+export function getAccessToken(): string | null {
+  return useAuthStore.getState().accessToken ?? getStoredAccessToken()
+}
+
 function getStoredRefreshToken() {
   return (
     localStorage.getItem(AUTH_STORAGE_KEYS.refreshToken) ??

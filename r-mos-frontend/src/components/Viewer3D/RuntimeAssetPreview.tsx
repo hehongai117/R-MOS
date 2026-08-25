@@ -1,4 +1,3 @@
-import { useGLTF } from '@react-three/drei'
 import { useEffect, useMemo, useState } from 'react'
 import { Mesh, MeshStandardMaterial, type Object3D } from 'three'
 
@@ -8,6 +7,7 @@ import {
   centerObjectAtOrigin,
   type VisibleBounds,
 } from '@/components/Viewer3D/viewerBounds'
+import { useAuthedGLTF } from './useAuthedGLTF'
 
 interface RuntimeAssetPreviewProps {
   assetUrl: string | null
@@ -121,7 +121,7 @@ function LoadedRuntimeGltfAsset({
   assetUrl: string
   onVisibleBoundsChange?: (bounds: VisibleBounds) => void
 }) {
-  const gltf = useGLTF(assetUrl)
+  const gltf = useAuthedGLTF(assetUrl)
   const centeredAsset = useMemo(() => centerObjectAtOrigin(gltf.scene.clone()), [gltf.scene])
 
   useEffect(() => {

@@ -1,10 +1,10 @@
 import { useRef, useMemo, useCallback, Component, type ReactNode } from 'react'
-import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { AssemblyNode, AssemblyManifest } from './assemblyManifest'
 import type { AssemblyJoint } from './useAssemblyManifest'
 import { buildPartMetadata, type PartInfo } from './manifestPartMetadata'
+import { useAuthedGLTF } from './useAuthedGLTF'
 
 /** Catch GLB load failures silently. */
 class MeshErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -237,7 +237,7 @@ function InteractiveLinkMesh({
   selectedPart: string | null
 }) {
   const url = `/api/v1/robots/${robotId}/assets/${meshPath}`
-  const { scene } = useGLTF(url)
+  const { scene } = useAuthedGLTF(url)
 
   const cloned = useMemo(() => {
     const clone = scene.clone(true)

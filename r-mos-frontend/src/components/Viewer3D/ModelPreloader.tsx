@@ -9,9 +9,9 @@
  * 使用 drei 的 useGLTF.preload() 将 GLB 下载并解析到内存缓存。
  */
 
-import { useGLTF } from '@react-three/drei';
 import { ALL_EXPLODE_PART_URLS, overviewPartUrls } from './partsManifest';
 import { getRobotModelBase } from '../../config/robots';
+import { useAuthedGLTF } from './useAuthedGLTF';
 
 /** 批量大小：每帧处理多少个 URL 的预加载调用 */
 const BATCH_SIZE = 8;
@@ -40,7 +40,7 @@ export function preloadAllParts(
 
             batch.forEach((url) => {
                 try {
-                    useGLTF.preload(url);
+                    useAuthedGLTF.preload(url);
                 } catch {
                     // 静默忽略单个文件的预加载错误
                 }
@@ -95,7 +95,7 @@ export function preloadRobotModel(robotId: string, linkNames?: string[]): void {
 
     links.forEach((name) => {
         try {
-            useGLTF.preload(`${ROBOT_BASE}/${name}.glb`);
+            useAuthedGLTF.preload(`${ROBOT_BASE}/${name}.glb`);
         } catch {
             // ignore
         }
@@ -117,7 +117,7 @@ export function preloadOverviewParts(): Promise<void> {
             const batch = urls.slice(startIdx, startIdx + BATCH_SIZE);
             batch.forEach((url) => {
                 try {
-                    useGLTF.preload(url);
+                    useAuthedGLTF.preload(url);
                 } catch {
                     // 静默忽略单个文件的预加载错误
                 }

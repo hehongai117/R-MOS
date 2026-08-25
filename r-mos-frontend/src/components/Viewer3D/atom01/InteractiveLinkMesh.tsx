@@ -4,10 +4,10 @@
 
 import React, { useRef, useMemo } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { smoothstep } from './atom01Geometry';
 import { EXPLODE_OFFSETS, CORE_OUTLIER_ABS_MAX_DIM } from './atom01Constants';
+import { useAuthedGLTF } from '../useAuthedGLTF';
 
 // 单个可交互 Link 组件
 export const InteractiveLinkMesh: React.FC<{
@@ -50,7 +50,7 @@ export const InteractiveLinkMesh: React.FC<{
     explodeOffsetMap,
 }) => {
         const meshRef = useRef<THREE.Group>(null);
-        const { scene } = useGLTF(`${modelBasePath}/${name}.glb`);
+        const { scene } = useAuthedGLTF(`${modelBasePath}/${name}.glb`);
         const isolationVisualMode = showSubParts && explodeAmount > 0;
 
     const clonedScene = useMemo(() => {

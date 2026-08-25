@@ -1,9 +1,9 @@
 import React, { Suspense, useMemo } from 'react'
-import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 
 import type { AssemblyTransform, ExplodeManifest } from '@/components/Viewer3D/assemblyManifest'
 import type { Atom01AssemblyAdapter } from '@/components/Viewer3D/hooks/useAtom01AssemblyData'
+import { useAuthedGLTF } from './useAuthedGLTF'
 
 export interface AssemblyRenderItem {
   id: string
@@ -153,7 +153,7 @@ export function collectAssemblyRenderItems(
 }
 
 const AssemblyMesh: React.FC<{ meshUrl: string; opacity: number }> = ({ meshUrl, opacity }) => {
-  const { scene } = useGLTF(meshUrl)
+  const { scene } = useAuthedGLTF(meshUrl)
   const clonedScene = useMemo(() => {
     const cloned = scene.clone()
     cloned.traverse((child) => {

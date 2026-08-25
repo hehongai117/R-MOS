@@ -1,8 +1,8 @@
 import { useRef, useMemo, Component, type ReactNode } from 'react'
-import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { AssemblyNode, AssemblyManifest } from './assemblyManifest'
 import type { AssemblyJoint } from './useAssemblyManifest'
+import { useAuthedGLTF } from './useAuthedGLTF'
 
 /** Catch GLB load failures silently — render nothing instead of crashing. */
 class MeshErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -166,7 +166,7 @@ function LinkMesh({
   highlighted: boolean
 }) {
   const url = `/api/v1/robots/${robotId}/assets/${meshPath}`
-  const { scene } = useGLTF(url)
+  const { scene } = useAuthedGLTF(url)
 
   const cloned = useMemo(() => {
     const clone = scene.clone(true)

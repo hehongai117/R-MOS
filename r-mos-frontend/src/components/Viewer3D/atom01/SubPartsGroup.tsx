@@ -3,12 +3,13 @@
  */
 
 import React, { Suspense, useMemo, useState } from 'react';
-import { useGLTF, Line } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { getExplodePartsForLink, CATEGORY_COLORS, type DetailPart } from '../partsManifest';
 import { PARTS_GLB_BASE, LINK_SUBPART_TUNING, DEFAULT_SUBPART_TUNING } from './atom01Constants';
 import { CATEGORY_PRIORITY, getLinkExplodeAxis, smoothstep } from './atom01Geometry';
 import { SubPartMesh } from './SubPartMesh';
+import { useAuthedGLTF } from '../useAuthedGLTF';
 
 /** 某个 link 下所有爆炸图子零件的容器 */
 export const SubPartsGroup: React.FC<{
@@ -40,7 +41,7 @@ export const SubPartsGroup: React.FC<{
     const gltfUrls = useMemo(() => parts.map(p => `${PARTS_GLB_BASE}/${p.path}`), [parts]);
 
     // 并发加载该 link 下的所有子零件
-    const gltfs = useGLTF(gltfUrls);
+    const gltfs = useAuthedGLTF(gltfUrls);
 
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
