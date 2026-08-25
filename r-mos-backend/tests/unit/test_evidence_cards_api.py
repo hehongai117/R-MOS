@@ -17,6 +17,8 @@ from app.models.base import Base
 from app.models.timeline import MultimodalTimeline, TimelineSegment
 from app.services.teaching_service import TeachingService
 from main import app
+from app.models.school import School
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login  # 复用既有登录基建
 
 
 @pytest.fixture
@@ -30,6 +32,7 @@ def client() -> TestClient:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -42,6 +45,10 @@ def client() -> TestClient:
     app.state.test_sessionmaker = session_factory
 
     with TestClient(app) as test_client:
+        # AUTH-101 默认拒绝网关 + AUTH-104 身份只来自令牌：
+        # 预置一位默认教师作为客户端默认身份；需要学生身份的用例用
+        # register_and_login(client, ..., role="student") 切换。
+        register_and_login(test_client, email_prefix="evidence_cards_actor")
         yield test_client
 
     app.dependency_overrides.clear()
@@ -119,19 +126,46 @@ async def _latest_audit(
         return result.scalars().first()
 
 
+def _register_actors(client: TestClient) -> dict:
+    """注册真实的教师/学生账号（AUTH-104：角色与主体只来自令牌）。"""
+    teacher_id, _, teacher_login = register_and_login(client, email_prefix="ec_owner_teacher")
+    _other_teacher_id, _, other_teacher_login = register_and_login(
+        client, email_prefix="ec_other_teacher"
+    )
+    student_id, _, student_login = register_and_login(
+        client, email_prefix="ec_owner_student", role="student", teacher_id=teacher_id
+    )
+    return {
+        "teacher_id": teacher_id,
+        "teacher_token": teacher_login["access_token"],
+        "other_teacher_token": other_teacher_login["access_token"],
+        "student_id": student_id,
+        "student_token": student_login["access_token"],
+    }
+
+
+def _act_as(client: TestClient, token: str) -> None:
+    client.headers["Authorization"] = f"Bearer {token}"
+
+
 def test_evidence_card_teacher_can_create_and_record_allow_audit(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
+    )
     refs = asyncio.run(_seed_timeline_segments(session_factory, attempt_id=attempt_id))
 
+    # 带该班的真实教师
+    _act_as(client, actors["teacher_token"])
     response = client.post(
         "/api/v1/evidence_cards",
         json={"attemptId": attempt_id, "cardType": "failure_point"},
-        headers={
-            "X-RMOS-Role": "teacher",
-            "X-User-ID": "7001",
-            "X-Trace-ID": "i003-teacher-allow",
-        },
+        headers={"X-Trace-ID": "i003-teacher-allow"},
     )
     assert response.status_code == 201
     payload = response.json()
@@ -156,16 +190,21 @@ def test_evidence_card_teacher_can_create_and_record_allow_audit(client: TestCli
 
 def test_evidence_card_student_write_denied_403_and_records_real_attempt_id(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
+    )
     asyncio.run(_seed_timeline_segments(session_factory, attempt_id=attempt_id))
 
+    # 真实学生：无写权限
+    _act_as(client, actors["student_token"])
     response = client.post(
         "/api/v1/evidence_cards",
         json={"attemptId": attempt_id, "cardType": "failure_point"},
-        headers={
-            "X-RMOS-Role": "student",
-            "X-User-ID": "2001",
-        },
     )
     assert response.status_code == 403
     payload = response.json()
@@ -187,16 +226,21 @@ def test_evidence_card_student_write_denied_403_and_records_real_attempt_id(clie
 
 def test_evidence_card_teacher_out_of_scope_denied_403_and_records_real_attempt_id(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
+    )
     asyncio.run(_seed_timeline_segments(session_factory, attempt_id=attempt_id))
 
+    # 另一名真实教师：不带这个班
+    _act_as(client, actors["other_teacher_token"])
     response = client.post(
         "/api/v1/evidence_cards",
         json={"attemptId": attempt_id, "cardType": "failure_point"},
-        headers={
-            "X-RMOS-Role": "teacher",
-            "X-User-ID": "7002",
-        },
     )
     assert response.status_code == 403
     payload = response.json()

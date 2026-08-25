@@ -103,8 +103,37 @@ if [[ "$E2E" == "true" ]]; then
     exit 3
   fi
 
-  curl --noproxy 127.0.0.1,localhost -sS -X POST 'http://127.0.0.1:18080/api/v1/classes' \
+
+  # ── AUTH-101 默认拒绝网关 + AUTH-104 身份只来自令牌（2026-08-25）──
+  # 改造前本段用 X-RMOS-Role / X-User-ID 头伪装学生；这两个头已不再影响授权，
+  # 且 /api/v1 下的调用一律需要有效令牌。改为注册两个真实账号并使用其令牌。
+  SMOKE_SUFFIX="$(date +%s)$$"
+  BASE="http://127.0.0.1:18080/api/v1"
+
+  _register_login() {  # $1=email $2=role $3=teacher_id(可空) -> 打印 access_token
+    local email="$1" role="$2" tid="${3:-}" body
+    body="{\"email\":\"${email}\",\"password\":\"StrongPass123\",\"full_name\":\"Gate2 Smoke\",\"role\":\"${role}\",\"school_name\":\"测试学校\""
+    [[ -n "$tid" ]] && body="${body},\"teacher_id\":${tid}"
+    body="${body}}"
+    curl --noproxy 127.0.0.1,localhost -sS -X POST "${BASE}/auth/register" \
+      -H 'Content-Type: application/json' -d "$body" > /tmp/a001_reg_${role}.json
+    curl --noproxy 127.0.0.1,localhost -sS -X POST "${BASE}/auth/login" \
+      -H 'Content-Type: application/json' \
+      -d "{\"email\":\"${email}\",\"password\":\"StrongPass123\"}" \
+    | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])'
+  }
+
+  TEACHER_EMAIL="gate2_teacher_${SMOKE_SUFFIX}@example.com"
+  STUDENT_EMAIL="gate2_student_${SMOKE_SUFFIX}@example.com"
+  TEACHER_TOKEN="$(_register_login "$TEACHER_EMAIL" teacher)" || {
+    echo "错误：教师注册/登录失败（学校白名单需存在\"测试学校\"）"; exit 5; }
+  TEACHER_ID="$(python -c 'import json;print(json.load(open("/tmp/a001_reg_teacher.json"))["user_id"])')"
+  STUDENT_TOKEN="$(_register_login "$STUDENT_EMAIL" student "$TEACHER_ID")" || {
+    echo "错误：学生注册/登录失败"; exit 5; }
+
+  curl --noproxy 127.0.0.1,localhost -sS -X POST "${BASE}/classes" \
     -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer ${TEACHER_TOKEN}" \
     -d '{"name":"A001端到端证据班级"}' > /tmp/a001_class.json
 
   CLASS_ID="$(python - <<'PY'
@@ -122,16 +151,16 @@ PY
 }
 
   if ! READ_CODE="$(curl --noproxy 127.0.0.1,localhost -sS -o /tmp/a001_read.json -w "%{http_code}" \
-    "http://127.0.0.1:18080/api/v1/classes/${CLASS_ID}" \
-    -H 'X-RMOS-Role: student' -H 'X-User-ID: 2002')"; then
+    "${BASE}/classes/${CLASS_ID}" \
+    -H "Authorization: Bearer ${STUDENT_TOKEN}")"; then
     echo "错误：READ 越权请求执行失败"
     exit 10
   fi
 
   if ! WRITE_CODE="$(curl --noproxy 127.0.0.1,localhost -sS -o /tmp/a001_write.json -w "%{http_code}" \
-    -X PATCH "http://127.0.0.1:18080/api/v1/classes/${CLASS_ID}" \
+    -X PATCH "${BASE}/classes/${CLASS_ID}" \
     -H 'Content-Type: application/json' \
-    -H 'X-RMOS-Role: student' -H 'X-User-ID: 2002' \
+    -H "Authorization: Bearer ${STUDENT_TOKEN}" \
     -d '{"name":"A001越权修改不应成功"}')"; then
     echo "错误：WRITE 越权请求执行失败"
     exit 11

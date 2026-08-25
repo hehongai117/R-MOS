@@ -7629,3 +7629,37 @@
   - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
   - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
 - Next Step: P3-2b——`teaching_roster.py` 10 处身份头改 `ActorContext`、`access_control.py` 去掉头兜底、`ActorContext` 加 `school_name`，并按新规格重写上述 81 条用例。
+
+---
+
+- DateTime: 2026-08-25 05:10 CST
+- Task: Phase 3 第 2 批后半（P3-2b）——服务端身份与拒绝审计；移除客户端身份头；后端全量恢复至全绿
+- Scope (files changed):
+  - r-mos-backend/app/services/authz_guard.py（`ActorContext` 增加 `account_role` 与 `school_name`）
+  - r-mos-backend/app/services/access_control.py（审计操作者改取 `request.state.actor`，删除 `X-User-ID` 兜底）
+  - r-mos-backend/app/api/v1/endpoints/teaching_roster.py（6 个端点的 10 处身份头改 `ActorContext`；角色判断改白名单式）
+  - r-mos-backend/tests/unit/test_teaching_identity_boundary.py（新增，新规格门禁 7 条）
+  - r-mos-backend/tests/unit/test_auth_boundary_gate.py（新增，白名单钉死 + 身份头零读取 + 探测器自检）
+  - r-mos-backend/tests/unit/test_teaching_characterization.py、test_teaching_api.py、test_attempt_replay_api.py、test_evidence_cards_api.py、test_api_teaching.py、tests/e2e/test_e2e_cross_role_access.py（按新规格重写）
+  - r-mos-backend/scripts/run_gate2_smoke.sh（改用真实令牌）
+- Commands Run:
+  - `python -m dotenv -f <主工作区 .env> run -- python -m pytest`（全量）
+  - `python -m dotenv ... run -- python -m pytest <各文件> -o addopts='' --disable-warnings -q`
+  - `bash -n scripts/run_gate2_smoke.sh`
+  - 门禁负向自检：临时向 `PUBLIC_ROUTES` 注入 `("GET", "/api/v1/tasks")` 后复跑，再还原
+- Tests:
+  - 新规格测试先写后实现：`tests/unit/test_teaching_identity_boundary.py` 实现前 **6 failed / 1 passed**（唯一通过的是正向边界"本人读自己的尝试"），实现后 **7 passed**。
+  - 全量：**从 `81 failed, 849 passed` 到 `934 passed, 0 failed, 0 error in 66.03s`**。
+  - 白名单钉死门禁负向自检：注入一条真实路由后 `test_public_route_whitelist_is_pinned` 变红，还原后转绿。
+  - 身份头探测器自检：4 条真实读取语法必须命中、2 条散文提及必须不命中，均通过。
+- Result: PASS（后端全量绿 + AUTH-GATE-01～08 定向通过）。**AUTH-101、AUTH-102、AUTH-104 的软件侧到此具备关闭条件**；AUTH-103、AUTH-105 属 P3-3，未做。
+- Risks/Notes:
+  - **发现两套并存的角色系统**：注册只写 `users.role`（`auth.py:146`），全仓**没有任何生产代码写 `UserRole`**（只有 seed 脚本写），因此 `ActorContext.roles`（RBAC）对正常注册的用户恒为空——`robots.py:41` 的 `_require_teacher_or_admin` 会拒绝所有自助注册的教师。这是既有潜伏缺陷，**本批未改**：把两者合并会改变"谁能管机器人"，属独立的权限决策。本批采用忠实的 1:1 替换——头里携带的是粗粒度角色，就用 `users.role`（`ActorContext.account_role`），不触碰 `roles`/`robots.py` 语义。该缺陷需单独立项。
+  - 特征化测试按 `pytest.ini` 对 `characterization` 的定义处理（"修 bug 时按新规格更新断言"）：删 6 条（测"缺少 X-User-ID 头 → 404/403"，该分支已不可达——身份来自令牌，主体必然带 user_id）、改 5 条（改用真实角色令牌）、2 条合并为 1 条直接单测 `_parse_user_id`（该函数已不参与教学域鉴权，但仍被 `teaching.py` 使用）。删除理由已写入该文件的模块内说明。
+  - 白名单钉死门禁解决了一个此前无人覆盖的方向：**往白名单里加一条真实存在的路由**会合法扩大匿名面，而所有行为测试都会照常通过。现在任何增删必须同时改测试，强制一次人工评审。
+  - 身份头静态门禁改为匹配**读取语法**（`Header(...)` / `headers.get(...)` / `headers[...]`）而非字面量，避免把解释性注释误判；并附探测器自检，防止正则失效导致门禁静默常绿。
+  - `scripts/run_gate2_smoke.sh` 已改为注册+登录取真实令牌，`bash -n` 语法检查通过，但**未实际执行**——它需要 127.0.0.1:18080 上跑着后端，超出本批范围。
+  - 前端未改动任何文件，前端测试与构建不受本批影响。
+  - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
+  - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
+- Next Step: P3-3——机器人资产边界（AUTH-103）、登录失败限制（AUTH-105）、`AUTH-SCHOOLS-PII` 邮箱脱敏；并在该批用浏览器主流程实测复验前端不受默认拒绝影响。

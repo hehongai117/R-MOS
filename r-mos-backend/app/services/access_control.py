@@ -18,10 +18,16 @@ from app.services.audit_event_service import AuditEventService
 
 
 def _extract_actor_user_id(request: Request) -> Optional[str]:
-    actor_user_id = request.headers.get("X-User-ID")
-    if not actor_user_id:
+    """审计操作者只取服务端已验证的令牌主体（AUTH-104）。
+
+    改造前这里从客户端 `X-User-ID` 头兜底，任何调用者都能污染审计中的操作者身份。
+    现在只读 `request.state.actor`——它由 `get_current_actor` 在认证成功后写入。
+    取不到就返回 None（表示当时没有已认证主体），**不得**回落到客户端头。
+    """
+    actor = getattr(request.state, "actor", None)
+    if actor is None:
         return None
-    return actor_user_id.strip() or None
+    return str(actor.user_id)
 
 
 def _build_request_meta(request: Request) -> dict[str, Any]:

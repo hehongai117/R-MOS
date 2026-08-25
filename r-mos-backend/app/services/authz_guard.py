@@ -27,12 +27,27 @@ from app.services.access_control import log_deny_event
 
 @dataclass
 class ActorContext:
-    """守卫解析后的最小用户上下文。"""
+    """守卫解析后的最小用户上下文。
+
+    ⚠️ 系统里存在**两套角色**，本类分别承载，不要混用：
+
+    - `roles` / `permissions`：RBAC 表（`roles` / `user_roles` / `permissions`）里的
+      细粒度授权。注意注册流程**不写** `user_roles`，只有 seed 脚本会写，
+      因此正常注册的用户这两个集合为空。
+    - `account_role`：`users.role` 列上的粗粒度账号角色（`student` / `teacher` /
+      `admin`），注册时写入。教学域的角色分支用它——它正是改造前
+      `X-RMOS-Role` 头所携带的那个值，只是现在来自服务端令牌而非客户端。
+
+    `school_name` 用于跨校归属校验（决策 K）。当前全仓只有 `users` 表带学校维度，
+    因此跨校比较通过"操作者 user → school_name"进行，不做数据分库。
+    """
 
     user_id: int
     email: str
     roles: set[str]
     permissions: set[str]
+    account_role: str = ""
+    school_name: str | None = None
 
 
 def _parse_bearer_token(authorization: str | None) -> str | None:
@@ -110,6 +125,9 @@ async def get_current_actor(
         email=user.email,
         roles=roles,
         permissions=permissions,
+        # 两者都来自上面已经查过的 User 行，不产生额外查询
+        account_role=(user.role or "").strip().lower(),
+        school_name=user.school_name,
     )
     request.state.actor = actor
     return actor

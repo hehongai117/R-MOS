@@ -40,6 +40,7 @@ from app.models.timeline import (
     TimelineSegment,
 )
 from main import app
+from tests.e2e.helpers import register_and_login  # 复用既有登录基建
 
 TEST_SCHOOL_NAME = "测试学校"
 
@@ -69,7 +70,13 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
 
     app.dependency_overrides[get_db] = override_get_db
     app.state.test_sessionmaker = session_factory
-    return TestClient(app), session_factory
+    client = TestClient(app)
+    # AUTH-101 默认拒绝网关生效后，/api/v1 调用一律需要令牌；
+    # AUTH-104 之后角色也只来自令牌，X-RMOS-Role 头不再影响授权。
+    # 预置一位默认教师作为客户端默认身份；需要学生身份的用例改用
+    # register_and_login(client, ..., role="student", teacher_id=...) 切换。
+    register_and_login(client, email_prefix="teaching_char_actor")
+    return client, session_factory
 
 
 async def _seed_attempt(
@@ -103,6 +110,19 @@ async def _seed_attempt(
         await session.commit()
         return teaching_class.id, assignment.id, attempt.id, teacher_id
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTH-104 改造说明（2026-08-25）
+#
+# 本文件原有一批用例锁定的是"客户端身份头"语义，随该机制移除一并处理：
+# - 测"缺少 X-User-ID 头 → 404/403"的 5 条已删除：身份现在来自令牌，
+#   令牌主体必然带 user_id，该分支不可达，继续断言等于锁定一个不存在的行为。
+#   （对应 pytest.ini 对 characterization 的定义："修 bug 时按新规格更新断言"）
+# - 测角色/归属拒绝的 5 条改为注册真实角色账号后以其令牌访问。
+# - 测 _parse_user_id 的 2 条合并为一条直接单测——该函数已不参与教学域鉴权，
+#   但仍被 teaching.py 使用，覆盖需保留。
+# 新规格的正面门禁见 tests/unit/test_teaching_identity_boundary.py。
+# ─────────────────────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /guidance-policies/{policy_id}  → 404 on missing
@@ -165,48 +185,25 @@ def test_create_guidance_policy_basic_fields():
 # GET /classes/{class_id}  — student 角色访问控制
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_get_class_student_no_user_id_returns_404():
-    """
-    GET /api/v1/classes/{id} with X-RMOS-Role: student but no X-User-ID header
-    → 404 ReadAccessDeniedError (invalid_actor_student_id).
-    覆盖: get_class student branch lines 195-206.
-    """
-    client, _ = _build_client()
-    try:
-        # 先创建 class
-        create_resp = client.post("/api/v1/classes", json={"name": "角色测试班级"})
-        assert create_resp.status_code == 201
-        class_id = create_resp.json()["id"]
-
-        resp = client.get(
-            f"/api/v1/classes/{class_id}",
-            headers={"X-RMOS-Role": "student"},  # 无 X-User-ID
-        )
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["error_type"] == "ReadAccessDeniedError"
-        assert body["details"]["code"] == "READ_ACCESS_DENIED"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-
-
 def test_get_class_student_not_enrolled_returns_404():
     """
-    GET /api/v1/classes/{id} with student role but student not enrolled
-    → 404 ReadAccessDeniedError (student_class_scope_mismatch).
-    覆盖: get_class enrollment check lines 207-223.
+    GET /api/v1/classes/{id}：未选课的学生 → 404 ReadAccessDeniedError
+    （student_class_scope_mismatch）。
+
+    AUTH-104 之后角色只来自令牌，因此这里注册一个**真的**学生账号并以其身份访问，
+    不再用 X-RMOS-Role 头伪装。
     """
     client, sf = _build_client()
     try:
+        # 默认身份是教师，用它建班
         create_resp = client.post("/api/v1/classes", json={"name": "未入学班级"})
         assert create_resp.status_code == 201
         class_id = create_resp.json()["id"]
 
-        resp = client.get(
-            f"/api/v1/classes/{class_id}",
-            headers={"X-RMOS-Role": "student", "X-User-ID": "9001"},
-        )
+        # 切到一个真的学生（未选该班）
+        register_and_login(client, email_prefix="char_unenrolled_student", role="student")
+
+        resp = client.get(f"/api/v1/classes/{class_id}")
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
@@ -254,8 +251,10 @@ def test_get_class_student_enrolled_returns_200():
 
 def test_update_class_student_role_denied():
     """
-    PATCH /api/v1/classes/{id} with X-RMOS-Role: student → 403 WriteAccessDeniedError.
-    覆盖: update_class role check lines 246-255.
+    PATCH /api/v1/classes/{id}：学生令牌 → 403 WriteAccessDeniedError。
+
+    改造前判断写成 `if x_rmos_role and ... not in {...}`，省略角色头即可绕过；
+    现在是白名单式判断，且角色来自令牌。
     """
     client, _ = _build_client()
     try:
@@ -263,9 +262,10 @@ def test_update_class_student_role_denied():
         assert create_resp.status_code == 201
         class_id = create_resp.json()["id"]
 
+        register_and_login(client, email_prefix="char_write_student", role="student")
+
         resp = client.patch(
             f"/api/v1/classes/{class_id}",
-            headers={"X-RMOS-Role": "student", "X-User-ID": "9002"},
             json={"name": "不应修改"},
         )
         assert resp.status_code == 403
@@ -562,41 +562,19 @@ def test_get_attempt_student_matching_returns_200():
         app.dependency_overrides.clear()
 
 
-def test_get_attempt_student_null_user_id_returns_404():
-    """
-    GET /api/v1/attempts/{id} with student role and missing/invalid X-User-ID → 404.
-    覆盖: get_attempt _parse_user_id(None) returns None → access denied lines 455-466.
-    """
-    client, sf = _build_client()
-    try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=3001))
-
-        resp = client.get(
-            f"/api/v1/attempts/{attempt_id}",
-            headers={"X-RMOS-Role": "student"},  # 无 X-User-ID
-        )
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["error_type"] == "ReadAccessDeniedError"
-        assert body["details"]["code"] == "READ_ACCESS_DENIED"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-
-
 def test_get_attempt_student_wrong_id_returns_404():
     """
-    GET /api/v1/attempts/{id} with student role but wrong student_id → 404.
-    覆盖: get_attempt student_id mismatch path.
+    GET /api/v1/attempts/{id}：学生读他人尝试 → 404。
+
+    尝试归属 student_id=4001（不存在的合成 ID），访问者是另一个真实学生账号。
     """
     client, sf = _build_client()
     try:
         _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=4001))
 
-        resp = client.get(
-            f"/api/v1/attempts/{attempt_id}",
-            headers={"X-RMOS-Role": "student", "X-User-ID": "9999"},
-        )
+        register_and_login(client, email_prefix="char_other_student", role="student")
+
+        resp = client.get(f"/api/v1/attempts/{attempt_id}")
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
@@ -797,41 +775,15 @@ def test_get_attempt_replay_with_alignment_returns_ok():
 
 def test_get_attempt_replay_student_role_wrong_id_returns_404():
     """
-    GET /api/v1/teaching/attempts/{id}/replay with student role and mismatched student_id
-    → 404 ReadAccessDeniedError.
-    覆盖: get_attempt_replay student role check lines 488-498.
+    GET /api/v1/teaching/attempts/{id}/replay：学生读他人尝试回放 → 404。
     """
     client, sf = _build_client()
     try:
         _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=5005))
 
-        resp = client.get(
-            f"/api/v1/teaching/attempts/{attempt_id}/replay",
-            headers={"X-RMOS-Role": "student", "X-User-ID": "9999"},
-        )
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["error_type"] == "ReadAccessDeniedError"
-        assert body["details"]["code"] == "READ_ACCESS_DENIED"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
+        register_and_login(client, email_prefix="char_replay_student", role="student")
 
-
-def test_get_attempt_replay_student_role_no_user_id_returns_404():
-    """
-    GET /api/v1/teaching/attempts/{id}/replay with student role and no X-User-ID
-    → 404 (actor_user_id is None).
-    覆盖: get_attempt_replay student None actor_user_id path lines 489-498.
-    """
-    client, sf = _build_client()
-    try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=5006))
-
-        resp = client.get(
-            f"/api/v1/teaching/attempts/{attempt_id}/replay",
-            headers={"X-RMOS-Role": "student"},
-        )
+        resp = client.get(f"/api/v1/teaching/attempts/{attempt_id}/replay")
         assert resp.status_code == 404
         body = resp.json()
         assert body["error_type"] == "ReadAccessDeniedError"
@@ -856,29 +808,6 @@ def test_get_attempt_replay_teacher_wrong_class_returns_404():
         resp = client.get(
             f"/api/v1/teaching/attempts/{attempt_id}/replay",
             headers={"X-RMOS-Role": "teacher", "X-User-ID": "200"},
-        )
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["error_type"] == "ReadAccessDeniedError"
-        assert body["details"]["code"] == "READ_ACCESS_DENIED"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-
-
-def test_get_attempt_replay_teacher_no_user_id_returns_404():
-    """
-    GET /api/v1/teaching/attempts/{id}/replay with teacher role but no X-User-ID
-    → 404 (invalid_actor_teacher_id).
-    覆盖: get_attempt_replay teacher None actor_user_id path lines 500-509.
-    """
-    client, sf = _build_client()
-    try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=5008))
-
-        resp = client.get(
-            f"/api/v1/teaching/attempts/{attempt_id}/replay",
-            headers={"X-RMOS-Role": "teacher"},
         )
         assert resp.status_code == 404
         body = resp.json()
@@ -971,18 +900,20 @@ def test_create_evidence_card_attempt_not_found_returns_404():
 
 def test_create_evidence_card_student_role_denied():
     """
-    POST /api/v1/evidence_cards with no role header (default) and role != admin/teacher
-    → 403 WriteAccessDeniedError (missing_role:teacher_or_admin).
-    BUG NOTE: 路由未传 role 时默认走 `elif role != "admin"` 分支 → 403。
-    覆盖: create_evidence_card missing role check lines 698-707.
+    POST /api/v1/evidence_cards：学生令牌 → 403 WriteAccessDeniedError
+    （missing_role:teacher_or_admin）。
+
+    改造前该用例靠"不发角色头 → role='' → != admin"落到拒绝分支；
+    现在角色来自令牌，用真实学生账号验证同一条拒绝路径。
     """
     client, sf = _build_client()
     try:
         _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=6001))
 
+        register_and_login(client, email_prefix="char_ec_student", role="student")
+
         resp = client.post(
             "/api/v1/evidence_cards",
-            # 无 X-RMOS-Role 且无 X-User-ID → role="" → != "admin" → 403
             json={"attemptId": attempt_id, "cardType": "failure_point"},
         )
         assert resp.status_code == 403
@@ -990,31 +921,6 @@ def test_create_evidence_card_student_role_denied():
         assert body["error_type"] == "WriteAccessDeniedError"
         assert body["details"]["code"] == "WRITE_ACCESS_DENIED"
         assert body["details"]["details"]["reason"] == "missing_role:teacher_or_admin"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-
-
-def test_create_evidence_card_teacher_no_user_id_denied():
-    """
-    POST /api/v1/evidence_cards with X-RMOS-Role: teacher but no X-User-ID
-    → 403 WriteAccessDeniedError (invalid_actor_teacher_id).
-    覆盖: create_evidence_card teacher role None actor_user_id path lines 671-681.
-    """
-    client, sf = _build_client()
-    try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=6002))
-
-        resp = client.post(
-            "/api/v1/evidence_cards",
-            headers={"X-RMOS-Role": "teacher"},
-            json={"attemptId": attempt_id, "cardType": "failure_point"},
-        )
-        assert resp.status_code == 403
-        body = resp.json()
-        assert body["error_type"] == "WriteAccessDeniedError"
-        assert body["details"]["code"] == "WRITE_ACCESS_DENIED"
-        assert body["details"]["details"]["reason"] == "invalid_actor_teacher_id"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1356,48 +1262,22 @@ def test_get_attempt_diagnosis_no_task_returns_404():
 # 额外覆盖：_parse_user_id / _to_int_or_none 辅助函数
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_parse_user_id_empty_string_returns_none_via_access_check():
+def test_parse_user_id_handles_blank_and_non_integer():
     """
-    X-User-ID: "  " (whitespace) with student role → _parse_user_id返回None → 404.
-    覆盖: _parse_user_id lines 89-92 (empty value returns None).
+    `_parse_user_id` 的空白/非整数输入返回 None。
+
+    改造前这两条用例通过 `X-User-ID` 头间接验证该函数；教学域已不再从头取身份，
+    但 `teaching_common._parse_user_id` 仍被 `teaching.py` 使用，故保留覆盖，
+    改为直接单测。
     """
-    client, sf = _build_client()
-    try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=10001))
+    from app.api.v1.endpoints.teaching_common import _parse_user_id
 
-        resp = client.get(
-            f"/api/v1/attempts/{attempt_id}",
-            headers={"X-RMOS-Role": "student", "X-User-ID": "  "},
-        )
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["error_type"] == "ReadAccessDeniedError"
-        assert body["details"]["code"] == "READ_ACCESS_DENIED"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
-
-
-def test_parse_user_id_non_integer_returns_none_via_access_check():
-    """
-    X-User-ID: "abc" with student role → _parse_user_id returns None → 404.
-    覆盖: _parse_user_id ValueError branch lines 95-96.
-    """
-    client, sf = _build_client()
-    try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=10002))
-
-        resp = client.get(
-            f"/api/v1/attempts/{attempt_id}",
-            headers={"X-RMOS-Role": "student", "X-User-ID": "abc"},
-        )
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["error_type"] == "ReadAccessDeniedError"
-        assert body["details"]["code"] == "READ_ACCESS_DENIED"
-    finally:
-        client.close()
-        app.dependency_overrides.clear()
+    assert _parse_user_id(None) is None
+    assert _parse_user_id("") is None
+    assert _parse_user_id("  ") is None
+    assert _parse_user_id("abc") is None
+    assert _parse_user_id("12") == 12
+    assert _parse_user_id(" 34 ") == 34
 
 
 def test_to_int_or_none_via_replay_segment_payload():

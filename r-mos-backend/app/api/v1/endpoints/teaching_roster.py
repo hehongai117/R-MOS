@@ -45,12 +45,12 @@ from app.services.access_control import (
     raise_read_access_denied,
     raise_write_access_denied,
 )
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.teaching_service import TeachingService
 from app.services.evidence_engine import EvidenceEngine
 from app.api.v1.endpoints.teaching_common import (
     _raise_business_error,
     _raise_not_found,
-    _parse_user_id,
     _to_int_or_none,
 )
 
@@ -95,8 +95,7 @@ async def get_class(
     class_id: int,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
-    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
-    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     service = TeachingService(db)
     try:
@@ -104,19 +103,20 @@ async def get_class(
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
 
-    role = (x_rmos_role or "").strip().lower()
-    if role == "student":
-        actor_student_id = _parse_user_id(x_user_id)
-        if actor_student_id is None:
-            await raise_read_access_denied(
-                db,
-                http_request,
-                action="read_access_denied",
-                resource_type="TeachingClass",
-                resource_id=teaching_class.id,
-                reason="invalid_actor_student_id",
-                message="资源不存在",
-            )
+    # AUTH-104：角色与主体只来自令牌；未知角色一律拒绝，不再等于"不限制"
+    if actor.account_role not in {"student", "teacher", "admin"}:
+        await raise_read_access_denied(
+            db,
+            http_request,
+            action="read_access_denied",
+            resource_type="TeachingClass",
+            resource_id=teaching_class.id,
+            reason="unknown_account_role",
+            message="资源不存在",
+        )
+
+    if actor.account_role == "student":
+        actor_student_id = actor.user_id
 
         enrollment_result = await db.execute(
             select(Enrollment.id).where(
@@ -148,7 +148,7 @@ async def update_class(
     request: ClassUpdateRequest,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
-    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     service = TeachingService(db)
     try:
@@ -156,7 +156,9 @@ async def update_class(
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
 
-    if x_rmos_role and x_rmos_role.strip().lower() not in {"teacher", "admin"}:
+    # AUTH-104：白名单式判断——只有显式命中允许角色才放行。
+    # 改造前写成 `if x_rmos_role and ... not in {...}`，省略该头即可绕过整条判断。
+    if actor.account_role not in {"teacher", "admin"}:
         await raise_write_access_denied(
             db,
             http_request,
@@ -277,9 +279,10 @@ async def create_assignment(
     payload: AssignmentCreate,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
-    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
+    actor: ActorContext = Depends(get_current_actor),
 ):
-    if x_rmos_role and x_rmos_role.strip().lower() not in {"teacher", "admin"}:
+    # AUTH-104：白名单式判断，省略角色不再等于放行
+    if actor.account_role not in {"teacher", "admin"}:
         await raise_write_access_denied(
             db,
             http_request,
@@ -358,16 +361,24 @@ async def get_attempt(
     attempt_id: int,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
-    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
-    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     service = TeachingService(db)
     attempt = await service.get_attempt(attempt_id)
 
-    role = (x_rmos_role or "").strip().lower()
-    if role == "student":
-        actor_student_id = _parse_user_id(x_user_id)
-        if actor_student_id is None or actor_student_id != attempt.student_id:
+    if actor.account_role not in {"student", "teacher", "admin"}:
+        await raise_read_access_denied(
+            db,
+            http_request,
+            action="read_access_denied",
+            resource_type="AssignmentAttempt",
+            resource_id=attempt.id,
+            reason="unknown_account_role",
+            message="资源不存在",
+        )
+
+    if actor.account_role == "student":
+        if actor.user_id != attempt.student_id:
             await raise_read_access_denied(
                 db,
                 http_request,
@@ -390,16 +401,25 @@ async def get_attempt_replay(
     attempt_id: int,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
-    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
-    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     service = TeachingService(db)
     attempt = await service.get_attempt(attempt_id)
 
-    role = (x_rmos_role or "").strip().lower()
-    actor_user_id = _parse_user_id(x_user_id)
+    role = actor.account_role
+    actor_user_id = actor.user_id
+    if role not in {"student", "teacher", "admin"}:
+        await raise_read_access_denied(
+            db,
+            http_request,
+            action="access_denied",
+            resource_type="AssignmentAttempt",
+            resource_id=attempt.id,
+            reason="unknown_account_role",
+            message="资源不存在",
+        )
     if role == "student":
-        if actor_user_id is None or actor_user_id != attempt.student_id:
+        if actor_user_id != attempt.student_id:
             await raise_read_access_denied(
                 db,
                 http_request,
@@ -410,16 +430,6 @@ async def get_attempt_replay(
                 message="资源不存在",
             )
     elif role == "teacher":
-        if actor_user_id is None:
-            await raise_read_access_denied(
-                db,
-                http_request,
-                action="access_denied",
-                resource_type="AssignmentAttempt",
-                resource_id=attempt.id,
-                reason="invalid_actor_teacher_id",
-                message="资源不存在",
-            )
         teacher_result = await db.execute(
             select(TeachingClass.teacher_id)
             .join(Assignment, Assignment.class_id == TeachingClass.id)
@@ -570,8 +580,7 @@ async def create_evidence_card(
     request: EvidenceCardCreate,
     http_request: Request,
     db: AsyncSession = Depends(get_db),
-    x_rmos_role: Optional[str] = Header(default=None, alias="X-RMOS-Role"),
-    x_user_id: Optional[str] = Header(default=None, alias="X-User-ID"),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     service = TeachingService(db)
     try:
@@ -579,19 +588,9 @@ async def create_evidence_card(
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
 
-    role = (x_rmos_role or "").strip().lower()
-    actor_user_id = _parse_user_id(x_user_id)
+    role = actor.account_role
+    actor_user_id = actor.user_id
     if role == "teacher":
-        if actor_user_id is None:
-            await raise_write_access_denied(
-                db,
-                http_request,
-                action="write_access_denied",
-                resource_type="AssignmentAttempt",
-                resource_id=attempt.id,
-                reason="invalid_actor_teacher_id",
-                message="权限不足",
-            )
         teacher_result = await db.execute(
             select(TeachingClass.teacher_id)
             .join(Assignment, Assignment.class_id == TeachingClass.id)

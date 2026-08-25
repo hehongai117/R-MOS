@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from main import app
+from app.models.school import School
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login  # 复用既有登录基建
 from app.core.database import get_db
 from app.models.base import Base
 from app.models.audit_event import AuditEvent
@@ -36,6 +38,7 @@ def client():
     async def init_models():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
 
     asyncio.run(init_models())
 
@@ -49,6 +52,10 @@ def client():
     app.state.test_sessionmaker = Session
 
     with TestClient(app) as test_client:
+        # AUTH-101 默认拒绝网关 + AUTH-104 身份只来自令牌：
+        # 预置一位默认教师作为客户端默认身份；需要学生身份的用例用
+        # register_and_login(client, ..., role="student") 切换。
+        register_and_login(test_client, email_prefix="teaching_api_actor")
         yield test_client
 
     app.dependency_overrides.clear()
@@ -243,10 +250,9 @@ def test_read_access_denied_records_real_resource_id(client):
     )
     attempt_id = attempt_resp.json()["id"]
 
-    resp = client.get(
-        f"/api/v1/attempts/{attempt_id}",
-        headers={"X-RMOS-Role": "student", "X-User-ID": "2002"},
-    )
+    # AUTH-104：越权方改用**真实学生令牌**，X-RMOS-Role / X-User-ID 已不再影响授权
+    register_and_login(client, email_prefix="deny_read_attempt_student", role="student")
+    resp = client.get(f"/api/v1/attempts/{attempt_id}")
     assert resp.status_code == 404
     assert resp.json()["error_type"] == "ReadAccessDeniedError"
     assert resp.json()["details"]["code"] == "READ_ACCESS_DENIED"
@@ -276,9 +282,12 @@ def test_audit_permission_denied_records_deny_event(client):
     class_resp = client.post("/api/v1/classes", json={"name": "权限班级"})
     class_id = class_resp.json()["id"]
 
+    # AUTH-104：越权方改用**真实学生令牌**，X-RMOS-Role / X-User-ID 已不再影响授权
+    student_id, _, _ = register_and_login(
+        client, email_prefix="deny_write_assignment_student", role="student"
+    )
     resp = client.post(
         "/api/v1/assignments",
-        headers={"X-RMOS-Role": "student", "X-User-ID": "1001"},
         json={"classId": class_id, "title": "不应创建成功"},
     )
     assert resp.status_code == 403
@@ -300,7 +309,8 @@ def test_audit_permission_denied_records_deny_event(client):
             )
             event = result.scalars().first()
             assert event is not None
-            assert event.actor_user_id == "1001"
+            # 审计操作者必须等于令牌主体，而不是任何客户端可控的值
+            assert event.actor_user_id == str(student_id)
             assert event.resource_id == str(class_id)
             assert event.reason == "missing_role:teacher_or_admin"
 
@@ -311,10 +321,9 @@ def test_class_read_access_denied_records_real_resource_id(client):
     class_resp = client.post("/api/v1/classes", json={"name": "班级读越权"})
     class_id = class_resp.json()["id"]
 
-    resp = client.get(
-        f"/api/v1/classes/{class_id}",
-        headers={"X-RMOS-Role": "student", "X-User-ID": "2002"},
-    )
+    # AUTH-104：越权方改用**真实学生令牌**，X-RMOS-Role / X-User-ID 已不再影响授权
+    register_and_login(client, email_prefix="deny_read_class_student", role="student")
+    resp = client.get(f"/api/v1/classes/{class_id}")
     assert resp.status_code == 404
     assert resp.json()["error_type"] == "ReadAccessDeniedError"
     assert resp.json()["details"]["code"] == "READ_ACCESS_DENIED"
@@ -344,9 +353,12 @@ def test_class_write_permission_denied_records_real_resource_id(client):
     class_resp = client.post("/api/v1/classes", json={"name": "班级写越权"})
     class_id = class_resp.json()["id"]
 
+    # AUTH-104：越权方改用**真实学生令牌**，X-RMOS-Role / X-User-ID 已不再影响授权
+    student_id, _, _ = register_and_login(
+        client, email_prefix="deny_write_class_student", role="student"
+    )
     resp = client.patch(
         f"/api/v1/classes/{class_id}",
-        headers={"X-RMOS-Role": "student", "X-User-ID": "2002"},
         json={"name": "不应修改成功"},
     )
     assert resp.status_code == 403
@@ -369,7 +381,8 @@ def test_class_write_permission_denied_records_real_resource_id(client):
             )
             event = result.scalars().first()
             assert event is not None
-            assert event.actor_user_id == "2002"
+            # 审计操作者必须等于令牌主体
+            assert event.actor_user_id == str(student_id)
             assert event.reason == "missing_role:teacher_or_admin"
 
     asyncio.run(assert_write_deny_audit_event())

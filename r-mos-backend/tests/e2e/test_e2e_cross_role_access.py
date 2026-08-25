@@ -13,13 +13,23 @@ def test_e2e_cross_role_access(
 ) -> None:
     client, session_factory = e2e_env
 
-    teacher_id, _teacher_email, _ = register_and_login(client, email_prefix="e2e_teacher_scope")
-    student_id, _student_email, _ = register_and_login(client, email_prefix="e2e_student_scope")
+    teacher_id, _teacher_email, teacher_login = register_and_login(
+        client, email_prefix="e2e_teacher_scope"
+    )
+    # AUTH-104：改造后角色只来自令牌，不能再用 X-RMOS-Role 头伪装身份，
+    # 因此这里必须注册一个**真的**学生账号，并以它的令牌发起越权请求。
+    student_id, _student_email, student_login = register_and_login(
+        client, email_prefix="e2e_student_scope", role="student", teacher_id=teacher_id
+    )
 
     import asyncio
 
     asyncio.run(set_user_role(session_factory, user_id=teacher_id, role="teacher"))
 
+    def _act_as(login: dict) -> None:
+        client.headers["Authorization"] = f"Bearer {login['access_token']}"
+
+    _act_as(teacher_login)
     class_resp = client.post(
         "/api/v1/classes",
         json={"name": "Cross Role Class", "teacherId": teacher_id},
@@ -34,9 +44,9 @@ def test_e2e_cross_role_access(
     )
     assert enroll_resp.status_code == 201
 
+    _act_as(student_login)
     forbidden_resp = client.post(
         "/api/v1/assignments",
-        headers={"X-RMOS-Role": "student", "X-User-ID": str(student_id)},
         json={"classId": class_id, "title": "Forbidden Assignment"},
     )
     assert forbidden_resp.status_code == 403

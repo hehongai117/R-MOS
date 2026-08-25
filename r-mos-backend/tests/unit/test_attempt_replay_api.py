@@ -17,6 +17,8 @@ from app.models.base import Base
 from app.models.timeline import AlignmentMap, MultimodalTimeline, TimelineSegment
 from app.services.teaching_service import TeachingService
 from main import app
+from app.models.school import School
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login  # 复用既有登录基建
 
 
 @pytest.fixture
@@ -30,6 +32,7 @@ def client() -> TestClient:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -42,6 +45,10 @@ def client() -> TestClient:
     app.state.test_sessionmaker = session_factory
 
     with TestClient(app) as test_client:
+        # AUTH-101 默认拒绝网关 + AUTH-104 身份只来自令牌：
+        # 预置一位默认教师作为客户端默认身份；需要学生身份的用例用
+        # register_and_login(client, ..., role="student") 切换。
+        register_and_login(test_client, email_prefix="attempt_replay_actor")
         yield test_client
 
     app.dependency_overrides.clear()
@@ -131,19 +138,53 @@ async def _latest_audit(
         return result.scalars().first()
 
 
+def _register_actors(client: TestClient) -> dict:
+    """注册真实的教师/学生账号。
+
+    AUTH-104 之后角色与主体只来自令牌，`X-RMOS-Role` / `X-User-ID` 不再影响授权，
+    因此越权用例必须用真实账号与真实令牌，不能再靠头伪装。
+    """
+    teacher_id, _, teacher_login = register_and_login(client, email_prefix="replay_owner_teacher")
+    _other_teacher_id, _, other_teacher_login = register_and_login(
+        client, email_prefix="replay_other_teacher"
+    )
+    student_id, _, student_login = register_and_login(
+        client, email_prefix="replay_owner_student", role="student", teacher_id=teacher_id
+    )
+    _other_student_id, _, other_student_login = register_and_login(
+        client, email_prefix="replay_other_student", role="student", teacher_id=teacher_id
+    )
+    return {
+        "teacher_id": teacher_id,
+        "teacher_token": teacher_login["access_token"],
+        "other_teacher_token": other_teacher_login["access_token"],
+        "student_id": student_id,
+        "student_token": student_login["access_token"],
+        "other_student_token": other_student_login["access_token"],
+    }
+
+
+def _act_as(client: TestClient, token: str) -> None:
+    client.headers["Authorization"] = f"Bearer {token}"
+
+
 def test_attempt_replay_student_self_returns_replayable_refs_and_allow_audit(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
+    )
     timeline_id, segment_id, ref_id = asyncio.run(_seed_timeline_for_attempt(session_factory, attempt_id=attempt_id))
 
     trace_id = "i002-trace-student-self"
+    _act_as(client, actors["student_token"])
     response = client.get(
         f"/api/v1/teaching/attempts/{attempt_id}/replay",
-        headers={
-            "X-RMOS-Role": "student",
-            "X-User-ID": "2001",
-            "X-Trace-ID": trace_id,
-        },
+        headers={"X-Trace-ID": trace_id},
     )
     assert response.status_code == 200
     payload = response.json()
@@ -172,16 +213,19 @@ def test_attempt_replay_student_self_returns_replayable_refs_and_allow_audit(cli
 
 def test_attempt_replay_student_cross_scope_returns_404_and_records_deny(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
+    )
     asyncio.run(_seed_timeline_for_attempt(session_factory, attempt_id=attempt_id))
 
-    response = client.get(
-        f"/api/v1/teaching/attempts/{attempt_id}/replay",
-        headers={
-            "X-RMOS-Role": "student",
-            "X-User-ID": "2002",
-        },
-    )
+    # 另一名真实学生（非本尝试归属者）
+    _act_as(client, actors["other_student_token"])
+    response = client.get(f"/api/v1/teaching/attempts/{attempt_id}/replay")
     assert response.status_code == 404
     payload = response.json()
     assert payload["error_type"] == "ReadAccessDeniedError"
@@ -201,16 +245,19 @@ def test_attempt_replay_student_cross_scope_returns_404_and_records_deny(client:
 
 def test_attempt_replay_teacher_out_of_scope_returns_404_and_records_deny(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
+    )
     asyncio.run(_seed_timeline_for_attempt(session_factory, attempt_id=attempt_id))
 
-    response = client.get(
-        f"/api/v1/teaching/attempts/{attempt_id}/replay",
-        headers={
-            "X-RMOS-Role": "teacher",
-            "X-User-ID": "7002",
-        },
-    )
+    # 另一名真实教师（不带这个班）
+    _act_as(client, actors["other_teacher_token"])
+    response = client.get(f"/api/v1/teaching/attempts/{attempt_id}/replay")
     assert response.status_code == 404
     payload = response.json()
     assert payload["error_type"] == "ReadAccessDeniedError"
@@ -230,15 +277,17 @@ def test_attempt_replay_teacher_out_of_scope_returns_404_and_records_deny(client
 
 def test_attempt_replay_without_timeline_returns_insufficient_data(client: TestClient) -> None:
     session_factory = client.app.state.test_sessionmaker
-    attempt_id = asyncio.run(_seed_attempt(session_factory, teacher_id=7001, student_id=2001))
-
-    response = client.get(
-        f"/api/v1/teaching/attempts/{attempt_id}/replay",
-        headers={
-            "X-RMOS-Role": "student",
-            "X-User-ID": "2001",
-        },
+    actors = _register_actors(client)
+    attempt_id = asyncio.run(
+        _seed_attempt(
+            session_factory,
+            teacher_id=actors["teacher_id"],
+            student_id=actors["student_id"],
+        )
     )
+
+    _act_as(client, actors["student_token"])
+    response = client.get(f"/api/v1/teaching/attempts/{attempt_id}/replay")
     assert response.status_code == 200
     payload = response.json()
     assert payload["attemptId"] == attempt_id

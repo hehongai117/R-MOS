@@ -17,6 +17,8 @@ from app.core.database import get_db
 from app.models.audit_event import AuditEvent
 from app.models.base import Base
 from main import app
+from app.models.school import School
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login  # 复用既有登录基建
 
 
 @pytest.fixture(scope="module")
@@ -30,6 +32,7 @@ def teaching_api_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
     async def init_models() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
 
     asyncio.run(init_models())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -42,6 +45,10 @@ def teaching_api_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
     app.state.test_sessionmaker = session_factory
 
     with TestClient(app) as client:
+        # AUTH-101 默认拒绝网关 + AUTH-104 身份只来自令牌：
+        # 预置一位默认教师作为客户端默认身份；需要学生身份的用例用
+        # register_and_login(client, ..., role="student") 切换。
+        register_and_login(client, email_prefix="api_teaching_actor")
         yield client, session_factory
 
     app.dependency_overrides.clear()
@@ -53,9 +60,15 @@ def test_teacher_scope_access_for_student_attempt(
     teaching_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, _ = teaching_api_env
-    teacher_id = 101
-    other_teacher_id = 202
+    # AUTH-104：教师范围只能由令牌决定，不能再用 X-RMOS-Role / X-User-ID 伪装，
+    # 因此这里注册两名真实教师：一名带班（in scope），一名不带班（out of scope）。
+    teacher_id, _, owner_login = register_and_login(client, email_prefix="scope_owner_teacher")
+    other_teacher_id, _, other_login = register_and_login(client, email_prefix="scope_other_teacher")
 
+    def _act_as(login: dict) -> None:
+        client.headers["Authorization"] = f"Bearer {login['access_token']}"
+
+    _act_as(owner_login)
     class_resp = client.post(
         "/api/v1/classes",
         json={
@@ -68,7 +81,6 @@ def test_teacher_scope_access_for_student_attempt(
 
     assignment_resp = client.post(
         "/api/v1/assignments",
-        headers={"X-RMOS-Role": "teacher"},
         json={"classId": class_id, "title": "Scope Assignment"},
     )
     assert assignment_resp.status_code == 201
@@ -81,17 +93,13 @@ def test_teacher_scope_access_for_student_attempt(
     assert attempt_resp.status_code == 201
     attempt_id = attempt_resp.json()["id"]
 
-    in_scope_resp = client.get(
-        f"/api/v1/teaching/attempts/{attempt_id}/replay",
-        headers={"X-RMOS-Role": "teacher", "X-User-ID": str(teacher_id)},
-    )
+    _act_as(owner_login)
+    in_scope_resp = client.get(f"/api/v1/teaching/attempts/{attempt_id}/replay")
     assert in_scope_resp.status_code == 200
     assert in_scope_resp.json()["attemptId"] == attempt_id
 
-    out_scope_resp = client.get(
-        f"/api/v1/teaching/attempts/{attempt_id}/replay",
-        headers={"X-RMOS-Role": "teacher", "X-User-ID": str(other_teacher_id)},
-    )
+    _act_as(other_login)
+    out_scope_resp = client.get(f"/api/v1/teaching/attempts/{attempt_id}/replay")
     assert out_scope_resp.status_code == 404
     assert out_scope_resp.json()["error_type"] == "ReadAccessDeniedError"
 
