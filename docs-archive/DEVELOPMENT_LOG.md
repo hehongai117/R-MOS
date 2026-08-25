@@ -7663,3 +7663,35 @@
   - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
   - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
 - Next Step: P3-3——机器人资产边界（AUTH-103）、登录失败限制（AUTH-105）、`AUTH-SCHOOLS-PII` 邮箱脱敏；并在该批用浏览器主流程实测复验前端不受默认拒绝影响。
+
+---
+
+- DateTime: 2026-08-25 17:30 CST
+- Task: Phase 3 第 3 批（P3-3）——机器人资产边界（AUTH-103）、登录失败限制（AUTH-105）、公开教师列表邮箱脱敏（AUTH-SCHOOLS-PII）
+- Scope (files changed):
+  - r-mos-backend/app/api/v1/endpoints/robots.py（新增 `_get_visible_robot_or_404`；3 个资产端点接认证 + 可见性校验）
+  - r-mos-backend/app/services/login_throttle.py（新增）
+  - r-mos-backend/app/api/v1/endpoints/auth.py（登录接入限流 + 拒绝审计）
+  - r-mos-backend/app/api/v1/endpoints/schools.py（新增 `_mask_email`；公开教师列表脱敏）
+  - r-mos-backend/tests/unit/test_robot_asset_boundary.py、test_login_throttle.py（新增）
+  - r-mos-backend/tests/unit/test_teaching_identity_boundary.py（补 2 条脱敏用例）
+  - r-mos-backend/tests/unit/test_robot_asset_serving.py（直接调用端点的用例补 actor 参数）
+- Commands Run:
+  - `python -m dotenv -f <主工作区 .env> run -- python -m pytest`（全量）
+  - 各新增测试文件定向复跑
+- Tests:
+  - AUTH-103 先写后实现：`test_robot_asset_boundary.py` 实现前 **5 failed / 6 passed**；实现后 **11 passed**。
+  - AUTH-105 先写后实现：`test_login_throttle.py` 实现前 **3 failed / 6 passed**；实现后 **9 passed**。
+  - AUTH-SCHOOLS-PII：`test_teaching_identity_boundary.py` **9 passed**。
+  - 全量：**956 passed, 0 failed, 0 error in 68.81s**（P3-2b 收口为 934）。
+- Result: PASS（后端全量绿）。AUTH-101/102/103/104/105 的**软件侧**至此全部落地；正式关闭判定放在 P3 收口，需连同浏览器实测一并给结论。
+- Risks/Notes:
+  - **更正一处此前的错误判断，并记录由此发现的真实回归**：我先前称"默认拒绝网关对前端无影响"，依据只是 `apiClient` 已挂 Bearer。但 3D 网格通过 `@react-three/drei` 的 `useGLTF` **直接 fetch**，不走 `apiClient`、不带令牌（`InteractiveManifestViewer.tsx:239`、`Atom01AssemblyRenderer.tsx:156`、`RuntimeAssetPreview.tsx:124`）。因此 P3-1 的网关**打断了 3D 网格加载**，且该状态在本批之后依然存在——后端已按正确语义收紧，前端尚未改造。
+  - **AUTH-103 的设计依据被数据模型纠正**：ADR-AUTHN D3 原写"公开入口校验 `visibility=public`"，但 `RobotVisibility` 只有 `PRIVATE` / `SHARED`（`app/models/robot_model.py:8-11`），**不存在面向匿名的公开档**，`SHARED` 意为"对已认证用户可见"。因此没有开任何匿名资产路由，白名单保持 7 条不变；资产一律要求认证 + 可见性校验。ADR 该处措辞需同步修订。
+  - 越权读资产返回 **404** 而非 403（验收章程 G1 + 五机矩阵对 AUTH-103 的复验口径）；`get_robot`（robots.py:150）目前对无权访问返回 403 且不认 `owner_teacher_id`，与本批口径不一致，属既有行为，**未在本批改动**，需单独对齐。
+  - 限流为进程内状态，与 ADR-RUNTIME 的单进程单实例决策一致，**未引入 Redis**；重启即清空（对暴力破解防护是可接受降级）。多副本部署下失效，该约束已写入模块文档。
+  - 限流不做永久锁定；锁定期内正确密码同样拒绝；未知账号与已知账号响应码序列一致（有专门用例断言），避免限流变成账号枚举信道。
+  - 期间用 Codex CLI 起了两个**只读**辅助任务：一次访问控制复核、一次全路由归属校验普查。第一次复核因措辞被 OpenAI 安全过滤判为网络安全风险而中止（退出码 1，无结论）；改为防御性措辞重跑。**本批结论不依赖任何 Codex 输出**，全部实测在上方 Commands Run 中。
+  - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
+  - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
+- Next Step: 前端把 `useGLTF` 直连改为"带令牌取回二进制再交给加载器"（`RuntimeAssetPreview.tsx` 已有该模式），并启动前后端做浏览器主流程实测；实测通过后才对 AUTH-101～105 给正式关闭结论。

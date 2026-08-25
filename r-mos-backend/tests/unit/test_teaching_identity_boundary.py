@@ -227,3 +227,42 @@ def test_deny_audit_uses_token_subject_and_real_resource_id(roster_env) -> None:
         f"审计资源编号应为真实 attempt {roster_env['attempt_id']}，实际 {event.resource_id}"
     )
     assert event.resource_type == "AssignmentAttempt"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTH-SCHOOLS-PII：公开的教师列表不得泄漏完整邮箱
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_public_teacher_list_masks_email() -> None:
+    """`GET /schools/{name}/teachers` 是白名单公开路由（注册选导师必需），
+    但不得对匿名调用者返回完整邮箱——否则知道学校名即可枚举全校教师邮箱。
+    """
+    from app.api.v1.endpoints.schools import _mask_email
+
+    client, _session_factory = _build_client()
+    try:
+        register_and_login(client, email_prefix="pii_visible_teacher")
+        client.headers.pop("Authorization", None)  # 匿名访问
+
+        resp = client.get(f"/api/v1/schools/{E2E_SCHOOL_NAME}/teachers")
+        assert resp.status_code == 200, resp.text
+        items = resp.json()["items"]
+        assert items, "应至少返回一位教师，否则本用例证明不了任何事"
+        for item in items:
+            assert "***@" in item["email"], f"邮箱未脱敏：{item['email']}"
+            assert item["full_name"] is not None  # 姓名保留，注册页要靠它选人
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_mask_email_edge_cases() -> None:
+    """脱敏函数的边界：空值、无 @、本地部分为空都不得抛异常或原样泄漏。"""
+    from app.api.v1.endpoints.schools import _mask_email
+
+    assert _mask_email("zhang@example.edu") == "z***@example.edu"
+    assert _mask_email("a@b.c") == "a***@b.c"
+    assert _mask_email("@example.edu") == "***@example.edu"
+    assert _mask_email("noatsign") == "***"
+    assert _mask_email("") == "***"

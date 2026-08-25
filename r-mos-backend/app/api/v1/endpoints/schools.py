@@ -10,6 +10,23 @@ from app.models.user import User
 router = APIRouter(prefix="/schools", tags=["schools"])
 
 
+def _mask_email(email: str) -> str:
+    """把邮箱脱敏成"首字符 + 掩码 + 域名"（AUTH-SCHOOLS-PII）。
+
+    本路由是公开白名单成员（学生注册时要选导师），改造前直接返回教师完整邮箱，
+    任何人只要知道学校名就能枚举全校教师邮箱。
+
+    保留首字符与域名：注册页需要靠它区分同名教师，而批量采集价值归零。
+    完整邮箱只对已认证且有权的调用者可见（本路由不提供）。
+    """
+    if not email or "@" not in email:
+        return "***"
+    local, _, domain = email.partition("@")
+    if not local:
+        return f"***@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
 @router.get("")
 async def search_schools(
     q: str = Query("", description="搜索关键词"),
@@ -46,7 +63,7 @@ async def list_school_teachers(
     )
     result = await db.execute(stmt)
     items = [
-        {"id": r.id, "full_name": r.full_name or "", "email": r.email}
+        {"id": r.id, "full_name": r.full_name or "", "email": _mask_email(r.email)}
         for r in result.fetchall()
     ]
     return {"items": items}

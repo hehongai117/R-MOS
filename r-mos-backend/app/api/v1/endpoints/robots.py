@@ -495,13 +495,54 @@ async def unbind_shared_robot(
     await db.commit()
 
 
+async def _get_visible_robot_or_404(
+    db: AsyncSession, robot_id: int, actor: ActorContext
+) -> RobotModel:
+    """按可见性/绑定规则取机器人；不存在或无权一律 404（AUTH-103）。
+
+    越权读对外返回 404 而不是 403：403 会泄漏"这台机器人存在"。
+    见验收章程 G1 与单校五机验收矩阵对 AUTH-103 的复验口径。
+
+    可见性只有 PRIVATE / SHARED 两档（app/models/robot_model.py:8-11），
+    **没有面向匿名的公开档**——SHARED 意为"对已认证用户可见"，
+    因此资产不存在合法的匿名读取场景。
+
+    注：`get_robot`（:150）目前对无权访问返回 403 且不认 owner_teacher_id，
+    与本函数口径不一致；那属于既有行为，未在本批一并改动。
+    """
+    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
+    robot = result.scalar_one_or_none()
+    if robot is None:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+
+    if "admin" in actor.roles or actor.account_role == "admin":
+        return robot
+    if robot.visibility == RobotVisibility.SHARED:
+        return robot
+    if robot.owner_teacher_id == actor.user_id:
+        return robot
+
+    binding_result = await db.execute(
+        select(TeacherRobotBinding).where(
+            TeacherRobotBinding.teacher_id == actor.user_id,
+            TeacherRobotBinding.robot_model_id == robot_id,
+        )
+    )
+    if binding_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="机器人不存在")
+    return robot
+
+
 @router.get("/{robot_id}/tools")
 async def get_robot_tools(
     robot_id: int,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """获取机器人工具列表（从 assembly_manifest.json 中读取）。"""
     import json
+
+    await _get_visible_robot_or_404(db, robot_id, actor)
 
     try:
         manifest_bytes = await to_thread.run_sync(
@@ -518,8 +559,10 @@ async def list_robot_assets(
     robot_id: int,
     asset_type: Optional[str] = Query(None, description="过滤资产类型: upload_original, model_glb, manifest, thumbnail"),
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """列出机器人的资产文件，支持按 asset_type 过滤。"""
+    await _get_visible_robot_or_404(db, robot_id, actor)
     query = select(RobotAsset).where(RobotAsset.robot_model_id == robot_id)
     if asset_type:
         query = query.where(RobotAsset.asset_type == asset_type)
@@ -545,16 +588,19 @@ async def get_robot_asset(
     robot_id: int,
     file_path: str,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """获取机器人资产文件（3D 模型、manifest 等）。
 
-    无需认证 — Three.js GLTFLoader 直接 fetch，无法附加 Authorization header。
-    资产文件（GLB/JSON）为非敏感数据。
+    AUTH-103：改造前此处以"Three.js GLTFLoader 无法附加 Authorization header"
+    为由完全不做校验，导致私有/草稿机器人的资产可被匿名枚举与下载。
+    可见性没有匿名档，因此这里一律要求认证 + 可见性校验。
+
+    浏览器侧的后果：`useGLTF` 之类的加载器不能直接吃这个地址，
+    前端需改为先用带令牌的客户端取回二进制、再交给加载器
+    （`RuntimeAssetPreview.tsx` 已有该模式）。
     """
-    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
-    robot = result.scalar_one_or_none()
-    if not robot:
-        raise HTTPException(status_code=404, detail="机器人不存在")
+    await _get_visible_robot_or_404(db, robot_id, actor)
 
     ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
     content_types = {

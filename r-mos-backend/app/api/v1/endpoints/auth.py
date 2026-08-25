@@ -3,6 +3,7 @@
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
 import logging
 import secrets
@@ -17,6 +18,8 @@ from app.core.security import hash_password, hash_token, is_strong_password, ver
 from app.models.access_token import AccessToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.services.access_control import log_deny_event
+from app.services.login_throttle import login_throttle
 from app.services.identity.session_initializer import SessionInitializer
 from app.schemas.auth import (
     LoginRequest,
@@ -201,10 +204,39 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     normalized_email = payload.email.lower()
+
+    # AUTH-105：按 (账号, 来源 IP) 组合限流。用 monotonic 而非墙钟——
+    # 计算的是时长，不应受系统时间调整影响。
+    client_host = request.client.host if request.client else "unknown"
+    throttle_key = (normalized_email, client_host)
+    now_ts = time.monotonic()
+
+    locked_seconds = login_throttle.locked_seconds_remaining(throttle_key, now_ts)
+    if locked_seconds:
+        # 拒绝也要留审计（AGENTS.md §7：任意 deny 必须写审计）。
+        # resource_id 记被尝试的账号——这正是"真实资源编号"。
+        await log_deny_event(
+            db,
+            request,
+            action="login_rate_limited",
+            resource_type="LoginAttempt",
+            resource_id=normalized_email,
+            reason="too_many_failed_logins",
+        )
+        return _error_response(
+            request,
+            status_code=429,
+            error_type="TooManyLoginAttempts",
+            code="AUTH_005",
+            message=f"登录尝试过于频繁，请在 {locked_seconds} 秒后重试",
+        )
+
     user_result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
     user = user_result.scalar_one_or_none()
 
     if user is None or not verify_password(payload.password, user.password_hash):
+        # 未知账号与错误密码走同一条路径、同一个响应，限流不得变成账号枚举信道
+        login_throttle.record_failure(throttle_key, now_ts)
         return _error_response(
             request,
             status_code=401,
@@ -212,6 +244,8 @@ async def login(
             code="AUTH_001",
             message="邮箱或密码错误",
         )
+
+    login_throttle.reset(throttle_key)
 
     access_token, refresh_token = _issue_token_pair()
     now = datetime.now(timezone.utc)
