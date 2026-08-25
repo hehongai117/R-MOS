@@ -19,6 +19,7 @@
 | Phase 2 修复规格 | PASS | AUDIT-P2-DOC-001 文档门禁已通过；29 项发现全部映射到可复现门禁，但**全部为 NOT_STARTED**，不代表任何一项已修复 |
 | Phase 2 决策确认 | PASS | AUDIT-P2-DOC-002：五份 ADR 已转 Accepted；**这是设计定案，不是实现，更不是验收** |
 | Phase 3 第 1 批（P3-1） | PARTIAL | AUTH-GATE-01/02 定向通过；**后端全量为红（154 failed / 777 passed），属设计内中间状态**；AUTH-101、AUTH-102 均未关闭 |
+| Phase 3 第 1–3 批收口 | PARTIAL | 后端全量 `956 passed, 0 failed`；AUTH-GATE-01～12 定向通过；**AUTH-101～105 均为 IN_PROGRESS、未关闭**——浏览器实测未做，且 3D 网格加载被网关打断的回归未修 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -207,4 +208,33 @@
 - Notes：
   - **AUTH-101（P0）与 AUTH-102 状态仍为未关闭。** 本批只完成机制落地。
   - 前端影响经静态核对为低（全部路由在 `ProtectedRoute` 内、挂载不发请求、登录注册只调白名单接口），**但不以静态分析代替实测**，浏览器主流程复验安排在 P3-3。
+  - E1 仍 FAIL；E2、E3、E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
+
+### AUTH-P3-2-3｜教学域服务端身份、资产边界、登录限流
+
+- 基线提交：`341dc20c`（P3-1 收口，当时后端全量 154 failed / 777 passed）
+- 结果提交：`d18dc5c0`
+- 环境：`audit/phase3-auth-control-realtime` 隔离工作区；`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv`（Python 3.13.13，pytest 9.0.3）
+- 范围：`AUTH-103`、`AUTH-104`、`AUTH-105`、`AUTH-SCHOOLS-PII` 的软件实现；P3-1 落地后的测试恢复
+- Commands Run：
+  - `python -m dotenv -f <主工作区 .env> run -- python -m pytest`（全量，多次）
+  - 各新增/改写测试文件定向复跑（同命令加文件路径 + `-o addopts='' --disable-warnings -q`）
+  - `bash -n scripts/run_gate2_smoke.sh`
+  - 白名单门禁负向自检：临时向 `PUBLIC_ROUTES` 注入 `("GET", "/api/v1/tasks")` 复跑后还原
+- Key Output：
+  - 测试恢复：`154 failed, 777 passed` →（P3-2a）`81 failed, 849 passed` →（P3-2b）`934 passed` →（P3-3）**`956 passed, 0 failed, 0 error in 68.81s`**。
+  - AUTH-104 新规格测试实现前 `6 failed / 1 passed`（唯一通过的是正向边界"本人读自己的尝试"），实现后 `7 passed`。
+  - AUTH-103 实现前 `5 failed / 6 passed`——**3 条匿名用例在实现前即为绿**，说明 P3-1 网关已关掉匿名那一半，本批补的是归属那一半；实现后 `11 passed`。
+  - AUTH-105 实现前 `3 failed / 6 passed`（其中 1 条是测试自身的 off-by-one，锁在第 5 次失败那一刻起算），实现后 `9 passed`。
+  - 生产代码中 `X-RMOS-Role` / `X-User-ID` 的读取点为 **0**，由 `tests/unit/test_auth_boundary_gate.py` 的静态门禁锁定（按读取语法匹配，附探测器自检）。
+  - 白名单钉死门禁经负向自检验证：注入一条真实路由后变红，还原后转绿。
+- Evidence：提交 `341dc20c`、`44ed15f7`、`c26eb183`、`6aba328e`、`d18dc5c0`；`docs-archive/DEVELOPMENT_LOG.md` 2026-08-22 至 2026-08-25 条目
+- Result：**PARTIAL**。后端全量绿、AUTH-GATE-01～12 定向通过；**`AUTH-101`～`AUTH-105` 五项均未关闭**。
+- Failure Handling：
+  - 更正此前一处错误判断：曾称"默认拒绝对前端无影响"，依据只是 `apiClient` 已挂 Bearer。实际 3D 网格走 `@react-three/drei` 的 `useGLTF` 直接 fetch，不带令牌，网关因此**打断了 3D 网格加载**。该回归在本批结束时**仍然存在**。
+  - `AUTH-103` 的设计依据被数据模型纠正：`RobotVisibility` 只有 `PRIVATE` / `SHARED`，不存在面向匿名的公开档，因此未新开任何匿名资产路由，白名单保持 7 条。ADR-AUTHN D3 的相关措辞待修订。
+  - 用 Codex CLI 起过三次只读辅助任务（两次访问控制复核、一次归属普查）。两次复核**均未产出结论**：第一次因措辞被 OpenAI 安全过滤中止，第二次跑到其自身探针的语法错误结束；归属普查在交接时仍在运行且结果未采用。**本批全部结论不依赖任何 Codex 输出。**
+- Notes：
+  - **后端全量绿不等于任何一项发现已关闭。** 关闭判定须连同浏览器主流程实测一并给出。
+  - `scripts/run_gate2_smoke.sh` 已改用真实令牌，`bash -n` 通过，但**未实际执行**（需 127.0.0.1:18080 上跑着后端）。
   - E1 仍 FAIL；E2、E3、E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。

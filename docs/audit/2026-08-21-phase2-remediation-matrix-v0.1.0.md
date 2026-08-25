@@ -47,11 +47,11 @@
 
 | 编号 | 级别 | 类型 | ADR | 批次 | 门禁 | 关联验收 | 当前状态 |
 |---|---|---|---|---|---|---|---|
-| AUTH-101 | P0 | 事实 | ADR-AUTHN | P3-1 | AUTH-GATE | AC-01 / T-01-N,B,E | NOT_STARTED |
-| AUTH-102 | P1 | 事实 | ADR-AUTHN | P3-1 | AUTH-GATE | AC-01 / T-01-B | NOT_STARTED |
-| AUTH-103 | P1 | 事实 | ADR-AUTHN | P3-3 | AUTH-GATE | AC-06 / T-06-E | NOT_STARTED |
-| AUTH-104 | P1 | 事实 | ADR-AUTHN | P3-2 | AUTH-GATE | AC-01 / T-01-E | NOT_STARTED |
-| AUTH-105 | P2 | 事实 | ADR-AUTHN | P3-3 | AUTH-GATE | AC-01 / T-01-E | NOT_STARTED |
+| AUTH-101 | P0 | 事实 | ADR-AUTHN | P3-1 | AUTH-GATE | AC-01 / T-01-N,B,E | IN_PROGRESS |
+| AUTH-102 | P1 | 事实 | ADR-AUTHN | P3-1 | AUTH-GATE | AC-01 / T-01-B | IN_PROGRESS |
+| AUTH-103 | P1 | 事实 | ADR-AUTHN | P3-3 | AUTH-GATE | AC-06 / T-06-E | IN_PROGRESS |
+| AUTH-104 | P1 | 事实 | ADR-AUTHN | P3-2 | AUTH-GATE | AC-01 / T-01-E | IN_PROGRESS |
+| AUTH-105 | P2 | 事实 | ADR-AUTHN | P3-3 | AUTH-GATE | AC-01 / T-01-E | IN_PROGRESS |
 | CTRL-101 | P1 | 事实 | ADR-ROBOT + ADR-AI | P3-4 | CTRL-GATE | AC-02 / T-02-E | NOT_STARTED |
 | CTRL-102 | P1 | 事实 | ADR-ROBOT | P3-4 | CTRL-GATE | AC-03 / T-03-B,E | NOT_STARTED |
 | CTRL-103 | P1 | 事实 | ADR-ROBOT | P3-4 | CTRL-GATE | AC-02 / T-02-E | NOT_STARTED |
@@ -76,6 +76,13 @@
 | DEP-103 | P1 | 事实 | ADR-RUNTIME | P4-6 | DEP-GATE | AC-10 / T-10-N；DR-06 | NOT_STARTED |
 | DEP-104 | P1 | 事实 | ADR-RUNTIME + ADR-EVID | P4-6 | DEP-GATE | AC-10 / T-10-N,E；DR-01,DR-02 | NOT_STARTED |
 | DEP-105 | P1 | 事实+未知 | ADR-RUNTIME | P4-7 本地准备；**Phase 5 联网核查** | DEP-GATE | — | NOT_STARTED |
+
+> **状态更新（2026-08-25，Phase 3 第 1–3 批）：** `AUTH-101`～`AUTH-105` 已由
+> `NOT_STARTED` 改为 `IN_PROGRESS`——软件侧实现与定向门禁均已落地
+> （分支 `audit/phase3-auth-control-realtime` @ `d18dc5c0`，后端全量 `956 passed, 0 failed`），
+> **但五项都尚未正式关闭**：浏览器主流程实测未做，且默认拒绝网关打断了 3D 网格加载
+> （前端 `useGLTF` 直连不带令牌），该回归尚未修复。关闭判定放在 Phase 3 收口。
+> 其余 24 项仍为 `NOT_STARTED`。
 
 计数核对：P0 = 1（AUTH-101）；P1 = 24；P2 = 4（AUTH-105、CTRL-105、RT-103、RT-104）。合计 29。事实 28 项，推断 1 项（CTRL-105）。
 

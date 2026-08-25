@@ -22,7 +22,9 @@
 - 2026-08-21 用户已确认 Phase 2 的五项决策，五份 ADR 全部转为 **Accepted**（设计定案，非实现）。公开路由白名单 6 条生效；机器人已发布资产明确排除，须另行单独审批。
 - 剩余待定：`critical` 多人确认阈值（属 Phase 4，给出前按最严格解释拒绝执行）；待定项 J（现场部署形态 / TLS / 备份目标 / RTO-RPO）保持 BLOCKED，`DEP-101`、`DEP-104` 不得关闭。
 - Phase 2 取证另发现新暴露面 `AUTH-SCHOOLS-PII`（匿名可枚举全校教师邮箱），**不计入 29 项**，单独跟踪，落在 Phase 3 第 3 批。
-- 当前下一步：**进入 Phase 3 实现前须获得用户单独明确批准；不得以"ADR 已 Accepted"推导开工许可。**
+- Phase 3 第 1–3 批已完成（分支 `audit/phase3-auth-control-realtime` @ `d18dc5c0`，未 push）：默认拒绝网关 + 公开白名单（7 条）、教学域服务端身份、机器人资产边界、登录失败限流、教师邮箱脱敏。后端全量 `956 passed, 0 failed, 0 error`（该分支基线为 `825 passed`）。
+- **`AUTH-101`～`AUTH-105` 均为 IN_PROGRESS，未正式关闭**：浏览器主流程实测未做；且默认拒绝网关打断了 3D 网格加载（前端 `useGLTF` 直连不带令牌），该回归尚未修复。
+- 当前下一步：见 `docs/handover/2026-08-25-phase3-continuation-handover-v0.1.0.md`。
 - 每批闭环必须同步：
   1. 若当前任务有明确计划和状态表，更新对应状态；
   2. 影响验收时更新 `docs/testing/TEST_PLAN.md` 与/或 `docs/testing/TEST_REPORT.md`；
