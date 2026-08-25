@@ -82,22 +82,26 @@ d18dc5c0  资产边界 + 登录限流 + 邮箱脱敏
 
 ## 4. 未完成与已知问题（**接手第一件事就是读这一节**）
 
-### 4.1 已知回归：3D 网格加载被打断（最高优先）
+### 4.1 ~~已知回归：3D 网格加载被打断~~ → **已修复（`70e9c078`），含浏览器实测**
 
-`@react-three/drei` 的 `useGLTF` **直接 fetch，不走 `apiClient`、不带令牌**。默认拒绝网关生效后，3D 网格加载返回 401。
+**2026-08-25 P3-3b 已闭环。** 下面保留原始描述与两处**事实更正**，供后续复盘。
 
-- 受影响调用点：`r-mos-frontend/src/components/Viewer3D/InteractiveManifestViewer.tsx:239`、`Atom01AssemblyRenderer.tsx:156`、`RuntimeAssetPreview.tsx:124`
-- **修法已有现成先例**：`RuntimeAssetPreview.tsx:63` 已在用"带令牌取回 blob → `URL.createObjectURL` → 交给加载器"的写法，照抄即可
-- **不要**为此新开匿名资产路由：`RobotVisibility` 只有 `PRIVATE` / `SHARED`（`app/models/robot_model.py:8-11`），**不存在面向匿名的公开档**，`SHARED` 意为"对已认证用户可见"
-- 该修复**必须做浏览器实测**，不能只靠单测与构建
+原始判断：`@react-three/drei` 的 `useGLTF` 直接 fetch，不走 `apiClient`、不带令牌；默认拒绝网关生效后 3D 网格加载返回 401。**该判断成立**，但本节原先列的范围与修法都不准确：
+
+- **更正一：受影响调用点不是 3 个，是 11 个 + 1 处裸 `fetch`。** 原列的三处中 `RuntimeAssetPreview.tsx:124` **不受影响**——它拿到的是 `apiClient` 取回后 `createObjectURL` 生成的 blob URL，即本节自己说的"先例"本身。原先漏列：`ManifestDrivenRenderer.tsx:169`、`Atom01Model.tsx:43`、`atom01/InteractiveLinkMesh.tsx:53`、`atom01/SubPartsGroup.tsx:43`、`ModelPreloader.tsx`（3 处 `preload`）、`DetailParts` / `DisassemblyAnimation` / `PartInspector`（静态资源，为门禁统一一并迁移），以及 `hooks/useAtom01AssemblyData.ts:33` 的**裸 `fetch`**（根本不是 `useGLTF`）。
+- **更正二：没有照抄 blob 写法。** blob 写法要在 11 个文件各写一份 `useEffect` + `revokeObjectURL` 清理，还会破坏 `useGLTF` 的 URL 级缓存。实际改用 drei 9.122.0 `useGLTF` 的第 4 参数 `extendLoader`，在 `GLTFLoader` 上 `setRequestHeader({Authorization})`，**一处封装** `useAuthedGLTF.ts` 解决全部调用点。
+- **不要**为此新开匿名资产路由：`RobotVisibility` 只有 `PRIVATE` / `SHARED`（`app/models/robot_model.py:8-11`），**不存在面向匿名的公开档**，`SHARED` 意为"对已认证用户可见"。该结论未变。
+- **浏览器实测已完成**：`/3d-viewer` 与 `/maintenance?sopId=68` 的 `/api/v1/robots/*` 资产请求全部 200（401 数为 0），模型渲染正常，控制台无 error。实测前先以「匿名资产 401 / 带令牌 200」探针自证测试对象是已启用网关的本工作区代码。
+- **本批遗留（未做，勿当已解决）**：`GLTFLoader` 没有 `apiClient` 的 401 刷新重试，access token 过期后需重进页面；`.gltf + .bin` 分离格式的子资源是否继承 requestHeader 未验证（当前管线产出自包含 `.glb`，影响面为 0）。
+- 门禁 `r-mos-frontend/src/components/Viewer3D/__tests__/authedGltf.gate.test.ts` 已锁定「Viewer3D 下不得直接 import `useGLTF`、不得裸 `fetch`」，**不得为新组件加豁免**。
 
 ### 4.2 AUTH-101～105 均为 IN_PROGRESS，**未正式关闭**
 
 软件侧实现与定向门禁都已落地，但：
 
-- 浏览器主流程实测未做
-- 4.1 的 3D 回归未修
-- **§4.3 的对象归属大面积缺失**（`AUTH-101` 的归属半边）
+- 浏览器主流程实测**仅覆盖 3D 资产加载**（P3-3b），登录 → SOP → 任务 → 报告的完整主流程仍未实测
+- 4.1 的 3D 回归**已修复**（`70e9c078`，含浏览器实测）
+- **§4.3 的对象归属大面积缺失**（`AUTH-101` 的归属半边）——**这是当前最高优先项**
 - **§4.4 的资产拒绝无审计**（`AUTH-103`）
 
 关闭判定放在 Phase 3 收口，须连同浏览器实测一并给结论。**不得因为"全量绿"就宣布关闭。**

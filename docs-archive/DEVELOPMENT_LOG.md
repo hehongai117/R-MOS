@@ -7695,3 +7695,52 @@
   - 本批未改数据库结构、未新增依赖、未启动服务、未联网、未操作真机、未 push。
   - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复。
 - Next Step: 前端把 `useGLTF` 直连改为"带令牌取回二进制再交给加载器"（`RuntimeAssetPreview.tsx` 已有该模式），并启动前后端做浏览器主流程实测；实测通过后才对 AUTH-101～105 给正式关闭结论。
+
+---
+
+## 2026-08-25 P3-3b：前端 3D 资产带令牌加载（默认拒绝网关引入的 401 回归）
+
+- DateTime: 2026-08-25 20:40 – 21:35 (+08:00)
+- Task: 修复 P3-1 默认拒绝网关打断 3D 网格加载的回归；先写失败门禁，再最小实现，再做浏览器主流程实测。批次编号 P3-3b（Phase 3 第 3 批的回归补丁，不是新批次范围）。
+- Scope (files changed):
+  - 新增 `r-mos-frontend/src/components/Viewer3D/useAuthedGLTF.ts`
+  - 新增 `r-mos-frontend/src/components/Viewer3D/__tests__/authedGltf.gate.test.ts`
+  - `r-mos-frontend/src/store/authStore.ts`（导出 `getAccessToken()`，复用已有 `getStoredAccessToken()`）
+  - `r-mos-frontend/src/api/client.ts`（拦截器改调 `getAccessToken()`，行为不变）
+  - Viewer3D 下 11 个文件的 `useGLTF` → `useAuthedGLTF`：`Atom01AssemblyRenderer` / `Atom01Model` / `DetailParts` / `DisassemblyAnimation` / `InteractiveManifestViewer` / `ManifestDrivenRenderer` / `ModelPreloader` / `PartInspector` / `RuntimeAssetPreview` / `atom01/InteractiveLinkMesh` / `atom01/SubPartsGroup`
+  - `r-mos-frontend/src/components/Viewer3D/hooks/useAtom01AssemblyData.ts`（裸 `fetch` → `apiClient`）
+  - 既有测试替身同步：`__tests__/Atom01AssemblyRenderer.test.tsx`、`hooks/__tests__/useAtom01AssemblyData.test.tsx`
+  - 提交：`4e6378e8`（只含测试，红）→ `70e9c078`（实现）
+- Commands Run:
+  - `npx vitest run src/components/Viewer3D/__tests__/authedGltf.gate.test.ts`
+  - `npx vitest run`
+  - `npm run build`
+  - `npx tsc --noEmit`
+  - 后端（本工作区代码，资产根指向主工作区素材）：
+    `STORAGE_BASE_DIR=/Users/xuhehong/Desktop/r-mos/r-mos-backend/data/robot-assets python -m dotenv -f <主工作区 .env> run -- python main.py`
+  - 前端：`npx vite --port 55173 --host 127.0.0.1`
+  - `curl --noproxy 127.0.0.1,localhost` 匿名/带令牌资产探针
+- Tests:
+  - 门禁先红：实现前该测试**整文件收集失败**（`Failed to resolve import "../useAuthedGLTF"`），静态门禁的违例经一次性脚本取证为 **11 个文件直接 import `useGLTF` + 1 个文件裸 `fetch`，共 12 处**。
+  - 门禁转绿：`1 passed` 文件 / **7 passed** 用例。
+  - 前端全量：**70 passed** 文件；**518 passed | 2 skipped**（520）。
+  - 构建：`✓ built in 14.95s`，退出码 0。类型检查：`npx tsc --noEmit` 无输出，退出码 0。
+  - **浏览器实测（真实 Chrome，非模拟器、非自动化断言）**，账号 `teacher1@rmos.demo`（教师）：
+    - 后端探针：匿名 `GET /api/v1/robots/1/assets/manifests/assembly_manifest.json` → **401**；`GET /api/v1/health` → **200**；带令牌同一资产 → **200**。证明测试对象是**已启用网关**的本工作区代码。
+    - `/3d-viewer`：`/api/v1/robots/*` 资产请求 **26 条，全部 200，401 为 0**；ATOM-01 模型渲染成功，关节控制面板正常。
+    - `/maintenance?sopId=68`（22 步膝关节 SOP）：`/api/v1/robots/*` **26 条全部 200**，其中 `.glb` **24 条全部 200**；**全页面 4xx/5xx 总数为 0**；模型渲染成功。
+    - 控制台仅 2 条既有 React Router v7 future-flag 警告，**无 error**。
+- Result: **PASS（限定范围：§4.1 的 3D 网格加载回归已修复并经浏览器实测）**。
+  - **不改变任何发现的状态**：`AUTH-101`～`AUTH-105` 仍为 **IN_PROGRESS**，未关闭。
+  - E1 仍 **FAIL**；E2/E3/E4 与生产启用仍 **BLOCKED**；`REL-BLOCK-01` 未清零。
+- Risks/Notes:
+  - **修法与交接文档 §4.1 的建议不同，且范围更大。** 交接文档列了 3 个受影响调用点并建议照抄 blob 写法。实测核对后更正两点：(a) `RuntimeAssetPreview.tsx:124` **不是**受影响点——它接收的是 `apiClient` 取回后 `createObjectURL` 生成的 blob URL，即交接文档自己说的"先例"本身；(b) 真实受影响面是 **11 个文件**，交接文档漏列了 `ManifestDrivenRenderer` / `Atom01Model` / `atom01/InteractiveLinkMesh` / `atom01/SubPartsGroup` / `ModelPreloader`（3 处 preload）以及 `hooks/useAtom01AssemblyData.ts` 的**裸 `fetch`**（后者根本不是 `useGLTF`）。blob 写法需在 11 个文件各写一份 `useEffect` + 清理，且破坏 `useGLTF` 的 URL 级缓存；改用 drei 9.x 已有的 `extendLoader` 参数，一处封装即可。
+  - **令牌轮转未覆盖（明确未做）**：`apiClient` 有 401 刷新重试，`GLTFLoader` 没有。access token 在长时间停留 3D 页时过期会导致后续 mesh 加载失败，需重新进入页面。本批不做，单独记为待办。
+  - **`.gltf + .bin` 分离格式的子资源是否继承 requestHeader 未验证**。当前分析管线产出自包含 `.glb`，影响面为 0；若将来产出分离格式需复验。
+  - `useAtom01AssemblyData` 的 `cache: 'no-store'`（fetch 选项）改为 `Cache-Control: no-store`（请求头），语义近似但不完全等价；同源代理下无预检问题，跨域部署需复核。
+  - **CORS 与端口的现场事实更正**：后端 `.env` 的 `CORS_ORIGINS` 为 `["http://localhost:5173","http://localhost:3000","http://127.0.0.1:5173","http://127.0.0.1:3000"]`，**本就不含 55173**；vite 配置端口为 **3000**；`API_BASE_URL` 默认空串走 vite 代理（同源），因此本批不涉及 CORS。本次按既定约定用 `--port 55173` 启动，**未修改任何 CORS 或代理配置**。
+  - **实测前清除了一个假绿风险**：`:8000` 上原有一个 2026-08-21 10:52 启动的旧后端进程（早于默认拒绝网关的全部提交），若用它做浏览器实测会因资产匿名可读而得到假通过。经用户明确同意后 `kill 45741`，改用本工作区代码重启。
+  - **Codex 使用与复核**：实现由 `codex exec -s workspace-write` 承担（提示词见本批记录）。它另行修改了 6 个文档文件（`AGENTS.md`、`docs/ops/CODEX_RULES.md`、`TEST_REPORT.md`、修复矩阵、交接文档、本日志），内容本身没有虚假声明，但**裁决与报告回填按 Phase 3 计划 §5 不外包**，已全部 `git checkout` 撤回并由 Claude 重写。四条验证命令由 Claude **独立重跑**，结果与 Codex 所报一致，未直接采信。
+  - 未改后端代码、未改数据库结构、未新增依赖、未跑 `npm audit`、未操作真机、未 push、未合并。
+  - 本批未跑后端全量（无后端代码改动）；当日早些时候在 `08a637b2` 上实跑的后端全量为 `956 passed in 71.81s`，`knowledge_store.json` 已核对并恢复（sha256 回到 `6d00252d…0475f`）。
+- Next Step: 开「对象归属」批（§4.3）。当前实测事实：`app/api/v1/endpoints/` 下 **180 条路由中 130 条**（含 7 条白名单公开路由）在函数签名层面拿不到调用者身份，`actor.school_name` 全仓使用点为 **0**，因此 `AC-06`/`T-06-E` 的"越权成功 0 次"目前不可能达成。同批顺带修 §4.4 的资产拒绝无审计（`_get_visible_robot_or_404` 走 `raise_read_access_denied`）。

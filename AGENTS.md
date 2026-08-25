@@ -7,7 +7,7 @@
 
 ---
 
-## 0) 当前项目状态快照（2026-08-21）
+## 0) 当前项目状态快照（2026-08-25）
 
 - 当前规则与记录：
   - 验收总纲：`docs/testing/ACCEPTANCE_CHARTER.md`
@@ -23,7 +23,8 @@
 - 剩余待定：`critical` 多人确认阈值（属 Phase 4，给出前按最严格解释拒绝执行）；待定项 J（现场部署形态 / TLS / 备份目标 / RTO-RPO）保持 BLOCKED，`DEP-101`、`DEP-104` 不得关闭。
 - Phase 2 取证另发现新暴露面 `AUTH-SCHOOLS-PII`（匿名可枚举全校教师邮箱），**不计入 29 项**，单独跟踪，落在 Phase 3 第 3 批。
 - Phase 3 第 1–3 批已完成（分支 `audit/phase3-auth-control-realtime` @ `d18dc5c0`，未 push）：默认拒绝网关 + 公开白名单（7 条）、教学域服务端身份、机器人资产边界、登录失败限流、教师邮箱脱敏。后端全量 `956 passed, 0 failed, 0 error`（该分支基线为 `825 passed`）。
-- **`AUTH-101`～`AUTH-105` 均为 IN_PROGRESS，未正式关闭**：浏览器主流程实测未做；且默认拒绝网关打断了 3D 网格加载（前端 `useGLTF` 直连不带令牌），该回归尚未修复。
+- Phase 3 第 3b 批已完成（`70e9c078`，未 push）：3D 资产带令牌加载，修复默认拒绝网关打断 3D 网格加载的回归。新增 `useAuthedGLTF` 封装（drei `extendLoader` 注入 Bearer），Viewer3D 下 11 个 `useGLTF` 调用点 + 1 处裸 `fetch` 全部迁移。前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测通过**（`/3d-viewer` 与 `/maintenance` 的 `/api/v1/robots/*` 资产请求 401 数为 0、模型渲染正常）。
+- **`AUTH-101`～`AUTH-105` 仍均为 IN_PROGRESS，未正式关闭**：3D 回归已修复且经浏览器实测，但**对象归属大面积缺失**（180 条路由中 130 条在函数签名层面拿不到调用者身份；`actor.school_name` 全仓使用点为 0）与**资产拒绝无审计**（`_get_visible_robot_or_404` 用裸 `HTTPException(404)`）两项缺口未动。**单条回归修复不等于任何一项发现关闭。**
 - 当前下一步：见 `docs/handover/2026-08-25-phase3-continuation-handover-v0.1.0.md`。
 - 每批闭环必须同步：
   1. 若当前任务有明确计划和状态表，更新对应状态；

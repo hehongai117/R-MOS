@@ -20,6 +20,7 @@
 | Phase 2 决策确认 | PASS | AUDIT-P2-DOC-002：五份 ADR 已转 Accepted；**这是设计定案，不是实现，更不是验收** |
 | Phase 3 第 1 批（P3-1） | PARTIAL | AUTH-GATE-01/02 定向通过；**后端全量为红（154 failed / 777 passed），属设计内中间状态**；AUTH-101、AUTH-102 均未关闭 |
 | Phase 3 第 1–3 批收口 | PARTIAL | 后端全量 `956 passed, 0 failed`；AUTH-GATE-01～12 定向通过；**AUTH-101～105 均为 IN_PROGRESS、未关闭**——浏览器实测未做，且 3D 网格加载被网关打断的回归未修 |
+| Phase 3 第 3b 批（P3-3b，3D 资产带令牌） | PARTIAL | 提交 `70e9c078`；前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测 PASS**（`/3d-viewer` 与 `/maintenance` 资产请求 401 数为 0、模型渲染）。**只关闭了 3D 加载回归本身**；`AUTH-101`～`AUTH-105` 仍为 IN_PROGRESS，对象归属与资产拒绝审计缺口未动 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -238,3 +239,35 @@
   - **后端全量绿不等于任何一项发现已关闭。** 关闭判定须连同浏览器主流程实测一并给出。
   - `scripts/run_gate2_smoke.sh` 已改用真实令牌，`bash -n` 通过，但**未实际执行**（需 127.0.0.1:18080 上跑着后端）。
   - E1 仍 FAIL；E2、E3、E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
+
+### AUTH-P3-3b｜前端 3D 资产带令牌加载（默认拒绝网关回归修复）
+
+- Test ID / 门禁编号：`AUTH-GATE-13`（前端面，新增）
+- 提交：测试 `4e6378e8`（红）→ 实现 `70e9c078`（绿）。分支 `audit/phase3-auth-control-realtime`，未 push
+- 执行环境：
+  - 后端：本工作区代码，`127.0.0.1:8000`，`STORAGE_BASE_DIR` 指向主工作区 `data/robot-assets`（资产为 gitignore 内容，worktree 无副本）
+  - 前端：本工作区 `npx vite --port 55173 --host 127.0.0.1`，经 vite 代理访问后端（同源，不涉及 CORS）
+  - 浏览器：真实 Chrome，账号 `teacher1@rmos.demo`（教师）
+- 命令与操作路径：
+  - `npx vitest run src/components/Viewer3D/__tests__/authedGltf.gate.test.ts`
+  - `npx vitest run` / `npm run build` / `npx tsc --noEmit`
+  - 浏览器：登录 → 教师工作台 → `/3d-viewer` → `/sops` → `/maintenance?sopId=68`
+- 关键原始输出：
+  - 实现前门禁为红：`Failed to resolve import "../useAuthedGLTF"`（整文件收集失败）；静态违例 **12 处**（11 文件直接 import `useGLTF` + 1 文件裸 `fetch`）
+  - 门禁：`Test Files 1 passed (1) / Tests 7 passed (7)`
+  - 前端全量：`Test Files 70 passed (70) / Tests 518 passed | 2 skipped (520)`
+  - 构建：`✓ built in 14.95s`（退出码 0）；`npx tsc --noEmit` 无输出（退出码 0）
+  - 后端网关自证：匿名资产 → **401**，匿名 health → **200**，带令牌资产 → **200**
+  - `/3d-viewer`：`/api/v1/robots/*` **26 条请求，byStatus = {200: 26}**
+  - `/maintenance?sopId=68`：`/api/v1/robots/*` **26 条全 200**，`.glb` **24 条全 200**，全页 4xx/5xx **总数 0**
+  - 控制台：仅 2 条 React Router v7 future-flag 警告，**无 error**
+- 证据位置：`docs-archive/DEVELOPMENT_LOG.md` 2026-08-25 P3-3b 条目；`r-mos-frontend/src/components/Viewer3D/__tests__/authedGltf.gate.test.ts`
+- 结果：**PASS**，范围严格限定为「§4.1 的 3D 网格加载回归」。证据等级：自动测试与构建为 **E1**；浏览器主流程为**本机开发环境的浏览器验证**，**不等于 E2 预生产验收**。
+- 失败原因、处理动作与复验结果：
+  - 首次实现后既有测试替身失配（3 failed）：装配渲染与装配清单测试仍观察旧加载入口/原生请求。替身改挂新封装与 `apiClient` 后复跑 `19 passed`，断言语义未改。
+  - 首次构建因封装条件类型与门禁假函数参数类型不完整失败；补类型后复跑构建与 `tsc` 均通过，未使用 `any` / `@ts-ignore`，未改门禁断言。
+  - 浏览器实测前发现 `:8000` 上是 2026-08-21 启动的**旧后端**（无认证网关），会产生假绿；经用户同意终止该进程并以本工作区代码重启，随后以匿名 401 / 带令牌 200 探针自证测试对象正确。
+- 明确不成立的推论（防止后续误读）：
+  - **本条 PASS 不关闭 `AUTH-101`～`AUTH-105`。** 五项仍为 IN_PROGRESS：对象归属大面积缺失（180 条路由中 130 条拿不到调用者身份，`actor.school_name` 使用点为 0）与资产拒绝无审计两项缺口未动。
+  - **E1 仍 FAIL；E2 / E3 / E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。**
+  - 本机 Chrome 验证不得写成真机、预生产或课堂交付证据。
