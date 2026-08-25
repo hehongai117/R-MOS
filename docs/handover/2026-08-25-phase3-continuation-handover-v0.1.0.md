@@ -14,7 +14,7 @@
 | 主仓库 | `/Users/xuhehong/Desktop/r-mos` |
 | **接手工作区** | `/Users/xuhehong/Desktop/r-mos/.worktrees/phase3-auth-control-realtime` |
 | **接手分支** | `audit/phase3-auth-control-realtime` |
-| **接手提交** | `d18dc5c09d55160d8a7bc146a17707dfc61d76ab` |
+| **接手提交** | 该分支最新提交（`git -C <工作区> rev-parse HEAD`）。最后一个**改应用代码**的提交是 `d18dc5c0`，其后均为文档提交 |
 | 工作区状态 | 干净 |
 | 远端 | **未推送**；未经用户许可不得 push、不得合并 |
 
@@ -23,7 +23,8 @@
 ```
 09ec02a1  codex/architecture-audit-phase1     Phase 1 审查
 361eaac8  audit/phase2-security-architecture  Phase 2 ADR + 修复矩阵
-d18dc5c0  audit/phase3-auth-control-realtime  Phase 3 第 1–3 批  ← 从这里继续
+d18dc5c0  audit/phase3-auth-control-realtime  Phase 3 第 1–3 批（最后一个代码提交）
+          其后为文档提交（交接 / 状态回填 / 已核实发现）  ← 从分支最新提交继续
 ```
 
 Phase 3 分支上的 6 个提交：
@@ -96,12 +97,12 @@ d18dc5c0  资产边界 + 登录限流 + 邮箱脱敏
 
 - 浏览器主流程实测未做
 - 4.1 的 3D 回归未修
-- **4.5 的对象归属大面积缺失**（`AUTH-101` 的归属半边）
-- **4.6 的资产拒绝无审计**（`AUTH-103`）
+- **§4.3 的对象归属大面积缺失**（`AUTH-101` 的归属半边）
+- **§4.4 的资产拒绝无审计**（`AUTH-103`）
 
 关闭判定放在 Phase 3 收口，须连同浏览器实测一并给结论。**不得因为"全量绿"就宣布关闭。**
 
-### 4.5 已实测确认：认证已关但**对象归属大面积缺失**（与 4.1 同为最高优先）
+### 4.3 已实测确认：认证已关但**对象归属大面积缺失**（与 §4.1 同为最高优先）
 
 默认拒绝网关只解决了「匿名」。**认证通过之后，大量接口不比较调用者与目标对象的归属。**
 
@@ -130,14 +131,14 @@ acting_as=student_B(id=3)   target=student_A(id=2)
 
 **建议的下一批（优先级高于 P3-4）：** 以 `docs/plans/2026-08-21-rmos-phase3-auth-control-realtime.md` 的 P3-2 口径新开一批「对象归属」，先写失败测试（跨学生 / 跨教师 / 跨校各一组），再逐路由补校验。可复用的正确实现：`app/services/access_control.py` 的 `raise_read_access_denied` / `raise_write_access_denied`（自带拒绝审计与真实资源编号）。
 
-### 4.6 本次改造自身的两处已确认缺陷
+### 4.4 本次改造自身的两处已确认缺陷
 
 | 缺陷 | 位置 | 说明 |
 |---|---|---|
 | 资产越权拒绝**不写审计** | `robots.py` 的 `_get_visible_robot_or_404` | 用的是 `raise HTTPException(404)`，没走 `raise_read_access_denied`。G1 要求任何拒绝都必须留带真实资源编号的审计。**AUTH-103 因此也不能关闭。** |
 | 限流为「先查后写」，非原子 | `app/services/login_throttle.py` | `locked_seconds_remaining` 与 `record_failure` 之间没有互斥，高并发下可能多放行若干次尝试。**尚未实测复现**，属代码形态可疑，需并发专项测试取事实后再判。 |
 
-### 4.3 Phase 3 剩余批次（未开始）
+### 4.5 Phase 3 剩余批次（未开始）
 
 | 批次 | 覆盖 | 依据 |
 |---|---|---|
@@ -147,7 +148,7 @@ acting_as=student_B(id=3)   target=student_A(id=2)
 
 P3-4 带一个 Alembic 迁移（三表加 `robot_model_id` + `tasks.user_id` 收紧，合并为同一个迁移，`down_revision = "20260817_sop_three_phase"`）。**执行前必须核对 `SELECT id, brand, model_name FROM robot_models WHERE id=1` 确为 ATOM-01。**
 
-### 4.4 本阶段发现、但**刻意未在本阶段修**的既有问题
+### 4.6 本阶段发现、但**刻意未在本阶段修**的既有问题
 
 这些都不是本次改造引入的，单独立项，不要顺手改：
 
@@ -155,7 +156,7 @@ P3-4 带一个 Alembic 迁移（三表加 `robot_model_id` + `tasks.user_id` 收
 |---|---|---|
 | 两套角色系统 | 注册只写 `users.role`，**全仓无生产代码写 `UserRole`**（只有 seed 脚本写），故 `ActorContext.roles`（RBAC）对正常注册用户恒为空 —— `robots.py:41` 的 `_require_teacher_or_admin` 会拒绝所有自助注册的教师 | 合并两者等于改变"谁能管机器人"，是独立的权限决策 |
 | `get_robot` 口径不一致 | `robots.py:150` 对无权访问返回 **403** 且不认 `owner_teacher_id`；本阶段新写的 `_get_visible_robot_or_404` 返回 **404** 且认 owner。G1 要求越权读 404 | 改 `get_robot` 会波及既有测试，属独立对齐工作 |
-| ADR-AUTHN D3 措辞 | 该处写"公开入口校验 `visibility=public`"，但该枚举值不存在 | 需按 §4.1 的事实修订 ADR 文本 |
+| ADR-AUTHN D3 措辞 | 该处写"公开入口校验 `visibility=public`"，但该枚举值不存在 | 需按 §4.1 中「可见性无匿名档」的事实修订 ADR 文本 |
 | 8 个假裁决测试 | `r-mos-frontend/src/adjudication/__tests__/` 下 8 个 `.test.ts` 不是 vitest 测试 | CLAUDE.md 标注"勿顺手修，是否重写待决策"，**须用户拍板** |
 
 ## 5. 待用户决策（未答复前不得自行推定）
@@ -167,7 +168,7 @@ P3-4 带一个 Alembic 迁移（三表加 `robot_model_id` + `tasks.user_id` 收
 | D-3 | 待定项 **J**（现场部署形态 / TLS 终结方 / 备份目标 / RTO-RPO） | `DEP-101`、`DEP-104` 未答复前不得关闭 |
 | D-4 | 依赖清单外发 npm 的授权 | `DEP-105` 未授权则保持未关闭，E1 不得提升 |
 | D-5 | `CTRL-105` 若 20×5 并发未复现，是否接受"未复现、风险接受" | Phase 5 关闭条件 |
-| D-6 | 8 个假裁决测试是否重写 | 见 §4.4 |
+| D-6 | 8 个假裁决测试是否重写 | 见 §4.6 |
 
 ## 6. 关于 Codex 的使用记录（重要：**不要把它的输出当成已完成的复核**）
 
@@ -225,7 +226,7 @@ P3-4 带一个 Alembic 迁移（三表加 `robot_model_id` + `tasks.user_id` 收
 继续 R-MOS 的 Phase 3。先不要改代码，先汇报。
 
 工作区：/Users/xuhehong/Desktop/r-mos/.worktrees/phase3-auth-control-realtime
-分支：audit/phase3-auth-control-realtime，提交 d18dc5c0
+分支：audit/phase3-auth-control-realtime（用该分支最新提交，不要指定旧哈希）
 
 开始时完整阅读：
 1. AGENTS.md
@@ -237,7 +238,7 @@ P3-4 带一个 Alembic 迁移（三表加 `robot_model_id` + `tasks.user_id` 收
 
 先现场确认分支、提交、工作区干净状态和 Python 环境，再向我汇报：
 - 你恢复到的准确提交与后端全量实测结果（不要引用交接文档里的数字，自己跑一遍）；
-- 你对 Phase 3 已完成 1-3 批、以及 3D 网格加载回归的理解；
+- 你对 Phase 3 已完成 1-3 批的理解，以及交接文档 §4.1（3D 回归）与 §4.3（对象归属大面积缺失）这两条的严重性判断；
 - P3-4 的改动边界、先写的失败测试清单、迁移与回滚方案；
 - 需要我确认的事项（交接文档第 5 节列了 6 条）。
 
