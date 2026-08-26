@@ -39,7 +39,7 @@
 - [Phase 4 执行计划](../plans/2026-08-21-rmos-phase4-evidence-ai-deployment.md)：证据、AI 与运行环境，**未开始**。
 - [Phase 3 续作交接](../handover/2026-08-25-phase3-continuation-handover-v0.1.0.md)：Phase 3 中途换窗口的恢复点、已完成批次与未完成问题清单。
 - **[Phase 3 中期审查报告（代码冻结点）](./2026-08-26-phase3-interim-audit-report-v0.1.0.md)**：Phase 0–3 阶段边界核对、当前测试基线、29 项状态、**7 项新发现（含 1 个已实证的 P0 成绩篡改）**、当前裁决与待决策。
-- **[完整审计与架构改造董事会方向指令（0.1.0，待批准）](../plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.1.0.md)**：拟将后续工作重置为 A0–A6 完整审计、R0 开源参考研究、R1 目标架构方向和其后的分层改造；本文件获批前不改变现行阶段与规则。
+- **[完整审计与架构改造董事会方向指令（0.2.0，已批准）](../plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.2.0.md)**：后续主线正式调整为 A0–A6 完整审计、R0 开源参考研究、R1 目标架构方向和其后的 P0 详细计划；0.2.0 已于 2026-08-26 获用户明确批准，当前进入 A0。
 
 ## 当前结论
 

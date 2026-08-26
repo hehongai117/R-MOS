@@ -7822,3 +7822,34 @@
   - 既有 Phase 0–3 材料保留为待 A0 分类的历史输入；E1 仍 FAIL，E2–E4 与生产启用仍 BLOCKED，`REL-BLOCK-01` 未解除。
   - 未修改 `DATABASE_URL`、CORS、依赖、应用、测试、迁移或数据；未启动服务；未 push、未合并。
 - Next Step: 等待用户审阅并回复 `确认董事会方向指令 0.1.0`。指令获批后仍需用户单独回复 `确认 Audit A0` 才开始 A0；不提前编制详细改造计划。
+
+---
+
+## 2026-08-26：董事会方向指令 0.2.0 复核修订与批准
+
+- DateTime: 2026-08-26 (+08:00)
+- Task: 复核并修订 0.1.0 的六个根因级治理缺口，形成并批准 0.2.0；本批不修改应用代码，不执行 A0 取证。
+- Scope (files changed):
+  - `docs/plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.1.0.md` → `...-v0.2.0.md`
+  - `docs/audit/README.md`
+  - `docs-archive/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `git log --oneline --decorate -15`
+  - `git show --stat --oneline c7ad217a`
+  - `git check-ignore -v ...`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/check_rmos_board_directive.py`
+  - `git diff --check`
+  - 关键条款反向检索：旧百分比阈值、旧批准口令、同源复核和旧文件链接
+  - `claude auth status`（受限环境显示未登录；系统环境只读核对为已登录）
+- Tests:
+  - 结构检查：982 行；16 项指标全部定义；必需章节、本地链接完整；无占位符和禁用旧条款。
+  - `git diff --check`：退出码 0。
+  - 仓库事实核对：确认 `c7ad217a` 等 Phase 3 应用代码修改位于本指令之前；确认 Git 不能单独覆盖实际依赖、数据库 schema 和被忽略/运行时资产。
+  - 独立复核：用户以独立复核者身份提出 6 个根因问题，主审逐项验证后全部修订；新建无上下文读者因额度限制未执行。Claude.ai 外部复核因尚未获得将内部文档发送到该服务的专项授权而未执行，未虚报为通过。
+  - 本批仅文档变更，未运行应用测试、服务、浏览器、数据库写入、真机或外部验收。
+- Result: PASS（限 0.2.0 文档结构、逻辑和用户独立复核闭环）；用户已明确批准 0.2.0，并要求继续 A0。
+- Risks/Notes:
+  - 0.2.0 把独立性从“不同上下文”改为异源方法/模型或人类复核，分歧由董事会裁决。
+  - A0–A6 默认 30 个自然日；A5 新增受控 E2 通道；拿不到 E2 时必须显式降级。
+  - 未 push、未合并；E1/E2–E4 与生产状态不因文档批准而提升，`REL-BLOCK-01` 继续有效。
+- Next Step: 提交 0.2.0 批次，然后以该提交为 A0 现状基线候选，执行 A0 双基线、干预层、运行指纹、安全初筛、墙钟预算和 A1 范围冻结。
