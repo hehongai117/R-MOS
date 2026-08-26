@@ -7744,3 +7744,50 @@
   - 未改后端代码、未改数据库结构、未新增依赖、未跑 `npm audit`、未操作真机、未 push、未合并。
   - 本批未跑后端全量（无后端代码改动）；当日早些时候在 `08a637b2` 上实跑的后端全量为 `956 passed in 71.81s`，`knowledge_store.json` 已核对并恢复（sha256 回到 `6d00252d…0475f`）。
 - Next Step: 开「对象归属」批（§4.3）。当前实测事实：`app/api/v1/endpoints/` 下 **180 条路由中 130 条**（含 7 条白名单公开路由）在函数签名层面拿不到调用者身份，`actor.school_name` 全仓使用点为 **0**，因此 `AC-06`/`T-06-E` 的"越权成功 0 次"目前不可能达成。同批顺带修 §4.4 的资产拒绝无审计（`_get_visible_robot_or_404` 走 `raise_read_access_denied`）。
+
+---
+
+## 2026-08-26 P3-2c：对象归属校验（AUTH-101 的归属半边，第一刀）
+
+- DateTime: 2026-08-25 22:10 – 2026-08-26 08:50 (+08:00)
+- Task: 给 8 条路由补对象归属校验。默认拒绝网关只解决了「匿名」，认证通过后大量接口不比较调用者与目标对象的归属；本批是 `AUTH-101` 归属半边的第一刀，**不是全部**。
+- Scope (files changed):
+  - 新增 `r-mos-backend/app/services/ownership.py`（`ensure_user_scope` / `ensure_task_scope`）
+  - 新增 `r-mos-backend/tests/e2e/test_object_ownership_boundary.py`（15 条门禁）
+  - `app/api/v1/endpoints/training.py`：`get_student_skill_profile` / `get_student_weak_steps` / `get_user_sessions` / `get_session_detail` / `get_training_feedback`
+  - `app/api/v1/endpoints/tasks.py`：`get_task` / `get_task_report` / `get_task_events`
+  - 既有测试同步：`tests/unit/test_training_characterization.py`、`tests/unit/test_training_phase2_api.py`、`tests/e2e/test_e2e_task_report_evidence.py`
+  - 提交：`f4c4a752`（只含测试，红）→ `c7ad217a`（实现）
+- Commands Run:
+  - 定向：`… -m pytest tests/e2e/test_object_ownership_boundary.py -o addopts='' -q`
+  - 全量：`… -m dotenv -f <主工作区 .env> run -- … -m pytest -q`
+- Tests:
+  - 先红：实现前 **12 failed / 3 passed**（3 个绿的是正向断言与一条空转用例，见下）。
+  - 后绿：定向 **15 passed in 5.67s**。
+  - 后端全量：**971 tests，进度条 0 个 `F`、0 个 `E`，pytest 退出码 0**。基线 956 + 本批新增 15 = 971，数量自洽。
+    （汇总行因输出重定向未落盘，故以「退出码 0 + 逐字符统计进度条」为准，不以汇总行为准。）
+- Result: **PASS（严格限定：本批覆盖的 8 条路由的归属校验与拒绝审计）**。
+  - **不关闭 `AUTH-101`。** 全仓 180 条路由中仍有约 115 条未做归属校验，`AC-06`/`T-06-E` 的"越权成功 0 次"仍不成立。
+  - E1 仍 **FAIL**；E2/E3/E4 与生产启用仍 **BLOCKED**；`REL-BLOCK-01` 未清零。
+- Risks/Notes:
+  - **归属规则**：本人 / 管理员 / 同校教师放行，否则拒绝。特权判断走 `actor.account_role`（`users.role`）而**不是** `actor.roles`（RBAC 表）——注册流程不写 `user_roles`，用 `roles` 会把所有正常注册的教师判成学生。测试里由「同校教师读本校学生必须 200」这条正向断言焊住。
+  - **跨校比较是 `actor.school_name` 的全仓第一个消费方**（此前使用点为 0，ADR-AUTHN D4 只落了载体）。两边 `school_name` 都为 `None` 时**按拒绝处理**，没留 NULL-NULL 放行的口子。
+  - **无主任务**：`tasks.user_id` 当前 `nullable=True` 且无外键，`user_id IS NULL` 的行对非管理员一律拒绝，不留豁免开关。该列收紧按 ADR-ROBOT 迁移策略与 `robot_model_id` 合并为同一个迁移，属 **P3-4**，本批**未写任何 Alembic 迁移**。
+  - **拒绝语义**：8 处全部走 `raise_read_access_denied`，无一处裸 `HTTPException(404)`，因此 deny 审计与真实 `resource_id` 自动到位；已由 `test_denied_read_writes_audit_with_real_resource_id` 实测断言（含 `actor_user_id == 令牌主体`）。
+  - **⚠️ 本批未修、且我的门禁没能覆盖住的缺陷**：`training.py:506,549` 的 `get_training_feedback` 仍有客户端可控的 `role: str = Query(pattern="^(student|teacher)$")`，学生可传 `role=teacher` 切换反馈视角——与 AUTH-104 的伪造身份头同类。我为它写的 `test_feedback_role_query_param_cannot_grant_teacher_view` **当前是绿的，但绿得没有含金量**：该会话没有 `TrainingSubmission`，端点在读 `role` 之前就先 404 了。测试文件内已标注。**该缺陷仍然存在，不得记为本批覆盖**，需补一条带 submission 的用例后单独修。
+  - **既有测试改写逐条（全部为收紧，无一处放宽）**：
+    - `test_get_user_sessions_empty_for_unknown_user` → `..._unknown_user_returns_404`：`200 + []` → `404`。未知用户不满足任何放行条件。
+    - `test_get_student_skill_profile_creates_if_not_exist` → `..._unknown_user_returns_404`：`200 +自动创建画像` → `404`。附带收益：不再为任意编号自动创建画像，堵掉枚举。
+    - `test_get_student_weak_steps_empty_for_unknown_user` → `..._unknown_user_returns_404`：`200 + []` → `404`。
+    - `test_get_training_feedback_not_found_returns_404`：断言消息 `"Submission not found"` → `"Session not found"`。归属校验前置到 submission 查询之前，不泄漏 submission 存在性。
+    - 若干处给测试用户补 `school_name=TEST_SCHOOL_NAME` / `E2E_SCHOOL_NAME`：修**测试数据**，不是放宽规则——此前这些用户 `school_name` 为 NULL，而 NULL-NULL 按拒绝处理。
+    - `test_completed_task_report_includes_checklist_evidence`：任务补 `user_id=owner_id` 并以该所有者身份读取。
+    - **已核实**：`test_training_characterization.py` 的默认测试身份仍是 **teacher**（`role: "teacher"`），**未被提权为 admin**。若换成 admin，这批用例会全部空转、归属规则等于没测——这是本次复核的重点排查项，未发生。
+  - **Codex 使用与独立复核**：实现由 `codex exec -s workspace-write` 承担。它报告后端全量 `3 failed`（`test_audit_query_indexes_exist` 等），归因于其沙箱禁止连接本机 `::1:5432`。**该归因未被直接采信**：在本机无沙箱限制下重跑，971 条进度条中 `F`/`E` 均为 0、退出码 0，三条数据库相关用例正常通过。定向与全量均由 Claude 独立重跑。Codex 本批**未越界改文档**（上一批曾改 6 个文档已被撤回，本次提示词中明令禁止）。
+  - 本批未改前端、未改数据库结构、未写迁移、未新增依赖、未启动服务、未联网、未操作真机、未 push、未合并。
+  - 测试副作用 `r-mos-backend/data/knowledge_store.json` 已核对并恢复，与批次开始前的备份**逐字节一致**（sha256 `6d00252d…0475f`）。
+- Next Step:
+  1. 补 `get_training_feedback` 的 `role` 参数用例并修复（视角必须由令牌决定）。
+  2. 继续扩大归属覆盖：`assessments.py`（11 条路由全无 actor）、`agent_*`、`maintenance.py`、`sops.py`。
+  3. `robots.py:150` 的 `get_robot` 403/404 口径与 `_get_visible_robot_or_404` 不一致，仍未对齐（既有问题，单独立项）。
+  4. §4.4 的资产拒绝无审计（`_get_visible_robot_or_404` 用裸 `HTTPException(404)`）**本批未做**，仍需修。

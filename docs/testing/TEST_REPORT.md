@@ -21,6 +21,7 @@
 | Phase 3 第 1 批（P3-1） | PARTIAL | AUTH-GATE-01/02 定向通过；**后端全量为红（154 failed / 777 passed），属设计内中间状态**；AUTH-101、AUTH-102 均未关闭 |
 | Phase 3 第 1–3 批收口 | PARTIAL | 后端全量 `956 passed, 0 failed`；AUTH-GATE-01～12 定向通过；**AUTH-101～105 均为 IN_PROGRESS、未关闭**——浏览器实测未做，且 3D 网格加载被网关打断的回归未修 |
 | Phase 3 第 3b 批（P3-3b，3D 资产带令牌） | PARTIAL | 提交 `70e9c078`；前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测 PASS**（`/3d-viewer` 与 `/maintenance` 资产请求 401 数为 0、模型渲染）。**只关闭了 3D 加载回归本身**；`AUTH-101`～`AUTH-105` 仍为 IN_PROGRESS，对象归属与资产拒绝审计缺口未动 |
+| Phase 3 第 2c 批（P3-2c，对象归属第一刀） | PARTIAL | 提交 `c7ad217a`；定向 `15 passed`；后端全量 **971 tests / 0 failed / 0 error（退出码 0）**。**只覆盖 8 条路由**（training 5 + tasks 3）；全仓约 115 条路由仍无归属校验，`AUTH-101` 不关闭 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -271,3 +272,30 @@
   - **本条 PASS 不关闭 `AUTH-101`～`AUTH-105`。** 五项仍为 IN_PROGRESS：对象归属大面积缺失（180 条路由中 130 条拿不到调用者身份，`actor.school_name` 使用点为 0）与资产拒绝无审计两项缺口未动。
   - **E1 仍 FAIL；E2 / E3 / E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。**
   - 本机 Chrome 验证不得写成真机、预生产或课堂交付证据。
+
+### AUTH-P3-2c｜对象归属校验（8 条路由）
+
+- Test ID / 门禁编号：`AUTH-GATE-14`（对象归属面，新增）
+- 提交：测试 `f4c4a752`（红）→ 实现 `c7ad217a`（绿）。分支 `audit/phase3-auth-control-realtime`，未 push
+- 执行环境：本工作区 `r-mos-backend`；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`（现场核对）；测试库为内存 SQLite（`e2e_env` 默认）
+- 命令：
+  - `… -m pytest tests/e2e/test_object_ownership_boundary.py -o addopts='' -q`
+  - `… -m dotenv -f <主工作区 .env> run -- … -m pytest -q`
+- 关键原始输出：
+  - 实现前：**`12 failed, 3 passed`**（跨学生读 profile/weak-steps/sessions 当时均为 **200**）
+  - 实现后定向：**`15 passed in 5.67s`**
+  - 后端全量：**971 tests，进度条 `F`=0、`E`=0，pytest 退出码 0**（基线 956 + 新增 15，数量自洽）
+- 证据位置：`docs-archive/DEVELOPMENT_LOG.md` 2026-08-26 P3-2c 条目；`r-mos-backend/tests/e2e/test_object_ownership_boundary.py`
+- 结果：**PASS**，范围严格限定为**本批覆盖的 8 条路由**：
+  `GET /students/{user_id}/profile`、`/students/{user_id}/weak-steps`、
+  `/training/users/{user_id}/sessions`、`/training/sessions/{session_id}/detail`、
+  `/training/feedback/{session_id}`、`/tasks/{task_id}`、`/tasks/{task_id}/report`、`/tasks/{task_id}/events`。
+  证据等级 **E1**。
+- 失败处理与复验：
+  - Codex 报后端全量 `3 failed`（`test_audit_query_indexes_exist` / `test_audit_trace_query_explain_uses_trace_index` / `test_skill_registry_migration_gate`），归因于其执行沙箱禁止连接本机 `::1:5432`。**该归因未被直接采信**；在本机无沙箱限制下由 Claude 重跑，三条正常通过，全量 `F`/`E` 均为 0。
+  - 既有测试改写共 17 处，方向全部为**收紧**（未知用户 `200`→`404`、补 `school_name` 测试数据、任务补所有者）。已核实默认测试身份仍为 `teacher` 而非 `admin`，归属规则未被空转。逐条清单见开发记录。
+- **明确不成立的推论**：
+  - **本条 PASS 不关闭 `AUTH-101`。** 全仓 180 条路由中仍有约 **115 条**未做对象归属校验（`assessments.py` 11 条、`agent_*`、`maintenance.py`、`sops.py` 等），`AC-06` / `T-06-E` 的"越权成功 0 次、404 率 100%"仍不成立。
+  - **`AUTH-103` 也不关闭**：`robots.py` 的 `_get_visible_robot_or_404` 仍用裸 `HTTPException(404)`、不写拒绝审计，本批未改。
+  - **已知未覆盖缺陷**：`training.py:506,549` 的 `get_training_feedback` 仍接受客户端可控的 `role=teacher` 查询参数切换视角。本批门禁中对应用例**空转通过**（会话无 submission，端点在读 `role` 前先 404），**不构成该参数已受控的证据**。
+  - E1 仍 FAIL；E2 / E3 / E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
