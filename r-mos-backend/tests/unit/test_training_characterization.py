@@ -139,6 +139,7 @@ def _seed_training_data(session_factory: async_sessionmaker) -> dict:
                 password_hash="pbkdf2_sha256$dummy",
                 full_name="Char Student",
                 role="student",
+                school_name=TEST_SCHOOL_NAME,
             )
             session.add(user)
             await session.flush()
@@ -1231,14 +1232,12 @@ def test_get_user_sessions_with_status_filter() -> None:
         app.state.test_sessionmaker = None
 
 
-def test_get_user_sessions_empty_for_unknown_user() -> None:
-    """GET /training/users/{user_id}/sessions — 未知用户返回空列表."""
+def test_get_user_sessions_unknown_user_returns_404() -> None:
+    """GET /training/users/{user_id}/sessions — 未知用户返回 404."""
     client, sf = _build_client()
     try:
         resp = client.get("/api/v1/training/users/99999/sessions")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body == []
+        assert resp.status_code == 404
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1313,7 +1312,7 @@ def test_get_training_feedback_not_found_returns_404() -> None:
         resp = client.get("/api/v1/training/feedback/nonexistent-session-for-feedback")
         assert resp.status_code == 404
         body = resp.json()
-        assert body["message"] == "Submission not found"
+        assert body["message"] == "Session not found"
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1332,6 +1331,7 @@ def test_get_training_feedback_generates_when_no_cache(monkeypatch) -> None:
                     password_hash="pbkdf2_sha256$dummy",
                     full_name="No Cache Student",
                     role="student",
+                    school_name=TEST_SCHOOL_NAME,
                 )
                 session.add(user)
                 await session.flush()
@@ -1428,6 +1428,7 @@ def test_get_training_feedback_teacher_role(monkeypatch) -> None:
                     password_hash="pbkdf2_sha256$dummy",
                     full_name="Teacher FB Student",
                     role="student",
+                    school_name=TEST_SCHOOL_NAME,
                 )
                 session.add(user)
                 await session.flush()
@@ -1532,18 +1533,12 @@ def test_get_student_skill_profile_success() -> None:
         app.state.test_sessionmaker = None
 
 
-def test_get_student_skill_profile_creates_if_not_exist() -> None:
-    """GET /students/{user_id}/profile — 画像不存在时自动创建（get_or_create_profile）."""
+def test_get_student_skill_profile_unknown_user_returns_404() -> None:
+    """GET /students/{user_id}/profile — 未知用户返回 404."""
     client, sf = _build_client()
     try:
-        # 使用不存在的用户 ID（skill profile 会自动创建）
         resp = client.get("/api/v1/students/88888/profile")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["user_id"] == 88888
-        assert body["overall_level"] == 1  # 默认初始等级
-        assert body["total_sessions"] == 0
-        assert body["score_safety"] is None
+        assert resp.status_code == 404
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -1575,14 +1570,12 @@ def test_get_student_weak_steps_success() -> None:
         app.state.test_sessionmaker = None
 
 
-def test_get_student_weak_steps_empty_for_unknown_user() -> None:
-    """GET /students/{user_id}/weak-steps — 未知用户返回空列表."""
+def test_get_student_weak_steps_unknown_user_returns_404() -> None:
+    """GET /students/{user_id}/weak-steps — 未知用户返回 404."""
     client, sf = _build_client()
     try:
         resp = client.get("/api/v1/students/77777/weak-steps")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body == []
+        assert resp.status_code == 404
     finally:
         client.close()
         app.dependency_overrides.clear()

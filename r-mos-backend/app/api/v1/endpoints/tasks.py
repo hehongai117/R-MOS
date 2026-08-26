@@ -1,7 +1,7 @@
 """
 Task API端点（V2.3完整版）
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.ownership import ensure_task_scope
 from app.schemas.task import (
     TaskCreate,
     TaskResponse,
@@ -142,23 +143,29 @@ async def list_tasks(
 @router.get("/tasks/{task_id}", response_model=TaskResponse, tags=["Tasks"])
 async def get_task(
     task_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """查询Task"""
     service = TaskService(db)
     task = await service.get_task(task_id)
+    await ensure_task_scope(db, request, actor, task, action="read_task")
     return task
 
 
 @router.get("/tasks/{task_id}/report", response_model=TaskReport, tags=["Tasks"])
 async def get_task_report(
     task_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """获取Task报告"""
     # 1. 加载Task
     service = TaskService(db)
     task = await service.get_task(task_id)
+    await ensure_task_scope(db, request, actor, task, action="read_task_report")
 
     # 2. 加载评分（如果已完成）
     if task.status == TaskStatus.COMPLETED:
@@ -235,12 +242,15 @@ async def get_task_report(
 @router.get("/tasks/{task_id}/events", tags=["Tasks"])
 async def get_task_events(
     task_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """获取Task的所有事件（V2.4 新增 - 用于测试验证）"""
     # 验证Task存在
     service = TaskService(db)
-    await service.get_task(task_id)  # 如果不存在会抛异常
+    task = await service.get_task(task_id)  # 如果不存在会抛异常
+    await ensure_task_scope(db, request, actor, task, action="read_task_events")
 
     # 获取事件列表
     event_service = EventService(db)

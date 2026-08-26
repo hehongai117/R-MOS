@@ -95,6 +95,7 @@ def _seed_phase2_data(session_factory: async_sessionmaker) -> dict:
                 password_hash="pbkdf2_sha256$dummy",
                 full_name="Phase2 Student",
                 role="student",
+                school_name=E2E_SCHOOL_NAME,
             )
             session.add(user)
             await session.flush()

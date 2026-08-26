@@ -2,7 +2,7 @@
 UF-04, UF-06: Training API Endpoints
 训练项目与会话管理接口
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
@@ -10,6 +10,10 @@ import logging
 
 from app.core.database import get_db
 from app.models.audit_event import AuditEvent
+from app.models.training import TrainingSession
+from app.services.access_control import raise_read_access_denied
+from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.ownership import ensure_user_scope
 from app.services.training.session_service import SessionService
 from app.services.training.submission_service import SubmissionService
 from app.services.training.feedback_generator import FeedbackGenerator, FeedbackRole
@@ -111,7 +115,9 @@ async def get_session(
 )
 async def get_session_detail(
     session_id: str,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-06-b-3: 获取会话详情（含步骤记录）"""
     service = SessionService(db)
@@ -122,6 +128,15 @@ async def get_session_detail(
 
     session = result["session"]
     steps = result["steps"]
+    await ensure_user_scope(
+        db,
+        request,
+        actor,
+        session.user_id,
+        action="read_training_session_detail",
+        resource_type="training_session",
+        resource_id=session_id,
+    )
 
     return SessionDetailResponse(
         session=SessionResponse(
@@ -411,11 +426,21 @@ async def get_step_records(
 )
 async def get_user_sessions(
     user_id: int,
+    request: Request,
     status: Optional[str] = None,
     limit: int = 10,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """获取用户会话列表"""
+    await ensure_user_scope(
+        db,
+        request,
+        actor,
+        user_id,
+        action="read_training_sessions",
+        resource_type="user",
+    )
     service = SessionService(db)
     sessions = await service.get_user_sessions(user_id, status, limit)
 
@@ -477,10 +502,37 @@ async def get_active_session(
 )
 async def get_training_feedback(
     session_id: str,
+    request: Request,
     role: str = Query(default="student", pattern="^(student|teacher)$"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-09: 获取训练反馈报告"""
+    session_result = await db.execute(
+        select(TrainingSession).where(TrainingSession.session_id == session_id)
+    )
+    training_session = session_result.scalar_one_or_none()
+    if training_session is None:
+        await raise_read_access_denied(
+            db,
+            request,
+            action="read_training_feedback",
+            resource_type="training_session",
+            resource_id=session_id,
+            reason="training_session_not_found",
+            message="Session not found",
+        )
+
+    await ensure_user_scope(
+        db,
+        request,
+        actor,
+        training_session.user_id,
+        action="read_training_feedback",
+        resource_type="training_session",
+        resource_id=session_id,
+    )
+
     result = await db.execute(
         select(TrainingSubmission)
         .where(TrainingSubmission.session_id == session_id)
@@ -541,9 +593,19 @@ async def get_training_feedback(
 )
 async def get_student_skill_profile(
     user_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-10: 获取学员技能画像"""
+    await ensure_user_scope(
+        db,
+        request,
+        actor,
+        user_id,
+        action="read_skill_profile",
+        resource_type="user",
+    )
     service = SkillProfileService(db)
     profile = await service.get_or_create_profile(user_id)
 
@@ -571,11 +633,21 @@ async def get_student_skill_profile(
 )
 async def get_student_weak_steps(
     user_id: int,
+    request: Request,
     unresolved_only: bool = False,
     limit: int = 20,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-10: 获取学员薄弱步骤列表"""
+    await ensure_user_scope(
+        db,
+        request,
+        actor,
+        user_id,
+        action="read_weak_steps",
+        resource_type="user",
+    )
     service = SkillProfileService(db)
     weak_steps = await service.get_weak_steps(
         user_id=user_id,

@@ -8,18 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.task import Task, TaskStatus
 from app.models.task_execution import TaskExecution, TaskStepResult
+from tests.e2e.helpers import register_and_login
 
 
 def test_completed_task_report_includes_checklist_evidence(
     e2e_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = e2e_env
+    owner_id, _, _ = register_and_login(
+        client, email_prefix="task_report_owner", role="student"
+    )
 
     async def seed_report() -> int:
         async with session_factory() as session:
             now = datetime.now(timezone.utc)
             task = Task(
                 title="膝关节轴承更换",
+                user_id=owner_id,
                 status=TaskStatus.COMPLETED.value,
                 started_at=now,
                 completed_at=now,
