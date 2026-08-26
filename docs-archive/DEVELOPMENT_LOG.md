@@ -7791,3 +7791,34 @@
   2. 继续扩大归属覆盖：`assessments.py`（11 条路由全无 actor）、`agent_*`、`maintenance.py`、`sops.py`。
   3. `robots.py:150` 的 `get_robot` 403/404 口径与 `_get_visible_robot_or_404` 不一致，仍未对齐（既有问题，单独立项）。
   4. §4.4 的资产拒绝无审计（`_get_visible_robot_or_404` 用裸 `HTTPException(404)`）**本批未做**，仍需修。
+
+---
+
+## 2026-08-26：完整审计与架构改造董事会方向指令 0.1.0
+
+- DateTime: 2026-08-26 10:25:53 +0800
+- Task: 制定 R-MOS 完整审计与后续架构改造的方向性治理文件；规定审计顺序、正式审计章程、逐阶段报告模板、开源项目发现与研究方法、重写决策门和未来分层改造顺序。本批不编制详细改造计划，不修改应用代码。
+- Scope (files changed):
+  - `docs/plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.1.0.md`（新增）
+  - `docs/audit/README.md`（增加待批准指令入口）
+  - `docs-archive/DEVELOPMENT_LOG.md`（本记录）
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python --version`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest --version`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/check_rmos_board_directive.py`
+  - `git diff --check`
+  - `rg -n "现有核心数据无法|每个研究域 1–2|七个只读|立即登记和隔离|3–5 年|2–3 年|1–2 年|只有同时满足两个|有可演练" docs/plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.1.0.md`
+  - 两轮无上下文读者检查和一轮独立章程审查，主审逐项复验后修订
+- Tests:
+  - 文档结构检查：必需章节、14 个指标引用、本地链接和占位符检查均通过；最终检查时文档 925 行，`required_missing=[]`、`undefined_metrics=[]`、`missing_local_links=[]`、`placeholders=[]`。
+  - `git diff --check`：退出码 0。
+  - 反向冲突文本检查：无命中，退出码经 `|| true` 归零；用于确认旧的错误重写条件、固定推荐数量和重叠评分区间已移除。
+  - 第一轮无上下文读者正确回答 10 个董事会关键问题；独立章程审查提出 7 个必须修订项，已全部由主审核对并修正；第二轮复核提出的版本、评分、隔离授权、阶段重开、数据方案衔接和许可口径问题已继续修订。
+  - 本批仅文档变更，未运行应用代码测试、前后端构建、服务、浏览器、数据库、真机或外部验收。
+- Result: PASS（仅限方向性文档的结构、一致性和可读性检查）；文件状态仍为 Draft，尚未获得用户批准，不启动 A0，不改变既有测试和生产门禁。
+- Risks/Notes:
+  - 初始开源项目仅为研究种子，不代表推荐或获准采用；R0 必须重新联网取证、过硬门槛并在同领域内评分，允许得出“零个合格主参考”。
+  - 既有 Phase 0–3 材料保留为待 A0 分类的历史输入；E1 仍 FAIL，E2–E4 与生产启用仍 BLOCKED，`REL-BLOCK-01` 未解除。
+  - 未修改 `DATABASE_URL`、CORS、依赖、应用、测试、迁移或数据；未启动服务；未 push、未合并。
+- Next Step: 等待用户审阅并回复 `确认董事会方向指令 0.1.0`。指令获批后仍需用户单独回复 `确认 Audit A0` 才开始 A0；不提前编制详细改造计划。
