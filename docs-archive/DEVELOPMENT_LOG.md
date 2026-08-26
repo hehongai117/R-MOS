@@ -7898,3 +7898,39 @@
 - A0 报告、干预层证据、索引和本记录的首个完整本地提交：`c324ef9f`。
 - `c324ef9f` 是审计材料恢复提交；被审系统现状基线仍是 `B-ASIS=29d2a588...`，两者不得混用。
 - 本补记只更新索引和开发记录，不改变 A0 报告内容、被审应用或任何运行指纹。
+
+---
+
+## 2026-08-26：Audit A0 0.1.1 全项目范围与证据修订
+
+- DateTime: 2026-08-26 16:39:19 +0800
+- Task: 根据 A0 裁决建议修订报告：校正唯一 P0 的证据边界，补齐整个 R-MOS 项目的事实源分母，并把 A1 本机只读枚举服务授权列为第 6 项董事会决定。
+- Scope (files changed):
+  - `docs/audit/2026-08-26-a0-baseline-and-source-governance-audit-report-v0.1.0.md` → `...-v0.1.1.md`
+  - `docs/audit/evidence/2026-08-26-a0-whole-project-source-denominator.py`（新增）
+  - `docs/audit/evidence/2026-08-26-a0-whole-project-source-denominator-v0.1.0.md`（新增）
+  - `docs/audit/README.md`
+  - `docs-archive/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - `git show 545cfcfb -- docs/audit/evidence/2026-08-26-n01-grade-tampering-probe.py`：核对 P0 探针保存链、执行命令、输入、输出与取证提交。
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/audit/evidence/2026-08-26-a0-whole-project-source-denominator.py`：对固定基线 Git 树做互斥全量分类。
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/check_rmos_a0_v011.py`：检查版本、审计范围、P0 证据链、分母、第 6 项授权和本地链接。
+  - `git diff --check`
+  - `git diff --name-only 0944538d -- r-mos-backend r-mos-frontend docker-compose.yml`
+  - 限定词反向检索：`UNKNOWN-COMMAND`、证据篡改、任意学生、任意作业、错误的“Git 之外”表述和过宽的 100% 覆盖表述。
+- Tests:
+  - 固定 `B-ASIS=29d2a588...` 的 1,769 个受版本控制文件全部进入 9 个互斥类别，未分类 0；分类脚本退出码 0。
+  - 运行时重新观察的依赖、数据库、路由、配置、进程、存储和关键数据作为独立事实集登记，不与 1,769 个 Git 文件重复相加。
+  - 报告检查：版本 0.1.1；整个项目范围 PASS；P0 探针保存链 PASS；第 6 项只读服务授权边界 PASS；140 个当前 Markdown、40 个本地相对链接、缺失 0；退出码 0。
+  - P0 结论收窄为：动态样本只证明同校一名学生可修改另一名学生的一次作业状态与成绩；更大范围来自代码推断，跨校与全量范围未动态证明；证据接口返回 404，不再写成证据篡改。
+  - 历史探针原始 stdout、退出码和精确执行时刻未单独保存，已如实标记未知；本批未越过 A0 探针授权边界重跑写操作探针。
+  - 两轮无上下文读者复核：全项目范围、时间口径、运行事实源表述、P0 事实/推断边界和历史元数据缺口均已闭合；最终回复为“均闭合，无新增阻断项”。该读者仍属同模型家族，不替代 M-AUD-06 异源评分。
+  - `git diff --check` 退出码 0；被审后端、前端和 compose 变化 0；限定词反向检索无命中（`rg` 退出码 1）。
+  - 本批仅修订审计文档和可复现只读分类脚本，未启动服务，未运行应用测试，未修改应用、配置、依赖、迁移、数据库、资产或关键数据。
+- Result: **PASS（限 A0 0.1.1 修订与证据自检）/ A0 仍为 IN REVIEW**。报告已具备提交董事会回答 6 项决定的条件；在备用 P0 渠道送达测试、M-AUD-06 异源题集与 10/10 评分等门禁完成前，不应正式批准 A0，也不应开始 A1。
+- Risks/Notes:
+  - P0 核心风险成立，但已删除超出证据的“任意学生、任意作业、跨校、证据篡改”表述。
+  - 1,769/1,769 只证明固定 Git 基线文件分类完整，不代表外部部署、正式存储或所有动态对象已审计完成。
+  - A1 第 6 项授权只允许本机启动后端 `127.0.0.1:8000` 与前端 `127.0.0.1:55173` 做只读枚举；不含登录造会话、写请求、迁移、种子、外部 AI、生产服务或真机。
+  - 未 push、未合并；`REL-BLOCK-01` 继续有效。
+- Next Step: 由董事会回答报告第 14 节 6 项决定；满足 A0 批准门禁后，再以批准的只读边界进入 A1。
