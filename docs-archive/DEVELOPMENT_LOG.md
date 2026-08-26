@@ -7853,3 +7853,42 @@
   - A0–A6 默认 30 个自然日；A5 新增受控 E2 通道；拿不到 E2 时必须显式降级。
   - 未 push、未合并；E1/E2–E4 与生产状态不因文档批准而提升，`REL-BLOCK-01` 继续有效。
 - Next Step: 提交 0.2.0 批次，然后以该提交为 A0 现状基线候选，执行 A0 双基线、干预层、运行指纹、安全初筛、墙钟预算和 A1 范围冻结。
+
+---
+
+## 2026-08-26：Audit A0 基线、事实源与审计治理
+
+- DateTime: 2026-08-26 15:40:55 +0800
+- Task: 执行董事会方向指令 0.2.0 的 A0：固定双基线和 Phase 3 干预层，采集运行指纹，完成启动安全初筛，冻结旧发现导入、A1 双源范围、墙钟与新窗口交接规则。本批只写审计材料，不修改被审应用。
+- Scope (files changed):
+  - `docs/audit/2026-08-26-a0-baseline-and-source-governance-audit-report-v0.1.0.md`（新增）
+  - `docs/audit/evidence/2026-08-26-a0-phase3-intervention-set-v0.1.0.md`（新增）
+  - `docs/audit/README.md`（A0 当前状态与入口）
+  - `docs-archive/DEVELOPMENT_LOG.md`（本记录）
+- Commands Run:
+  - `git rev-parse 341dc20c^`、`git log --reverse ... 361eaac8..29d2a588`、`git diff-tree ...`：固定 `B-REF`、`B-ASIS` 与逐提交/逐文件干预层。
+  - `cmp -s AGENTS.md docs/ops/CODEX_RULES.md`、`shasum -a 256 ...`：核对规则镜像和依赖/配置/数据摘要。
+  - 固定后端解释器的 `pip freeze`、前端 `npm ls --all --json`：采集实际解析依赖树。
+  - 导入 `main.app` 枚举 FastAPI 路由：181 条 `APIRoute`、187 条总路由。
+  - PostgreSQL 只读版本、扩展、迁移头、表数与 `pg_dump --schema-only --no-owner --no-privileges rmos | shasum -a 256`。
+  - 本机进程/监听、Git 文件状态、资产清单、配置字段名摘要和限定秘密模式扫描。
+  - 文档结构与本地链接检查；`git diff --check`；`git diff --name-only 29d2a588 -- r-mos-backend r-mos-frontend docker-compose.yml`。
+- Tests:
+  - 双基线：首个 Phase 3 应用提交的父提交唯一为 `361eaac8...`; A0 启动现状提交唯一为 `29d2a588...`。
+  - 干预层：9 个应用/测试提交、56 个去重文件；另登记 12 个相关文档提交；依赖锁和迁移变化 0。
+  - 规则镜像：`cmp` 退出 0；两文件摘要均为 `6f3b2392...8997e`。
+  - 全量 Markdown：139 个文件全部分类，未分类 0；36 个本地相对链接，缺失 0；A0 必需章节缺失 0；占位符命中 0；`git diff --check` 退出 0。
+  - 依赖/数据复比：Python、Node 实际依赖树及 requirements/package/lock/Alembic/knowledge store 摘要与 A0 初始指纹一致。
+  - 数据库复比：首次 schema dump 在沙箱内因本机 socket 权限失败，管道末端错误地产生空输入摘要；未采信。随后经获准的本机只读命令重跑，退出 0，摘要 `6d43b300...d70`，与初始指纹一致。
+  - 数据替代指纹：只读采集 66 张表的表名和 `pg_stat_user_tables` 统计行数，不导出业务数据，摘要 `b25ebdee...bbe0`；临时文件已删除。
+  - 无上下文读者自检：同模型家族读者提出 8 项——M-AUD-02/03、全量链接分母、UNKNOWN 替代证据、P0 隔离决定、通知时序、事实源分母、墙钟起点；主审逐项复验后全部修正或将门禁降为 BLOCKED。该检查不是异源独立审计，不计 M-AUD-06 通过。
+  - A0 自动检查：报告 363 行；必需章节缺失 0；摘要与决策请求未标类型 0；4 张发现卡必填字段缺失 0；139 个 Markdown / 36 个本地相对链接缺失 0；9 个干预提交差集 0；占位符 0；退出码 0。
+  - 变更保护：`B-ASIS` 之后被审后端、前端和 compose 文件变化 0；当前只含上述文档变化。
+  - 本批仅文档变更，按规则不运行应用单元测试、前端构建、浏览器、E2、真机或课堂验收。
+- Result: **IN REVIEW / BLOCKED**。A0 证据和报告已成稿；应用/测试/配置漂移为 0。P0 `N-01` 已在 0.2.0 生效后不超过 7 分 28 秒通过当前对话单独上报，但原确认时刻早于新规则，不能写成无条件满足 15 分钟。A0 尚不能批准：真实环境是否需要隔离、主渠道明确回执、备用 P0 通知渠道、总截止规则、A1 范围和 M-AUD-06 异源问题集/评分仍待用户决定。
+- Risks/Notes:
+  - E1 仍 FAIL；E2/E3/E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
+  - 本地未识别到 R-MOS 服务或真机连接，但不能据此证明外部没有部署；外部状态保持 UNKNOWN。
+  - Phase 3 原计划仍写 Planned/未批准，与已实施事实冲突；未改写历史，全部 9 个干预提交进入 MUST_REVERIFY。
+  - 未改 `DATABASE_URL`、CORS、依赖、应用、测试、迁移、数据库、资产或关键数据；未启动服务；未联网采集；未 push、未合并。
+- Next Step: 完成无上下文读者复核并修正；本地提交 A0 草案。等待用户回复 `确认 Audit A0`，同时确认 2026-09-25 截止日、A1 范围和备用 P0 通知渠道；门禁满足前不开始 A1。
