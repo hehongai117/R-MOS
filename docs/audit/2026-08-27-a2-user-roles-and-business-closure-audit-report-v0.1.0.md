@@ -6,7 +6,7 @@
 - 阶段：A2（董事会方向指令 0.2.0 §A2）
 - 被审对象：整个 R-MOS 项目
 - 现状基线：`B-ASIS = 29d2a5889e3b320a3e777e3d8c19efbbe31c0294`
-- 上游输入：[A1 全系统功能与资产清单报告（Approved，提交 `67a4ce30`）](./2026-08-26-a1-system-function-and-asset-inventory-v0.1.0.md)
+- 上游输入：[A1 全系统功能与资产清单报告（Approved，提交 `67a4ce30`）](./2026-08-26-a1-system-function-and-asset-inventory-v0.1.1.md)
 - 主审：Claude｜异源复核：Codex
 - 生产代码改动：**0**
 
