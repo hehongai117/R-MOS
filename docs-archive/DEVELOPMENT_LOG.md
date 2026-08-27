@@ -8026,3 +8026,49 @@
   - A1 的路径级判定需按动词收紧（121→94），待 A2 获确认后一并出 A1 0.1.1。
   - 本批未启动长驻服务、未连真机、未执行测试、未写数据库、未 push。REL-BLOCK-01 仍未清零。
 - Next Step: 提交 A2 材料；等待董事会确认 A2 后出 A1 0.1.1 修订，再进入 A3（当前架构、模块、依赖与数据模型）。
+
+---
+
+- DateTime: 2026-08-27 18:20 CST
+- Task: Audit A3 当前架构、模块、依赖与数据模型（含异源复核 4 条 MISMATCH 修正）
+- Scope (files changed):
+  - docs/audit/2026-08-27-a3-current-architecture-and-data-boundaries-v0.1.0.md（新增，A3 主报告）
+  - docs/audit/evidence/2026-08-27-a3-architecture-evidence-v0.1.0.md（新增，架构证据）
+  - docs/audit/README.md（索引刷至 0.8.0）
+  - docs-archive/DEVELOPMENT_LOG.md（本条记录）
+- Commands Run:
+  - AST 解析 app/**/*.py 的 Import/ImportFrom（含相对导入还原）建依赖图 + Tarjan SCC 检测循环
+  - AST 按 import 来源解析本地名→ORM 真名，统计逐表写入者/读取者（修正版）
+  - AST 取模块顶层实例化赋值，统计单例并按有无可变状态分类
+  - grep 核验 BaseRobotAdapter/BaseChecker/FileStorageBase 抽象、approval_queue 内存实现、knowledge_store.json 路径
+  - sed/grep 读取 docker-compose.yml 与 Dockerfile 的服务、卷、COPY 语义
+  - git ls-files 确认 knowledge_store.json 被跟踪
+  - codex exec --sandbox workspace-write -c ...network_access=true -C <仓库外目录>（11 条断言异源复核）
+- Tests:
+  - 未执行任何测试。本批只做静态分析与配置读取，验证等级上限 E1。
+- Result: PASS（A3 全部退出门禁达标，状态 Ready for Board Review）
+- Risks/Notes:
+  - **正面结论：后端分层干净。** 230 模块跨层边全部向下（api→services 82、services→models 109），
+    models→services / services→api / models→api 三个反向方向边数均为 0；全仓仅 1 组循环依赖（LLM router ↔ 两个 provider）。
+  - **35 个业务单例（74 = 36 APIRouter + 3 常量 + 35 业务），其中 8 个持有可变状态**，构成单实例部署约束：
+    approval_queue、knowledge_governance、login_throttle、WebSocket manager、analysis_worker、memory_hub、short_term_memory、long_term_memory。
+  - **/agent/approval/* 整套审批走进程内内存字典，不写数据库**——直接解释 A2 发现的 approval_records 表为空：
+    不是没人用，是 ApprovalRecordDB 全仓从未被构造。
+  - **15 张表在应用代码内无写入路径**：9 张完全无写入（含 approval_records、sop_audit_logs、replay_checkpoints 等）
+    + 6 张仅由种子脚本写入（fault_sop_mappings、permissions、role_permissions、roles、schools、user_roles）。
+    RBAC 的角色与权限表在后者之列，与 A2 BR-13「管理员无法在 UI 改角色」同源。
+  - **16 张表被 API 端点层直接构造 ORM 绕过服务层**；audit_events 4 个应用侧写入者、robot_assets 4 个。
+  - **知识双存储**：knowledge_documents 表 + 本地 data/knowledge_store.json；后者未挂卷但被 Git 跟踪且由 COPY . . 打进镜像，
+    因此同容器 restart 不丢、容器重建时运行期写入回退到镜像版本。
+  - **可替换边界仅 4 处**：BaseRobotAdapter、FileStorageBase、LLMRouter、BaseChecker。审批队列与知识存储无接口抽象。
+  - 结构债：services/ 根目录 35 个未分组文件；前端页面分散在 src/pages 与 src/teaching/pages 两处。
+  - **异源复核抓出主审 4 条 MISMATCH，全部复验成立并采纳：**
+    (1) 单例拆分 37+37 错（主审已先行自查修正为 36+3+35，与复核方 36+38 收敛一致）；
+    (2) Docker「重启即丢」不准确——同容器 restart 保留可写层，只有重建才回退到镜像版本；
+    (3) 可替换边界漏记 preflight 的 BaseChecker，3 处 → 4 处；
+    (4) evidence_items 写入者应为 2 个——workbench 构造的 EvidenceItem 来自 app.schemas 而非 ORM。
+  - **第 4 条推广后发现系统性检测缺陷**：按类名静态匹配在 schema/ORM 同名时误判、在 `import X as XModel` 别名导入时漏判。
+    改为按 import 来源解析符号后，主审与复核方从两条独立路径收敛到同一组数字（15 张）。
+  - 本批未启动长驻服务、未连真机、未执行测试、未写数据库、未 push。REL-BLOCK-01 仍未清零。
+- Next Step: 提交 A3 材料；等待董事会确认后进入 A4（身份、安全、控制、AI 与实时通道）。
+  A4 首要承接项：16 张端点直写表的权限矩阵、审批闸门形同虚设、知识双存储的数据边界、控制与急停缺失对真机承诺的影响。
