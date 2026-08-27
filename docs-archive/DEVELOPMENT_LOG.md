@@ -7986,3 +7986,43 @@
   - 本批启动了本机 PostgreSQL 服务（董事会第 6 项决定授权范围内），未启动长驻前后端服务，未连真机，未执行 alembic 升级，未写数据库，未 push。
   - REL-BLOCK-01 仍未清零；E2 至 E4 与生产启用继续 BLOCKED。
 - Next Step: 提交本批 A1 材料；等待董事会确认 A1 报告后再进入 A2（用户角色、业务流程与产品闭环）。A2 首要承接项：33 条无消费者路由的流程归属、AI 审批闭环断裂点。
+
+---
+
+- DateTime: 2026-08-27 17:05 CST
+- Task: Audit A1 董事会批准 + Audit A2 用户角色与业务闭环审计（含异源复核 3 条 MISMATCH 修正）
+- Scope (files changed):
+  - docs/audit/2026-08-26-a1-system-function-and-asset-inventory-v0.1.0.md（状态转 Approved）
+  - docs/audit/2026-08-27-a2-user-roles-and-business-closure-audit-report-v0.1.0.md（新增，A2 主报告）
+  - docs/audit/evidence/2026-08-27-a2-flow-linkage-v0.1.0.md（新增，链路与悬空调用证据）
+  - docs/audit/README.md（索引刷至 0.7.0）
+  - docs-archive/DEVELOPMENT_LOG.md（本条记录）
+- Commands Run:
+  - git commit（A1 提交 67a4ce30）
+  - 前端 TypeScript 模块解析求页面可达闭包 + HTTP 调用点字面量扫描（不限 src/api）
+  - 按 (动词, 归一化路径) 与 main.app 运行时路由表双向对接（后端→前端、前端→后端）
+  - 逐表 select count(*)、状态分布 group by、min/max(created_at) 时间轴
+  - grep 验证 BaseRobotAdapter 抽象方法、急停实现、审批与回放的函数级调用关系
+  - codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=true -C <仓库外目录>（13 条断言异源复核）
+  - git status --porcelain（复核前后，确认 Codex 零改动）
+- Tests:
+  - 未执行任何测试。本批只做静态链路分析与数据库只读查询，验证等级上限 E1。
+- Result: PASS（A1 获董事会「提交，继续」整体确认并提交；A2 全部退出门禁达标，状态 Ready for Board Review）
+- Risks/Notes:
+  - **A2 核心指标：94 条写操作路由只有 51 条有前端入口，43 条无入口，11 个后端域完全没有写入口。**
+  - 18 条流程裁决：CLOSED 4、PARTIAL 7、SEEDED_ONLY 3、BROKEN 2、MISSING 2。
+  - 教师建班/建课、学生加入、布置作业、训练会话生命周期（7 个写操作）全部无 UI 入口；
+    classes/courses 的 metadata 带 {"seed":"acceptance_users"}/{"seed":"demo_full"} 标记，直接证明由种子脚本生成。
+  - 机器人控制与异常停止在系统层面不存在：BaseRobotAdapter 的 10 个抽象方法只有连接、读取与故障注入；
+    急停仅在 MockRobotAdapter 内部由中文关键词「停机／急停」触发，无 HTTP 端点。
+  - **新增反向对照发现 15 条悬空调用**（前端调用后端不存在的端点）：/agent/monitor/* 4、/agent/metrics* 5、
+    /agent/replay/* 4、POST /auth/change-password、PATCH /auth/profile。后两条是用户设置页可见功能，点击必然失败。
+  - 数据时间轴：教学与训练闭环全部数据停在 2026-05-14；SOP/任务链路更新至 2026-08-21，认证令牌至 2026-08-25。
+  - **异源复核抓出主审 3 条 MISMATCH，全部复验成立并采纳：**
+    (1) 数据归因错——归因到 seed_teaching_demo.py 无据，实为 acceptance_users 与 demo_full（有 metadata 标记）；
+    (2) 审批消费方向说反——AdminDashboardPage 只调 /ai/approvals 的只读 listApprovals，/agent/approval/* 前端函数零页面调用；
+    (3) 把前端悬空调用当成已存在实现——/agent/replay/* 后端根本不存在。由此展开的反向对照查出全部 15 条悬空调用。
+  - 两条方法教训已写入报告：可达闭包是文件级而非函数级；只做「后端→前端」单向对照会漏掉悬空调用。
+  - A1 的路径级判定需按动词收紧（121→94），待 A2 获确认后一并出 A1 0.1.1。
+  - 本批未启动长驻服务、未连真机、未执行测试、未写数据库、未 push。REL-BLOCK-01 仍未清零。
+- Next Step: 提交 A2 材料；等待董事会确认 A2 后出 A1 0.1.1 修订，再进入 A3（当前架构、模块、依赖与数据模型）。
