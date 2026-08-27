@@ -7940,3 +7940,49 @@
 - A0 0.1.1 报告、全项目事实源分母证据、索引和本次修订记录的完整本地提交：`90af3300`。
 - `90af3300` 是审计材料恢复提交；被审系统现状基线仍是 `B-ASIS=29d2a588...`，两者不得混用。
 - 本补记只更新索引和开发记录，不改变 A0 结论、被审应用或运行指纹。
+
+---
+
+- DateTime: 2026-08-26 22:05 CST
+- Task: Audit A1 全系统功能与技术资产清点（双源枚举 + 两轮异源复核）
+- Scope (files changed):
+  - docs/audit/2026-08-26-a1-system-function-and-asset-inventory-v0.1.0.md（新增，A1 主报告）
+  - docs/audit/evidence/2026-08-26-a1-dual-source-diff-v0.1.0.md（新增，12 类差集与方法局限）
+  - docs/audit/evidence/2026-08-26-a1-object-register-v0.1.0.md（新增，逐条对象登记，机械生成）
+  - docs/audit/evidence/2026-08-26-a1-dual-source-inventory.py（新增，可复现清点脚本）
+  - docs/audit/README.md（索引刷至 0.6.0；顺带修正 A0 报告在文件清单中被标为 In Review 的滞后标签）
+  - docs-archive/DEVELOPMENT_LOG.md（本条记录）
+- Commands Run:
+  - git diff --name-only 29d2a5889e3b320a3e777e3d8c19efbbe31c0294 HEAD（确认基线一致性，仅 6 个文档文件）
+  - brew services start postgresql@14；pg_isready -h localhost -p 5432
+  - set -a; . <主工作区>/.env; set +a; unset CORS_ORIGINS；<venv>/bin/python ../docs/audit/evidence/2026-08-26-a1-dual-source-inventory.py
+  - <venv>/bin/python -m pytest --collect-only -q
+  - npx vite build --sourcemap --outDir <工作区外目录> --emptyOutDir
+  - npx vitest list
+  - 逐表 select count(*) from public."<表>"（65 张业务表）
+  - codex exec --sandbox read-only -C <被审工作区>（第一轮 13 条断言异源复核）
+  - codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=true -C <仓库外目录>（第二轮 7 条数据库断言）
+  - git status --porcelain（复核前后各一次，确认 Codex 零改动）
+- Tests:
+  - 清点脚本退出码 0：路由 静态181/运行时181 差集0；表 静态65/metadata65/数据库66 差集仅 alembic_version；迁移 文件38/图38 单 head 且与库一致；模块 磁盘231/启动导入206；数据 非空37/空28。
+  - 后端 pytest --collect-only：123 文件 / 971 用例（**仅收集，未执行**）。
+  - 前端 vitest list：70 文件 / 518 用例（**仅列举，未执行**）。
+  - 前端 vite build --sourcemap：退出码 0，12.4s，产物写在被审工作区之外。
+  - 应用测试：未运行。本批没有执行任何测试通过/失败判定，验证等级上限 E1。
+- Result: PASS（A1 达成 M-AUD-01 与全部退出门禁，状态 Ready for Board Review；不代表应用验收或生产启用通过）
+- Risks/Notes:
+  - **异源复核抓出主审 2 条实质错误，均已复验采纳并修正：**
+    (1) MISMATCH-01：前端「零引用模块」判定用 basename 拼相对路径，漏掉 `./data/criticalParts` 这类带子目录的再导出，
+        并因 barrel 目录名模糊匹配产生假阳性；改为真正的 TypeScript 模块解析后，零引用 8 → 6，旧 3D 死栈 6 → 9 个文件。
+    (2) MISMATCH-02：空表数误用 `pg_stat_user_tables.n_live_tup`（统计估算值，未 ANALYZE 时为陈旧快照），
+        得出「7 张非空 / 58 张空」；逐表精确 count(*) 实为 **37 非空 / 28 空**，35 张表估算失真
+        （robot_assets 估算 0 实际 33,367；schools 估算 0 实际 2,869）。清点脚本已改为精确计数。
+  - 主审自查另发现一处假阴性：WebSocket 两条端点因路径含变量（`/ws/robot/${robotId}/status`）被字符串匹配判为「前端零调用」，
+    实际 `useWebSocket.ts` 正在使用。已在报告中作为方法局限样本登记，并要求剩余 33 条 UNUSED 在 A2/A3 逐条人工重验后才能作为删除依据。
+  - A0 口径缺陷：`FP-CFG-01` 的 .env 字段指纹取自主工作区，而被审 worktree 无 .env，指纹对象与被审对象不同源，需 A0 出 0.1.2 修订。
+  - 第一轮 Codex 只读沙箱拒绝数据库连接（TCP 与 Unix 套接字均 PermissionError），三条数据库断言曾为 UNKNOWN，由第二轮定向复核闭合。
+  - CLAUDE.md 的「22 endpoints / 50+ services / 32+ models / 15+ pages」全部滞后于实际（37/99/65/27），
+    但修改它属于改被审工作区的非审计文件，本批未动，登记为 C-04~C-07 交 A6 修订。
+  - 本批启动了本机 PostgreSQL 服务（董事会第 6 项决定授权范围内），未启动长驻前后端服务，未连真机，未执行 alembic 升级，未写数据库，未 push。
+  - REL-BLOCK-01 仍未清零；E2 至 E4 与生产启用继续 BLOCKED。
+- Next Step: 提交本批 A1 材料；等待董事会确认 A1 报告后再进入 A2（用户角色、业务流程与产品闭环）。A2 首要承接项：33 条无消费者路由的流程归属、AI 审批闭环断裂点。
