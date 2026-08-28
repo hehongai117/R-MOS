@@ -8072,3 +8072,48 @@
   - 本批未启动长驻服务、未连真机、未执行测试、未写数据库、未 push。REL-BLOCK-01 仍未清零。
 - Next Step: 提交 A3 材料；等待董事会确认后进入 A4（身份、安全、控制、AI 与实时通道）。
   A4 首要承接项：16 张端点直写表的权限矩阵、审批闸门形同虚设、知识双存储的数据边界、控制与急停缺失对真机承诺的影响。
+
+---
+
+- DateTime: 2026-08-28 11:40 CST
+- Task: Audit A3 董事会确认 + Audit A4 安全、控制与实时通道审计（含异源复核 6 条 MISMATCH + 4 个独立发现）
+- Scope (files changed):
+  - docs/audit/2026-08-28-a4-security-control-and-realtime-audit-report-v0.1.0.md（新增，A4 主报告）
+  - docs/audit/evidence/2026-08-28-a4-security-evidence-v0.1.0.md（新增，187 行身份矩阵）
+  - docs/audit/README.md（索引刷至 0.9.0；A3 记为 Approved）
+  - docs-archive/DEVELOPMENT_LOG.md（本条记录）
+- Commands Run:
+  - 读 main.py 路由注册、app/core/public_routes.py、app/services/authz_guard.py
+  - 枚举全部 include_router，确认嵌套 router 挂载父级
+  - AST 提取每个端点函数的 Depends 与 require_permission；识别归属校验（含 ownership.py 辅助函数）、角色判定、school 维度
+  - 只读查询 permissions / roles / role_permissions
+  - 追踪 policy_matrix.evaluate() 全部调用点与 requires_approval 规则
+  - 人工阅读 force_submit_session、send_to_user、get_attempt_evidence、evidence_engine 以复验复核方发现
+  - codex exec --sandbox workspace-write -c ...network_access=true -C <仓库外目录>（13 条断言 + 要求独立提出问题）
+- Tests:
+  - 未执行任何测试，未发起任何越权请求。主审结论全部为静态证据，验证等级上限 E1。
+  - 复核方另做了无令牌连通性实测（非破坏性）：/、/docs、/redoc、/openapi.json 匿名 200；两条 WebSocket 无令牌可连。
+- Result: PASS（A4 全部退出门禁达标，状态 Ready for Board Review）
+- Risks/Notes:
+  - **认证边界成立但只覆盖 /api/v1**：默认拒绝网关 + 7 条白名单 + 嵌套 router 全在网关内；
+    但 /、/openapi.json、/docs、/docs/oauth2-redirect、/redoc 共 5 个入口在网关外，匿名可达。
+  - **授权读写不对称**：86 条读中 16 条有对象归属校验（19%）；**94 条写中只有 10 条（11%），全在 robots/onboarding**。
+  - 46 条写操作端点拿不到调用者身份，其中 27 条路径直接带对象 ID：
+    任意登录用户可给任意作业打分（grade_attempt(attempt_id, request, db)）、删任意 SOP、批准任意维保草稿、提交他人训练会话。
+  - **复核方独立发现 4 个主审完全未覆盖的问题，全部复验属实：**
+    (1) force-submit 是混淆代理——做了教师管辖权校验，但校验对象是请求体里的 request.teacher_id 而非认证身份，
+        伪造编号还会被写入记录作为操作人；
+    (2) websocket_manager.send_to_user() 实现注释写着「目前简化为向所有连接广播」并遍历全部连接——跨用户消息泄露；
+    (3) GET /attempts/{id}/evidence 在证据缺失时调用 generate_bundle_for_task()，其中含 db.commit()——读接口写库；
+    (4) OpenAPI 与文档页匿名可读。
+  - WebSocket 零认证、robot_id 明示不用于过滤；PolicyMatrix 只覆盖 AI 路径；auditor 拥有 approvals:grant/reject。
+  - 机器人控制与急停系统层面不存在，命令状态机/停止/真机边界记为 MISSING。
+  - **主审 6 条 MISMATCH，其中 3 条方向是「把问题说重了」**：正则只匹配字面比较，
+    未识别项目自封装的 app/services/ownership.py 的 ensure_user_scope()/ensure_task_scope()，
+    导致归属校验低报（13→26）、学校维度低报（2→7）、PERM+OWNER 误报为 0（实为 2）。
+    教训：审计一个代码库前应先找出它自己的安全抽象；「无绕过」必须写清适用范围；
+    静态分析看不见「检查了错的输入」这类缺陷（force-submit 即是）。
+  - 本批未启动长驻服务、未连真机、未写数据库、未 push。REL-BLOCK-01 仍未清零。
+- Next Step: 提交 A4 材料；等待董事会确认后进入 A5（测试可信度、部署、恢复与交付能力）。
+  A5 首要承接项：越权行为的执行期实证、把无害连通性实测纳入主审标准动作、
+  「校验了错的输入」类缺陷的系统性排查、授权测试缺口。
