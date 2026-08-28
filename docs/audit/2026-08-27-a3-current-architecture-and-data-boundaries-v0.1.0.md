@@ -2,7 +2,7 @@
 
 - 版本：0.1.0
 - 日期：2026-08-27
-- 状态：**Ready for Board Review**（异源复核已完成，4 条 MISMATCH 已关闭；等待董事会确认）
+- 状态：**Approved**（2026-08-27 获董事会确认；4 条 MISMATCH 已关闭）
 - 阶段：A3（董事会方向指令 0.2.0 §A3）
 - 被审对象：整个 R-MOS 项目
 - 现状基线：`B-ASIS = 29d2a5889e3b320a3e777e3d8c19efbbe31c0294`
@@ -158,7 +158,7 @@ WebSocket 连接表都会各持一份。这是事实陈述，扩展需求是否�
 | **S-01** | `approval_queue` | `services/approval_queue.py` | `_requests: Dict`、按状态分桶的队列 | **无**（纯内存） | **审批记录不落库**；重启即丢；多实例分叉。直接导致 `approval_records` 表零写入 | 低（无接口抽象，改造须换存储） |
 | **S-02** | `login_throttle` | `services/login_throttle.py` | 登录失败计数 | 无 | 多实例下限流失效，可绕过 | 低 |
 | **S-03** | `manager`（WebSocket） | `services/websocket_manager.py` | 活跃连接表 | 无 | 多实例下无法跨实例广播 | 中（连接本就绑进程，需外部 pub/sub） |
-| **S-04** | `knowledge_governance` | `services/knowledge_governance.py` | `_knowledge_store: Dict` + 本地 JSON 文件 | 文件读写 | **Docker 下无挂卷，重启即丢**；与 DB 表重复 | 低 |
+| **S-04** | `knowledge_governance` | `services/knowledge_governance.py` | `_knowledge_store: Dict` + 本地 JSON 文件 | 文件读写 | **Docker 下无挂卷**：同容器 `restart` 保留可写层，**容器重建时运行期写入丢失并回退到镜像内的初始版本**（该文件被 Git 跟踪并由 `COPY . .` 打进镜像）；与 DB 表重复 | 低 |
 | **S-05** | `memory_hub`／`short_term_memory`／`long_term_memory` | `services/memory/*` | Agent 记忆 | 无 | 多实例记忆分叉 | 低 |
 | **S-06** | `analysis_worker` | `services/analysis/worker.py` | 后台分析任务队列 | 无 | 多实例重复消费或漏消费 | 中 |
 | **S-07** | `orchestrator`／`orchestrator_v2`／`multi_agent_coordinator`／`coach_agent`／`diagnoser_agent`／`intent_engine` | `services/*` | Agent 编排运行时 | 无 | 运行时状态不可观测、不可迁移 | 低 |
@@ -236,7 +236,7 @@ services.llm.router → services.llm.minimax_provider → services.llm.router
 
 | Data_ID | 主记录 | 副本 | 消费方 | 风险 |
 |---|---|---|---|---|
-| **D-13** | PostgreSQL `knowledge_documents`（30 行，27 PENDING） | 本地文件 `data/knowledge_store.json`（`KnowledgeEntry`） | JSON 侧被 `api/agent_knowledge.py`、`api/agent.py`、`services/orchestrator_v2.py` 使用 | **Docker 下该文件无挂卷，重启即丢**；两套数据无同步机制；A2 的「知识批准后无切块产物」与此相关 |
+| **D-13** | PostgreSQL `knowledge_documents`（30 行，27 PENDING） | 本地文件 `data/knowledge_store.json`（`KnowledgeEntry`） | JSON 侧被 `api/agent_knowledge.py`、`api/agent.py`、`services/orchestrator_v2.py` 使用 | **Docker 下该文件无挂卷**：同容器 `restart` 不丢，**容器重建时回退到镜像内版本**；两套数据无同步机制；A2 的「知识批准后无切块产物」与此相关 |
 
 ## 7. 可替换边界（表 4）
 
@@ -261,7 +261,7 @@ services.llm.router → services.llm.minimax_provider → services.llm.router
 |---|---|---|---|
 | A3-G1 | A1 每项功能均能定位到当前模块和数据 | §4.3 端点模块→服务→表全覆盖，36 个功能域无遗漏 | ✅ 达标 |
 | A3-G2 | 所有跨模块数据写入点有所有者 | §6 逐表登记写入者；9 张无写入路径、16 张端点直写、6 张多写入者全部列名 | ✅ 达标 |
-| A3-G3 | 重复模型、共享状态和不可替换边界均登记 | §5（37 个单例）、§6.4（双存储）、§7（8 条边界，5 条不可替换或部分） | ✅ 达标 |
+| A3-G3 | 重复模型、共享状态和不可替换边界均登记 | §5（74 个顶层实例化 = 36 APIRouter + 3 常量 + **35 个业务单例**，其中 8 个持可变状态）、§6.4（双存储）、§7（8 条边界，5 条不可替换或部分） | ✅ 达标 |
 | A3-G4 | **不在本阶段决定目标目录或新接口** | 全报告只登记现状与边界，未提出任何目标结构或新接口 | ✅ 遵守 |
 | A3-G5 | 不得把「代码存在」写成「真实可用」 | 写入路径以静态构造调用为准并声明局限；验证等级上限 E1 | ✅ 达标 |
 | §5.8 | 主审与复核异源 | Codex 11 条断言复核完成，4 条 MISMATCH 全部复验采纳并修正 | ✅ 达标 |

@@ -2,11 +2,11 @@
 
 - 版本：0.1.0
 - 日期：2026-08-28
-- 状态：**Ready for Board Review**（异源复核已完成，3 条 MISMATCH 已关闭、6 个独立发现已并入；等待董事会确认）
+- 状态：**Approved**（2026-08-28 获董事会确认；3 条 MISMATCH 已关闭、6 个独立发现已并入）
 - 阶段：A5（董事会方向指令 0.2.0 §A5）
 - 被审对象：整个 R-MOS 项目
 - 现状基线：`B-ASIS = 29d2a5889e3b320a3e777e3d8c19efbbe31c0294`
-- 上游输入：[A1（0.1.1）](./2026-08-26-a1-system-function-and-asset-inventory-v0.1.1.md)、[A2](./2026-08-27-a2-user-roles-and-business-closure-audit-report-v0.1.0.md)、[A3](./2026-08-27-a3-current-architecture-and-data-boundaries-v0.1.0.md)、[A4（提交 `cef83be2`）](./2026-08-28-a4-security-control-and-realtime-audit-report-v0.1.0.md)
+- 上游输入：[A1（0.1.1）](./2026-08-26-a1-system-function-and-asset-inventory-v0.1.1.md)、[A2](./2026-08-27-a2-user-roles-and-business-closure-audit-report-v0.1.0.md)、[A3](./2026-08-27-a3-current-architecture-and-data-boundaries-v0.1.0.md)、[A4（提交 `cef83be2`）](./2026-08-28-a4-security-control-and-realtime-audit-report-v0.1.1.md)
 - 主审：Claude｜异源复核：Codex
 - 生产代码改动：**0**
 
@@ -111,7 +111,7 @@ PG 专属门禁与 `tests/e2e/` 在**真 PostgreSQL** 上单独跑；`integratio
 | **T-12** | 浅断言测试（49 个） | 只断 `status_code` | — | 仅状态码 | 中 | 只能证明"未 500"，不证明返回内容正确 |
 
 **总体判断：测试套件本身不是假绿，但它的证明边界比表面数字窄。**
-「971 passed」在报告里出现时，应当同时说明：跑在 SQLite 上、不含迁移、不含授权验证。
+「971 passed」在报告里出现时，应当同时说明：跑在 SQLite 上、不含迁移、**且未充分覆盖高危写路径的授权**（读路径的对象归属已有成体系测试，见 §1 第 2 点）。
 
 ## 4. 运行与部署（表 2）
 
@@ -259,7 +259,7 @@ PG 专属门禁与 `tests/e2e/` 在**真 PostgreSQL** 上单独跑；`integratio
 | 日志与知识存储的持久化 | A6 | 与 A3 D-13 同类 |
 | **受控 E2 环境是否申请** | **董事会** | §6 的 10 项能力当前全为 NOT_COLLECTED/BLOCKED；是否投入取决于董事会 |
 | CI 实际运行历史核实 | A6 | 需要 GitHub Actions 记录，本批未覆盖 |
-| **A4 报告 §9 G3 表述错误需修订** | A4 修订 | 「没有一条测试尝试越权访问」**与事实相反**：存在 `test_object_ownership_boundary.py` 等成体系的归属边界测试（28×403 + 72×404）。应改为「这三个**写**端点未见针对性越权用例；全仓读路径的对象归属与跨校隔离已有专门测试」。按 §5 重开点规则登记，待 A5 获确认后出 A4 0.1.1 |
+| **A4 报告 §9 G3 表述错误需修订** | A4 修订 | 「没有一条测试尝试越权访问」**与事实相反**：存在 `test_object_ownership_boundary.py` 等成体系的归属边界测试（28×403 + 72×404）。应改为「这三个**写**端点未见针对性越权用例；全仓读路径的对象归属与跨校隔离已有专门测试」。按 §5 重开点规则登记。**已于 2026-08-28 随 A5 获确认后出 A4 0.1.1，该项已关闭。** |
 | **`integration-ci` 的 `DEBUG` 丢失（A5-F-13）** | A6 | 单行 YAML 修复；但需先确认该 workflow 当前是否长期失败 |
 | **`/health` 不返回 503（A5-F-14）** | A6 | 就绪检查失效，影响所有依赖健康探针的编排 |
 | 逐端点的授权测试覆盖度盘点 | A6 | 本批只做到文件级交叉，端点级需读测试体 |

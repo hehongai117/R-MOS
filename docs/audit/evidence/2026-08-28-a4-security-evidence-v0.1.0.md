@@ -4,7 +4,7 @@
 - 日期：2026-08-28
 - 状态：In Review
 - 被审基线：`B-ASIS = 29d2a5889e3b320a3e777e3d8c19efbbe31c0294`
-- 对应报告：[A4 安全、控制与实时通道审计报告](../2026-08-28-a4-security-control-and-realtime-audit-report-v0.1.0.md)
+- 对应报告：[A4 安全、控制与实时通道审计报告](../2026-08-28-a4-security-control-and-realtime-audit-report-v0.1.1.md)
 
 ## 1. 提取方法
 
