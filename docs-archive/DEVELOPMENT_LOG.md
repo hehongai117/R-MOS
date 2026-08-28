@@ -8117,3 +8117,55 @@
 - Next Step: 提交 A4 材料；等待董事会确认后进入 A5（测试可信度、部署、恢复与交付能力）。
   A5 首要承接项：越权行为的执行期实证、把无害连通性实测纳入主审标准动作、
   「校验了错的输入」类缺陷的系统性排查、授权测试缺口。
+
+---
+
+- DateTime: 2026-08-28 15:30 CST
+- Task: Audit A4 董事会确认 + Audit A5 质量、运行与交付能力审计（含异源复核 3 条 MISMATCH + 6 个独立发现）
+- Scope (files changed):
+  - docs/audit/2026-08-28-a5-quality-operations-and-delivery-audit-report-v0.1.0.md（新增，A5 主报告）
+  - docs/audit/evidence/2026-08-28-a5-quality-evidence-v0.1.0.md（新增，质量与运行证据）
+  - docs/audit/README.md（索引刷至 1.0.0；A4 记为 Approved）
+  - docs-archive/DEVELOPMENT_LOG.md（本条记录）
+- Commands Run:
+  - AST 遍历 tests/**/test_*.py 统计断言数、pytest.raises、mock 用量、skip、浅断言
+  - 读 tests/conftest.py 的引擎与建表方式；逐个读 4 个 .github/workflows/*.yml
+  - grep 检索 403/404/401 断言分布；阅读 test_object_ownership_boundary.py、test_teaching_identity_boundary.py
+  - 读 app/core/logging.py、app/core/config.py、health.py、docker-compose.yml、Dockerfile
+  - python -c "yaml.safe_load(integration-ci.yml)" 解析 job.env 最终值
+  - codex exec --sandbox workspace-write -c ...network_access=true -C <仓库外目录>（13 条断言，要求双向查错并独立提出缺口）
+- Tests:
+  - **未执行任何测试套件**（避免副作用与耗时），未启动服务，未连真机。全部为静态证据，验证等级上限 E1。
+- Result: PASS（A5 全部退出门禁达标，M-AUD-08 完整，状态 Ready for Board Review）
+- Risks/Notes:
+  - **正面结论：测试体系不是假绿。** 后端 743 个测试函数 / 2468 条断言 / 中位数 3；
+    无 assert 的 21 个中 18 个用 pytest.raises，真正零断言仅 3 个；浅断言（只断 status_code）49 个。
+  - **CI 有实质内容**：backend-ci 起真 postgres:16，跑 alembic upgrade head + alembic check（模型漂移检测），
+    PG 门禁与 e2e 在真 PG 上单独跑；integration-ci 真起 uvicorn + 健康轮询 + 日志 artifact；
+    frontend-ci 有 tsc --noEmit + eslint --max-warnings 0 + vitest + coverage + build 五道关。
+  - **证明边界**：主套件跑内存 SQLite + create_all，38 个迁移在主套件中不执行——
+    这是 backend-ci 注释中说明的已知取舍（asyncpg 跨事件循环，Linux 必现），属 P2-1 范围。
+  - **主审在「是否存在越权测试」上判错两次**（先写"完全不存在"、自查后改"点状"，均被推翻）。
+    实际存在成体系的 tests/e2e/test_object_ownership_boundary.py：跨学生读→404、跨校教师读→404、
+    无主任务拒绝、反馈查库前拒绝、查询参数提权防护，另有两条正向边界；
+    全仓拒绝类断言 28×403 + 72×404（15 文件）。**根因：只按 403 检索，而该库刻意用 404 表达归属拒绝。**
+    仍成立的缺口：这些用例集中在读路径，A4 点名的高危写端点无对应用例。
+  - **复核方独立发现 6 个缺口，全部复验属实，两项高危：**
+    (1) integration-ci 有两个 job 级 env 块，第一个含 DEBUG:"true" 并附注释说明不设会触发 validate_production 拒启，
+        第二个块静默覆盖 → YAML 解析后 DEBUG 丢失 → 后端启动即被拒绝，健康轮询必败。该 workflow 大概率长期是红的。
+    (2) /api/v1/health 内部判定 unhealthy 后仍返回 200（无 503、无异常），文档字符串却写着 503；且不检查 DB 与对象存储。
+    (3) 真 PG 上的 e2e 用 drop_all/create_all 按模型建表，且与迁移检查用不同库——两条证据链互不相交。
+    (4) 浏览器 e2e 非合并前门禁；无 workflow 由 docker-compose.yml 变更触发；4 个 workflow 无构建/发布/部署步骤。
+    (5) 两个 Dockerfile 无 .dockerignore、未切换低权限 USER、COPY . . 可能带入未跟踪文件、可变基础镜像标签。
+    (6) 后端 CI 无任何 lint/类型/安全静态检查（无 ruff/flake8/mypy/bandit），而前端有两道。
+  - 其余运行缺口：无依赖漏洞扫描、无监控/APM、无备份脚本与演练、日志写 logs/app_YYYYMMDD.log 且 compose 未挂载；
+    密钥治理做得对（validate_production 拦默认密钥与 SQLite URL 且确实被调用，.env 未跟踪）。
+  - **M-AUD-08 达标**：10 项运行能力全部标记 E2_NOT_COLLECTED / E2_HISTORICAL / E2_BLOCKED，无隐含空白。
+    按 §A5 规则声明：这不表示运行、恢复或交付能力通过；A6 相关维度只能写 UNKNOWN/BLOCKED。
+  - 方法教训：不要只按一种拒绝码检索授权测试（先确认该库的拒绝码约定）；报统计数字必须带口径；
+    文档字符串不是事实源（日志名与 /health 的 503 都写在 docstring 里，实现都不是那样）；
+    YAML 重复键是静默的，配置审计要解析后看最终值。
+  - A4 报告 §9 G3 的「没有一条测试尝试越权访问」与事实相反，已登记为 A4 待修订项。
+  - 本批未 push。REL-BLOCK-01 仍未清零。
+- Next Step: 提交 A5 材料；等待董事会确认后出 A4 0.1.1 修订，再进入 A6（总问题表与改造决策输入）。
+  A6 需承接：A1–A5 全部发现汇总、三路线比较（相关运行维度只能 UNKNOWN/BLOCKED）、受控 E2 是否申请的董事会决策。
