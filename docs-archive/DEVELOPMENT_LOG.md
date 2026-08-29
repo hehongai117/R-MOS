@@ -8346,3 +8346,63 @@ D-07（授权）把 M-02 从单点缺陷改述为「认证身份与业务身份�
 
 - Result: PASS（步骤 1 完成）
 - Next Step: 候选发现（§7.4 四类来源），每域先出 2 个样本做领域校准后冻结校准说明。
+
+## 2026-08-29 — 代码解冻，修复 M-10（CI 的 DEBUG 丢失）
+
+- **治理事件：应用/配置代码自 A0 起的零改动纪律于本次结束**，经董事会明确授权（原话「可以改代码，先修那个 CI bug」）。
+  `B-ASIS = 29d2a588` 起不再等于工作树；后续 R1 对照需另立基线。
+- Scope: `.github/workflows/integration-ci.yml`，1 个文件。**后端与前端应用代码仍为 0 改动。**
+
+### 修了什么
+
+`integration-e2e` job 有两个作业级 `env:` 块，YAML 重复键使后块静默覆盖前块，`DEBUG` 丢失。
+合并为单一 `env:` 块，并在块上加注释说明该 job 只能有一个 env 块。
+
+### 实证（不是读代码推断）
+
+以 `env -i` 构造纯净环境模拟 CI（worktree 与 CI 均无 `.env`）：
+
+| 场景 | 结果 |
+|---|---|
+| 修复前（只有 `DATABASE_URL`） | `DEBUG=False`、`SECRET_KEY='dev-only-change-me'` → **`RuntimeError: SECRET_KEY must be set in production`** |
+| 修复后（`DEBUG=true` + `DATABASE_URL`） | **通过，后端可启动** |
+
+`main.py:54-55` 的 `validate_production()` 在 lifespan 启动流程内且**无 try 包裹**，抛错直接杀掉启动。
+`Start backend` 步骤（`nohup uvicorn main:app`）**无步骤级 `env`**，完全依赖 job 级，故 job 级丢失即致命。
+
+### 缺陷存在了多久（git 历史）
+
+| 提交 | 日期 | 作业级 env 块数 | 状态 |
+|---|---|---:|---|
+| `55fba16d` | 2026-03-05 | 1（只有 `DATABASE_URL`） | **创建时即缺 DEBUG，从第一天起就起不来** |
+| `d0dd028e` | 2026-07-03 | 2 | 有人发现了该问题并试图修复，但新增的 `env:` 块造成重复键，**修复静默失效** |
+| 本次 | 2026-08-29 | 1（两个变量合并） | 已修复并实证 |
+
+`d0dd028e` 的提交信息写「该工作流仅 PR 触发故此前未暴露」，其验证项为
+「api 测试 40 passed；tsc --noEmit 与 eslint 全绿」——**不含实际运行该 workflow**。
+这是一次"修了但从未验证修好"的典型。
+
+### 对 A5/A6 结论的影响（重要口径澄清）
+
+逐个 workflow 解析后确认：**只有 `integration-ci` 受影响，其余三个一直是好的。**
+
+| workflow | job.env.DEBUG | 是否启动后端 | 结论 |
+|---|---|---|---|
+| `backend-ci` | true | 否（跑 pytest） | **未受影响** |
+| `frontend-ci` | —（不需要） | 否 | 未受影响 |
+| `e2e-browser-ci` | true | 否 | 未受影响 |
+| `integration-ci` | **曾丢失** | **是** | 唯一受影响者 |
+
+因此 **A5 的「测试不是假绿」「971 用例 + 2468 断言」「有真 PG + `alembic upgrade head` + `alembic check`」
+等结论仍然成立**，它们依赖的是 `backend-ci` 而非 `integration-ci`。
+A6 的 M-10 → M-17 依赖边应收窄为：**受影响的只是 `integration-ci` 提供的集成/健康证据，
+不是整个测试可信度。** 该修正待并入 M-17 时一并处理。
+
+### 未能验证的部分
+
+本机无 `gh`，分支未 push，**无法读取 GitHub Actions 的实际运行历史**。
+「该 workflow 历史上运行过几次、结果如何」仍为 **UNKNOWN**。
+上表结论是「只要它运行，后端启动步骤必失败」的机制性判断，不是运行记录。
+
+- Result: PASS（M-10 已修复并实证）
+- Next Step: M-04（网关前缀）、M-05（删 adapter 端点，董事会已裁定）。

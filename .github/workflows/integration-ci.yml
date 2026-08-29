@@ -12,8 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     # 与 backend-ci.yml 的作业级 env 保持同步：CI 无 .env，DEBUG 默认 False
     # 会触发 validate_production 拒启（详见 backend-ci.yml 同位置注释）。
-    env:
-      DEBUG: "true"
     defaults:
       run:
         working-directory: r-mos-backend
@@ -33,7 +31,12 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+    # 与 backend-ci.yml 的作业级 env 保持同步：CI 无 .env，DEBUG 默认 False
+    # 会触发 validate_production 拒启（详见 backend-ci.yml 同位置注释）。
+    # 注意：本块是该 job 唯一的 env 块。曾经拆成两块，YAML 重复键使后块静默覆盖前块、
+    # DEBUG 丢失导致后端启动即被拒绝（审计 M-10）。新增变量请加在本块内，不要再开一个 env:。
     env:
+      DEBUG: "true"
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/rmos_ci
 
     steps:
