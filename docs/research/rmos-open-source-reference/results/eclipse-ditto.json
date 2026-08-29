@@ -1,0 +1,74 @@
+{
+  "_meta": {
+    "domain": "D-04 设备、数字孪生与遥测",
+    "research_question": "RQ-03 实时通道的认证与多租户隔离（WS 鉴权、按对象订阅、跨实例广播）",
+    "a6_masters": ["M-03", "M-19", "M-01"],
+    "collected_date": "2026-08-29", "researcher": "Claude（主审）",
+    "cross_source_review": "PENDING", "verification_level": "E1"
+  },
+  "identity_provenance": {
+    "project_name": "Eclipse Ditto",
+    "official_org": "eclipse-ditto", "foundation_affiliation": "Eclipse Foundation（Eclipse IoT）",
+    "repo_url": "https://github.com/eclipse-ditto/ditto",
+    "homepage_url": "https://eclipse.dev/ditto/",
+    "created_date": "2017-04-10", "repo_status": "active", "default_branch": "master",
+    "primary_language": "Java", "stars": 920, "forks": 285, "open_issues": 88,
+    "_confidence": "HIGH", "_evidence": ["https://api.github.com/repos/eclipse-ditto/ditto"]
+  },
+  "hard_gates": {
+    "OSS-G1": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G2": {
+      "verdict": "PASS（只借设计）",
+      "license_spdx": "EPL-2.0",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "COMPATIBLE"},
+        "copy_code": {"verdict": "CONDITIONAL", "rationale": "**EPL-2.0 是弱互惠许可证**，修改后的文件需以 EPL-2.0 开源。与 Apache-2.0 不同，复制代码有回馈义务"},
+        "add_dependency": {"verdict": "NOT_APPLICABLE", "rationale": "Java"},
+        "deploy_service": {"verdict": "POSSIBLE_BUT_NOT_RECOMMENDED", "rationale": "Ditto 是分布式 JVM 服务集群；R-MOS 是单机 compose，运行成本不成比例"}
+      },
+      "confidence": "MEDIUM", "note": "主审初步判断，非法律意见"
+    },
+    "OSS-G3": {"verdict": "PASS", "architecture_doc_url": "https://eclipse.dev/ditto/", "confidence": "HIGH"},
+    "OSS-G4": {"verdict": "PASS", "last_push": "2026-08-28", "confidence": "HIGH"},
+    "OSS-G5": {"verdict": "UNKNOWN", "confidence": "UNKNOWN"},
+    "OSS-G6": {"verdict": "PASS", "answers_a6_masters": ["M-03", "M-01"], "answers_rq_ids": ["RQ-03", "RQ-01"], "confidence": "HIGH"}
+  },
+  "architecture_findings": {
+    "authorization_filtered_subscription": {
+      "finding": "**变更通知按订阅者授权过滤**：WebSocket / SSE / Connections 三个通道均『只把事件投递给具备相应授权的已认证主体』",
+      "confidence": "HIGH",
+      "evidence": ["https://eclipse.dev/ditto/basic-changenotifications.html"],
+      "significance": "**直接对立于 M-03**。R-MOS 的 `send_to_user()` 遍历全部连接广播；Ditto 把『你能收到什么』做成授权系统的一部分，而不是业务代码自己判断。"
+    },
+    "policy_based_object_authorization": {
+      "finding": "策略式细粒度资源授权：每次 API 调用对 twin 做基于资源路径的访问检查，主体持 READ/WRITE/EXECUTE 权限，可精确到 twin 的**部分**",
+      "confidence": "HIGH",
+      "evidence": ["https://eclipse.dev/ditto/basic-policy.html", "https://eclipse.dev/ditto/basic-auth.html"],
+      "significance": "同时回应 M-01（写路径无对象归属校验）——授权是资源维度的，不是端点维度的"
+    },
+    "reported_vs_desired_state": {
+      "finding": "区分 **reported（设备上报的当前真相）** 与 **desired（后端/应用设定的目标态）**，且**两者可分别授权**——例如禁止设备改 desiredProperties，禁止终端用户改 reported",
+      "confidence": "HIGH",
+      "evidence": ["https://eclipse.dev/ditto/intro-digitaltwins.html"],
+      "significance": "R-MOS 当前无此区分。这个二分对『机器人控制』直接有用：下发指令 = 写 desired，遥测 = 写 reported，两者权限天然不同。**与 D-03 的 C-1/C-2 可组合**"
+    },
+    "subscription_filtering": {
+      "finding": "订阅侧过滤：namespace 列表 + RQL 表达式（可按数据值、生命周期动作 `topic:action`、资源路径 `resource:path` 过滤）",
+      "confidence": "HIGH",
+      "caveat": "RQL 默认只作用于**被修改的**数据；未变化字段需 extraFields 富集后才纳入过滤",
+      "evidence": ["https://eclipse.dev/ditto/basic-changenotifications.html"]
+    }
+  },
+  "rmos_decision_fields": {
+    "borrow_verdict": "可直接借鉴（设计层）",
+    "what_to_borrow": [
+      "**订阅授权过滤下沉到通道层**：不是业务代码决定发给谁，而是通道按订阅者权限过滤。直接修复 M-03 的 `send_to_user` 广播",
+      "**reported / desired 状态二分且分别授权**：给机器人控制提供天然的权限边界",
+      "**授权是资源路径维度而非端点维度**：呼应 M-01"
+    ],
+    "what_not_to_borrow": ["分布式 JVM 集群与 Akka 体系", "完整 RQL 查询语言（R-MOS 规模用不上）", "Connections 的 broker 集成"],
+    "stack_gap": "Java/分布式 vs Python/单机；仅设计可迁移",
+    "failure_modes": ["只加 WS 令牌校验而不做按对象过滤 → 仍是『认证了的全量广播』，M-03 只修一半"],
+    "alternative_candidates": ["Eclipse BaSyx", "ThingsBoard", "OpenRemote"]
+  }
+}

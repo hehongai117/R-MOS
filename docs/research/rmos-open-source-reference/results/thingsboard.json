@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "domain": "D-04", "research_question": "RQ-03 实时通道的认证与多租户隔离",
+    "a6_masters": ["M-03", "M-12", "M-19"],
+    "collected_date": "2026-08-29", "researcher": "Claude（主审）",
+    "cross_source_review": "PENDING", "verification_level": "E1"
+  },
+  "identity_provenance": {
+    "project_name": "ThingsBoard", "official_org": "thingsboard",
+    "repo_url": "https://github.com/thingsboard/thingsboard", "homepage_url": "https://thingsboard.io",
+    "created_date": "2016-12-01", "repo_status": "active", "primary_language": "Java",
+    "stars": 22325, "forks": 6424, "open_issues": 294,
+    "_confidence": "HIGH", "_evidence": ["https://api.github.com/repos/thingsboard/thingsboard"]
+  },
+  "hard_gates": {
+    "OSS-G1": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G2": {
+      "verdict": "PASS（只借设计）", "license_spdx": "Apache-2.0",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "COMPATIBLE"},
+        "copy_code": {"verdict": "COMPATIBLE_WITH_CONDITIONS"},
+        "add_dependency": {"verdict": "NOT_APPLICABLE", "rationale": "Java"},
+        "deploy_service": {"verdict": "NOT_RECOMMENDED", "rationale": "整套 IoT 平台，与 R-MOS 用途重叠但体量不匹配"}
+      },
+      "confidence": "MEDIUM",
+      "caveat": "**存在社区版/专业版双轨**。本次取证以 CE 仓库（Apache-2.0）为准；PE 文档描述的能力不一定在 CE 中可用 [uncertain]。引用 PE 文档得出的设计结论需标注来源版本。"
+    },
+    "OSS-G3": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G4": {"verdict": "PASS", "last_push": "2026-08-28", "confidence": "HIGH"},
+    "OSS-G5": {"verdict": "UNKNOWN", "confidence": "UNKNOWN"},
+    "OSS-G6": {"verdict": "PASS", "answers_a6_masters": ["M-03", "M-12"], "answers_rq_ids": ["RQ-03"], "confidence": "HIGH"}
+  },
+  "architecture_findings": {
+    "tenant_hierarchy_as_access_boundary": {
+      "finding": "实体层级 **Tenant → Customer → Devices/Assets 直接决定访问边界**；Customer User 只能操作显式分配给其 Customer 的实体",
+      "confidence": "MEDIUM",
+      "significance": "R-MOS 有 `school_id` 但 M-12 显示**租户维度只在读路径落地**，写侧只有注册。ThingsBoard 把租户做成实体层级而非查询条件——归属是数据模型的一部分，不是每个查询各自记得加 where。",
+      "evidence": ["https://thingsboard.io/docs/concepts/multi-tenancy/"]
+    },
+    "jwt_for_both_rest_and_websocket": {
+      "finding": "REST 与 WebSocket **共用同一套 JWT 认证**；令牌校验无状态，服务端验签不查库",
+      "confidence": "MEDIUM",
+      "significance": "直接对照 M-03：R-MOS 的 WS 零认证。此处的可借鉴点是**复用既有令牌体系而不是给 WS 另造一套**",
+      "evidence": ["https://thingsboard.io/docs/pe/reference/architecture/"]
+    },
+    "subscription_manager": {
+      "finding": "客户端发订阅命令指明具体实体与属性/时序键 → 节点在**订阅管理器**注册 → 遥测到达时由处理该遥测的节点匹配订阅并推给对应会话",
+      "cross_instance": "集群中订阅按节点跟踪，跨节点订阅通知经消息队列 topic 流转",
+      "confidence": "MEDIUM",
+      "significance": "**同时回应 M-03 与 M-19**：订阅是『按实体注册』的显式对象，不是一张全局连接表；跨实例问题用消息队列解决而不是靠单实例约束。R-MOS 的 `ConnectionManager` 只有一张连接字典，既无实体维度也无跨实例通路。",
+      "evidence": ["https://thingsboard.io/docs/pe/reference/architecture/"]
+    },
+    "tenant_resource_isolation": {
+      "finding": "租户隔离在每一层强制：数据库分区、消息队列 topic、缓存条目按租户切分；Tenant Profile 定义配额与资源上限",
+      "confidence": "LOW",
+      "note": "该描述来自 PE 文档，**CE 是否同等实现未核实** [uncertain]",
+      "significance": "R-MOS 当前无配额概念；此条属『知道存在即可』，单校规模暂不需要"
+    }
+  },
+  "rmos_decision_fields": {
+    "borrow_verdict": "需简化借鉴",
+    "what_to_borrow": [
+      "**订阅是按实体注册的显式对象**，取代 R-MOS 的单一全局连接字典（M-03/M-19）",
+      "**WS 复用 REST 的 JWT 体系**，不另造认证（M-03）",
+      "**租户归属进数据模型层级**，而非每个查询各自加过滤条件（M-12）"
+    ],
+    "what_not_to_borrow": ["Kafka/集群拓扑（R-MOS 单机）", "租户配额与 Tenant Profile", "规则链引擎", "完整 IoT 平台功能面"],
+    "failure_modes": ["把租户隔离做成『每个查询记得加 where school_id』——这正是 M-12 的成因，规模一大必然漏"],
+    "alternative_candidates": ["Eclipse Ditto（授权过滤下沉到通道层，更贴合）", "Eclipse BaSyx", "OpenRemote"]
+  },
+  "comparison_with_ditto": {
+    "subscription_isolation": "Ditto 做在**授权层**（按主体权限过滤事件）；ThingsBoard 做在**订阅注册层**（按实体注册订阅）。两者可叠加：先按订阅范围收敛，再按授权过滤。",
+    "tenant_model": "ThingsBoard 更强（显式 Tenant→Customer 层级）；Ditto 用 Policy 表达，更灵活但需自行设计层级",
+    "fit_for_rmos": "**Ditto 的授权过滤更直接回应 M-03**；ThingsBoard 的租户层级更直接回应 M-12。建议两者分别取用。"
+  }
+}
