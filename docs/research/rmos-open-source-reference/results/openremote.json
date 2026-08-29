@@ -1,0 +1,79 @@
+{
+  "_meta": {
+    "domain": "D-04", "research_question": "RQ-03 实时通道认证与多租户隔离",
+    "a6_masters": ["M-03", "M-01", "M-12"],
+    "collected_date": "2026-08-29", "researcher": "Claude（主审）",
+    "cross_source_review": "PENDING", "verification_level": "E1"
+  },
+  "identity_provenance": {
+    "project_name": "OpenRemote", "official_org": "openremote",
+    "repo_url": "https://github.com/openremote/openremote", "homepage_url": "https://openremote.io",
+    "created_date": "2016-02-03", "repo_status": "active", "last_push": "2026-08-28",
+    "primary_language": "Java", "stars": 1883, "forks": 465, "open_issues": 435,
+    "_confidence": "HIGH", "_evidence": ["https://api.github.com/repos/openremote/openremote"]
+  },
+  "hard_gates": {
+    "OSS-G1": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G2": {
+      "verdict": "**CONDITIONAL — 仅『只借设计』可用**",
+      "license_spdx": "AGPL-3.0-or-later",
+      "detection_note": "**GitHub API 返回 `license: NOASSERTION`**（第二个自动识别失败的候选）。读 `LICENSE.txt` 原文才确认为 AGPL v3 or later，且自述为『collective work』，依赖含 Apache-2.0 / LGPL-2.1 / LGPL-3 / GPL-2.0-with-classpath-exception / EDL-1.0 / BSD / Bouncycastle / RXTX / SLF4J 等多种许可证。",
+      "network_copyleft_clause": "**是。AGPL v3 含网络传播条款**——通过网络向用户提供服务即触发源码提供义务。",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "COMPATIBLE", "rationale": "阅读并借鉴设计不触发 AGPL 义务"},
+        "copy_code": {"verdict": "**INCOMPATIBLE**", "rationale": "AGPL 强互惠。复制代码将迫使 R-MOS 整体以 AGPL 开源"},
+        "add_dependency": {"verdict": "**INCOMPATIBLE**", "rationale": "同上；且为 Java，技术栈亦不符"},
+        "deploy_service": {"verdict": "**HIGH_RISK**", "rationale": "**AGPL 网络条款直接命中**：R-MOS 若部署 OpenRemote 并让师生经网络交互，须向使用者提供对应源码。若有任何修改，修改部分同样受约束"}
+      },
+      "confidence": "MEDIUM",
+      "note": "主审初步判断，非法律意见。**本候选仅按『只借设计』使用；任何其他方式须先经专业法律审查**（章程 §7.7 明列 AGPL 类网络传播为必须升级审查的情形）"
+    },
+    "OSS-G3": {"verdict": "PASS", "architecture_doc_url": "https://docs.openremote.io/docs/user-guide/identity-and-security/asset-security/", "confidence": "HIGH"},
+    "OSS-G4": {"verdict": "PASS", "last_push": "2026-08-28", "confidence": "HIGH"},
+    "OSS-G5": {"verdict": "PARTIAL", "security_policy": "仓库根目录存在 `SECURITY.md`", "note": "未取官方公告、漏洞库与 OpenSSF Scorecard，故不判 PASS", "confidence": "LOW"},
+    "OSS-G6": {"verdict": "PASS", "answers_a6_masters": ["M-01", "M-03", "M-12"], "answers_rq_ids": ["RQ-01", "RQ-03"], "confidence": "HIGH"}
+  },
+  "architecture_findings": {
+    "realm_as_tenancy_boundary": {
+      "finding": "**Realm 即租户边界**：每个 realm 有自己的用户、资产、代理、规则与品牌，彼此完全隔离",
+      "confidence": "MEDIUM",
+      "significance": "与 ThingsBoard 的 Tenant→Customer 层级同解，但更强调 realm 与身份系统（Keycloak）绑定——租户边界同时是**认证域**边界，而不只是数据过滤维度",
+      "evidence": ["https://docs.openremote.io/docs/user-guide/identity-and-security/realms-users-and-roles/"]
+    },
+    "user_asset_link_many_to_many": {
+      "finding": "**受限用户 ↔ 资产的多对多显式链接**：设为 `Restricted user` 的用户只能看到与其链接的资产；一个资产可链接多个用户，一个用户可链接多个资产",
+      "confidence": "MEDIUM",
+      "significance": "**这是第三种对象授权范式**——不是策略（Ditto）也不是实体层级（ThingsBoard），而是**把「谁能访问哪个对象」做成一张显式的多对多关系表**。R-MOS 的 M-01（94 条写操作仅 10 条有归属校验）恰恰缺的就是这样一个可查询的归属事实源：现在归属是散在每个端点里的条件判断，而不是一张表。",
+      "evidence": ["https://docs.openremote.io/docs/user-guide/identity-and-security/asset-security/"]
+    },
+    "attribute_level_access_metadata": {
+      "finding": "**授权粒度到属性**：受限用户只能看到被标记为 `ACCESS_RESTRICTED_READ` / `ACCESS_RESTRICTED_WRITE` 的属性；受限客户端更新资产时只有带 `ACCESS_RESTRICTED_WRITE` 的属性可改；新增属性自动带上这两个标记",
+      "confidence": "MEDIUM",
+      "significance": "授权是**数据模型上的元数据**，不是端点上的装饰器。与 Ditto 的资源路径授权同向，但用元数据标记表达，更接近 R-MOS 现有 ORM 模型的改造路径。**默认值的设计值得注意：新属性自动带受限读写标记，即默认收紧而非默认放开。**"
+    },
+    "unified_auth_across_protocols": {
+      "finding": "HTTP / MQTT / WebSocket 三种 API 共用同一身份体系；机密客户端可用 OAuth 2.0 client_credentials 免交互连接（含 WebSocket）",
+      "confidence": "MEDIUM",
+      "significance": "与 ThingsBoard 的『WS 复用 REST JWT』同解，进一步扩展到 MQTT。**R-MOS 的 WS 零认证在此对照下是三个候选一致否定的做法。**"
+    }
+  },
+  "rmos_decision_fields": {
+    "borrow_verdict": "可直接借鉴（设计层）",
+    "what_to_borrow": [
+      "**用户↔对象的多对多显式链接表**作为归属事实源，取代散在各端点的条件判断（M-01）",
+      "**授权元数据挂在数据模型属性上**，且**新属性默认收紧**（默认受限而非默认放开）",
+      "**租户边界同时是认证域边界**（M-12）"
+    ],
+    "what_not_to_borrow": ["**任何代码**（AGPL 强互惠）", "Keycloak 全套身份栈", "规则引擎与资产建模器"],
+    "critical_boundary": "**AGPL-3.0。本候选只可阅读借鉴，不得复制代码、不得作为依赖、不得部署。**",
+    "failure_modes": ["把归属判断继续留在端点里而不建立可查询的归属表 → M-01 的 84 条缺口只能逐条补，且无法验证补全"]
+  },
+  "comparison_d04": {
+    "three_paradigms": {
+      "Eclipse Ditto": "策略式资源路径授权（Policy → resource path → READ/WRITE/EXECUTE）",
+      "ThingsBoard": "实体层级授权（Tenant → Customer → Device）",
+      "OpenRemote": "多对多链接 + 属性级元数据（User ↔ Asset link + ACCESS_RESTRICTED_*）"
+    },
+    "fit_for_rmos": "R-MOS 已有 `school_id` 层级雏形（近 ThingsBoard）与 `ownership.py` 的 scope 函数（近 Ditto）。**OpenRemote 的显式链接表是三者中唯一能把「归属」变成可查询数据的**，对 M-01 的可验证性最有价值。"
+  }
+}
