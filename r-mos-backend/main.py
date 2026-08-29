@@ -77,14 +77,20 @@ async def lifespan(app: FastAPI):
 
 
 # 创建FastAPI应用
+# ⚠️ 安全边界：默认拒绝网关 enforce_authenticated 只挂在 /api/v1 前缀上，
+#    管不到 /docs、/redoc、/openapi.json 这些 FastAPI 自动注册的前缀外路由。
+#    因此把接口契约的暴露与 DEBUG 绑定：非 DEBUG（即生产）时三者全部关闭，
+#    不存在「匿名读取完整接口契约」的入口（审计 M-04）。
+_DOCS_ENABLED = settings.DEBUG
+
 app = FastAPI(
     title="R-MOS Backend",
     version="2.2.0",
     description="Robot Maintenance Operating System - MVP Backend",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    docs_url="/docs" if _DOCS_ENABLED else None,
+    redoc_url="/redoc" if _DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if _DOCS_ENABLED else None,
 )
 
 
@@ -353,14 +359,16 @@ logger.info("WebSocket路由已注册: /ws")
 
 @app.get("/", tags=["Root"])
 async def root():
-    """根路径，返回API信息"""
-    return {
+    """根路径。匿名可达（在默认拒绝网关的 /api/v1 前缀之外），
+    因此只返回存活信息，不暴露版本号与接口契约位置（审计 M-04）。"""
+    payload = {
         "service": "R-MOS Backend",
-        "version": "2.2.0",
         "status": "running",
-        "docs": "/docs",
-        "health": "/api/v1/health"
+        "health": "/api/v1/health",
     }
+    if _DOCS_ENABLED:
+        payload["docs"] = "/docs"
+    return payload
 
 
 # ===== 启动配置 =====

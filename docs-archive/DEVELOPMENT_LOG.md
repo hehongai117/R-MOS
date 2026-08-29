@@ -8406,3 +8406,57 @@ A6 的 M-10 → M-17 依赖边应收窄为：**受影响的只是 `integration-c
 
 - Result: PASS（M-10 已修复并实证）
 - Next Step: M-04（网关前缀）、M-05（删 adapter 端点，董事会已裁定）。
+
+## 2026-08-29 — 修复 M-04（接口契约匿名可读）与 M-05（adapter 域零授权）
+
+- Scope: `r-mos-backend/main.py`、`app/api/v1/__init__.py`，删除 `app/api/v1/endpoints/adapter.py`。前端 0 改动。
+- 董事会授权：「可以改代码」；M-05 的处置（删端点）已于本日裁定。
+
+### M-04：把接口契约的暴露与 DEBUG 绑定
+
+默认拒绝网关 `enforce_authenticated` 只挂在 `/api/v1` 前缀上，管不到 FastAPI 自动注册的
+`/docs`、`/redoc`、`/openapi.json`。改为 `docs_url="/docs" if settings.DEBUG else None`（redoc/openapi 同），
+非 DEBUG 时三者不注册；根路由 `/` 去掉版本号与文档指针。
+
+**未引入任何依赖，未写自定义认证包装**——FastAPI 原生支持传 `None` 关闭。
+
+实测（`env -i` 之外用真实 settings 加载）：
+
+| DEBUG | 路由总数 | `/docs` `/redoc` `/openapi.json` | `/` 返回 |
+|---|---:|---|---|
+| true | 182 | 全部存在 | 含 docs 指针 |
+| false | 178 | **全部不存在** | `{service, status, health}`，无版本号 |
+
+### M-05：删除 adapter 域 5 条端点
+
+删 `endpoints/adapter.py`，去掉 `app/api/v1/__init__.py` 的 import 与 `include_router` 两行。
+
+**故障注入能力本身未删**：`app/adapters/mock.py` 的 `inject_fault` 仍被
+`services/tool_executor.py` 与 `services/simulation/fault_scenarios.py` 内部使用，
+两者不经过被删的 HTTP 端点。删除的只是无消费者且无授权无审计的对外入口。
+
+删除前确认：全仓仅 2 处引用该模块（import + 注册），`tests/` 无任何测试引用这 5 条端点路径。
+
+### 测试
+
+`966 passed in 77.80s`，退出码 0。
+
+**基线是 971，少 5 个已查清且非回归**：`tests/unit/test_auth_boundary.py:66` 按 `app.routes`
+枚举生成 `MUST_AUTH_ENDPOINTS`，再用 `@pytest.mark.parametrize` 为每条非公开路由生成
+一个「拒绝匿名访问」用例。删 5 条路由即少 5 个参数化用例。**分母变小，不是用例失败。**
+
+> 附注：这也说明被删的 adapter 端点此前是**通过认证网关的**（需令牌），
+> 缺的是**授权与审计**，不是认证。M-05 的表述「零依赖」应读作「零端点级依赖」，
+> 全局网关仍然生效。该细节不改变删除决定。
+
+### 新观察：跑测试会污染被 Git 跟踪的文件（M-15 的补充证据）
+
+执行测试套件后 `git status` 出现 `M r-mos-backend/data/knowledge_store.json`，
+diff 显示条目 ID 与所有 timestamp 被整体重写（`kb-1787284693674` → `kb-1787991293183`）。
+
+M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → 容器重建回退到镜像版本」。
+**现补充一条：本地或 CI 跑一次测试就会改写它**，导致工作树变脏、且可能被误提交。
+本次已 `git checkout --` 还原，不计入本提交。
+
+- Result: PASS（M-04、M-05 已修复并实测；测试 966 绿）
+- Next Step: 待董事会指示。已完成的独立点修：M-10、M-04、M-05。
