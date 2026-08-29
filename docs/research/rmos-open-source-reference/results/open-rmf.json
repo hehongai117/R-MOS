@@ -2,10 +2,12 @@
   "_meta": {
     "domain": "D-03/D-08",
     "research_question": "RQ-04 机器人适配器契约：控制、急停、安全联锁",
-    "a6_masters": ["M-07"],
+    "a6_masters": [
+      "M-07"
+    ],
     "collected_date": "2026-08-29",
     "researcher": "Claude（主审）",
-    "cross_source_review": "PENDING",
+    "cross_source_review": "DONE（Codex）：A=SUPPORTED（MODE_EMERGENCY=5 属实）；但枚举是状态上报，不等于可执行可确认的安全停止；Interruption 析构自动恢复，禁止用于急停",
     "verification_level": "E1"
   },
   "identity_provenance": {
@@ -19,60 +21,128 @@
     "stars": 116,
     "forks": 104,
     "_confidence": "HIGH",
-    "_evidence": ["https://api.github.com/repos/open-rmf/rmf_ros2"]
+    "_evidence": [
+      "https://api.github.com/repos/open-rmf/rmf_ros2"
+    ]
   },
   "hard_gates": {
-    "OSS-G1": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G1": {
+      "verdict": "PASS",
+      "confidence": "HIGH"
+    },
     "OSS-G2": {
       "verdict": "PASS（初步，非法律意见）",
       "license_spdx": "Apache-2.0",
       "use_mode_conclusions": {
-        "only_design": {"verdict": "COMPATIBLE"},
-        "copy_code": {"verdict": "COMPATIBLE_WITH_CONDITIONS"},
-        "add_dependency": {"verdict": "NOT_APPLICABLE", "rationale": "C++/ROS 2"},
-        "deploy_service": {"verdict": "NOT_RECOMMENDED", "rationale": "需 ROS 2 运行时"}
+        "only_design": {
+          "verdict": "COMPATIBLE"
+        },
+        "copy_code": {
+          "verdict": "COMPATIBLE_WITH_CONDITIONS"
+        },
+        "add_dependency": {
+          "verdict": "NOT_APPLICABLE",
+          "rationale": "C++/ROS 2"
+        },
+        "deploy_service": {
+          "verdict": "NOT_RECOMMENDED",
+          "rationale": "需 ROS 2 运行时"
+        }
       },
       "confidence": "MEDIUM",
       "note": "许可证取自 rmf_ros2 仓库元数据。rmf_internal_msgs 为同组织仓库，其 LICENSE 未单独取证 [uncertain]"
     },
-    "OSS-G3": {"verdict": "PASS", "architecture_doc_url": "https://osrf.github.io/ros2multirobotbook/integration_fleets.html", "confidence": "HIGH"},
-    "OSS-G4": {"verdict": "PASS", "last_push": "2026-08-26T15:55:45Z", "confidence": "HIGH"},
-    "OSS-G5": {"verdict": "UNKNOWN", "confidence": "UNKNOWN", "note": "未取安全公告/OpenSSF；拟采用方式为『只借设计』"},
-    "OSS-G6": {"verdict": "PASS", "answers_a6_masters": ["M-07"], "answers_rq_ids": ["RQ-04"], "confidence": "HIGH"}
+    "OSS-G3": {
+      "verdict": "PASS",
+      "architecture_doc_url": "https://osrf.github.io/ros2multirobotbook/integration_fleets.html",
+      "confidence": "HIGH"
+    },
+    "OSS-G4": {
+      "verdict": "PASS",
+      "last_push": "2026-08-26T15:55:45Z",
+      "confidence": "HIGH"
+    },
+    "OSS-G5": {
+      "verdict": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "note": "未取安全公告/OpenSSF；拟采用方式为『只借设计』"
+    },
+    "OSS-G6": {
+      "verdict": "PASS",
+      "answers_a6_masters": [
+        "M-07"
+      ],
+      "answers_rq_ids": [
+        "RQ-04"
+      ],
+      "confidence": "HIGH"
+    }
   },
   "architecture_findings": {
     "emergency_stop": {
       "finding": "**急停是状态契约里的一级常量**：`RobotMode.msg` 定义 MODE_EMERGENCY = 5，与 IDLE/CHARGING/MOVING/PAUSED/WAITING/DOCKING/ADAPTER_ERROR 等并列",
-      "full_constants": ["MODE_IDLE=0","MODE_CHARGING=1","MODE_MOVING=2","MODE_PAUSED=3","MODE_WAITING=4","MODE_EMERGENCY=5","MODE_GOING_HOME=6","MODE_DOCKING=7","MODE_ADAPTER_ERROR=8","MODE_CLEANING=9","MODE_PERFORMING_ACTION=10","MODE_ACTION_COMPLETED=11"],
+      "full_constants": [
+        "MODE_IDLE=0",
+        "MODE_CHARGING=1",
+        "MODE_MOVING=2",
+        "MODE_PAUSED=3",
+        "MODE_WAITING=4",
+        "MODE_EMERGENCY=5",
+        "MODE_GOING_HOME=6",
+        "MODE_DOCKING=7",
+        "MODE_ADAPTER_ERROR=8",
+        "MODE_CLEANING=9",
+        "MODE_PERFORMING_ACTION=10",
+        "MODE_ACTION_COMPLETED=11"
+      ],
       "confidence": "HIGH",
-      "evidence": ["https://raw.githubusercontent.com/open-rmf/rmf_internal_msgs/main/rmf_fleet_msgs/msg/RobotMode.msg"],
+      "evidence": [
+        "https://raw.githubusercontent.com/open-rmf/rmf_internal_msgs/main/rmf_fleet_msgs/msg/RobotMode.msg"
+      ],
       "significance": "与 ros2_control 的关键差异：ros2_control 把急停留给生命周期错误态表达，Open-RMF 把它做成**机器人状态的显式枚举值**。后者更贴合 R-MOS 这种高层业务系统。"
     },
     "tiered_integration": {
       "finding": "分级接入：机队可按能力接入不同层级——最低只上报 FleetState，中间层支持 pause/resume（EasyTrafficLight），完整层响应导航指令（EasyFullControl）",
       "confidence": "MEDIUM",
       "significance": "**这条对 R-MOS 直接有用**：不同机型能力不同，契约应允许『只实现子集』而不是全有或全无。R-MOS 当前 BaseRobotAdapter 是 10 个抽象方法全量实现，无分级。",
-      "evidence": ["https://osrf.github.io/ros2multirobotbook/integration_fleets.html"]
+      "evidence": [
+        "https://osrf.github.io/ros2multirobotbook/integration_fleets.html"
+      ]
     },
     "interruption_model": {
       "finding": "RobotUpdateHandle 内含 Interruption 类：**中断是一个对象，对象析构即恢复任务**（RAII 语义）",
       "confidence": "MEDIUM",
       "significance": "把『中断』建模为有生命周期的对象而非一次性调用，天然保证成对与可恢复",
-      "evidence": ["https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotUpdateHandle.hpp"]
+      "evidence": [
+        "https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotUpdateHandle.hpp"
+      ]
     }
   },
   "rmos_decision_fields": {
     "borrow_verdict": "可直接借鉴（设计层）",
-    "use_mode_boundary": {"only_design": "推荐", "copy_small_code": "不适用", "add_library": "不适用", "deploy_service": "不推荐"},
+    "use_mode_boundary": {
+      "only_design": "推荐",
+      "copy_small_code": "不适用",
+      "add_library": "不适用",
+      "deploy_service": "不推荐"
+    },
     "what_to_borrow": [
       "**MODE_EMERGENCY 作为状态契约的一级枚举**——直接回应 M-07『契约无急停语义』",
       "**分级接入**：允许适配器只实现能力子集，取代 R-MOS 现在的全量抽象方法",
       "**中断建模为带生命周期的对象**（Python 可用上下文管理器等价表达）"
     ],
-    "what_not_to_borrow": ["ROS 2 消息传输与节点模型", "交通调度与多机队冲突消解（R-MOS 无此需求）"],
+    "what_not_to_borrow": [
+      "ROS 2 消息传输与节点模型",
+      "交通调度与多机队冲突消解（R-MOS 无此需求）"
+    ],
     "stack_gap": "C++/ROS 2 vs Python/FastAPI；仅设计可迁移",
-    "failure_modes": ["只抄枚举值不抄状态迁移规则，会得到一个『能标记急停但没人保证进入急停后停止动作』的契约——与 R-MOS 现状（Mock 内关键词触发）同类"],
-    "alternative_candidates": ["ros2_control（生命周期与错误分类更强，急停更弱）", "openTCS"]
+    "failure_modes": [
+      "只抄枚举值不抄状态迁移规则，会得到一个『能标记急停但没人保证进入急停后停止动作』的契约——与 R-MOS 现状（Mock 内关键词触发）同类"
+    ],
+    "alternative_candidates": [
+      "ros2_control（生命周期与错误分类更强，急停更弱）",
+      "openTCS"
+    ]
   },
   "comparison_with_ros2_control": {
     "emergency_stop": "Open-RMF 胜（显式枚举 vs [uncertain] 无契约级原语）",

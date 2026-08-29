@@ -2,13 +2,15 @@
   "_meta": {
     "domain": "D-03/D-08 机器人资源与适配器 / 仿真与机器人安全",
     "research_question": "RQ-04 机器人适配器契约：控制、急停、安全联锁的抽象设计",
-    "a6_masters": ["M-07", "M-05"],
+    "a6_masters": [
+      "M-07",
+      "M-05"
+    ],
     "collected_date": "2026-08-29",
     "researcher": "Claude（主审）",
-    "cross_source_review": "PENDING",
+    "cross_source_review": "DONE（Codex）：B=PARTIAL——无公开急停接口属实，但「停用生命周期」不构成急停保证；三态返回值需拆分为生命周期 CallbackReturn 与 read/write 返回类型两套",
     "verification_level": "E1（官方仓库元数据 + 官方文档；未部署、未运行）"
   },
-
   "identity_provenance": {
     "project_name": "ros2_control",
     "official_org": "ros-controls",
@@ -25,9 +27,10 @@
     "forks": 471,
     "open_issues": 122,
     "_confidence": "HIGH",
-    "_evidence": ["https://api.github.com/repos/ros-controls/ros2_control"]
+    "_evidence": [
+      "https://api.github.com/repos/ros-controls/ros2_control"
+    ]
   },
-
   "hard_gates": {
     "OSS-G1": {
       "verdict": "PASS",
@@ -38,10 +41,22 @@
       "verdict": "PASS（初步，非法律意见）",
       "license_spdx": "Apache-2.0",
       "use_mode_conclusions": {
-        "only_design": {"verdict": "COMPATIBLE", "rationale": "借鉴设计不触发任何许可证义务"},
-        "copy_code": {"verdict": "COMPATIBLE_WITH_CONDITIONS", "rationale": "Apache-2.0 需保留版权声明与 NOTICE、标注修改；R-MOS 为 Python，实际不太可能复制 C++ 代码"},
-        "add_dependency": {"verdict": "NOT_APPLICABLE", "rationale": "C++/ROS 2 包，无法作为 Python 依赖引入"},
-        "deploy_service": {"verdict": "NOT_RECOMMENDED", "rationale": "需整套 ROS 2 运行时；与 R-MOS 单机 compose + FastAPI 架构不匹配"}
+        "only_design": {
+          "verdict": "COMPATIBLE",
+          "rationale": "借鉴设计不触发任何许可证义务"
+        },
+        "copy_code": {
+          "verdict": "COMPATIBLE_WITH_CONDITIONS",
+          "rationale": "Apache-2.0 需保留版权声明与 NOTICE、标注修改；R-MOS 为 Python，实际不太可能复制 C++ 代码"
+        },
+        "add_dependency": {
+          "verdict": "NOT_APPLICABLE",
+          "rationale": "C++/ROS 2 包，无法作为 Python 依赖引入"
+        },
+        "deploy_service": {
+          "verdict": "NOT_RECOMMENDED",
+          "rationale": "需整套 ROS 2 运行时；与 R-MOS 单机 compose + FastAPI 架构不匹配"
+        }
       },
       "per_file_exceptions": "[uncertain: 未做逐文件扫描]",
       "transitive_dep_licenses": "[uncertain: 未做依赖树许可证审查——因拟采用方式为『只借设计』，按章程可不展开]",
@@ -69,42 +84,66 @@
     },
     "OSS-G6": {
       "verdict": "PASS",
-      "answers_a6_masters": ["M-07"],
-      "answers_rq_ids": ["RQ-04"],
+      "answers_a6_masters": [
+        "M-07"
+      ],
+      "answers_rq_ids": [
+        "RQ-04"
+      ],
       "basis": "直接提供『硬件适配器契约应包含哪些方法、错误如何分类与传播』的成型设计",
       "confidence": "HIGH"
     }
   },
-
   "architecture_findings": {
     "adapter_contract_shape": {
       "finding": "硬件组件契约 = 生命周期回调 + 读写 + 类型化返回值",
-      "lifecycle_methods": ["on_init", "on_configure", "on_activate", "on_deactivate", "on_cleanup", "on_shutdown", "on_error", "read", "write"],
+      "lifecycle_methods": [
+        "on_init",
+        "on_configure",
+        "on_activate",
+        "on_deactivate",
+        "on_cleanup",
+        "on_shutdown",
+        "on_error",
+        "read",
+        "write"
+      ],
       "confidence": "HIGH",
-      "evidence": ["https://raw.githubusercontent.com/ros-controls/ros2_control/master/hardware_interface/doc/hardware_components_userdoc.rst"]
+      "evidence": [
+        "https://raw.githubusercontent.com/ros-controls/ros2_control/master/hardware_interface/doc/hardware_components_userdoc.rst"
+      ]
     },
     "error_semantics": {
       "finding": "返回值是三态而非布尔：SUCCESS / FAILURE（可重试）/ ERROR（严重错误，转交 on_error 处理）。read()/write() 返回 ERROR 时框架调用 on_error(previous_state)。",
       "recovery_rule": "on_error 返回 SUCCESS 则回到 UNCONFIGURED 可恢复；返回 ERROR/FAILURE 则进入 FINALIZED 且不可恢复",
-      "states_observed": ["UNCONFIGURED", "INACTIVE", "FINALIZED"],
+      "states_observed": [
+        "UNCONFIGURED",
+        "INACTIVE",
+        "FINALIZED"
+      ],
       "confidence": "MEDIUM",
       "note": "状态名与恢复规则取自官方文档检索摘要，未逐字核对完整状态机页",
-      "evidence": ["https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_components_userdoc.html"]
+      "evidence": [
+        "https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_components_userdoc.html"
+      ]
     },
     "fault_propagation": {
       "finding": "Hardware Component Groups：把关联硬件分组后，组内一个执行器故障可**传播**到同组其他执行器；默认不分组时错误被隔离在单个组件内",
       "confidence": "MEDIUM",
-      "evidence": ["https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_interface_types_userdoc.html"]
+      "evidence": [
+        "https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_interface_types_userdoc.html"
+      ]
     },
     "emergency_stop": {
       "finding": "[uncertain] 『emergency stop handler plugin』出现在 ROSCon 演讲材料与 ros2_control_node 特性列表中，**未在当前 hardware_interface 正式文档中找到该原语的契约定义**",
       "confidence": "LOW",
       "note": "**这是本次研究最重要的一条限定。** 不得据此声称 ros2_control 的硬件契约自带急停原语。已核到的是：急停在该框架中更接近『通过生命周期去激活 + 错误态 + 组内传播』表达，而非一个独立的 emergency_stop() 抽象方法。",
-      "evidence": ["https://control.ros.org/rolling/doc/resources/resources.html"],
+      "evidence": [
+        "https://control.ros.org/rolling/doc/resources/resources.html"
+      ],
       "followup_needed": "查 ros2_control_node 的 emergency stop handler plugin 是否已合入 master 及其接口定义"
     }
   },
-
   "rmos_decision_fields": {
     "borrow_verdict": "需简化借鉴",
     "use_mode_boundary": {
@@ -130,9 +169,12 @@
       "照搬生命周期到一个没有实时约束的系统上，可能引入不必要的状态复杂度",
       "**若误以为其契约含急停原语而直接对标，会重蹈 M-07——契约里仍然没有急停**"
     ],
-    "alternative_candidates": ["Open-RMF（fleet adapter 的 Pause/Resume/Stop 模式控制）", "openTCS", "Viam"]
+    "alternative_candidates": [
+      "Open-RMF（fleet adapter 的 Pause/Resume/Stop 模式控制）",
+      "openTCS",
+      "Viam"
+    ]
   },
-
   "open_questions": [
     "ros2_control 的 emergency stop handler plugin 现状与接口（决定它对 RQ-04 的急停部分能否给出答案）",
     "该生命周期模型在**无实时约束**的业务系统中是否过重——需与 Open-RMF 的更高层 Pause/Resume/Stop 模型对比后再定"
