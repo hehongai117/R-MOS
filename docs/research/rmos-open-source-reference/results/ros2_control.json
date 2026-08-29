@@ -1,0 +1,140 @@
+{
+  "_meta": {
+    "domain": "D-03/D-08 机器人资源与适配器 / 仿真与机器人安全",
+    "research_question": "RQ-04 机器人适配器契约：控制、急停、安全联锁的抽象设计",
+    "a6_masters": ["M-07", "M-05"],
+    "collected_date": "2026-08-29",
+    "researcher": "Claude（主审）",
+    "cross_source_review": "PENDING",
+    "verification_level": "E1（官方仓库元数据 + 官方文档；未部署、未运行）"
+  },
+
+  "identity_provenance": {
+    "project_name": "ros2_control",
+    "official_org": "ros-controls",
+    "repo_url": "https://github.com/ros-controls/ros2_control",
+    "homepage_url": "https://control.ros.org",
+    "foundation_affiliation": "ROS 2 生态（Open Robotics / OSRA 治理下的 ros-controls 组织）[uncertain: 未逐条核对 OSRA 归属文件]",
+    "created_date": "2017-09-09",
+    "current_release_date": "[uncertain: 未取 releases 接口]",
+    "repo_status": "active（未归档、未禁用）",
+    "default_branch": "master",
+    "primary_language": "C++",
+    "code_size_kb": 16608,
+    "stars": 988,
+    "forks": 471,
+    "open_issues": 122,
+    "_confidence": "HIGH",
+    "_evidence": ["https://api.github.com/repos/ros-controls/ros2_control"]
+  },
+
+  "hard_gates": {
+    "OSS-G1": {
+      "verdict": "PASS",
+      "basis": "archived=false, disabled=false，官方仓库可定位",
+      "confidence": "HIGH"
+    },
+    "OSS-G2": {
+      "verdict": "PASS（初步，非法律意见）",
+      "license_spdx": "Apache-2.0",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "COMPATIBLE", "rationale": "借鉴设计不触发任何许可证义务"},
+        "copy_code": {"verdict": "COMPATIBLE_WITH_CONDITIONS", "rationale": "Apache-2.0 需保留版权声明与 NOTICE、标注修改；R-MOS 为 Python，实际不太可能复制 C++ 代码"},
+        "add_dependency": {"verdict": "NOT_APPLICABLE", "rationale": "C++/ROS 2 包，无法作为 Python 依赖引入"},
+        "deploy_service": {"verdict": "NOT_RECOMMENDED", "rationale": "需整套 ROS 2 运行时；与 R-MOS 单机 compose + FastAPI 架构不匹配"}
+      },
+      "per_file_exceptions": "[uncertain: 未做逐文件扫描]",
+      "transitive_dep_licenses": "[uncertain: 未做依赖树许可证审查——因拟采用方式为『只借设计』，按章程可不展开]",
+      "patent_grant": "Apache-2.0 含明示专利授权",
+      "confidence": "MEDIUM",
+      "note": "主审初步判断，非法律意见。拟采用方式仅为『只借设计』，不触发需升级专业审查的条件。"
+    },
+    "OSS-G3": {
+      "verdict": "PASS",
+      "architecture_doc_url": "https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_components_userdoc.html",
+      "source_locatable": true,
+      "confidence": "HIGH"
+    },
+    "OSS-G4": {
+      "verdict": "PASS",
+      "last_push": "2026-08-28T19:33:20Z",
+      "basis": "研究日前 1 天内有推送，远优于『近 12 个月有提交』",
+      "confidence": "HIGH"
+    },
+    "OSS-G5": {
+      "verdict": "UNKNOWN",
+      "basis": "未取 SECURITY 策略、官方公告、漏洞库结果与 OpenSSF Scorecard",
+      "confidence": "UNKNOWN",
+      "note": "按章程 OSS-G5 证据不足一律 UNKNOWN。因拟采用方式为『只借设计』（不引入代码、不部署），该门槛对本次结论的约束力有限，但**不得据此声称已通过**。"
+    },
+    "OSS-G6": {
+      "verdict": "PASS",
+      "answers_a6_masters": ["M-07"],
+      "answers_rq_ids": ["RQ-04"],
+      "basis": "直接提供『硬件适配器契约应包含哪些方法、错误如何分类与传播』的成型设计",
+      "confidence": "HIGH"
+    }
+  },
+
+  "architecture_findings": {
+    "adapter_contract_shape": {
+      "finding": "硬件组件契约 = 生命周期回调 + 读写 + 类型化返回值",
+      "lifecycle_methods": ["on_init", "on_configure", "on_activate", "on_deactivate", "on_cleanup", "on_shutdown", "on_error", "read", "write"],
+      "confidence": "HIGH",
+      "evidence": ["https://raw.githubusercontent.com/ros-controls/ros2_control/master/hardware_interface/doc/hardware_components_userdoc.rst"]
+    },
+    "error_semantics": {
+      "finding": "返回值是三态而非布尔：SUCCESS / FAILURE（可重试）/ ERROR（严重错误，转交 on_error 处理）。read()/write() 返回 ERROR 时框架调用 on_error(previous_state)。",
+      "recovery_rule": "on_error 返回 SUCCESS 则回到 UNCONFIGURED 可恢复；返回 ERROR/FAILURE 则进入 FINALIZED 且不可恢复",
+      "states_observed": ["UNCONFIGURED", "INACTIVE", "FINALIZED"],
+      "confidence": "MEDIUM",
+      "note": "状态名与恢复规则取自官方文档检索摘要，未逐字核对完整状态机页",
+      "evidence": ["https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_components_userdoc.html"]
+    },
+    "fault_propagation": {
+      "finding": "Hardware Component Groups：把关联硬件分组后，组内一个执行器故障可**传播**到同组其他执行器；默认不分组时错误被隔离在单个组件内",
+      "confidence": "MEDIUM",
+      "evidence": ["https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_interface_types_userdoc.html"]
+    },
+    "emergency_stop": {
+      "finding": "[uncertain] 『emergency stop handler plugin』出现在 ROSCon 演讲材料与 ros2_control_node 特性列表中，**未在当前 hardware_interface 正式文档中找到该原语的契约定义**",
+      "confidence": "LOW",
+      "note": "**这是本次研究最重要的一条限定。** 不得据此声称 ros2_control 的硬件契约自带急停原语。已核到的是：急停在该框架中更接近『通过生命周期去激活 + 错误态 + 组内传播』表达，而非一个独立的 emergency_stop() 抽象方法。",
+      "evidence": ["https://control.ros.org/rolling/doc/resources/resources.html"],
+      "followup_needed": "查 ros2_control_node 的 emergency stop handler plugin 是否已合入 master 及其接口定义"
+    }
+  },
+
+  "rmos_decision_fields": {
+    "borrow_verdict": "需简化借鉴",
+    "use_mode_boundary": {
+      "only_design": "推荐。R-MOS 的 BaseRobotAdapter 可按此重整契约",
+      "copy_small_code": "不适用（C++ → Python）",
+      "add_library": "不适用",
+      "deploy_service": "不推荐（需整套 ROS 2 运行时）"
+    },
+    "what_to_borrow": [
+      "**三态返回值取代布尔**：R-MOS 现有适配器方法多为成功/失败二值，无法区分『可重试』与『严重错误』",
+      "**显式生命周期**：R-MOS 的 BaseRobotAdapter 只有 connect/读取/注入故障，没有 configure/activate/deactivate/cleanup/error 的状态语义",
+      "**on_error 作为契约的一部分**：错误处理是抽象方法而不是调用方的 try/except",
+      "**故障传播的显式分组**：默认隔离、显式声明才传播——这个默认值的选择对安全语义很关键"
+    ],
+    "what_not_to_borrow": [
+      "实时性设计（R-MOS 无实时需求）",
+      "ROS 2 消息与节点模型",
+      "**不要假设它给了现成的急停原语**——见 emergency_stop 字段的 LOW 置信度"
+    ],
+    "stack_gap": "C++/ROS 2 vs Python/FastAPI。仅设计可迁移，代码不可迁移。",
+    "team_learning_cost": "低（只读设计文档，不需掌握 ROS 2 运行时）",
+    "failure_modes": [
+      "照搬生命周期到一个没有实时约束的系统上，可能引入不必要的状态复杂度",
+      "**若误以为其契约含急停原语而直接对标，会重蹈 M-07——契约里仍然没有急停**"
+    ],
+    "alternative_candidates": ["Open-RMF（fleet adapter 的 Pause/Resume/Stop 模式控制）", "openTCS", "Viam"]
+  },
+
+  "open_questions": [
+    "ros2_control 的 emergency stop handler plugin 现状与接口（决定它对 RQ-04 的急停部分能否给出答案）",
+    "该生命周期模型在**无实时约束**的业务系统中是否过重——需与 Open-RMF 的更高层 Pause/Resume/Stop 模型对比后再定"
+  ]
+}

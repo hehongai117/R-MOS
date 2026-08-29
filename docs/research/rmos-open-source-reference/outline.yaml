@@ -177,8 +177,17 @@ open_issues_for_board:
     recommendation: 改为方法论检索，产出判据条目，不进评分矩阵
 
 status:
-  step: "§7.2 步骤 1（研究域与字段框架）"
-  completed: [outline.yaml, fields.yaml]
-  next: "候选发现（§7.4 四类来源），每域先出 2 个样本做领域校准"
-  candidates_discovered: 0
+  step: "§7.2 步骤 4（分域深研）进行中"
+  scope_decision:
+    date: "2026-08-29"
+    by: 董事会
+    decision: >-
+      R0 为内部使用（非对外投标/尽调材料），据此把 8 个域收敛为「深做 2 个 + 其余降级」。
+      判据：A6 已证明骨架健康，外部参考的边际价值集中在 R-MOS **完全没有**的能力上。
+    deep: [D-03+D-08（机器人控制与急停，合并）, D-04（设备状态与订阅隔离）]
+    light: [D-05（只取执行前闸门语义）, D-07（只查「如何让身份来源错误无法通过 CI」）]
+    dropped_from_selection: [D-01, D-02, D-06（选型部分改为实践清单）]
+  completed: [outline.yaml, fields.yaml, "results/ros2_control.json"]
+  next: "D-03 补 Open-RMF、openTCS；随后 D-04"
+  candidates_discovered: 1
   candidates_scored: 0
