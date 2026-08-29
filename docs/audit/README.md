@@ -96,6 +96,8 @@
 - [A6 订正证据：M-06 审批链复验](./evidence/2026-08-29-a6-m06-approval-chain-reverification-v0.1.0.md)：两套审批实现逐项属性对比、四处断点、M-02 第 2 例、M-13 代码层证据、订正轮 1 复核记录与主审错误登记。
 - [A6 订正证据：M-14/M-19 复核](./evidence/2026-08-29-a6-m14-m19-reverification-v0.1.0.md)：M-14 剩余 4 组逐组判定、前端 import 图可达性独立计算（195 文件/17 不可达）、有状态单例 AST 机械枚举与口径声明、M-16 根因二分。
 - [A6 归并台账](./evidence/2026-08-28-a6-consolidation-ledger-v0.1.0.md)：185 条原始条目逐条归并去向，机械生成，未裁决数 0。
+- **[R0 研究域与候选框架](../research/rmos-open-source-reference/outline.yaml)**：8 个研究域、A6 Master 映射、RQ 覆盖核查、待董事会裁定的 2 个范围问题。
+- **[R0 深度研究字段定义](../research/rmos-open-source-reference/fields.yaml)**：硬门槛 OSS-G1~G6、100 分评分模型量化规则、§7.7 全字段、R0 退出条件。
 - **[A0–A6 收官 → R0 交接](../handover/2026-08-29-audit-a6-to-r0-handover-v0.1.0.md)**：精确恢复点、待决策点、Codex 调用模板、环境陷阱、**主审犯过的错**、新窗口启动提示词。
 
 ## 当前结论

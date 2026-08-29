@@ -1,0 +1,237 @@
+# R0 深度研究字段定义 — 每个候选项目必须填齐的字段
+# 依据：章程 §7.5 硬门槛 / §7.6 评分模型 / §7.7 深度研究字段
+# 每个字段值必须附 evidence_url + collected_date；无证据一律 UNKNOWN，不得留空或臆测。
+
+meta:
+  version: "0.1.0"
+  date: "2026-08-29"
+  applies_to: docs/research/rmos-open-source-reference/results/<project>.json
+
+# ---------------------------------------------------------------------------
+# 全局取值约定
+# ---------------------------------------------------------------------------
+conventions:
+  confidence_levels:
+    HIGH: 官方且可复现（官方仓库/文档/发布页/API 返回）
+    MEDIUM: 可信二手来源，或样本量不足的有限抽样
+    LOW: 单一自述（仅项目自己宣称，无第三方或可执行证据）
+    UNKNOWN: 无证据
+  rules:
+    - UNKNOWN 按该评分子项 0 分计
+    - LOW 不得单独支持任何硬门槛
+    - 每个字段必须带 evidence_url 与 collected_date
+    - 不确定值保留并标 "[uncertain]"，不得为了填满而猜测
+    - 成熟度/活跃度/社区采用三个维度**只计其定义字段**，禁止同一证据跨维度重复加分
+
+# ---------------------------------------------------------------------------
+# 硬门槛（§7.5）— 全部 PASS 才进入 100 分评分
+# ---------------------------------------------------------------------------
+hard_gates:
+  OSS-G1:
+    name: 官方仓库可定位且未归档/未禁用
+    fields: [repo_url, repo_archived, repo_disabled]
+    fail_action: 淘汰；若被行业标准替代，可仅作历史参考
+  OSS-G2:
+    name: 四种使用方式的初步许可证结论
+    fields:
+      - license_spdx
+      - license_file_url
+      - per_file_exceptions          # 逐文件例外
+      - transitive_dep_licenses      # 传递依赖许可证
+      - network_copyleft_clause      # 网络传播条款（AGPL 类）
+      - additional_restrictions
+      - patent_grant
+      - trademark_terms
+      - attribution_notice_required
+      - use_mode_conclusions:        # 四种方式分别判断
+          only_design: {verdict: null, rationale: null}
+          copy_code:   {verdict: null, rationale: null}
+          add_dependency: {verdict: null, rationale: null}
+          deploy_service: {verdict: null, rationale: null}
+    fail_action: 任一拟采用方式未知/不兼容/待专业审查时，只观察或改用其他方式，不得建议该方式
+    note: 主审只形成初步兼容判断，**不表述为法律意见**；R1 拟实际采用时须升级专业法律审查
+  OSS-G3:
+    name: 有可阅读的架构/开发文档且源代码可定位
+    fields: [architecture_doc_url, dev_doc_url, source_locatable]
+    fail_action: 缺一项则不得作为架构主参考
+  OSS-G4:
+    name: 近 12 个月有提交 / 稳定发布 / 维护组织明确支持声明 之一
+    fields: [last_commit_date, releases_last_12m, maintainer_support_statement_url]
+    fail_action: 三类证据皆无则判维护未知，不进入主榜
+  OSS-G5:
+    name: 安全与支持状态已取证
+    fields:
+      - target_version
+      - support_horizon
+      - security_policy_url
+      - official_advisories        # 含公告日期、修复状态、实际可利用性
+      - vuln_db_findings
+      - eol_status
+      - openssf_scorecard
+      - container_release_artifacts
+    fail_action: 证据不足一律 UNKNOWN；存在未缓解关键风险或已停止支持时禁止直接引入
+  OSS-G6:
+    name: 能明确回答至少一个 A6 架构问题
+    fields: [answers_a6_masters, answers_rq_ids]
+    fail_action: 只因「热门」而无对应问题则淘汰
+
+# ---------------------------------------------------------------------------
+# 100 分评分（§7.6）— primary(主审) 与 reviewer(异源) 分别打分
+# 单项差异 > 该项满分 20% 必须校准，两版原分与裁决理由都要保留
+# ---------------------------------------------------------------------------
+scoring:
+  business_fit:
+    weight: 25
+    evidence: 对应功能、单校/边缘部署、机器人/教学边界、可裁剪程度
+  architecture_quality:
+    weight: 20
+    evidence: 模块责任、依赖方向、适配器、状态机、数据所有权和扩展点
+  maturity:
+    weight: 15
+    quantified_subitems:
+      public_history:        {max: 4, rule: "≥5y:4 / ≥3y:3 / ≥2y:2 / ≥1y:1 / <1y:0"}
+      stable_release_policy: {max: 4, rule: "稳定版本+版本策略+升级迁移说明 三项齐全:4；每缺一项 -1；无稳定版本:0"}
+      governance:            {max: 3, rule: "维护组织+治理说明+CODEOWNERS或等价 三项齐全:3；每缺一项 -1"}
+      test_release_quality:  {max: 2, rule: "默认分支 CI + 可复现发布 两项齐全:2；仅一项:1；均无:0"}
+      docs_adoption:         {max: 2, rule: "架构/运维文档 + 可核实生产采用案例 均有:2；仅一项:1；均无:0"}
+  activity:
+    weight: 15
+    quantified_subitems:
+      recent_meaningful_commit: {max: 5, rule: "≤30d:5 / 31-90d:4 / 91-180d:3 / 181-365d:1 / >365d:0"}
+      stable_releases_12m:      {max: 4, rule: "≥4次:4 / 2-3次:3 / 1次:1 / 0次:0；滚动发布项目用官方维护记录等价取证"}
+      active_contributors_12m:  {max: 3, rule: "≥20人:3 / 5-19人:2 / 2-4人:1 / <2人:0"}
+      issue_pr_response:        {max: 3, rule: "最近 20 个有效样本首次维护者响应中位数 ≤7d:3 / 8-30d:2 / 31-90d:1 / >90d或无证据:0"}
+    definitions:
+      meaningful_commit: >-
+        对源代码、测试、架构/运维文档或正式发布物产生可核实影响的**非合并**提交；
+        纯格式、自动版本号、依赖机器人机械更新、仅合并分支**不计**
+      valid_sample: >-
+        研究截止日前最近关闭或仍开放的**真实用户** issue / 外部 PR；
+        排除 bot、spam、重复项、纯公告、维护者自建占位项；
+        不足 20 个时用全部样本并**降低证据可信度**
+  security_supply_chain:
+    weight: 10
+    evidence: SECURITY、威胁模型、依赖锁定、发布签名、OpenSSF 结果
+  community_adoption:
+    weight: 5
+    evidence: 星标、分叉、被依赖、机构采用、贡献者分布
+    note: 星标与 updated_at 只占辅助权重，防止「热门但不适合」挤掉真正匹配的项目
+  adoption_migration_cost:
+    weight: 10
+    evidence: 技术栈差异、部署负担、数据迁移、人员学习、长期维护
+    note: 高分 = 成本低
+
+  thresholds:
+    "85-100": 主参考候选，可进入 R1 对照
+    "75-84":  次参考候选，只借鉴明确子领域
+    "60-74":  思想参考，不得作为结构母版
+    "0-59":   淘汰
+  override: 任一硬门槛失败，无论总分多少都不得成为主参考
+
+  domain_calibration:
+    rule: >-
+      阈值只用于**同一研究域、同一预定使用方式内**的横向评分。
+      禁止把 LMS、机器人中间件、观测工具、策略引擎的总分直接互排。
+    freeze_point: 每域首批 2 个样本后冻结「领域校准说明」，列出发布模式、合理贡献者规模、采用证据形态
+    small_project_rule: 成熟但低频维护的小型项目保留原始分 + 领域说明，**不得手工改分**
+
+# ---------------------------------------------------------------------------
+# 深度研究字段（§7.7）— results/<project>.json 的结构
+# ---------------------------------------------------------------------------
+research_fields:
+  identity_provenance:
+    - project_name
+    - official_org
+    - repo_url
+    - homepage_url
+    - foundation_affiliation
+    - created_date
+    - first_stable_release
+    - current_stable_version
+    - current_release_date
+    - repo_status
+    - default_branch
+    - primary_language
+    - code_size
+
+  activity_maturity:
+    - last_commit_date
+    - commit_trend_90d
+    - commit_trend_365d
+    - releases_12m_count
+    - stable_vs_prerelease_ratio
+    - active_contributors_12m
+    - core_maintainer_concentration
+    - issue_first_response_sample
+    - pr_first_response_sample
+    - version_compat_policy
+    - migration_guide_url
+    - roadmap_url
+    - governance_doc_url
+    - codeowners_url
+
+  architecture_domain_capability:
+    - system_context
+    - module_map
+    - process_deployment_topology
+    - module_responsibilities_and_interfaces
+    - call_direction_and_extension_points
+    - data_ownership
+    - identity_tenant_role_object_permission
+    - workflow_state_machine_idempotency_retry_recovery_audit
+    - device_robot_model_adapter_telemetry_stop_semantics
+    - teaching_class_assignment_attempt_grade_report_evidence_semantics
+    - test_layers_examples_benchmarks_monitoring_backup_upgrade
+
+  security_license_supply_chain:
+    - license_spdx_and_exceptions
+    - trademark_additional_terms_patent_notice_cla
+    - four_use_mode_compatibility     # 见 OSS-G2
+    - direct_and_transitive_dep_licenses
+    - network_copyleft_conflict_risk
+    - target_version_support_horizon
+    - security_policy_advisories_vulndb
+    - disclosure_process_fix_status_exploitability
+    - openssf_scorecard
+    - container_artifacts_signing_sbom_dep_update
+
+  rmos_decision_fields:
+    - a6_master_ids                    # 对应 A6 0.1.1 的 Master 编号
+    - borrow_verdict                   # 可直接借鉴 / 需简化借鉴 / 明确不借鉴
+    - use_mode_boundary:               # 四种方式各自边界
+        only_design: null
+        copy_small_code: null
+        add_library: null
+        deploy_service: null
+    - stack_gap
+    - data_migration_cost
+    - runtime_cost
+    - team_learning_cost
+    - failure_modes
+    - exit_strategy
+    - alternative_candidates
+    - evidence_links
+    - collected_date
+    - uncertain_fields
+
+# ---------------------------------------------------------------------------
+# R0 产出与通过条件（§7.8）— 缺一不可
+# ---------------------------------------------------------------------------
+exit_requirements:
+  deliverables:
+    - 完整候选清单与淘汰记录
+    - 每项目结构化原始研究结果（results/*.json）
+    - 各研究域评分矩阵（decision-matrix.md）
+    - 每域 0–2 个主参考、最多 2 个次参考
+    - 「借什么、不借什么、为什么」的边界表
+    - 许可证与安全风险表
+    - R1 必须决策的问题清单
+  pass_criteria:
+    - 搜索达到路线饱和
+    - 取证完整
+    - 评分可复现
+    - 淘汰原因充分
+  explicit_allowance: >-
+    「零个合格主参考」是**允许且应明确记录的正式结论**——
+    R0 是否通过不取决于是否找到推荐项目。
+  hard_reject: 没有原始结果、证据链接和淘汰原因的「推荐榜单」不得通过

@@ -1,0 +1,184 @@
+# R0 开源参考架构研究 — 研究域与候选框架
+# 依据：董事会方向指令 0.2.0 §7；事实基线：A6 0.1.1（2026-08-29 Approved）
+
+meta:
+  name: R-MOS 开源参考架构研究
+  version: "0.1.0"
+  date: "2026-08-29"
+  phase: R0
+  charter: docs/plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.2.0.md#7
+  evidence_basis: docs/audit/2026-08-28-a6-master-audit-report-and-decision-input-v0.1.1.md
+  verification_ceiling: E1
+  auditor: Claude
+  cross_source_reviewer: Codex   # §5.8 强制，评分需双方分别打分
+  app_code_changes: 0
+
+  execution_deviation:
+    charter_ref: "§7.2 研究技能工作流"
+    issue: >-
+      章程规定的技能链为 research → research-add-items → research-add-fields →
+      research-deep → research-report 共 5 个技能。本环境仅存在 `research` 一个
+      （定义在 .claude/skills/research/SKILL.md，功能为「派后台 agent 调研一个问题并写一份 md」），
+      其余 4 个不存在。
+    resolution: >-
+      章程的**产物清单（§7.8）与硬门槛（§7.5）、评分模型（§7.6）、字段集（§7.7）是实质**，
+      技能链只是执行手段。按产物与门槛执行，手段改为：WebSearch/WebFetch 取一手证据 +
+      `research` 技能派后台 agent 做分域深研 + 主审汇总。**不降低任何门槛与字段要求。**
+    board_action_required: false   # 手段替换，不改变通过条件
+
+  scoring_note: >-
+    §7.6 规定主审与异源复核方分别评分，单项差异 >该项满分 20% 必须校准并保留两版原分。
+    本框架的 fields.yaml 为双方共用字段定义，评分表分列 primary/reviewer 两列。
+
+# ---------------------------------------------------------------------------
+# 研究域：严格照抄章程 §7.3 的 8 个域，不擅自增删。
+# rmos_questions 引自 A6 0.1.1 §7；a6_masters 为该域需回答的 Master 问题编号。
+# seeds 仅用于发现，章程明示「不表示当前活跃、适配或获准采用，R0 必须重新验证」。
+# ---------------------------------------------------------------------------
+domains:
+  - id: D-01
+    name: 平台与模块化单体
+    rmos_problem: 后端分层、模块责任、配置、迁移、测试和部署
+    rmos_questions: [RQ-06, RQ-08, RQ-07]
+    a6_masters: [M-17, M-21, M-25, M-14, M-09]
+    context_from_a6: >-
+      A3 已证明 R-MOS 后端分层干净（三个反向方向边数均为 0，仅 1 组循环依赖），
+      因此本域**不是找替换母版**，而是找「模块化单体如何组织 services 根目录、
+      如何做测试基座与生产基座一致、如何做接口契约校验」的可借鉴做法。
+      A6 0.1.1 明确：整体重写缺乏架构依据。
+    seeds: [FastAPI 官方 full-stack 模板, 成熟 Python 模块化单体项目]
+
+  - id: D-02
+    name: 教学与学习管理
+    rmos_problem: 学校、班级、教师、学生、作业、尝试、成绩和报告
+    rmos_questions: [RQ-01]
+    a6_masters: [M-08, M-12]
+    context_from_a6: >-
+      M-08：后端能力齐备但前端无写入口（建班/建课/加入/布置作业 + 训练会话 7 个写操作）。
+      本域重点是**领域模型与流程语义**，不是找一个 LMS 来替换。
+    seeds: [Moodle, Open edX, Frappe LMS]
+
+  - id: D-03
+    name: 机器人资源与适配器
+    rmos_problem: 型号、实例、能力、适配器和统一动作边界
+    rmos_questions: [RQ-04]
+    a6_masters: [M-07, M-05]
+    context_from_a6: >-
+      M-07（P0，阻断 E3）：`BaseRobotAdapter` 10 个抽象方法**无任何运动控制或急停**；
+      急停仅存在于 Mock 内由中文关键词触发，无 HTTP 端点。
+      硬边界：不接受无急停语义的契约；不接受靠字符串匹配触发安全动作。
+    seeds: [Open-RMF, openTCS, Viam]
+
+  - id: D-04
+    name: 设备、数字孪生与遥测
+    rmos_problem: 设备身份、当前/期望状态、订阅隔离和告警
+    rmos_questions: [RQ-03]
+    a6_masters: [M-03, M-19]
+    context_from_a6: >-
+      M-03（P0）：WebSocket 零认证、`robot_id` 不用于过滤、`send_to_user` 实为全量广播。
+      **A6 0.1.1 补充**：进程内状态问题比 0.1.0 描述的更广——除 M-19 原列 8 个单例外，
+      另有 `evidence_enforcer`、`orchestrator.task_state`、`orchestrator_v2._event_history`
+      三个持业务状态且零数据库，其中最后一个经 `/agent/v2/trace/{id}/events` 直供活页面。
+      因此本域必须同时回答「按对象订阅隔离」与「跨实例状态与广播」。
+    seeds: [Eclipse Ditto, Eclipse BaSyx, ThingsBoard, OpenRemote]
+
+  - id: D-05
+    name: 工作流、审批与状态机
+    rmos_problem: 长流程、人工确认、幂等、恢复和历史
+    rmos_questions: [RQ-02]
+    a6_masters: [M-06, M-22]
+    context_from_a6: >-
+      **A6 0.1.1 重写了这条的根因。** 不是「审批能力缺失」，而是
+      **审批闸门不在执行路径上**：`OrchestratorV2.process_request` 策略放行后直接
+      `_dispatch_module()`，`requires_approval` 是执行之后回填的标记。
+      因此本域的核心问题是：**如何在编排器中把人工闸门做成执行前的阻塞点**，
+      而不是「如何设计一张审批表」——后者 R-MOS 已经有了且实现规范。
+      硬边界：不接受进程内状态；不接受无审计的实现。
+    seeds: [Temporal, Flowable]   # 章程注明「仅研究语义」，不含部署评估
+
+  - id: D-06
+    name: 证据、时间线与可观测性
+    rmos_problem: 遥测文件、追踪、回放、指标和报告引用
+    rmos_questions: [RQ-05]
+    a6_masters: [M-18a, M-18b, M-16, M-15]
+    context_from_a6: >-
+      M-18a（P0，阻断生产启用）：无备份脚本、无恢复演练、无真实回滚演练。
+      M-18b：无监控/APM、无依赖漏洞扫描、后端 CI 无静态检查。
+      **A6 0.1.1 补充**：M-16 的「表空」根因需二分——一部分不是未实现，
+      而是数据写进了进程内存（`_event_history` 即为实证）。本域需回答
+      「回放/追踪数据的持久化与查询边界该怎么划」。
+      硬边界：不接受需要 K8s 等重型编排的方案（当前为单机 compose）。
+    seeds: [MCAP, OpenTelemetry, Rerun, Open MCT]
+
+  - id: D-07
+    name: 身份、授权与审计
+    rmos_problem: 多租户、对象权限、策略和拒绝审计
+    rmos_questions: [RQ-01]
+    a6_masters: [M-01, M-02, M-12, M-13, M-04]
+    context_from_a6: >-
+      M-01（P0）：94 条写操作仅 10 条有对象归属校验；46 条写端点拿不到调用者身份。
+      M-02（P0，**0.1.1 扩为系统性模式，≥2 例**）：认证身份与业务身份未强制绑定——
+      `force-submit` 用请求体 `teacher_id`；`/agent/execute` 已注入 `actor` 却用
+      `request.user_id` 写 `Command`，同一函数内 `Approval` 用的又是 `actor.user_id`。
+      **本域必须回答：如何在框架层面让「取错身份来源」不可能通过评审或 CI。**
+      M-13（P0，0.1.1 确认已落到代码层）：`auditor` 拥有 `approvals:grant`/`reject`。
+      硬边界：不接受需要放弃 FastAPI 依赖注入模型的方案。
+    seeds: [成熟 IAM/策略项目, 主流框架官方对象权限参考实现]
+
+  - id: D-08
+    name: 仿真与机器人安全
+    rmos_problem: 仿真、碰撞、动作限制和测试
+    rmos_questions: [RQ-04]
+    a6_masters: [M-07, M-05]
+    context_from_a6: >-
+      与 D-03 同源但关注点不同：D-03 问「契约怎么定义」，D-08 问「安全动作怎么验证」。
+      章程明示：**不能替代厂家安全证据**。
+      M-05 的裁定已由董事会给出（删 adapter 端点），但故障注入能力本身仍被
+      `tool_executor` 与 `simulation/fault_scenarios` 内部使用，本域需回答其边界。
+    seeds: [Gazebo, MoveIt]
+
+# ---------------------------------------------------------------------------
+# 覆盖核查：A6 0.1.1 §7 的 8 个 RQ 是否都落到了域上
+# ---------------------------------------------------------------------------
+rq_coverage:
+  RQ-01: {domains: [D-07, D-02], status: COVERED}
+  RQ-02: {domains: [D-05], status: COVERED}
+  RQ-03: {domains: [D-04], status: COVERED}
+  RQ-04: {domains: [D-03, D-08], status: COVERED}
+  RQ-05:
+    domains: [D-06]
+    status: PARTIAL
+    gap: >-
+      RQ-05 是「监控、备份、恢复与回滚的最小可用组合」。§7.3 的 8 个域中
+      没有一个以备份/恢复/回滚为主题；D-06 只覆盖到监控与追踪侧。
+      M-18a 是阻断生产启用的 P0，其参考架构问题目前无主责域。
+  RQ-06: {domains: [D-01], status: COVERED}
+  RQ-07:
+    domains: [D-01]
+    status: PARTIAL
+    gap: >-
+      RQ-07「新旧实现并存的收口方法论」是方法论而非软件类别，
+      难以按「候选项目 + 硬门槛 + 100 分」的模型研究。
+      建议改为文献/实践检索，产出方法论条目而非评分候选。
+  RQ-08: {domains: [D-01], status: COVERED}
+
+open_issues_for_board:
+  - id: R0-Q1
+    issue: >-
+      RQ-05（备份/恢复/回滚）在章程 §7.3 的 8 个研究域中无主责域，
+      而 M-18a 是阻断生产启用的 P0。
+    options:
+      - 增设第 9 个域「运行与恢复」（偏离章程域清单，需董事会批准）
+      - 并入 D-06 并扩其定义（改动最小）
+      - 声明 RQ-05 不走开源候选研究路径，改为运维实践清单（因其多为脚本与流程，非软件选型）
+    recommendation: 第三项——备份/恢复/回滚在单机 compose 规模下主要是流程与脚本，套用 100 分选型模型会空转
+  - id: R0-Q2
+    issue: RQ-07（并存收口方法论）不适配「候选项目 + 硬门槛 + 评分」模型
+    recommendation: 改为方法论检索，产出判据条目，不进评分矩阵
+
+status:
+  step: "§7.2 步骤 1（研究域与字段框架）"
+  completed: [outline.yaml, fields.yaml]
+  next: "候选发现（§7.4 四类来源），每域先出 2 个样本做领域校准"
+  candidates_discovered: 0
+  candidates_scored: 0
