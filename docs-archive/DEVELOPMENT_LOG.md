@@ -8460,3 +8460,38 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
 
 - Result: PASS（M-04、M-05 已修复并实测；测试 966 绿）
 - Next Step: 待董事会指示。已完成的独立点修：M-10、M-04、M-05。
+
+## 2026-08-30 — A0–A6 独立复核整改包
+
+- DateTime: 2026-08-29 至 2026-08-30，Asia/Shanghai
+- Task: 根据独立复核裁决纠正 A0–A6 当前正式材料，不修改历史报告和被审应用。
+- Scope (files changed):
+  - 新建 A0～A6 七份 `0.2.0` 订正版；
+  - 新建 A6 订正归并台账、治理闭环包、整改门禁脚本及 4 项测试；
+  - 新建整改计划与交接；
+  - 更新 `docs/audit/README.md` 当前状态和本开发记录；
+  - 未修改应用、测试、迁移、依赖、数据库、固定配置和资产。
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest docs/audit/evidence/test_a0_a6_remediation_gate.py -q`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/audit/evidence/2026-08-29-a0-a6-remediation-gate.py`
+  - `rg -l '复核状态：RETURN FOR REVISION' docs/audit/2026-08-29-a[0-6]-*.md | wc -l`
+  - `rg -n '^\| M-[0-9]{2}[ab]? \|' docs/audit/evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md | wc -l`
+  - `git diff --check`
+  - `git diff --name-only`、`git status --short`
+- Tests:
+  - 初始红灯 1：门禁模块不存在，`3 failed`，符合先建立失败检查的预期；
+  - 初始红灯 2：门禁模块建立后，七份订正版与交接尚缺，`1 failed, 2 passed`；
+  - 禁止虚假完成表述的新增检查先因函数不存在失败，随后实现；
+  - 最终单元测试：`4 passed in 0.01s`；
+  - 整改门禁：PASS，七份报告，26 个产品问题（P0 8/P1 11/P2 7），5 个治理阻断项；
+  - 状态行计数：7；Master 行计数：26；
+  - 新整改包、README、计划与交接的本地链接检查：0 个缺失；
+  - `git diff --check`：PASS。
+- Result: PASS（文档整改与机械校验完成）；A0–A6 审计本身仍为 RETURN FOR REVISION，不能写成正式完成。
+- Risks/Notes:
+  - 未启动服务、未连接数据库、未执行迁移、未联网、未访问生产、外部 AI 或真机；
+  - 未重跑应用测试，因为本批只改审计材料与只读校验器；
+  - M-AUD-06、准确批准链、P0 主备送达、阶段指纹复比仍需对应人类和获批环境完成；
+  - E1 FAIL、E2/E3/E4、REL-BLOCK-01 和生产启用状态未改变。
+- Next Step: 董事会先按治理闭环包批准定向重开 A0，再按 A0→A6 顺序增量补证和重新批准；不得直接把本整改提交当成 A6 批准。
