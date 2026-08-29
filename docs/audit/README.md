@@ -7,7 +7,7 @@
 | 项目 | 状态 |
 |---|---|
 | 阶段 | **A6 Ready for Board Review（2026-08-28）**——**A0–A6 审计序列全部完成**。应用代码继续冻结 |
-| 版本 | 1.1.0 |
+| 版本 | 1.1.1 |
 | 日期 | 2026-08-26 |
 | A0 现状基线 `B-ASIS` | `29d2a5889e3b320a3e777e3d8c19efbbe31c0294`（董事会方向指令 0.2.0 获批后的完整提交） |
 | Phase 3 前参照 `B-REF` | `361eaac85002eec4e9388ae4d7f30c2e3591eee6`（首个 Phase 3 应用提交的直接父提交） |
@@ -91,6 +91,7 @@
 - [A5 质量与运行证据](./evidence/2026-08-28-a5-quality-evidence-v0.1.0.md)：断言统计明细、授权与对象归属测试覆盖、CI workflow 逐条解析、测试基座。
 - **[A6 完整审计总报告与架构决策输入（0.1.0，Ready for Board Review）](./2026-08-28-a6-master-audit-report-and-decision-input-v0.1.0.md)**：唯一功能地图、唯一问题表（25 Master）、问题依赖图、模块处置候选、三路线比较、R0 研究问题清单。
 - [A6 归并台账](./evidence/2026-08-28-a6-consolidation-ledger-v0.1.0.md)：185 条原始条目逐条归并去向，机械生成，未裁决数 0。
+- **[A0–A6 收官 → R0 交接](../handover/2026-08-29-audit-a6-to-r0-handover-v0.1.0.md)**：精确恢复点、待决策点、Codex 调用模板、环境陷阱、**主审犯过的错**、新窗口启动提示词。
 
 ## 当前结论
 
