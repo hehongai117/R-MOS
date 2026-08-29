@@ -1,0 +1,79 @@
+{
+  "_meta": {
+    "domain": "D-03/D-08", "research_question": "RQ-04", "a6_masters": ["M-07"],
+    "collected_date": "2026-08-29", "researcher": "Claude（主审）",
+    "discovered_by": "**异源复核方 Codex 指出主审覆盖未饱和而补入**",
+    "cross_source_review": "PENDING", "verification_level": "E1"
+  },
+  "identity_provenance": {
+    "project_name": "VDA 5050", "type": "行业标准规范（非软件实现）",
+    "official_org": "VDA（德国汽车工业协会）／VDMA",
+    "repo_url": "https://github.com/VDA5050/VDA5050", "homepage_url": "https://www.vda.de/vda-5050",
+    "created_date": "2020-10-23", "repo_status": "active", "last_push": "2026-08-28",
+    "stars": 488, "forks": 151, "open_issues": 53,
+    "_confidence": "HIGH", "_evidence": ["https://api.github.com/repos/VDA5050/VDA5050"]
+  },
+  "hard_gates": {
+    "OSS-G1": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G2": {
+      "verdict": "PASS", "license_spdx": "MIT",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "COMPATIBLE"},
+        "copy_code": {"verdict": "NOT_APPLICABLE", "rationale": "本仓库是规范文档不是代码"},
+        "add_dependency": {"verdict": "NOT_APPLICABLE"},
+        "deploy_service": {"verdict": "NOT_APPLICABLE"}
+      },
+      "confidence": "HIGH",
+      "note": "规范文档仓库为 MIT。**实现库（如 vda-5050-lib.js）另有许可证，未取证** [uncertain]"
+    },
+    "OSS-G3": {"verdict": "PASS", "architecture_doc_url": "https://github.com/VDA5050/VDA5050/blob/main/VDA5050_EN.md", "confidence": "HIGH"},
+    "OSS-G4": {"verdict": "PASS", "last_push": "2026-08-28", "confidence": "HIGH"},
+    "OSS-G5": {"verdict": "NOT_APPLICABLE", "rationale": "规范文档，无运行时攻击面；但**不得据此认为采用其设计即安全**"},
+    "OSS-G6": {"verdict": "PASS", "answers_a6_masters": ["M-07"], "answers_rq_ids": ["RQ-04"], "confidence": "HIGH"}
+  },
+  "architecture_findings": {
+    "estop_typed_by_reset_authority": {
+      "finding": "**急停按『谁能确认解除』分类**，不是单一布尔：AUTOACK（保险杠/防护区触发，可自动确认）、MANUAL（须在车上手动确认）、REMOTE（设施级急停，须远程确认）",
+      "confidence": "MEDIUM",
+      "significance": "**直接回答 C-0 第 6 步『授权后人工解除』的结构**：解除权限不是一个全局设置，而是**急停类型的固有属性**。R-MOS 若只定义单一 EMERGENCY 枚举，无法表达『这个急停谁能解除』。",
+      "evidence": ["https://coatyio.github.io/vda-5050-lib.js/api/enums/EStop.html"]
+    },
+    "cancel_is_a_stateful_action": {
+      "finding": "取消订单是 **instantAction `cancelOrder`**：机器人收到后『尽快停止』；已调度的 action 取消并报 `FAILED`，运行中的 action 也取消并报 `FAILED`",
+      "confidence": "MEDIUM",
+      "significance": "**这正是主审 0.1.0 缺失的第 4、5 步的标准形态**——取消不是清本地队列，是一个**下发到设备、带逐动作状态反馈**的过程。每个被取消的动作都要显式报 FAILED，因此调用方能知道『取消到哪一步了』。",
+      "evidence": ["https://github.com/VDA5050/VDA5050/blob/main/VDA5050_EN.md"]
+    },
+    "mandatory_action_subset": {
+      "finding": "**每个机器人必须支持** `startPause` / `stopPause` / `cancelOrder` 三个动作",
+      "confidence": "MEDIUM",
+      "significance": "回应 C-5：能力分级不是『全部可选』，而是**有一个强制必选子集**。R-MOS 的适配器契约应照此划分必选与可选。"
+    },
+    "error_reference_mechanism": {
+      "finding": "instantAction 错误带 `errorReference: topic: instantAction` 与具体 `errorType`（如 `noOrderToCancel`）或通用 `instantActionError`",
+      "confidence": "MEDIUM",
+      "significance": "错误要能追溯到『哪条指令、哪类问题』，而非一个布尔失败"
+    },
+    "explicitly_not_a_safety_standard": {
+      "finding": "**VDA 5050 明确声明自身不是安全标准**",
+      "confidence": "MEDIUM",
+      "significance": "**这是本域最重要的一条边界声明。** 它承认：业务通信协议可以*表达*急停状态与取消意图，但**不构成安全回路**。R-MOS 无论把契约做得多完备，都不能替代物理安全回路与厂家安全证据。直接回应 R1-Q1。"
+    },
+    "version_volatility": {
+      "finding": "`eStop` 已更名为 `activeEmergencyStop`，`AUTOACK` 枚举在新版中被移除；v3.0.0（2026-03）含破坏性变更",
+      "confidence": "MEDIUM",
+      "note": "**借鉴时必须锁定版本**。本文件的枚举描述取自 v1.1/v2.0 实现库文档，与 v3.0.0 可能不一致 [uncertain]"
+    }
+  },
+  "rmos_decision_fields": {
+    "borrow_verdict": "可直接借鉴（设计层）",
+    "what_to_borrow": [
+      "**急停按解除权限分型**（自动确认／车端手动／远程），取代单一 EMERGENCY 枚举",
+      "**取消是带逐动作状态反馈的下发过程**，被取消动作显式报 FAILED——补齐 C-0 第 4、5 步",
+      "**强制必选动作子集**（暂停/恢复/取消）+ 可选能力",
+      "**错误带引用与类型**，可追溯到具体指令"
+    ],
+    "what_not_to_borrow": ["MQTT 传输与完整消息模式", "订单/节点/边的路径模型（R-MOS 非 AGV 场景）"],
+    "critical_boundary": "**VDA 5050 自述不是安全标准。** 借它的表达方式，不得据此声称获得了安全能力。"
+  }
+}

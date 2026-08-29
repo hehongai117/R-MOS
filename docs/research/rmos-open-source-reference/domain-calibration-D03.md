@@ -3,7 +3,7 @@
 - 冻结日期：2026-08-29
 - 依据：章程 §7.6「每域首批 2 个样本后冻结领域校准说明」——本域已取 3 个样本
 - 样本：ros2_control、Open-RMF、openTCS
-- 状态：**UNFROZEN（异源复核指出覆盖未饱和，需补 VDA 5050 与 OPC UA Robotics 后重新冻结）**
+- 状态：**REFROZEN（0.1.2）——已补 VDA 5050 与 OPC UA Robotics 两项标准类来源，待复核方确认饱和性**
 
 ## 发布模式
 

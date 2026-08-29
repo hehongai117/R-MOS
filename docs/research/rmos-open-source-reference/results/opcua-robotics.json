@@ -1,0 +1,69 @@
+{
+  "_meta": {
+    "domain": "D-03/D-08", "research_question": "RQ-04", "a6_masters": ["M-07"],
+    "collected_date": "2026-08-29", "researcher": "Claude（主审）",
+    "discovered_by": "**异源复核方 Codex 指出主审覆盖未饱和而补入**",
+    "cross_source_review": "PENDING", "verification_level": "E1"
+  },
+  "identity_provenance": {
+    "project_name": "OPC UA for Robotics — Part 1: Vertical Integration (OPC 40010-1)",
+    "type": "行业标准规范（Companion Specification）",
+    "official_org": "OPC Foundation + VDMA",
+    "spec_url": "https://reference.opcfoundation.org/specs/OPC-40010-1",
+    "normative_basis": "ISO 10218-1:2011",
+    "_confidence": "HIGH"
+  },
+  "hard_gates": {
+    "OSS-G1": {"verdict": "PASS（规范可定位）", "confidence": "HIGH"},
+    "OSS-G2": {
+      "verdict": "CONDITIONAL",
+      "note": "**OPC Foundation 规范有自己的使用条款，非开源许可证。** 只借鉴其概念模型不涉及分发；若要实现完整 companion spec 或声称合规，须另查其条款 [uncertain]",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "LIKELY_COMPATIBLE", "rationale": "借鉴概念区分（急停 vs 防护性停止）属通用工程知识"},
+        "copy_code": {"verdict": "NOT_APPLICABLE"},
+        "add_dependency": {"verdict": "NOT_APPLICABLE"},
+        "deploy_service": {"verdict": "NOT_APPLICABLE"}
+      },
+      "confidence": "LOW"
+    },
+    "OSS-G3": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G4": {"verdict": "PASS（标准在维护）", "confidence": "MEDIUM"},
+    "OSS-G5": {"verdict": "NOT_APPLICABLE"},
+    "OSS-G6": {"verdict": "PASS", "answers_rq_ids": ["RQ-04"], "confidence": "HIGH"}
+  },
+  "architecture_findings": {
+    "estop_vs_protective_stop": {
+      "finding": "**急停与防护性停止是两个不同的类型**：`EmergencyStopFunctionType`（§7.8，对应 ISO 10218-1 §5.5.2）与 `ProtectiveStopFunctionType`（§7.9，对应 §5.5.3，用于连接外部防护装置）",
+      "confidence": "HIGH",
+      "significance": "**R-MOS 与前四个候选都没有这个区分。** 急停是人主动触发的最高优先级停止；防护性停止是防护装置（光幕、安全门）触发的。两者的解除条件、优先级、责任方都不同，合并成一个 EMERGENCY 会丢失关键语义。",
+      "evidence": ["https://reference.opcfoundation.org/specs/OPC-40010-1/7.8/", "https://reference.opcfoundation.org/Robotics/v100/docs/7.7"]
+    },
+    "safety_state_is_aggregate": {
+      "finding": "`SafetyStateType` 的 `EmergencyStop` 变量为**聚合布尔**——当系统中『一个或多个』急停功能激活时为 TRUE；`ProtectiveStop` 同理",
+      "structure": "SafetyState.EmergencyStop = OR(所有 EmergencyStopFunction.Active)；每个功能实例有 `Name`（厂商特定标识）与 `Active`（布尔）",
+      "confidence": "HIGH",
+      "significance": "**急停不是一个布尔，是一组具名急停功能的聚合。** 这样才能回答『是哪一个急停被按下了』。ISO 10218-1 中唯一具名的是『示教器急停功能』，其余厂商自定义。"
+    },
+    "iso_grounding": {
+      "finding": "整个安全模型的规范依据是 **ISO 10218-1:2011**（§5.5.2 急停功能、§5.5.3 防护性停止功能）",
+      "confidence": "HIGH",
+      "significance": "**直接回答 R1-Q1『急停的权威层在哪』：权威在 ISO 10218-1，不在任何一个开源项目。** 软件契约的作用是*表达*与*上报*安全状态，不是*构成*安全功能。"
+    },
+    "separate_state_machine_and_stop_method": {
+      "finding": "另有 `OperationStateMachineType`（§7.10）与 `Stop` 方法（§7.16.8）与安全状态分列",
+      "confidence": "MEDIUM",
+      "significance": "**『运行状态机』『停止方法』『安全状态』是三个分离的关注点**，不应混在一个枚举里"
+    }
+  },
+  "rmos_decision_fields": {
+    "borrow_verdict": "可直接借鉴（概念模型）",
+    "what_to_borrow": [
+      "**急停 vs 防护性停止的二分**——五个候选中唯有它给出这个区分",
+      "**安全状态是具名功能实例的聚合**，可回答『哪一个急停被触发』",
+      "**运行状态机 / 停止方法 / 安全状态三者分离**",
+      "**以 ISO 10218-1 为规范依据**——软件契约只做表达与上报"
+    ],
+    "what_not_to_borrow": ["OPC UA 地址空间与信息模型的完整实现", "声称 companion spec 合规"],
+    "critical_boundary": "借鉴概念区分 ≠ 满足 ISO 10218-1。R-MOS 是训练与监控系统，真机阶段的安全合规须由厂家证据支撑。"
+  }
+}

@@ -188,6 +188,6 @@ status:
     light: [D-05（只取执行前闸门语义）, D-07（只查「如何让身份来源错误无法通过 CI」）]
     dropped_from_selection: [D-01, D-02, D-06（选型部分改为实践清单）]
   completed: [outline.yaml, fields.yaml, "results/ros2_control.json", "results/open-rmf.json", "results/opentcs.json", "domain-calibration-D03.md", "decision-matrix.md", "results/eclipse-ditto.json", "results/thingsboard.json"]
-  next: "D-03 REOPENED——补 VDA 5050 与 OPC UA Robotics；D-04 补第 3 候选后冻结校准"
-  candidates_discovered: 5
+  next: "D-03 复核方二次确认饱和性；D-04 补第 3 候选后冻结校准"
+  candidates_discovered: 7
   candidates_scored: 0
