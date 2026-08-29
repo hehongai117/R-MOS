@@ -187,7 +187,7 @@ status:
     deep: [D-03+D-08（机器人控制与急停，合并）, D-04（设备状态与订阅隔离）]
     light: [D-05（只取执行前闸门语义）, D-07（只查「如何让身份来源错误无法通过 CI」）]
     dropped_from_selection: [D-01, D-02, D-06（选型部分改为实践清单）]
-  completed: [outline.yaml, fields.yaml, "results/ros2_control.json", "results/open-rmf.json"]
-  next: "D-03 补 openTCS（第 3 个样本，用于领域校准冻结）；随后 D-04"
-  candidates_discovered: 2
+  completed: [outline.yaml, fields.yaml, "results/ros2_control.json", "results/open-rmf.json", "results/opentcs.json", "domain-calibration-D03.md"]
+  next: "D-03 出契约要素合成表（decision-matrix）；随后 D-04"
+  candidates_discovered: 3
   candidates_scored: 0

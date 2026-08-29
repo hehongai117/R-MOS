@@ -1,0 +1,71 @@
+{
+  "_meta": {
+    "domain": "D-03/D-08", "research_question": "RQ-04", "a6_masters": ["M-07"],
+    "collected_date": "2026-08-29", "researcher": "Claude（主审）",
+    "cross_source_review": "PENDING", "verification_level": "E1"
+  },
+  "identity_provenance": {
+    "project_name": "openTCS (open Transportation Control System)",
+    "official_org": "openTCS / Fraunhofer IML",
+    "repo_url": "https://github.com/openTCS/opentcs",
+    "homepage_url": "https://www.opentcs.org/",
+    "created_date": "2021-07-26", "repo_status": "active", "default_branch": "master",
+    "primary_language": "Java", "stars": 566, "forks": 188, "open_issues": 8,
+    "_confidence": "HIGH", "_evidence": ["https://api.github.com/repos/openTCS/opentcs"]
+  },
+  "hard_gates": {
+    "OSS-G1": {"verdict": "PASS", "confidence": "HIGH"},
+    "OSS-G2": {
+      "verdict": "PASS（只借设计）／CONDITIONAL（复制代码）",
+      "license_spdx": "多许可证（REUSE 规范）",
+      "detection_note": "**GitHub API 返回 license=null**，因该项目用 REUSE 规范（根目录 `LICENSES/` + `REUSE.toml`）而非单一 LICENSE 文件。若只看 API 元数据会误判为『许可证不明』→ 按 OSS-G1/G2 淘汰。**必须读原文才得出正确结论。**",
+      "licenses_present": ["Apache-2.0", "CC-BY-4.0", "CC0-1.0", "LGPL-2.1-only", "MIT", "OFL-1.1"],
+      "sampled_file_header": "opentcs-api-base/.../VehicleCommAdapter.java → SPDX-License-Identifier: MIT",
+      "use_mode_conclusions": {
+        "only_design": {"verdict": "COMPATIBLE", "rationale": "借鉴设计不触发义务"},
+        "copy_code": {"verdict": "REQUIRES_PER_FILE_CHECK", "rationale": "**仓库含 LGPL-2.1-only**。逐文件 SPDX 头决定适用条款，不能按仓库整体判断。抽样的 API 基类为 MIT，但不得外推 [uncertain]"},
+        "add_dependency": {"verdict": "NOT_APPLICABLE", "rationale": "Java，R-MOS 为 Python"},
+        "deploy_service": {"verdict": "NOT_RECOMMENDED", "rationale": "JVM 全栈 TCS，与 R-MOS 规模与用途不匹配"}
+      },
+      "confidence": "MEDIUM",
+      "note": "主审初步判断，非法律意见。拟采用方式为『只借设计』，不触发升级专业审查的条件。"
+    },
+    "OSS-G3": {"verdict": "PASS", "architecture_doc_url": "https://opentcs.org/docs/6/developer/developers-guide/opentcs-developers-guide.html", "confidence": "HIGH"},
+    "OSS-G4": {"verdict": "PASS", "last_push": "2026-08-26", "confidence": "HIGH"},
+    "OSS-G5": {"verdict": "UNKNOWN", "confidence": "UNKNOWN"},
+    "OSS-G6": {"verdict": "PASS", "answers_rq_ids": ["RQ-04"], "confidence": "HIGH"}
+  },
+  "architecture_findings": {
+    "adapter_contract_shape": {
+      "finding": "契约核心是**带背压的命令队列**，不是生命周期也不是状态枚举",
+      "methods": ["enable", "disable", "isEnabled", "getProcessModel", "createTransferableProcessModel", "getUnsentCommands", "getSentCommands", "getCommandsCapacity", "canAcceptNextCommand", "getRechargeOperation", "enqueueCommand", "clearCommandQueue", "canProcess", "onVehiclePaused", "processMessage"],
+      "confidence": "HIGH",
+      "evidence": ["https://raw.githubusercontent.com/openTCS/opentcs/master/opentcs-api-base/src/main/java/org/opentcs/drivers/vehicle/VehicleCommAdapter.java"]
+    },
+    "emergency_stop": {
+      "finding": "**契约里没有急停方法。** 最接近的是 `onVehiclePaused()`（通知暂停态变化）与 `clearCommandQueue()`（清空未发与已发命令队列）",
+      "confidence": "HIGH",
+      "significance": "停止在此模型中= **清空命令队列**，而非置一个状态位。这是第三种范式。"
+    },
+    "backpressure": {
+      "finding": "`getCommandsCapacity()` + `canAcceptNextCommand()` + 未发/已发双队列，构成显式背压与在途命令可见性",
+      "confidence": "HIGH",
+      "significance": "R-MOS 现在没有任何在途命令概念——下发即调用，无队列、无容量、无可见性"
+    },
+    "capability_negotiation": {
+      "finding": "`canProcess(order)` 让适配器自己回答『这个任务我能不能做』",
+      "confidence": "HIGH",
+      "significance": "与 Open-RMF 的分级接入同解，但更细：能力判断按**单个任务**而非按机型层级"
+    }
+  },
+  "rmos_decision_fields": {
+    "borrow_verdict": "需简化借鉴",
+    "what_to_borrow": [
+      "**命令队列 + 背压**：R-MOS 缺在途命令概念，是控制能力的前置条件",
+      "**canProcess(order) 逐任务能力协商**",
+      "**停止 = 清空队列**这一语义（与状态位互补：状态位表达『现在是急停态』，清队列表达『在途指令全部作废』）"
+    ],
+    "what_not_to_borrow": ["JVM/Guice 体系", "交通调度与路网模型"],
+    "failure_modes": ["只置急停状态位而不清在途命令队列 → 状态显示已停但排队指令继续下发，是典型的假急停"]
+  }
+}
