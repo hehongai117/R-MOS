@@ -1,0 +1,73 @@
+meta:
+  name: R-MOS 开源参考架构研究纠正版
+  version: "0.2.0"
+  date: "2026-08-30"
+  phase: R0
+  status: RETURN_FOR_REVISION
+  verification_ceiling: E1
+  charter: ../../plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.2.0.md
+  evidence_basis: ../../audit/2026-08-29-a6-master-audit-report-and-decision-input-v0.2.0.md
+  supersedes_for_current_use: ../rmos-open-source-reference/outline.yaml
+  binding_r1_input: false
+  reason_not_binding: A6 与 R0 均未重新批准
+
+rules:
+  - 八个研究域全部留在分母中；没有董事会逐域批准不得删除
+  - 软件候选与行业规范分开评估
+  - 未通过 OSS-G1 至 OSS-G6 的软件候选不得进入 100 分评分
+  - UNKNOWN 不得转换为 PASS
+  - 规范中的业务取消、状态上报或信息模型不得替代物理安全功能
+
+domains:
+  - id: D-01
+    name: 平台与模块化单体
+    status: NOT_STARTED
+    a6_masters: [M-09, M-10, M-11, M-14, M-15, M-17, M-20, M-21, M-24, M-25]
+  - id: D-02
+    name: 教学与学习管理
+    status: NOT_STARTED
+    a6_masters: [M-08, M-12, M-22, M-23]
+  - id: D-03
+    name: 机器人资源与适配器
+    status: PARTIAL_REOPENED
+    a6_masters: [M-05, M-07]
+  - id: D-04
+    name: 设备、数字孪生与遥测
+    status: PARTIAL_REOPENED
+    a6_masters: [M-03, M-12, M-15, M-19]
+  - id: D-05
+    name: 工作流、审批与状态机
+    status: NOT_STARTED
+    a6_masters: [M-06, M-22]
+  - id: D-06
+    name: 证据、时间线与可观测性
+    status: NOT_STARTED
+    a6_masters: [M-10, M-11, M-15, M-16, M-17, M-18a, M-18b, M-19, M-20, M-21, M-23, M-24]
+  - id: D-07
+    name: 身份、授权与审计
+    status: NOT_STARTED
+    a6_masters: [M-01, M-02, M-04, M-06, M-12, M-13]
+  - id: D-08
+    name: 仿真与机器人安全
+    status: PARTIAL_REOPENED
+    a6_masters: [M-05, M-07]
+
+a6_master_denominator:
+  count: 26
+  ids:
+    [M-01, M-02, M-03, M-04, M-05, M-06, M-07, M-08, M-09, M-10,
+     M-11, M-12, M-13, M-14, M-15, M-16, M-17, M-18a, M-18b, M-19,
+     M-20, M-21, M-22, M-23, M-24, M-25]
+  disputed: [M-14, M-19]
+
+execution:
+  historical_skill_chain_status: INVALIDATED_BY_MISSING_RAW_RECORDS
+  current_remediation:
+    research_add_items: candidate-register.yaml
+    research_add_fields: fields.yaml
+    research_deep: results/
+    research_report: report.md
+  independence_note: >-
+    本轮由 Codex 根据独立复核结果纠正材料。Claude 的旧版结果只作为历史输入；
+    本轮没有把同一材料的改写冒充为第二份独立评分。候选未通过全部硬门槛，
+    因而 §5.8 数值评分尚未触发。

@@ -1,0 +1,135 @@
+meta:
+  version: "0.2.0"
+  collected_date: "2026-08-30"
+  rule: 代码与许可证证据固定到提交；发布固定到 tag；规范固定版本
+
+sources:
+  - id: SRC-ROS2-HEAD
+    object: ros2_control
+    type: git_commit
+    revision: a3f21c141e69481e522129fd7cfb38009fd91d27
+    url: https://github.com/ros-controls/ros2_control/tree/a3f21c141e69481e522129fd7cfb38009fd91d27
+  - id: SRC-ROS2-G4
+    object: ros2_control
+    type: meaningful_commit
+    revision: ffcf444a69a5bdae7b19d09fc7e45e0224386231
+    date: "2026-08-24"
+    url: https://github.com/ros-controls/ros2_control/commit/ffcf444a69a5bdae7b19d09fc7e45e0224386231
+    basis: controller_manager 行为变更，不是 merge、格式或版本号提交
+  - id: SRC-RMF-ROS2
+    object: Open-RMF
+    type: meaningful_commit
+    revision: 3c71d70042528892d9505511808efc40aa15b665
+    date: "2026-08-26"
+    url: https://github.com/open-rmf/rmf_ros2/commit/3c71d70042528892d9505511808efc40aa15b665
+    basis: 构建配置兼容性变更
+  - id: SRC-RMF-MSG
+    object: Open-RMF
+    type: contract_source
+    revision: 6990fc7418c412234b4ff64f01560d8bf3047f46
+    url: https://github.com/open-rmf/rmf_internal_msgs/blob/6990fc7418c412234b4ff64f01560d8bf3047f46/rmf_fleet_msgs/msg/RobotMode.msg
+  - id: SRC-OPENTCS-HEAD
+    object: openTCS
+    type: meaningful_commit
+    revision: ace52f038490139691e7ebe4e69355849b99db22
+    date: "2026-08-26"
+    url: https://github.com/openTCS/opentcs/commit/ace52f038490139691e7ebe4e69355849b99db22
+    basis: 公开 API 依赖声明变更
+  - id: SRC-OPENTCS-REUSE
+    object: openTCS
+    type: license_mapping
+    revision: ace52f038490139691e7ebe4e69355849b99db22
+    url: https://github.com/openTCS/opentcs/blob/ace52f038490139691e7ebe4e69355849b99db22/REUSE.toml
+    basis: 映射仅见 CC0-1.0、CC-BY-4.0、MIT；目录中的许可证文本不能单独证明适用
+  - id: SRC-OPENTCS-REL
+    object: openTCS
+    type: release
+    version: v7.5.0
+    date: "2026-08-17"
+    url: https://github.com/openTCS/opentcs/releases/tag/v7.5.0
+  - id: SRC-DITTO-HEAD
+    object: Eclipse Ditto
+    type: git_commit
+    revision: 13d78a013e374b07b1335d44ab7948e32e65b423
+    url: https://github.com/eclipse-ditto/ditto/tree/13d78a013e374b07b1335d44ab7948e32e65b423
+  - id: SRC-DITTO-G4
+    object: Eclipse Ditto
+    type: meaningful_commit
+    revision: 809f44d3d834528c19176f41cb4e71238c87fe64
+    date: "2026-08-27"
+    url: https://github.com/eclipse-ditto/ditto/commit/809f44d3d834528c19176f41cb4e71238c87fe64
+    basis: PolicyEnforcer 缺陷修复，非 merge
+  - id: SRC-DITTO-REL
+    object: Eclipse Ditto
+    type: release
+    version: 3.9.6
+    date: "2026-07-29"
+    url: https://github.com/eclipse-ditto/ditto/releases/tag/3.9.6
+  - id: SRC-TB-HEAD
+    object: ThingsBoard CE
+    type: git_commit
+    revision: 5b643851a669a0b6e208ab9e5c3123a48a497630
+    url: https://github.com/thingsboard/thingsboard/tree/5b643851a669a0b6e208ab9e5c3123a48a497630
+  - id: SRC-TB-G4
+    object: ThingsBoard CE
+    type: meaningful_commit
+    revision: d2bfea1e75bf46b7e03f600426856993c99daae2
+    date: "2026-08-28"
+    url: https://github.com/thingsboard/thingsboard/commit/d2bfea1e75bf46b7e03f600426856993c99daae2
+    basis: edge 断连通知行为修复，非 merge
+  - id: SRC-TB-REL
+    object: ThingsBoard CE
+    type: release
+    version: v4.3.1.4
+    date: "2026-08-27"
+    url: https://github.com/thingsboard/thingsboard/releases/tag/v4.3.1.4
+  - id: SRC-OR-HEAD
+    object: OpenRemote
+    type: git_commit
+    revision: f34cf7f8d7f37b0bb3305856f27caacb97abc1da
+    url: https://github.com/openremote/openremote/tree/f34cf7f8d7f37b0bb3305856f27caacb97abc1da
+  - id: SRC-OR-G4
+    object: OpenRemote
+    type: meaningful_commit
+    revision: 04dfeea791fac10219b242e1baff01b5f527358b
+    date: "2026-08-28"
+    url: https://github.com/openremote/openremote/commit/04dfeea791fac10219b242e1baff01b5f527358b
+    basis: scheduler 行为缺陷修复，非 merge
+  - id: SRC-OR-LICENSE
+    object: OpenRemote
+    type: license_text
+    revision: f34cf7f8d7f37b0bb3305856f27caacb97abc1da
+    url: https://github.com/openremote/openremote/blob/f34cf7f8d7f37b0bb3305856f27caacb97abc1da/LICENSE.txt
+  - id: SRC-OR-REL
+    object: OpenRemote
+    type: release
+    version: 1.29.0
+    date: "2026-08-10"
+    url: https://github.com/openremote/openremote/releases/tag/1.29.0
+  - id: SRC-VDA-300
+    object: VDA 5050
+    type: normative_document
+    version: 3.0.0
+    revision: 0b2ae43154bcd1ab2be4e2445df8b406dcad77b2
+    url: https://github.com/VDA5050/VDA5050/blob/0b2ae43154bcd1ab2be4e2445df8b406dcad77b2/VDA5050_EN.md
+    anchors: [L138, L470-L480, L506, L1271-L1274]
+  - id: SRC-OPC-ROB-102
+    object: OPC UA for Robotics
+    type: normative_document
+    version: "1.02"
+    url: https://reference.opcfoundation.org/Robotics/v102/docs/7.7.2
+  - id: SRC-OPC-NODESET
+    object: OPC UA for Robotics
+    type: source_snapshot
+    revision: 4b79bcfaaa44929d8b50158d25b2f57d86aed5e8
+    url: https://github.com/OPCFoundation/UA-Nodeset/tree/4b79bcfaaa44929d8b50158d25b2f57d86aed5e8/Robotics
+  - id: SRC-ISO-13850
+    object: ISO 13850
+    type: normative_catalog
+    version: "2015"
+    url: https://www.iso.org/standard/59970.html
+  - id: SRC-ISO-3691-4
+    object: ISO 3691-4
+    type: normative_catalog
+    version: "2023"
+    url: https://www.iso.org/standard/83545.html

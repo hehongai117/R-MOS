@@ -1,0 +1,78 @@
+meta:
+  version: "0.2.0"
+  date: "2026-08-30"
+  status: INCOMPLETE_DENOMINATOR_RESTORED
+  saturation_reached: false
+  board_scope_reduction_approved: false
+  rejection_count: 0
+  rejection_note: 尚无候选完成全部门槛评估，不能无证据淘汰
+
+domains:
+  D-01:
+    status: NOT_STARTED
+    candidates:
+      - {name: FastAPI full-stack template, kind: software, state: NOT_RESEARCHED}
+      - {name: mature Python modular monolith examples, kind: discovery_query, state: NOT_SEARCHED}
+  D-02:
+    status: NOT_STARTED
+    candidates:
+      - {name: Moodle, kind: software, state: NOT_RESEARCHED}
+      - {name: Open edX, kind: software, state: NOT_RESEARCHED}
+      - {name: Frappe LMS, kind: software, state: NOT_RESEARCHED}
+  D-03:
+    status: PARTIAL_REOPENED
+    candidates:
+      - {name: ros2_control, kind: software, state: DEEP_RESULT_CORRECTED, result: results/ros2_control.json}
+      - {name: Open-RMF, kind: software, state: DEEP_RESULT_CORRECTED, result: results/open-rmf.json}
+      - {name: openTCS, kind: software, state: DEEP_RESULT_CORRECTED, result: results/opentcs.json}
+      - {name: Viam, kind: software, state: NOT_RESEARCHED}
+      - {name: VDA 5050, kind: normative_evidence, state: DEEP_RESULT_CORRECTED, result: results/vda5050.json}
+  D-04:
+    status: PARTIAL_REOPENED
+    candidates:
+      - {name: Eclipse Ditto, kind: software, state: DEEP_RESULT_CORRECTED, result: results/eclipse-ditto.json}
+      - {name: ThingsBoard CE, kind: software, state: DEEP_RESULT_CORRECTED, result: results/thingsboard.json}
+      - {name: OpenRemote, kind: software, state: DEEP_RESULT_CORRECTED, result: results/openremote.json}
+      - {name: Eclipse BaSyx, kind: software, state: NOT_RESEARCHED}
+      - {name: Eclipse Hono, kind: software, state: NOT_RESEARCHED}
+  D-05:
+    status: NOT_STARTED
+    candidates:
+      - {name: Temporal, kind: software, state: NOT_RESEARCHED}
+      - {name: Flowable, kind: software, state: NOT_RESEARCHED}
+  D-06:
+    status: NOT_STARTED
+    candidates:
+      - {name: OpenTelemetry, kind: software, state: NOT_RESEARCHED}
+      - {name: MCAP, kind: software, state: NOT_RESEARCHED}
+      - {name: Rerun, kind: software, state: NOT_RESEARCHED}
+      - {name: Open MCT, kind: software, state: NOT_RESEARCHED}
+      - {name: PostgreSQL backup and restore guidance, kind: normative_practice, state: NOT_RESEARCHED}
+  D-07:
+    status: NOT_STARTED
+    candidates:
+      - {name: Keycloak, kind: software, state: NOT_RESEARCHED}
+      - {name: OpenFGA, kind: software, state: NOT_RESEARCHED}
+      - {name: Open Policy Agent, kind: software, state: NOT_RESEARCHED}
+      - {name: Casbin, kind: software, state: NOT_RESEARCHED}
+  D-08:
+    status: PARTIAL_REOPENED
+    candidates:
+      - {name: Gazebo, kind: software, state: NOT_RESEARCHED}
+      - {name: MoveIt, kind: software, state: NOT_RESEARCHED}
+      - {name: OPC UA for Robotics 1.02, kind: normative_evidence, state: DEEP_RESULT_CORRECTED, result: results/opcua-robotics.json}
+      - {name: ISO 13850:2015, kind: normative_evidence, state: SOURCE_REGISTERED}
+      - {name: ISO 3691-4:2023, kind: normative_evidence, state: SOURCE_REGISTERED}
+
+search_records:
+  - id: SR-01
+    date: "2026-08-30"
+    scope: 固定八个既有研究对象的官方仓库或规范来源
+    method: GitHub 官方仓库、固定提交、发布接口与官方规范页
+    result: COMPLETED_FOR_EXISTING_EIGHT_ONLY
+  - id: SR-02
+    date: "2026-08-30"
+    scope: 八域候选发现、去重、淘汰与路线饱和
+    method: 章程要求的 GitHub、基金会目录、官方文档和既有候选四类来源
+    result: NOT_COMPLETED
+    blocker: 缺少逐域查询、分页、时间窗、候选加入/淘汰和饱和记录

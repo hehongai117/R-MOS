@@ -8525,3 +8525,36 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
   - 本次门禁通过只证明整改包内部一致，不改变 E1 FAIL、E2/E3/E4、REL-BLOCK-01 或生产状态；
   - 第三项意见未采用“全文件禁词扫描”，而是采用当前状态区检查，避免把明确标为历史的原始错误表述误判为当前结论。
 - Next Step: 完成最终验证后创建本地提交，不 push；之后可交 Claude Code 对修订提交做一次只读复核。
+
+## 2026-08-30 — R0 开源参考研究纠正包 0.2.0
+
+- DateTime: 2026-08-30 17:30:24 CST
+- Task: 根据 Codex 独立复核和 Claude Code 复验确认，纠正 R0 的急停、许可证、G4、范围与评分问题；保留旧版，新增 0.2.0 纠正版。
+- Scope (files changed):
+  - 新建 `docs/research/rmos-open-source-reference-v0.2.0/`，包含八域大纲、字段、候选/来源登记、8 份结果、D-03/D-04 校准、评分表、决策表、纠正台账、总报告和机械门禁；
+  - 新建 `docs/research/README.md` 与 `docs/research/test_r0_remediation_gate.py`；
+  - 新建并完成 `docs/plans/2026-08-30-r0-open-source-research-remediation-plan-v0.1.0.md`；
+  - 未修改历史 `docs/research/rmos-open-source-reference/`、应用、配置、数据库、迁移、依赖或应用测试。
+- Commands Run:
+  - `git status --short --branch`、`git rev-parse HEAD`、`git worktree list --porcelain`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest ../docs/research/test_r0_remediation_gate.py -q`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/research/rmos-open-source-reference-v0.2.0/validate_r0_remediation.py`；
+  - `jq -e . docs/research/rmos-open-source-reference-v0.2.0/results/*.json` 与 PyYAML 解析；
+  - 固定官方 GitHub HEAD/提交/发布并读取 openTCS `REUSE.toml`、VDA 5050 3.0.0、OPC UA Robotics、ISO 13850 与 ISO 3691-4 官方来源；
+  - 逐项检查 `source-register.yaml` URL；
+  - 本地 Markdown 链接检查、`git diff --check`、`git diff --name-only`、`git status --short`。
+- Tests:
+  - 红灯：纠正版和门禁不存在时 `9 failed`，失败原因与预期一致；
+  - 首次绿灯前：`1 failed, 8 passed`，门禁错误地把“已撤销 last_push”说明也视为依赖；修正为只检查结果 JSON 的证据字段；
+  - 最终机械测试：`9 passed in 0.08s`；
+  - 独立门禁：PASS，8 份结果、6 个软件、2 个规范、26 个 A6 Master；
+  - JSON 8/8、YAML 4/4 解析通过；本地 Markdown 缺失链接 0；
+  - 22 个外部来源中 GitHub/OPC 20 个返回 HTTP 200；ISO 两个官方页对命令行返回 403，但已通过官方网页检索确认存在，未将命令行 403 写成来源不存在；
+  - 历史 R0 目录本轮 diff 为空；`git diff --check` 通过。
+- Result: PASS（纠错包、结构和机械一致性完成）；R0 阶段仍为 RETURN FOR REVISION，不得作为 R1 绑定输入。
+- Risks/Notes:
+  - 六个软件候选的 OSS-G2/G5、贡献者和响应抽样仍有 UNKNOWN，因此均不具备数值评分资格；
+  - D-01、D-02、D-05、D-06、D-07 尚未深研，D-03/D-04 也未达到路线饱和；
+  - A6 0.2.0 未批准，M-14/M-19 仍 DISPUTED；
+  - 未启动服务、未接数据库、未执行迁移、未访问生产或真机、未 push。
+- Next Step: 交 Claude Code 对本地提交做只读独立复核；之后由董事会先闭合 A6，再按八域补搜索、G2/G5 和符合资格后的双人评分。

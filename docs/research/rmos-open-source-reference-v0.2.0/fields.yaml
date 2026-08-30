@@ -1,0 +1,66 @@
+meta:
+  version: "0.2.0"
+  date: "2026-08-30"
+  status: ACTIVE_FOR_REMEDIATION
+  source: 董事会方向指令 §7.5–§7.8
+
+conventions:
+  unknown: 无足够一手证据时必须写 UNKNOWN
+  not_applicable: 仅对象类型确实不适用时写 NOT_APPLICABLE，并给理由
+  evidence: 每个非 UNKNOWN 关键判断必须引用 source-register.yaml 的 source_id
+  immutable_source: GitHub 代码证据须固定 40 位提交或发布 tag；规范须固定版本
+  score_eligibility: 软件候选仅在 OSS-G1 至 OSS-G6 全部 PASS 后才能产生数值评分
+  normative_separation: 行业规范只做规范适用性评估，不参加 OSS 100 分排名
+
+software_required_fields:
+  identity_provenance:
+    [project_name, official_org, repo_url, homepage_url, foundation_affiliation,
+     created_date, first_stable_release, current_stable_version, current_release_date,
+     repo_status, default_branch, primary_language, code_size]
+  activity_maturity:
+    [last_commit_date, meaningful_commit_url, commit_trend_90d, commit_trend_365d,
+     releases_12m_count, stable_vs_prerelease_ratio, active_contributors_12m,
+     core_maintainer_concentration, issue_first_response_sample, pr_first_response_sample,
+     version_compat_policy, migration_guide_url, roadmap_url, governance_doc_url, codeowners_url]
+  architecture_domain_capability:
+    [system_context, module_map, process_deployment_topology,
+     module_responsibilities_and_interfaces, call_direction_and_extension_points,
+     data_ownership, identity_tenant_role_object_permission,
+     workflow_state_machine_idempotency_retry_recovery_audit,
+     device_robot_model_adapter_telemetry_stop_semantics,
+     teaching_class_assignment_attempt_grade_report_evidence_semantics,
+     test_layers_examples_benchmarks_monitoring_backup_upgrade]
+  security_license_supply_chain:
+    [license_spdx_and_exceptions, trademark_additional_terms_patent_notice_cla,
+     four_use_mode_compatibility, direct_and_transitive_dep_licenses,
+     network_copyleft_conflict_risk, target_version_support_horizon,
+     security_policy_advisories_vulndb, disclosure_process_fix_status_exploitability,
+     openssf_scorecard, container_artifacts_signing_sbom_dep_update,
+     professional_review_trigger]
+  rmos_decision_fields:
+    [a6_master_ids, borrow_verdict, use_mode_boundary, stack_gap, data_migration_cost,
+     runtime_cost, team_learning_cost, failure_modes, exit_strategy,
+     alternative_candidates, evidence_refs, collected_date, uncertain_fields,
+     binding_decision_allowed]
+
+normative_required_fields:
+  [document_name, official_org, document_type, version, publication_date, status,
+   scope, explicitly_out_of_scope, safety_role, rmos_use_boundary, evidence_refs,
+   collected_date, uncertain_fields]
+
+hard_gates:
+  OSS-G1: 官方仓库可定位且未归档或禁用
+  OSS-G2: 四种使用方式均有初步许可证边界，逐文件和组合不确定性不得外推
+  OSS-G3: 架构或开发文档与源代码均可定位
+  OSS-G4: 固定证据证明近 12 个月有意义提交、稳定发布或维护组织明确支持之一
+  OSS-G5: 目标版本、支持期、依赖、容器、公告、漏洞、披露和 OpenSSF 均已取证
+  OSS-G6: 至少回答一个 A6 架构问题
+
+scoring_dimensions:
+  business_fit: 25
+  architecture_quality: 20
+  maturity: 15
+  activity: 15
+  security_supply_chain: 10
+  community_adoption: 5
+  adoption_migration_cost: 10
