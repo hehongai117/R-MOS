@@ -8495,3 +8495,33 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
   - M-AUD-06、准确批准链、P0 主备送达、阶段指纹复比仍需对应人类和获批环境完成；
   - E1 FAIL、E2/E3/E4、REL-BLOCK-01 和生产启用状态未改变。
 - Next Step: 董事会先按治理闭环包批准定向重开 A0，再按 A0→A6 顺序增量补证和重新批准；不得直接把本整改提交当成 A6 批准。
+
+## 2026-08-30 — Claude Code 独立复核三项意见整改
+
+- DateTime: 2026-08-30，Asia/Shanghai
+- Task: 根据 Claude Code 对提交 `78d9c4b7` 的 CONDITIONAL 裁决，修复证据路径和整改门禁的三项局部缺陷。
+- Scope (files changed):
+  - 新建 A1 0.2.1，保留 A1 0.2.0；
+  - 新建整改交接 0.1.1，保留交接 0.1.0；
+  - 增强整改门禁与单元测试；
+  - 更新审计索引和整改计划；
+  - 未修改应用、配置、迁移、依赖、数据库或应用测试。
+- Commands Run:
+  - `~/.codex/superpowers/.codex/superpowers-codex bootstrap`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest docs/audit/evidence/test_a0_a6_remediation_gate.py -q`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/audit/evidence/2026-08-29-a0-a6-remediation-gate.py`
+  - `git diff --check`
+  - `git diff --name-only`、`git status --short`
+- Tests:
+  - 红灯：新增 A1 0.2.1、反引号路径、台账复算和 README 当前区检查后，`4 failed, 3 passed`；失败原因与三项复核意见一致；
+  - 绿灯：实现后 `7 passed in 0.02s`；
+  - 整改门禁：PASS，机械复算 26 个产品问题、P0 8/P1 11/P2 7、治理阻断 5；
+  - Markdown 链接和反引号证据路径均由门禁检查；
+  - README 仅检查历史分界线之前的当前状态，历史原文保留且不误报；
+  - `git diff --check`：PASS。
+- Result: PASS（Claude Code 提出的三项局部问题已定点修复）；A0–A6 审计本身仍为 RETURN FOR REVISION。
+- Risks/Notes:
+  - 未执行服务、数据库、迁移、网络、生产、真机或外部 AI 检查；
+  - 本次门禁通过只证明整改包内部一致，不改变 E1 FAIL、E2/E3/E4、REL-BLOCK-01 或生产状态；
+  - 第三项意见未采用“全文件禁词扫描”，而是采用当前状态区检查，避免把明确标为历史的原始错误表述误判为当前结论。
+- Next Step: 完成最终验证后创建本地提交，不 push；之后可交 Claude Code 对修订提交做一次只读复核。

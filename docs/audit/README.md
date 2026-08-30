@@ -7,14 +7,14 @@
 | 项目 | 当前结论 |
 |---|---|
 | A0–A6 | **RETURN FOR REVISION；七阶段均未真正通过** |
-| 当前正式报告 | A0～A6 的 0.2.0 订正版，入口见下方“当前订正版文件” |
+| 当前正式报告 | A1 为 0.2.1，其余阶段为 0.2.0，入口见下方“当前订正版文件” |
 | 事实基线 | `29d2a5889e3b320a3e777e3d8c19efbbe31c0294`；后续 HEAD 漂移另行登记，不倒改历史 |
 | 产品问题 | **26 个：P0 8、P1 11、P2 7** |
 | 审计治理阻断 | **5 个：批准链、M-AUD-06、P0 主备送达、阶段指纹/可复现性、当前漂移** |
 | 证据上限 | 静态 E1；E1 仍 FAIL，E2/E3/E4 与生产继续 BLOCKED |
 | 下一步 | 按治理闭环包定向重开 A0～A6；A6 再批准前不形成绑定性的 R0/R1 路线决定 |
 
-> 下方旧状态表和历史 0.1.x 报告保留用于追溯，但其 Approved、100%、CLOSED、25 个 Master 和“全部收口”等表述已被订正，不得继续作为当前批准依据。
+> 下方旧状态表和历史 0.1.x 报告保留用于追溯，但其中的 Approved、100%、CLOSED、25 个 Master 和无条件完成性表述均已被订正，不得继续作为当前批准依据。
 
 ## 历史状态快照（已被订正）
 
@@ -78,7 +78,8 @@
 ### 当前订正版文件
 
 - [A0 基线与事实源审计报告 0.2.0](./2026-08-29-a0-baseline-and-source-governance-audit-report-v0.2.0.md)
-- [A1 全系统功能与资产清单报告 0.2.0](./2026-08-29-a1-system-function-and-asset-inventory-v0.2.0.md)
+- [A1 全系统功能与资产清单报告 0.2.1](./2026-08-30-a1-system-function-and-asset-inventory-v0.2.1.md)
+- [A1 0.2.0（已被 0.2.1 替代）](./2026-08-29-a1-system-function-and-asset-inventory-v0.2.0.md)：保留 Claude Code 独立复核发现的历史脚本路径错误。
 - [A2 用户角色与业务闭环报告 0.2.0](./2026-08-29-a2-user-roles-and-business-closure-audit-report-v0.2.0.md)
 - [A3 当前架构与数据边界报告 0.2.0](./2026-08-29-a3-current-architecture-and-data-boundaries-v0.2.0.md)
 - [A4 身份、安全、控制与实时通道报告 0.2.0](./2026-08-29-a4-security-control-and-realtime-audit-report-v0.2.0.md)
@@ -86,7 +87,7 @@
 - [A6 总报告与决策输入 0.2.0](./2026-08-29-a6-master-audit-report-and-decision-input-v0.2.0.md)
 - [A6 订正归并台账](./evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md)
 - [A0–A6 治理闭环包](./evidence/2026-08-29-a0-a6-governance-closure-pack-v0.1.0.md)
-- [整改交接](../handover/2026-08-29-a0-a6-independent-review-remediation-handover-v0.1.0.md)
+- [整改交接 0.1.1](../handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md)
 
 ### 历史与其他文件
 
