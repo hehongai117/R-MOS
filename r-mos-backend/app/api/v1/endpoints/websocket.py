@@ -30,8 +30,11 @@ async def _handle_websocket(websocket: WebSocket, robot_id: int | None = None):
             data = await websocket.receive_text()
             logger.debug(f"收到WebSocket消息: {data}")
 
-            # MVP阶段不处理客户端消息，仅接收
-            # 生产版本可处理心跳、订阅控制等
+            # 审计 F-RT-01：此前收到消息后直接丢弃，导致 handle_client_message
+            # 零调用者 → last_pong 永不更新 → 心跳循环把健康连接判为失联：
+            # 约 90 秒起遥测被跳过（_push_telemetry 跳过 is_healthy=False），
+            # 约 150 秒被强制关闭（missed_pongs 达 MAX_MISSED_PONGS）。
+            await manager.handle_client_message(websocket, data)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)

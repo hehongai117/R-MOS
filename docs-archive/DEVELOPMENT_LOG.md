@@ -8558,3 +8558,59 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
   - A6 0.2.0 未批准，M-14/M-19 仍 DISPUTED；
   - 未启动服务、未接数据库、未执行迁移、未访问生产或真机、未 push。
 - Next Step: 交 Claude Code 对本地提交做只读独立复核；之后由董事会先闭合 A6，再按八域补搜索、G2/G5 和符合资格后的双人评分。
+
+## 2026-08-30 — 修复实时通道三项发现（F-RT-01/02/03）
+
+- Scope: `app/api/v1/endpoints/websocket.py`、`app/services/websocket_manager.py`，新增 `tests/unit/test_websocket_targeting.py`。前端 0 改动。
+- 授权：董事会「先修，等我确认完修复结果再确定是否开始 R1」。
+- 测试：**970 passed**（此前基线 966，+4 为本次新增回归测试）。
+
+### F-RT-01 心跳误杀健康连接
+
+`websocket.py` 收到客户端消息后仅 `logger.debug` 丢弃，导致 `handle_client_message`
+**零调用者**（注意方法名是 `handle_client_message`，此前证据文件误记为 `handle_message`，本次已核正）。
+`last_pong` 只在连接建立时赋值、此后永不更新。
+
+**完整后果链（本次补全，比原发现更严重）：**
+
+| 时刻 | 状态 |
+|---|---|
+| t≈90s | `missed_pongs=1`、`is_healthy=False` → **`_push_telemetry` 跳过该连接，遥测静默停止** |
+| t≈150s | `missed_pongs=3` 达 `MAX_MISSED_PONGS` → 强制关闭，reason="Heartbeat timeout" |
+
+即 5Hz 遥测实际只能正常工作约 90 秒。原发现只记录了 150 秒断开，**漏了 90 秒起先哑掉这一段**。
+
+**修复**：接收循环中调用 `manager.handle_client_message(websocket, data)`。前端 `useWebSocket.ts:134`
+本就正确回 `{"type":"pong"}`，后端 `handle_client_message` 本就能正确识别——**两端都对，中间缺一行调用**。
+
+### F-RT-02 串行投递
+
+`broadcast_to_channel`、`send_to_user` 与 **`_push_telemetry`** 三处均为 `for ... await send`，
+单个慢/半开连接阻塞本轮其余全部推送。改为 `asyncio.gather(..., return_exceptions=True)`。
+
+> `_push_telemetry` 是原发现未列出的第三处，且是 5Hz 主路径，受影响最重。
+
+### F-RT-03 + M-03 定向投递实为广播
+
+`broadcast_to_channel(channel, ...)` 与 `send_to_user(user_id, ...)` 此前均遍历全部连接发送，
+两个参数完全不生效。实际泄露内容（`teacher_monitor.py:65,98,131`）：
+**教师发给单个学员的私信**、**某学员的步骤失败告警（含 user_id/step_id/失败次数）**、班级频道事件。
+
+**修复与取舍：** `ConnectionState` 增加 `user_id` 与 `channels`，`connect()` 接受可选身份；
+两个方法按身份过滤后投递。
+
+> **明确记录的代价：** WebSocket 目前零认证（M-03 完整改造未做），因此**没有任何连接携带身份**，
+> `teacher_monitor` 的三处定向消息在 M-03 落地前**不会投递给任何人**，并打 warning 日志。
+> 这是**安全默认关闭**的选择：把「静默跨用户泄露」换成「明确不投递 + 日志可见」。
+> **该取舍使一个既有功能暂时失效**，若董事会要求功能优先，则须先做 WS 认证，届时不再属独立点修。
+
+### 回归测试（4 条，`@pytest.mark.regression`）
+
+私信不外泄 / 频道不越订阅 / 坏连接不阻断同批投递 / pong 能重置心跳计数。
+
+### 附带
+
+测试运行再次改写被 Git 跟踪的 `data/knowledge_store.json`（M-15），已 `git checkout --` 还原，不计入本提交。
+
+- Result: PASS
+- Next Step: 等待董事会确认修复结果，再定是否启动 R1。**R1 当前仍被 A0–A6 的 AG-01~AG-05 与 R0 零合格参考阻断。**
