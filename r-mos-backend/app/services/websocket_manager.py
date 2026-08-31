@@ -9,6 +9,7 @@ WebSocket连接管理器（V2.3 增强版 - 鲁棒性提升）
 """
 import asyncio
 import logging
+from collections.abc import Awaitable
 from typing import Dict, Optional
 from fastapi import WebSocket
 from datetime import datetime, timedelta, timezone
@@ -18,6 +19,11 @@ from app.adapters.factory import AdapterFactory
 from app.adapters.schemas import TelemetryMessage, TelemetryPayload
 
 logger = logging.getLogger(__name__)
+
+
+def utc_timestamp() -> str:
+    """返回单一 UTC 后缀的 RFC 3339 时间。"""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 @dataclass
@@ -48,6 +54,7 @@ class ConnectionManager:
     HEARTBEAT_INTERVAL = 30  # 秒
     MAX_MISSED_PONGS = 3  # 允许连续丢失的心跳次数
     PUSH_INTERVAL = 0.2  # 5Hz = 200ms
+    SEND_TIMEOUT = 0.2  # 单连接发送不得拖过一个遥测周期
     
     def __init__(self):
         self.connections: Dict[str, ConnectionState] = {}
@@ -93,9 +100,10 @@ class ConnectionManager:
         
         # 停止后台任务（如果没有连接了）
         if len(self.connections) == 0:
-            if self._push_task:
+            current_task = asyncio.current_task()
+            if self._push_task and self._push_task is not current_task:
                 self._push_task.cancel()
-            if self._heartbeat_task:
+            if self._heartbeat_task and self._heartbeat_task is not current_task:
                 self._heartbeat_task.cancel()
     
     async def handle_client_message(self, websocket: WebSocket, message: str):
@@ -112,6 +120,49 @@ class ConnectionManager:
             state.missed_pongs = 0
             state.is_healthy = True
             logger.debug(f"收到心跳响应 [{conn_id}]")
+
+    async def _bounded_send(
+        self,
+        conn_id: str,
+        send_operation: Awaitable[None],
+        context: str,
+    ) -> bool:
+        """在固定上限内执行单连接发送，避免半开连接拖停全体。"""
+        try:
+            await asyncio.wait_for(send_operation, timeout=self.SEND_TIMEOUT)
+            return True
+        except TimeoutError:
+            logger.warning(
+                "%s [%s] 超过 %.3fs，连接将被清理",
+                context,
+                conn_id,
+                self.SEND_TIMEOUT,
+            )
+        except Exception as exc:
+            logger.warning("%s [%s] 失败: %s", context, conn_id, exc)
+        return False
+
+    async def _close_and_disconnect(
+        self,
+        websocket: WebSocket,
+        *,
+        code: int,
+        reason: str,
+    ) -> None:
+        """先有界关闭套接字，再移出连接表并停止后台任务。"""
+        conn_id = self._conn_id(websocket)
+        state = self.connections.get(conn_id)
+        if state is not None:
+            state.is_healthy = False
+        try:
+            await asyncio.wait_for(
+                websocket.close(code=code, reason=reason),
+                timeout=self.SEND_TIMEOUT,
+            )
+        except Exception as exc:
+            logger.warning("关闭连接 [%s] 失败: %s", conn_id, exc)
+        finally:
+            self.disconnect(websocket)
     
     async def _heartbeat_loop(self):
         """心跳检测循环（30s 间隔）"""
@@ -120,34 +171,44 @@ class ConnectionManager:
                 await asyncio.sleep(self.HEARTBEAT_INTERVAL)
                 
                 now = datetime.now(timezone.utc)
+                targets = list(self.connections.items())
+                ping = {"type": "ping", "timestamp": utc_timestamp()}
+                results = await asyncio.gather(
+                    *(
+                        self._bounded_send(
+                            conn_id,
+                            state.websocket.send_json(ping),
+                            "心跳发送",
+                        )
+                        for conn_id, state in targets
+                    ),
+                    return_exceptions=True,
+                )
                 stale_connections = []
-                
-                for conn_id, state in list(self.connections.items()):
-                    try:
-                        # 发送 Ping
-                        await state.websocket.send_json({"type": "ping", "timestamp": now.isoformat() + "Z"})
-                        logger.debug(f"发送心跳 [{conn_id}]")
-                        
-                        # 检查上次 Pong 时间
-                        if now - state.last_pong > timedelta(seconds=self.HEARTBEAT_INTERVAL * 2):
-                            state.missed_pongs += 1
-                            state.is_healthy = False
-                            logger.warning(f"连接不健康 [{conn_id}]，连续丢失心跳: {state.missed_pongs}")
-                            
-                            if state.missed_pongs >= self.MAX_MISSED_PONGS:
-                                stale_connections.append(state.websocket)
-                    
-                    except Exception as e:
-                        logger.error(f"心跳发送失败 [{conn_id}]: {e}")
+
+                for (conn_id, state), result in zip(targets, results):
+                    if result is not True:
                         stale_connections.append(state.websocket)
+                        continue
+
+                    logger.debug(f"发送心跳 [{conn_id}]")
+                    if now - state.last_pong > timedelta(seconds=self.HEARTBEAT_INTERVAL * 2):
+                        state.missed_pongs += 1
+                        state.is_healthy = False
+                        logger.warning(f"连接不健康 [{conn_id}]，连续丢失心跳: {state.missed_pongs}")
+
+                        if state.missed_pongs >= self.MAX_MISSED_PONGS:
+                            stale_connections.append(state.websocket)
                 
                 # 清理失效连接
                 for ws in stale_connections:
-                    self.disconnect(ws)
-                    try:
-                        await ws.close(code=1000, reason="Heartbeat timeout")
-                    except Exception:
-                        pass
+                    await self._close_and_disconnect(
+                        ws,
+                        code=1000,
+                        reason="Heartbeat timeout",
+                    )
+                if not self.connections:
+                    break
                 
             except asyncio.CancelledError:
                 logger.info("心跳任务已取消")
@@ -167,7 +228,7 @@ class ConnectionManager:
                 
                 message = TelemetryMessage(
                     type="telemetry",
-                    timestamp=datetime.now(timezone.utc).isoformat() + "Z",
+                    timestamp=utc_timestamp(),
                     payload=TelemetryPayload(
                         joints=joints,
                         sensors=sensors,
@@ -184,18 +245,24 @@ class ConnectionManager:
                 ]
 
                 async def _push_one(conn_id: str, state: ConnectionState):
-                    try:
-                        await state.websocket.send_text(message_json)
-                        return None
-                    except Exception as e:
-                        logger.error(f"发送消息失败 [{conn_id}]: {e}")
-                        return state.websocket
+                    return await self._bounded_send(
+                        conn_id,
+                        state.websocket.send_text(message_json),
+                        "遥测发送",
+                    )
 
                 results = await asyncio.gather(
                     *(_push_one(cid, st) for cid, st in healthy), return_exceptions=True
                 )
-                for ws in [r for r in results if r is not None and not isinstance(r, BaseException)]:
-                    self.disconnect(ws)
+                for (_, state), result in zip(healthy, results):
+                    if result is not True:
+                        await self._close_and_disconnect(
+                            state.websocket,
+                            code=1011,
+                            reason="Send timeout",
+                        )
+                if not self.connections:
+                    break
                 
                 await asyncio.sleep(self.PUSH_INTERVAL)
                 
@@ -227,19 +294,25 @@ class ConnectionManager:
             return 0
 
         async def _one(conn_id: str, state: ConnectionState) -> bool:
-            try:
-                await state.websocket.send_json(message)
-                return True
-            except Exception as e:
-                logger.warning(f"[UF-07] Send to {conn_id} failed: {e}")
-                return False
+            return await self._bounded_send(
+                conn_id,
+                state.websocket.send_json(message),
+                "[UF-07] 定向发送",
+            )
 
         results = await asyncio.gather(
             *(_one(cid, st) for cid, st in targets), return_exceptions=True
         )
+        for (_, state), result in zip(targets, results):
+            if result is not True:
+                await self._close_and_disconnect(
+                    state.websocket,
+                    code=1011,
+                    reason="Send timeout",
+                )
         return sum(1 for r in results if r is True)
 
-    async def broadcast_to_channel(self, channel: str, message: dict) -> None:
+    async def broadcast_to_channel(self, channel: str, message: dict) -> int:
         """向**订阅了该频道**的连接投递消息。
 
         审计 F-RT-03：此前 `channel` 参数完全不被使用，实为全量广播，
@@ -256,8 +329,9 @@ class ConnectionManager:
             )
         else:
             logger.debug(f"[UF-07] 频道 {channel} 投递 {sent}/{len(targets)}")
+        return sent
 
-    async def send_to_user(self, user_id: int, message: dict) -> None:
+    async def send_to_user(self, user_id: int, message: dict) -> int:
         """向**该用户的**连接投递消息。
 
         审计 M-03/F-RT-03：此前遍历全部连接发送，名为定向实为广播，
@@ -274,8 +348,8 @@ class ConnectionManager:
             )
         else:
             logger.debug(f"[UF-07] 用户 {user_id} 投递 {sent}/{len(targets)}")
+        return sent
 
 
 # 全局单例
 manager = ConnectionManager()
-

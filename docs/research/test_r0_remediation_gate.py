@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,6 +47,22 @@ def test_unqualified_candidates_are_not_numerically_scored() -> None:
     gate = _load_gate()
     result = gate.validate_package(PACKAGE, ROOT)
     assert result.numeric_scores_for_ineligible == []
+
+
+def test_five_domain_discovery_is_registered_without_false_saturation() -> None:
+    register = yaml.safe_load((PACKAGE / "candidate-register.yaml").read_text(encoding="utf-8"))
+    assert register["meta"]["saturation_reached"] is False
+    discovery_domains = {"D-01", "D-02", "D-05", "D-06", "D-07"}
+    software_count = 0
+    for domain_id in discovery_domains:
+        domain = register["domains"][domain_id]
+        assert domain["status"] == "FIRST_PASS_DISCOVERY_COMPLETE"
+        software_count += sum(item["kind"] == "software" for item in domain["candidates"])
+    assert software_count == 20
+    assert (
+        PACKAGE
+        / "evidence/2026-08-30-five-domain-candidate-discovery-v0.1.0.md"
+    ).is_file()
 
 
 @pytest.mark.parametrize("master_id", ["M-01", "M-02", "M-06", "M-13", "M-18a"])

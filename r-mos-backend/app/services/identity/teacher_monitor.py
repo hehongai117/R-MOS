@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from datetime import datetime, timezone
 
-from app.services.websocket_manager import manager
+from app.services.websocket_manager import manager, utc_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +57,21 @@ class TeacherMonitorService:
 
         message = {
             "type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": utc_timestamp(),
             "data": data,
         }
 
-        await manager.broadcast_to_channel(channel, message)
-        logger.info(f"[UF-07] Published {event_type} to channel {channel}")
+        delivered = await manager.broadcast_to_channel(channel, message)
+        if delivered:
+            logger.info(
+                f"[UF-07] Delivered {event_type} to {delivered} connection(s) "
+                f"on channel {channel}"
+            )
+        else:
+            logger.warning(
+                f"[UF-07] Event {event_type} not delivered: channel {channel} "
+                "has no eligible connection"
+            )
 
     async def publish_step_warning(
         self,
@@ -86,7 +94,7 @@ class TeacherMonitorService:
 
         message = {
             "type": "step_warning",
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": utc_timestamp(),
             "data": {
                 "user_id": user_id,
                 "step_id": step_id,
@@ -95,11 +103,18 @@ class TeacherMonitorService:
             },
         }
 
-        await manager.broadcast_to_channel(channel, message)
-        logger.warning(
-            f"[UF-07] Step warning: user {user_id}, step {step_id}, "
-            f"attempts {attempt_count} in class {class_id}"
-        )
+        delivered = await manager.broadcast_to_channel(channel, message)
+        if delivered:
+            logger.warning(
+                f"[UF-07] Step warning delivered to {delivered} connection(s): "
+                f"user {user_id}, step {step_id}, attempts {attempt_count}, "
+                f"class {class_id}"
+            )
+        else:
+            logger.warning(
+                f"[UF-07] Step warning not delivered: user {user_id}, "
+                f"step {step_id}, attempts {attempt_count}, class {class_id}"
+            )
 
     async def publish_teacher_message(
         self,
@@ -119,7 +134,7 @@ class TeacherMonitorService:
         # 构建消息
         ws_message = {
             "type": "teacher_message",
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": utc_timestamp(),
             "data": {
                 "user_id": user_id,
                 "message": message,
@@ -128,8 +143,17 @@ class TeacherMonitorService:
         }
 
         # 发送给特定学员
-        await manager.send_to_user(user_id, ws_message)
-        logger.info(f"[UF-07] Sent teacher message to user {user_id}")
+        delivered = await manager.send_to_user(user_id, ws_message)
+        if delivered:
+            logger.info(
+                f"[UF-07] Delivered teacher message to user {user_id} "
+                f"on {delivered} connection(s)"
+            )
+        else:
+            logger.warning(
+                f"[UF-07] Teacher message not delivered: user {user_id} "
+                "has no eligible connection"
+            )
 
     def _class_channel(self, class_id: int) -> str:
         """获取班级频道名称"""

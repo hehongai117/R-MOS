@@ -9,16 +9,19 @@ meta:
 
 domains:
   D-01:
-    status: NOT_STARTED
+    status: FIRST_PASS_DISCOVERY_COMPLETE
     candidates:
-      - {name: FastAPI full-stack template, kind: software, state: NOT_RESEARCHED}
-      - {name: mature Python modular monolith examples, kind: discovery_query, state: NOT_SEARCHED}
+      - {name: FastAPI Full Stack Template, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Django, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Cookiecutter Django, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Zulip, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
   D-02:
-    status: NOT_STARTED
+    status: FIRST_PASS_DISCOVERY_COMPLETE
     candidates:
-      - {name: Moodle, kind: software, state: NOT_RESEARCHED}
-      - {name: Open edX, kind: software, state: NOT_RESEARCHED}
-      - {name: Frappe LMS, kind: software, state: NOT_RESEARCHED}
+      - {name: Moodle, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Open edX, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Frappe LMS, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Canvas LMS, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
   D-03:
     status: PARTIAL_REOPENED
     candidates:
@@ -36,25 +39,27 @@ domains:
       - {name: Eclipse BaSyx, kind: software, state: NOT_RESEARCHED}
       - {name: Eclipse Hono, kind: software, state: NOT_RESEARCHED}
   D-05:
-    status: NOT_STARTED
+    status: FIRST_PASS_DISCOVERY_COMPLETE
     candidates:
-      - {name: Temporal, kind: software, state: NOT_RESEARCHED}
-      - {name: Flowable, kind: software, state: NOT_RESEARCHED}
+      - {name: Temporal, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Flowable, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Camunda 8, kind: software, state: OBSERVATION_ONLY_PENDING_G2}
+      - {name: SpiffWorkflow, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
   D-06:
-    status: NOT_STARTED
+    status: FIRST_PASS_DISCOVERY_COMPLETE
     candidates:
-      - {name: OpenTelemetry, kind: software, state: NOT_RESEARCHED}
-      - {name: MCAP, kind: software, state: NOT_RESEARCHED}
-      - {name: Rerun, kind: software, state: NOT_RESEARCHED}
-      - {name: Open MCT, kind: software, state: NOT_RESEARCHED}
+      - {name: OpenTelemetry Collector, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: MCAP, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Rerun, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Open MCT, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
       - {name: PostgreSQL backup and restore guidance, kind: normative_practice, state: NOT_RESEARCHED}
   D-07:
-    status: NOT_STARTED
+    status: FIRST_PASS_DISCOVERY_COMPLETE
     candidates:
-      - {name: Keycloak, kind: software, state: NOT_RESEARCHED}
-      - {name: OpenFGA, kind: software, state: NOT_RESEARCHED}
-      - {name: Open Policy Agent, kind: software, state: NOT_RESEARCHED}
-      - {name: Casbin, kind: software, state: NOT_RESEARCHED}
+      - {name: Keycloak, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: OpenFGA, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Open Policy Agent, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
+      - {name: Apache Casbin, kind: software, state: RETAIN_FOR_DEEP_RESEARCH}
   D-08:
     status: PARTIAL_REOPENED
     candidates:
@@ -76,3 +81,10 @@ search_records:
     method: 章程要求的 GitHub、基金会目录、官方文档和既有候选四类来源
     result: NOT_COMPLETED
     blocker: 缺少逐域查询、分页、时间窗、候选加入/淘汰和饱和记录
+  - id: SR-03
+    date: "2026-08-30"
+    scope: D-01、D-02、D-05、D-06、D-07 第一轮候选发现
+    method: 23 条公开搜索首屏查询与官方仓库、维护组织、基金会目录入口复核
+    result: FIRST_PASS_RECORDED_NOT_SATURATED
+    evidence: evidence/2026-08-30-five-domain-candidate-discovery-v0.1.0.md
+    blocker: 未完成分页、路线饱和、固定目标版本、§7.7 深研与 G1～G6 判定

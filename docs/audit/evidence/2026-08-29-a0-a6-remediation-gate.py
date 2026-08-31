@@ -34,7 +34,10 @@ SUPPORT_PATHS = (
     "docs/audit/README.md",
     "docs/audit/evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md",
     "docs/audit/evidence/2026-08-29-a0-a6-governance-closure-pack-v0.1.0.md",
+    "docs/audit/evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md",
+    "docs/audit/evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md",
     "docs/handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md",
+    "docs/handover/2026-08-31-r1-start-readiness-v0.1.0.md",
     "docs/plans/2026-08-29-a0-a6-independent-review-remediation.md",
 )
 
@@ -205,11 +208,15 @@ def validate_package(repo_root: Path) -> list[str]:
     errors.extend(find_local_link_errors(current_files))
     errors.extend(find_backtick_path_errors(current_files, repo_root))
 
-    governance = repo_root / SUPPORT_PATHS[2]
-    handover = repo_root / SUPPORT_PATHS[3]
+    governance = repo_root / "docs/audit/evidence/2026-08-29-a0-a6-governance-closure-pack-v0.1.0.md"
+    handovers = [
+        repo_root
+        / "docs/handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md",
+        repo_root / "docs/handover/2026-08-31-r1-start-readiness-v0.1.0.md",
+    ]
     errors.extend(
         find_forbidden_completion_claims(
-            [*reports.values(), governance, handover]
+            [*reports.values(), governance, *handovers]
         )
     )
     readme = repo_root / SUPPORT_PATHS[0]

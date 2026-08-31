@@ -1,6 +1,6 @@
 # R-MOS 当前测试报告
 
-- 版本：0.1.0
+- 版本：0.1.1
 - 建立日期：2026-08-21
 - 状态：Active
 - 上位规则：`docs/testing/ACCEPTANCE_CHARTER.md`
@@ -22,6 +22,7 @@
 | Phase 3 第 1–3 批收口 | PARTIAL | 后端全量 `956 passed, 0 failed`；AUTH-GATE-01～12 定向通过；**AUTH-101～105 均为 IN_PROGRESS、未关闭**——浏览器实测未做，且 3D 网格加载被网关打断的回归未修 |
 | Phase 3 第 3b 批（P3-3b，3D 资产带令牌） | PARTIAL | 提交 `70e9c078`；前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测 PASS**（`/3d-viewer` 与 `/maintenance` 资产请求 401 数为 0、模型渲染）。**只关闭了 3D 加载回归本身**；`AUTH-101`～`AUTH-105` 仍为 IN_PROGRESS，对象归属与资产拒绝审计缺口未动 |
 | Phase 3 第 2c 批（P3-2c，对象归属第一刀） | PARTIAL | 提交 `c7ad217a`；定向 `15 passed`；后端全量 **971 tests / 0 failed / 0 error（退出码 0）**。**只覆盖 8 条路由**（training 5 + tasks 3）；全仓约 115 条路由仍无归属校验，`AUTH-101` 不关闭 |
+| 实时通道点修复复验 | CONDITIONAL | 定向 `22 passed`；慢连接、连接关闭、心跳、日志及时间双后缀已补正；后端排除 3 项未获准的数据库写入门禁后收集 973 项并执行到 100%、退出码 0；F-RT-03 仅完成防泄露封堵，M-03/RT-GATE 仍 OPEN/NOT_RUN |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -39,6 +40,32 @@
 | 归档前 | `docs-archive/TEST_REPORT.md` | 旧测试报告 | HISTORICAL |
 
 ## 4. 当前批次记录
+
+### RT-POINT-FIX-001｜实时通道慢连接、心跳与投递日志复验
+
+- 基线提交：`56751f5e959c60dac880f96db8b630ce73f8e75b`
+- 结果提交：本报告所在提交
+- 环境：`audit/phase3-auth-control-realtime` 隔离工作区；标准后端解释器；未启动服务、未连接数据库
+- 范围：F-RT-01、F-RT-02、F-RT-03 的点修复；不包含 M-03 认证与机器人/用户/频道授权
+- Commands Run：
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest tests/unit/test_websocket_targeting.py tests/unit/test_teacher_monitor.py -q`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest tests/unit/test_websocket_targeting.py tests/unit/test_teacher_monitor.py tests/unit/test_telemetry_context_builder.py -q`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m dotenv -f /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env run -- /Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -q --disable-warnings --ignore=tests/unit/test_audit_query_index_gate.py --ignore=tests/unit/test_skill_registry_migration_gate.py`
+  - `git status --short`
+  - `git diff --check`
+- Key Output：
+  - RED：`4 failed, 6 passed`，四项失败分别复现慢连接超时、连续遥测停顿、心跳串行阻塞和零投递伪成功日志。
+  - 追加 RED：在既有心跳/遥测用例加入严格时间断言后为 `2 failed, 6 passed`，证明两类消息均生成 `+00:00Z` 双后缀。
+  - 独立代码复核追加 RED：套接字关闭、最后连接清理和教师事件时间三个根因对应 `4 failed, 7 passed`；修复后目标测试 `11 passed`。
+  - GREEN：扩展相关回归 `22 passed`；退出码 0。
+  - 完整后端分母为 976 项；其中 3 项会连接本机 PostgreSQL、写入随机临时行并在结束时清理。执行许可被拒绝，未绕过，状态为 `NOT RUN / UNKNOWN`。
+  - 排除上述 3 项后收集 973 项，执行进度 100%，pytest 退出码 0。
+  - 未加载 `.env` 的首次全量命令因生产密钥校验在收集阶段失败；修正环境输入后不再出现，未把环境输入错误计作代码回归。
+  - 测试改写的 `data/knowledge_store.json` 时间戳已复核并恢复；`git diff --check` 通过。
+- Evidence：`docs/audit/evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md`
+- Result：**CONDITIONAL**。F-RT-01/F-RT-02 及生成时间格式的本轮自动验证范围通过；F-RT-03 只证明不再广播泄露，真实定向功能仍因 M-03 缺失而不可用。
+- Failure Handling：第一次 GREEN 运行的三条清理断言因测试连接表使用任意键、与生产连接键规则不一致而失败；改为生产相同的连接标识后复验通过，未放宽行为断言。独立复核提出的三项 Important 均先由新增反例复现，再修实现；固定 sleep 已改为条件等待，减少慢环境时序波动。复核方第二轮确认三项全部关闭，未发现新的 Critical/Important，并独立复跑 `11 passed` / `22 passed`。
+- Notes：未执行四心跳周期服务级测试、匿名拒绝、跨机器人/跨用户实测或断线重连；三项数据库门禁也未获准执行。RT-GATE 保持 NOT_RUN，M-03 保持 OPEN，R1 状态不因本批改变。
 
 ### DOC-RULE-001｜规则事实源修复
 

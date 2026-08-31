@@ -87,7 +87,10 @@
 - [A6 总报告与决策输入 0.2.0](./2026-08-29-a6-master-audit-report-and-decision-input-v0.2.0.md)
 - [A6 订正归并台账](./evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md)
 - [A0–A6 治理闭环包](./evidence/2026-08-29-a0-a6-governance-closure-pack-v0.1.0.md)
+- [实时通道点修复复验](./evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md)：F-RT-01/F-RT-02 定向复验通过，F-RT-03 仅完成防泄露封堵；M-03 与 RT-GATE 未关闭。
+- [当前环境与漂移指纹](./evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md)：补采 Git、Python、Node、配置与本地存储元数据；AG-04/AG-05 由“无当前快照”推进为 PARTIAL，但历史同期、数据库和运行证据仍缺。
 - [整改交接 0.1.1](../handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md)
+- [R1 启动就绪裁决](../handover/2026-08-31-r1-start-readiness-v0.1.0.md)：列明本轮已完成项、A6/R0 剩余门禁及最短合规启动路径；当前 R1 仍为 BLOCKED。
 
 ### 历史与其他文件
 

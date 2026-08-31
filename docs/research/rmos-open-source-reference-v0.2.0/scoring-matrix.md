@@ -38,11 +38,11 @@ G2 的逐文件、依赖和组合方式仍不完整；G5 的目标版本、支�
 
 | 域 | 搜索状态 | 合格主参考 | 合格次参考 | 是否饱和 |
 |---|---|---:|---:|---|
-| D-01 | NOT_STARTED | 0 | 0 | 否 |
-| D-02 | NOT_STARTED | 0 | 0 | 否 |
+| D-01 | FIRST_PASS_DISCOVERY_COMPLETE | 0 | 0 | 否 |
+| D-02 | FIRST_PASS_DISCOVERY_COMPLETE | 0 | 0 | 否 |
 | D-03 | PARTIAL_REOPENED | 0 | 0 | 否 |
 | D-04 | PARTIAL_REOPENED | 0 | 0 | 否 |
-| D-05 | NOT_STARTED | 0 | 0 | 否 |
-| D-06 | NOT_STARTED | 0 | 0 | 否 |
-| D-07 | NOT_STARTED | 0 | 0 | 否 |
+| D-05 | FIRST_PASS_DISCOVERY_COMPLETE | 0 | 0 | 否 |
+| D-06 | FIRST_PASS_DISCOVERY_COMPLETE | 0 | 0 | 否 |
+| D-07 | FIRST_PASS_DISCOVERY_COMPLETE | 0 | 0 | 否 |
 | D-08 | PARTIAL_REOPENED | 0 | 0 | 否 |

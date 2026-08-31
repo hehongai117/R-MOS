@@ -57,6 +57,11 @@ FIXED_SOURCE_TYPES = {
     "source_snapshot",
 }
 
+FIRST_PASS_DISCOVERY_DOMAINS = {"D-01", "D-02", "D-05", "D-06", "D-07"}
+FIRST_PASS_DISCOVERY_EVIDENCE = (
+    "evidence/2026-08-30-five-domain-candidate-discovery-v0.1.0.md"
+)
+
 
 def _load_yaml(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -97,6 +102,7 @@ def validate_package(package: Path, root: Path) -> ValidationResult:
 
     outline = _load_yaml(package / "outline.yaml")
     fields = _load_yaml(package / "fields.yaml")
+    candidates_doc = _load_yaml(package / "candidate-register.yaml")
     sources_doc = _load_yaml(package / "source-register.yaml")
 
     if outline.get("meta", {}).get("status") != "RETURN_FOR_REVISION":
@@ -117,6 +123,27 @@ def validate_package(package: Path, root: Path) -> ValidationResult:
         errors.append(f"A6 denominator must be 26, got count={a6_master_count}, unique={len(a6_masters)}")
     if set(denominator.get("disputed", [])) != {"M-14", "M-19"}:
         errors.append("M-14 and M-19 must remain disputed")
+
+    if candidates_doc.get("meta", {}).get("saturation_reached") is not False:
+        errors.append("candidate register must not claim search saturation")
+    candidate_domains = candidates_doc.get("domains", {})
+    for domain_id in FIRST_PASS_DISCOVERY_DOMAINS:
+        domain = candidate_domains.get(domain_id, {})
+        if domain.get("status") != "FIRST_PASS_DISCOVERY_COMPLETE":
+            errors.append(f"{domain_id} first-pass discovery status is not registered")
+        software = [item for item in domain.get("candidates", []) if item.get("kind") == "software"]
+        if len(software) < 4:
+            errors.append(f"{domain_id} has fewer than four first-pass software candidates")
+        if any(item.get("state") in {"PASS", "ELIGIBLE"} for item in software):
+            errors.append(f"{domain_id} incorrectly promotes a discovery candidate")
+    if not (package / FIRST_PASS_DISCOVERY_EVIDENCE).is_file():
+        errors.append("five-domain first-pass discovery evidence is missing")
+    search_records = {record.get("id"): record for record in candidates_doc.get("search_records", [])}
+    sr03 = search_records.get("SR-03", {})
+    if sr03.get("evidence") != FIRST_PASS_DISCOVERY_EVIDENCE:
+        errors.append("SR-03 does not link the five-domain discovery evidence")
+    if sr03.get("result") != "FIRST_PASS_RECORDED_NOT_SATURATED":
+        errors.append("SR-03 must preserve the not-saturated boundary")
 
     sources = {source["id"]: source for source in sources_doc.get("sources", [])}
     for source_id, source in sources.items():

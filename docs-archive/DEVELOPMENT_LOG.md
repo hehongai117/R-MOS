@@ -8546,7 +8546,7 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
 - Tests:
   - 红灯：纠正版和门禁不存在时 `9 failed`，失败原因与预期一致；
   - 首次绿灯前：`1 failed, 8 passed`，门禁错误地把“已撤销 last_push”说明也视为依赖；修正为只检查结果 JSON 的证据字段；
-  - 最终机械测试：`9 passed in 0.08s`；
+  - 最终机械测试：纠错包初始门禁 `9 passed in 0.08s`；本轮新增五域发现登记门禁后为 `10 passed in 0.12s`；
   - 独立门禁：PASS，8 份结果、6 个软件、2 个规范、26 个 A6 Master；
   - JSON 8/8、YAML 4/4 解析通过；本地 Markdown 缺失链接 0；
   - 22 个外部来源中 GitHub/OPC 20 个返回 HTTP 200；ISO 两个官方页对命令行返回 403，但已通过官方网页检索确认存在，未将命令行 403 写成来源不存在；
@@ -8614,3 +8614,60 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
 
 - Result: PASS
 - Next Step: 等待董事会确认修复结果，再定是否启动 R1。**R1 当前仍被 A0–A6 的 AG-01~AG-05 与 R0 零合格参考阻断。**
+
+## 2026-08-30 — 实时通道点修复独立复验与补正
+
+- DateTime: 2026-08-30 22:52:50 CST
+- Task: 根据 `56751f5e` 的独立复核结论补齐慢连接隔离、心跳并发、真实投递结果和端点级 pong 回归保护，并纠正此前无条件 PASS 口径。
+- Scope (files changed):
+  - `r-mos-backend/app/services/websocket_manager.py`
+  - `r-mos-backend/app/services/identity/teacher_monitor.py`
+  - `r-mos-backend/tests/unit/test_websocket_targeting.py`
+  - `r-mos-backend/tests/unit/test_teacher_monitor.py`
+  - `docs/plans/2026-08-30-rmos-r1-readiness-remediation.md`
+  - `docs/audit/evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md`
+  - `docs/testing/TEST_PLAN.md`、`docs/testing/TEST_REPORT.md`、`docs/audit/README.md`
+- Commands Run:
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest tests/unit/test_websocket_targeting.py tests/unit/test_teacher_monitor.py -q`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest tests/unit/test_websocket_targeting.py tests/unit/test_teacher_monitor.py tests/unit/test_telemetry_context_builder.py -q`
+  - `rg -n "broadcast_to_channel\\(|send_to_user\\(" r-mos-backend`
+  - `git status --short`、`git diff --check`
+- Tests:
+  - RED：`4 failed, 6 passed`，失败原因与复核发现一致；
+  - GREEN：初轮目标测试 `10 passed`；独立复核补入连接关闭、最后连接清理和教师事件时间反例后，目标测试 `11 passed`、扩展相关回归 `22 passed`；退出码均为 0；
+  - 第一次 GREEN 的三条清理断言使用了不符合生产规则的任意连接键；测试改为真实连接标识后通过，行为要求未降低。
+  - 差异复核新增时间格式断言后 `2 failed, 6 passed`，确认心跳与遥测均生成 `+00:00Z`；统一为单一 `Z` 后缀。
+  - 独立只读代码复核提出三项 Important：发送失败只移表不关闭、最后连接异步关闭可能被自取消、教师事件仍为双 UTC 后缀。新增反例 `4 failed, 7 passed`；调整有界关闭顺序、避免取消当前清理任务并统一教师事件时间后，`11 passed`，扩展 `22 passed`。
+  - 同一复核方第二轮确认三项全部关闭，未发现新的 Critical/Important；其只读环境独立复跑目标 `11 passed`、扩展 `22 passed`，工作区零修改。
+- Result: PASS（仅 F-RT-01/F-RT-02 的 E1 定向范围与 F-RT-03 防泄露边界）；整体实时通道仍为 CONDITIONAL，M-03/RT-GATE 未关闭。
+- Risks/Notes:
+  - 真实端点仍不携带用户、频道或机器人授权信息；教师监控三类定向消息继续零投递。
+  - 未启动服务、未连接数据库、未执行迁移、未访问生产或真机；未执行四心跳周期运行门禁。
+  - 此前开发记录的 `970 passed` 未附完整原始输出，本条不把它作为复验事实；本轮独立确认的相关范围为 `22 passed`。
+- Next Step: 完成后端全量、文档门禁和 R0/A0–A6 非人工证据复核；R1 仍须 A6 与 R0 正式通过后才能开始。
+
+## 2026-08-31 — 实时通道全量回归边界与 R0 五域首轮候选发现
+
+- DateTime: 2026-08-31 08:21 CST
+- Task: 补齐实时通道点修的后端回归证据，并将 R0 五个未启动研究域推进到可复核的第一轮候选发现状态。
+- Scope (files changed):
+  - `docs/audit/evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md`
+  - `docs/research/rmos-open-source-reference-v0.2.0/README.md`
+  - `docs/research/rmos-open-source-reference-v0.2.0/report.md`
+  - `docs/research/rmos-open-source-reference-v0.2.0/evidence/2026-08-30-five-domain-candidate-discovery-v0.1.0.md`
+  - `docs/testing/TEST_REPORT.md`
+- Commands Run:
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m dotenv -f /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env run -- /Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -q --disable-warnings --ignore=tests/unit/test_audit_query_index_gate.py --ignore=tests/unit/test_skill_registry_migration_gate.py`
+  - 同环境执行 `pytest --collect-only`，分别核对完整分母与排除后的分母。
+  - `git diff -- r-mos-backend/data/knowledge_store.json`；确认仅为测试生成时间戳后恢复该文件。
+- Tests:
+  - 完整后端分母 976 项；其中 `test_audit_query_index_gate.py` 2 项、`test_skill_registry_migration_gate.py` 1 项需要连接本机 PostgreSQL 并写入随机临时行后清理。
+  - 已提交探针目的、副作用和恢复方式；执行许可被拒绝，未绕过。因此 3 项为 `NOT RUN / UNKNOWN`。
+  - 排除上述 3 项后收集 973 项，执行到 100%，pytest 退出码 0。
+  - 首次未加载 `.env` 的全量命令在收集阶段触发生产密钥校验；修正输入后未复现，未把该次环境错误计作代码失败。
+- Result: CONDITIONAL。点修相关及其余后端回归通过；三项数据库门禁未获准执行，不能形成完整全量 PASS。
+- Risks/Notes:
+  - 五域发现记录仅覆盖公开首屏和官方目录入口；20 个对象均未通过硬门槛，合格参考仍为 0。
+  - 未启动服务、未执行迁移、未写数据库、未访问生产或真机；测试文件副作用已恢复。
+  - R0 与 A6 均未批准，R1 仍为 BLOCKED。
+- Next Step: 执行 A0–A6/R0 机械门禁与链接检查，整理人工作业包；只有正式批准和合格参考到位后才可改变 R1 状态。
