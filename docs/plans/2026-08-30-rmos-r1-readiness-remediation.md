@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13.13, FastAPI/Starlette WebSocket, asyncio, pytest/pytest-asyncio, Markdown/YAML/JSON audit evidence.
 
-**Execution status (2026-08-31):** Tasks 1–5 completed; Task 6 partially completed (five-domain first-pass discovery and current drift evidence completed, fixed-version G2/G5 and route saturation still open); Task 7 verification completed up to the database/user-controlled gates. R1 remains BLOCKED, as recorded in `docs/handover/2026-08-31-r1-start-readiness-v0.1.0.md`.
+**Execution status (2026-08-31):** Tasks 1–5 completed; Task 6 partially completed (five-domain first-pass discovery and current drift evidence completed, fixed-version G2/G5 and route saturation still open); Task 7 verification completed up to the database/user-controlled gates. The board has now issued the exact A0 reopening command for AG-01 through AG-05, recorded in `docs/audit/evidence/2026-08-31-a0-governance-reopening-and-m-aud-06-preparation-v0.1.0.md`. This changes A0 to `REOPENED / IN REVIEW` only; AG-02 through AG-05, A0 reapproval, A6, R0 and R1 remain blocked.
 
 ### Task 1: Freeze the Current Snapshot and Gate Boundaries
 

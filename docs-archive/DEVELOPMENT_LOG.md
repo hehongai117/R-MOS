@@ -8671,3 +8671,28 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
   - 未启动服务、未执行迁移、未写数据库、未访问生产或真机；测试文件副作用已恢复。
   - R0 与 A6 均未批准，R1 仍为 BLOCKED。
 - Next Step: 执行 A0–A6/R0 机械门禁与链接检查，整理人工作业包；只有正式批准和合格参考到位后才可改变 R1 状态。
+
+## 2026-08-31 — A0 按董事会准确口令定向重开
+
+- DateTime: 2026-08-31 12:49:08 CST / 2026-08-31T04:49:08Z
+- Task: 执行董事会原始指令 `` `确认重开 Audit A0 AG-01/AG-02/AG-03/AG-04/AG-05` ``，登记 A0 定向重开并准备 M-AUD-06 下一道人工作业。
+- Scope (files changed):
+  - 新建 `docs/audit/evidence/2026-08-31-a0-governance-reopening-and-m-aud-06-preparation-v0.1.0.md`；
+  - 更新 `docs/audit/README.md` 的当前状态与证据入口；
+  - 更新 `docs/plans/2026-08-30-rmos-r1-readiness-remediation.md` 的执行状态；
+  - 追加本开发记录；
+  - 未修改应用、测试、依赖、配置、迁移、数据库或历史审计报告。
+- Commands Run:
+  - `git status --short --branch`、`git rev-parse --show-toplevel`、`git branch --show-current`、`git rev-parse HEAD`；
+  - `test -x /Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python` 并核对解释器与 pytest；
+  - `rg -n "确认重开|确认 Audit|M-AUD-06|R1|AG-01" docs/plans/2026-08-26-rmos-complete-audit-and-modernization-board-directive-v0.2.0.md`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/audit/evidence/2026-08-29-a0-a6-remediation-gate.py`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest docs/audit/evidence/test_a0_a6_remediation_gate.py -q`；
+  - 本地 Markdown 链接/路径检查、准确口令唯一性检查、状态口径检查；
+  - 无上下文独立读者检查与定向回归检查；
+  - `git diff --check`、`git diff --name-only`、`git status --short`。
+- Tests: 仅文档变更，未运行应用测试；A0–A6 机械门禁 PASS，配套 7 项测试通过；本批涉及的 63 个本地 Markdown 链接缺失 0；准确口令与原始用户消息一致；A0 只标 `REOPENED / IN REVIEW`，AG-01 为 PARTIAL，AG-02～AG-05 和 R1 未提升；独立读者回归确认首轮 5 项问题全部关闭且无新增实质问题；`git diff --check` 通过。
+- Result: PASS（仅 A0 重开记录与文档一致性）；本记录不构成 A0 PASS 或重新批准。
+- Failure Handling: 首次题号检查把正文中的范围文本也计作题目行，误报 A0-Q01/A0-Q10 重复；改为只解析候选题表格后确认 10 行且编号唯一。首次原始消息哈希命令中的反引号被 shell 解释，原始哈希无效且未采用；改用字符码构造后重算并保存。独立读者首轮发现 3 项 P1、2 项 P2，已补正 AG-01 整体状态、遗漏门禁、稳定任务编号/消息哈希、直接证据链接和提交前边界，并安排回归检查。
+- Risks/Notes: 当前只完成 AG-01 中的 A0 重开动作。M-AUD-06 仍需董事会独立新增或替换至少 3 题、非主审新会话原始答题和非主审评分；P0 主备送达、环境探针、漂移复算仍缺。未启动服务、未联网、未连接数据库、未 push。
+- Next Step: 董事会冻结 A0 M-AUD-06 最终 10 题；完成 AG-02～AG-05 后，另用 `确认 Audit A0` 重新批准 A0。
