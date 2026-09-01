@@ -2,7 +2,7 @@
 
 本目录保存 R-MOS 架构审查的规则、事实源和阶段结论。审查从固定提交出发，只把可复现证据写成事实；历史记录、设计目标和当前实现必须分开。
 
-## 当前状态（2026-08-31 A0 定向重开）
+## 当前状态（2026-09-01 A0 M-AUD-06 题目资格复核）
 
 | 项目 | 当前结论 |
 |---|---|
@@ -12,7 +12,7 @@
 | 产品问题 | **26 个：P0 8、P1 11、P2 7** |
 | 审计治理阻断 | **5 个：批准链、M-AUD-06、P0 主备送达、阶段指纹/可复现性、当前漂移** |
 | 证据上限 | 静态 E1；E1 仍 FAIL，E2/E3/E4 与生产继续 BLOCKED |
-| 下一步 | 董事会完成 A0 M-AUD-06 最终十题并独立新增/替换至少 3 题；AG-02～AG-05 闭合后再使用 `确认 Audit A0`，不得提前进入 A1 |
+| 下一步 | 董事会已冻结 10 道全新题，但这些题考查 A1～A5 的代码与运行链，A0 报告可回答 0/10；须决定保留为跨阶段题库并另出 A0 十题，或版本化修改 M-AUD-06 定义 |
 
 > 下方旧状态表和历史 0.1.x 报告保留用于追溯，但其中的 Approved、100%、CLOSED、25 个 Master 和无条件完成性表述均已被订正，不得继续作为当前批准依据。
 
@@ -88,6 +88,7 @@
 - [A6 订正归并台账](./evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md)
 - [A0–A6 原治理闭环模板](./evidence/2026-08-29-a0-a6-governance-closure-pack-v0.1.0.md)：保留 2026-08-29 待办快照；其中 A0 重开行的 `PENDING` 已由下一项新证据更新。
 - [A0 治理重开与 M-AUD-06 准备记录](./evidence/2026-08-31-a0-governance-reopening-and-m-aud-06-preparation-v0.1.0.md)：保存董事会准确重开口令、现场关联、影响范围和下一道人工作业；A0 仅为 IN REVIEW，尚未重新批准。
+- [A0 M-AUD-06 董事会冻结题目与阶段资格复核](./evidence/2026-09-01-a0-m-aud-06-board-question-qualification-v0.1.0.md)：十题全部保留且异源来源成立，但 A0 报告可回答 0/10，不能计作 A0 M-AUD-06，AG-02 继续 BLOCKED。
 - [实时通道点修复复验](./evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md)：F-RT-01/F-RT-02 定向复验通过，F-RT-03 仅完成防泄露封堵；M-03 与 RT-GATE 未关闭。
 - [当前环境与漂移指纹](./evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md)：补采 Git、Python、Node、配置与本地存储元数据；AG-04/AG-05 由“无当前快照”推进为 PARTIAL，但历史同期、数据库和运行证据仍缺。
 - [整改交接 0.1.1](../handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md)
