@@ -22,11 +22,12 @@ def test_expected_reports_cover_a0_through_a6() -> None:
     reports = gate.expected_reports(REPO_ROOT)
 
     assert list(reports) == [f"A{index}" for index in range(7)]
+    assert reports["A0"].name.endswith("v0.2.1.md")
     assert reports["A1"].name.endswith("v0.2.1.md")
     assert all(
         path.name.endswith("v0.2.0.md")
         for stage, path in reports.items()
-        if stage != "A1"
+        if stage not in {"A0", "A1"}
     )
 
 

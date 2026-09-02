@@ -1,0 +1,1284 @@
+{
+  "application_file_logging_disabled_before_import": true,
+  "lifespan_executed": false,
+  "listening_socket_started": false,
+  "probe": "P-A0-ROUTE-01",
+  "route_count": 182,
+  "routes": [
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/admin/users",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/admin/users/{user_id}/role",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/approval/history",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/approval/pending",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/approval/request",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/approval/{request_id}/approve",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/approval/{request_id}/reject",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/coach/recommend",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/coordinate",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/diagnoser/diagnose",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/evaluation/report",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/evidence/can-proceed/{step_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/evidence/collect",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/evidence/requirements/{action_type}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/evidence/status/{step_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/execute",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/knowledge",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/knowledge/projects",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/knowledge/projects/{project_id}/assets/{asset_path:path}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/knowledge/projects/{project_id}/manifest",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/knowledge/search",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/knowledge/upload",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/knowledge/upload/{job_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/knowledge/{entry_id}/approve",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/knowledge/{entry_id}/submit",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/preference",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PUT"
+      ],
+      "path": "/api/v1/agent/preference/guidance-mode",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PUT"
+      ],
+      "path": "/api/v1/agent/preference/llm",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/sop/quality/check",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/task-status/{user_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/v2/idempotency/{idempotency_key}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/v2/modules",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/v2/policy/evaluate",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/v2/task/create",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/v2/task/{task_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/v2/task/{task_id}/transition",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/agent/v2/trace/{trace_id}/diagnosis-action",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/agent/v2/trace/{trace_id}/events",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/ai-assistant/chat",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/ai/approvals",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/ai/approvals/{id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/ai/approvals/{id}/grant",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/ai/approvals/{id}/reject",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/ai/citations/{ref_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/ai/replay/metrics/read-tool-success-rate",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/ai/replay/metrics/red-team-pass-rate",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/ai/replay/{trace_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/ai/skills",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/ai/skills/{id}/publish",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/ai/skills/{id}/submit-review",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assessment-providers",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assessment-providers",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assessment-providers/{provider_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/assessment-providers/{provider_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assessments",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assessments",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assessments/{assessment_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assessments/{assessment_id}/audit",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assessments/{assessment_id}/dispute",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assessments/{assessment_id}/reinstate",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assessments/{assessment_id}/revoke",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assignments",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assignments",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assignments/{assignment_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/assignments/{assignment_id}/attempts",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/assignments/{assignment_id}/attempts",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attempts/{attempt_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/attempts/{attempt_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attempts/{attempt_id}/diagnosis",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attempts/{attempt_id}/evidence",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/attempts/{attempt_id}/grade",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/audit/events",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/auth/login",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/auth/logout",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/auth/refresh",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/auth/register",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/classes",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/classes",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/classes/{class_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/classes/{class_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/courses",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/courses",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/courses/{course_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/enrollments",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/enrollments",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/evidence-bundles",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/evidence-bundles",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/evidence-bundles/{bundle_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/evidence_cards",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/fault-cases",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/fault-cases",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/api/v1/fault-cases/{fault_case_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/fault-cases/{fault_case_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PUT"
+      ],
+      "path": "/api/v1/fault-cases/{fault_case_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/guidance-policies",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/guidance-policies",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/guidance-policies/{policy_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/health",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incidents",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/incidents",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incidents/{incident_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/llm/health",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/maintenance/drafts",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/maintenance/drafts/{draft_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/maintenance/drafts/{draft_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/maintenance/drafts/{draft_id}/approve",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/maintenance/drafts/{draft_id}/reject",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/maintenance/drafts/{draft_id}/submit-review",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/maintenance/projects/{project_id}/executable-draft",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/observations",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/observations",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/observations/{observation_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/onboarding/robots",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/onboarding/robots",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/pipeline/diagnose",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/pipeline/executions/{execution_id}/complete",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/pipeline/executions/{execution_id}/steps/complete",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/pipeline/tasks/from-diagnosis",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/robots",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots/shared",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/api/v1/robots/{robot_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots/{robot_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PUT"
+      ],
+      "path": "/api/v1/robots/{robot_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots/{robot_id}/analysis-tasks",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/robots/{robot_id}/analyze",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots/{robot_id}/assets",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots/{robot_id}/assets/{file_path:path}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/api/v1/robots/{robot_id}/bind",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/robots/{robot_id}/bind",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PUT"
+      ],
+      "path": "/api/v1/robots/{robot_id}/publish",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/robots/{robot_id}/tools",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/robots/{robot_id}/upload",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PUT"
+      ],
+      "path": "/api/v1/robots/{robot_id}/visibility",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/scenarios",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/schools",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/schools/{school_name}/teachers",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sops",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/sops",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sops/adjudication",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/api/v1/sops/{sop_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sops/{sop_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sops/{sop_id}/delete-impact",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/student/tasks",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/students/{student_id}/robots",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/students/{user_id}/profile",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/students/{user_id}/weak-steps",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/tasks",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/tasks",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/tasks/{task_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/tasks/{task_id}/events",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/tasks/{task_id}/pause",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/tasks/{task_id}/report",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/tasks/{task_id}/resume",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/tasks/{task_id}/start",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/tasks/{task_id}/step",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/teaching/attempts/{attempt_id}/replay",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/training/feedback/{session_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/projects/generate",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/sessions",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/abandon",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/detail",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/force-submit",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/pause",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/resume",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/steps",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/steps",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/sessions/{session_id}/submit",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/training/users/{user_id}/active-session",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/training/users/{user_id}/sessions",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/workbench/ask",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/workbench/draft",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/workbench/evidence",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/training/workbench/sessions/{session_id}/steps/{step_id}/submit",
+      "type": "APIRoute"
+    },
+    {
+      "methods": [],
+      "path": "/ws/robot/status",
+      "type": "APIWebSocketRoute"
+    },
+    {
+      "methods": [],
+      "path": "/ws/robot/{robot_id}/status",
+      "type": "APIWebSocketRoute"
+    },
+    {
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "path": "/docs",
+      "type": "Route"
+    },
+    {
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "path": "/docs/oauth2-redirect",
+      "type": "Route"
+    },
+    {
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "path": "/openapi.json",
+      "type": "Route"
+    },
+    {
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "path": "/redoc",
+      "type": "Route"
+    }
+  ],
+  "sha256": "db018c34dfcc8be267255c2a3f0b3a4cf8978fc9b2da16e9ed935a85ec166d88"
+}

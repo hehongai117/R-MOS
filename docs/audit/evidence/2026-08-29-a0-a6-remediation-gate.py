@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 REPORT_PATHS = {
-    "A0": "docs/audit/2026-08-29-a0-baseline-and-source-governance-audit-report-v0.2.0.md",
+    "A0": "docs/audit/2026-09-02-a0-baseline-and-source-governance-audit-report-v0.2.1.md",
     "A1": "docs/audit/2026-08-30-a1-system-function-and-asset-inventory-v0.2.1.md",
     "A2": "docs/audit/2026-08-29-a2-user-roles-and-business-closure-audit-report-v0.2.0.md",
     "A3": "docs/audit/2026-08-29-a3-current-architecture-and-data-boundaries-v0.2.0.md",
@@ -21,7 +21,7 @@ REPORT_PATHS = {
 }
 
 REPORT_VERSIONS = {
-    "A0": "0.2.0",
+    "A0": "0.2.1",
     "A1": "0.2.1",
     "A2": "0.2.0",
     "A3": "0.2.0",
@@ -36,6 +36,9 @@ SUPPORT_PATHS = (
     "docs/audit/evidence/2026-08-29-a0-a6-governance-closure-pack-v0.1.0.md",
     "docs/audit/evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md",
     "docs/audit/evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md",
+    "docs/audit/evidence/2026-09-02-a0-board-preconditions-confirmation-v0.1.0.md",
+    "docs/audit/evidence/2026-09-02-a0-approved-fingerprint-probe-results-v0.1.0.md",
+    "docs/audit/evidence/2026-09-02-a0-pre-r0-human-and-probe-action-pack-v0.1.0.md",
     "docs/handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md",
     "docs/handover/2026-08-31-r1-start-readiness-v0.1.0.md",
     "docs/plans/2026-08-29-a0-a6-independent-review-remediation.md",
@@ -175,9 +178,14 @@ def validate_package(repo_root: Path) -> list[str]:
         expected_version = REPORT_VERSIONS[stage]
         if f"版本：{expected_version}" not in text:
             errors.append(f"{stage}: version {expected_version} marker missing")
-        if "复核状态：RETURN FOR REVISION" not in text:
+        if stage == "A0":
+            if "阶段状态：CONDITIONAL / `REOPENED / IN REVIEW`" not in text:
+                errors.append("A0: truthful reopened/in-review status missing")
+            if "正式批准：PENDING" not in text:
+                errors.append("A0: pending final approval marker missing")
+        elif "复核状态：RETURN FOR REVISION" not in text:
             errors.append(f"{stage}: truthful RETURN FOR REVISION status missing")
-        if "事实基线：29d2a5889e3b320a3e777e3d8c19efbbe31c0294" not in text:
+        if "29d2a5889e3b320a3e777e3d8c19efbbe31c0294" not in text:
             errors.append(f"{stage}: fixed fact baseline missing")
         if stage != "A0" and "M-AUD-06：BLOCKED" not in text:
             errors.append(f"{stage}: M-AUD-06 blocked marker missing")

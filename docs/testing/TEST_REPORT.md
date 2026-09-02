@@ -23,6 +23,7 @@
 | Phase 3 第 3b 批（P3-3b，3D 资产带令牌） | PARTIAL | 提交 `70e9c078`；前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测 PASS**（`/3d-viewer` 与 `/maintenance` 资产请求 401 数为 0、模型渲染）。**只关闭了 3D 加载回归本身**；`AUTH-101`～`AUTH-105` 仍为 IN_PROGRESS，对象归属与资产拒绝审计缺口未动 |
 | Phase 3 第 2c 批（P3-2c，对象归属第一刀） | PARTIAL | 提交 `c7ad217a`；定向 `15 passed`；后端全量 **971 tests / 0 failed / 0 error（退出码 0）**。**只覆盖 8 条路由**（training 5 + tasks 3）；全仓约 115 条路由仍无归属校验，`AUTH-101` 不关闭 |
 | 实时通道点修复复验 | CONDITIONAL | 定向 `22 passed`；慢连接、连接关闭、心跳、日志及时间双后缀已补正；后端排除 3 项未获准的数据库写入门禁后收集 973 项并执行到 100%、退出码 0；F-RT-03 仅完成防泄露封堵，M-03/RT-GATE 仍 OPEN/NOT_RUN |
+| A0 获批只读指纹探针 | PASS（仅探针） | 进程/容器、数据库、运行路由和前端公开入口四项已执行，前后摘要一致；不构成应用测试、E2、A0 批准或 R1 放行 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
 | E3 真机安全 | BLOCKED | 五台真机和现场安全证据未在本批核实 |
@@ -326,3 +327,20 @@
   - **`AUTH-103` 也不关闭**：`robots.py` 的 `_get_visible_robot_or_404` 仍用裸 `HTTPException(404)`、不写拒绝审计，本批未改。
   - **已知未覆盖缺陷**：`training.py:506,549` 的 `get_training_feedback` 仍接受客户端可控的 `role=teacher` 查询参数切换视角。本批门禁中对应用例**空转通过**（会话无 submission，端点在读 `role` 前先 404），**不构成该参数已受控的证据**。
   - E1 仍 FAIL；E2 / E3 / E4 与生产启用仍 BLOCKED；`REL-BLOCK-01` 未清零。
+
+### AUDIT-A0-FINGERPRINT-001｜A0 获批只读指纹探针
+
+- Test ID：`P-A0-PROC-01`、`P-A0-DB-01`、`P-A0-ROUTE-01`、`P-A0-FE-01`
+- 提交：探针输入 `986a2a9b89a2558c6560f04d6675a850e5d8bfd0`；分支 `audit/phase3-auth-control-realtime`
+- 执行环境：本机只读进程/容器信息、主工作区明确白名单的 `localhost:5432/rmos`、标准 Python、现有前端依赖、本机回环 `127.0.0.1:55173`
+- 授权：董事会 2026-09-02 明确批准四项探针；原文见 `docs/audit/evidence/2026-09-02-a0-board-preconditions-confirmation-v0.1.0.md`
+- 命令与完整结果：见 `docs/audit/evidence/2026-09-02-a0-approved-fingerprint-probe-results-v0.1.0.md`；数据库和路由脱敏 JSON 见同目录对应文件
+- 关键输出：
+  - 本机指定端口中只有 `3000` 在监听，归属非 R-MOS 的 `openmaic`；`8000`、`55173` 无监听；外部部署 UNKNOWN；
+  - 数据库事务为 `READ ONLY`，PostgreSQL 14.17，扩展 `plpgsql 1.0` / `vector 0.8.2`，迁移头 `20260817_sop_three_phase`，66 个 public 表，schema-only 摘要固定；
+  - 运行时 182 条路由可枚举为 176 业务 HTTP、2 WebSocket、4 框架路由，差集已解释；未执行 lifespan 或启动监听；
+  - Vite 临时构建退出码 0，三个公开入口均 HTTP 200；预览已停止，精确临时目录已删除；
+  - `npm ls --all --json` 退出码 0，完整安装树摘要与 B-ASIS 历史指纹一致；
+  - 探针前后关键配置、依赖、数据、资产和日志摘要一致，数据库输出一致。
+- Failure Handling：首次读取 Docker socket、连接本机 PostgreSQL和绑定回环端口均受执行沙箱限制；保存错误后按董事会已批准的同一只读范围重试成功。动作包的预览命令遗漏临时 `--outDir`，执行时补入，实际命令和订正保存在结果证据；获批动作包保持原文，确保批准对象可追溯。
+- Result：PASS，仅表示四项探针按批准边界成功、清理完成且未观察到探针漂移。A0 仍 `REOPENED / IN REVIEW`；P0 主备通道、M-AUD-06、当前报告复核和最终批准未闭合；E1 仍 FAIL，E2/E3/E4 与生产继续 BLOCKED。

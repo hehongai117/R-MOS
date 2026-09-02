@@ -8778,3 +8778,51 @@ M-15 原描述是「该文件被 Git 跟踪并由 `COPY . .` 打进镜像 → �
   - `pytest --collect-only` 导入了应用模块并产生既有日志行为；没有执行测试、启动监听或连接数据库。后续正式运行路由探针已在脚本中禁用应用文件日志。
 - Risks/Notes: 静态复算不能替代本机容器映射、数据库、运行路由、前端入口、P0 实际送达、M-AUD-06 或董事会批准；A0、A1～A6、R0 和 R1 状态均未提升。未联网、未连接数据库、未执行迁移、未访问生产/真机/外部 AI/对象存储、未 push。
 - Next Step: 等待董事会批准动作包中的四项只读探针，确认 B-REF、截止日期、A1 范围和 P0 主备通道，并提供主通道收件确认；随后执行探针、固化 A0 修订报告并完成另行冻结的 A0 M-AUD-06。
+
+## 2026-09-02 — A0 董事会前置确认与获批指纹探针
+
+- DateTime: 2026-09-02 16:23–16:32 CST
+- Task: 执行董事会批准的四项 A0 只读指纹探针，归档 B-REF、墙钟和 A1 范围确认，并据实更新 A0 当前报告与门禁。
+- Scope (files changed):
+  - 新建 `docs/audit/2026-09-02-a0-baseline-and-source-governance-audit-report-v0.2.1.md`；
+  - 新建 `docs/audit/evidence/2026-09-02-a0-board-preconditions-confirmation-v0.1.0.md`；
+  - 新建 `docs/audit/evidence/2026-09-02-a0-approved-fingerprint-probe-results-v0.1.0.md`；
+  - 新建两份脱敏原始 JSON：数据库指纹、运行时路由指纹；
+  - 更新 A0 前置动作包、`docs/audit/README.md`、R1 readiness 计划和 `docs/testing/TEST_REPORT.md`；
+  - 更新 A0–A6 整改门禁脚本及其测试，使当前 A0 校验目标从 0.2.0 切换为 0.2.1；
+  - 未修改应用、测试、依赖、配置、迁移或数据。
+- Commands Run:
+  - Read-first：Git 工作区/分支/HEAD/status，标准 Python 解释器及 pytest/SQLAlchemy/asyncpg，Node/npm、前端依赖和端口状态；
+  - 前后边界：`git rev-parse HEAD`、`git status --porcelain`、四个关键文件 SHA-256、资产路径/大小摘要、日志路径/大小摘要；
+  - `lsof -nP -iTCP:8000 -iTCP:3000 -iTCP:55173 -sTCP:LISTEN`；`docker ps --no-trunc --format ...`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/audit/evidence/2026-09-02-a0-approved-fingerprint-probes.py db --env-file /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env`；
+  - 同脚本 `routes` 模式；
+  - `npm exec vite -- build --outDir /tmp/rmos-a0-fe-981670d4`；
+  - `npm run preview -- --host 127.0.0.1 --port 55173 --strictPort --outDir /tmp/rmos-a0-fe-981670d4`；
+  - 三次 `curl --noproxy 127.0.0.1,localhost -fsS -i` 访问 `/`、`/login`、`/register`；
+  - 停止准确前端会话、删除准确临时目录并复核端口、目录、Git、关键文件、资产、日志和数据库输出。
+  - 在前端目录执行 `npm ls --all --json | shasum -a 256` 和 `npm ls --all --parseable | wc -l`，管道启用 `pipefail`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python docs/audit/evidence/2026-08-29-a0-a6-remediation-gate.py`；
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest docs/audit/evidence/test_a0_a6_remediation_gate.py -q`。
+  - 最终执行 JSON 结构断言、A0 状态/占位符断言、11 个变化路径范围断言、`git diff --check`、端口/临时目录清理检查和六项关键摘要复比。
+- Tests:
+  - P-A0-PROC-01：退出码 0；`3000` 归属 `openmaic`，`8000`/`55173` 无监听，当前容器清单未见 R-MOS；外部环境保持 UNKNOWN；
+  - P-A0-DB-01：退出码 0；只读事务，PostgreSQL 14.17、两项扩展、迁移头、66 个 public 表和 schema-only 摘要已固定；前后结果一致；
+  - P-A0-ROUTE-01：退出码 0；182 条运行路由 = 176 业务 HTTP + 2 WebSocket + 4 框架路由；未执行 lifespan 或监听；
+  - P-A0-FE-01：Vite 构建退出码 0；三个公开入口均 HTTP 200；准确会话已停止，临时目录已删除；
+  - 六项关键摘要前后一致；没有观察到探针造成代码、配置、数据库 schema、资产、关键数据或日志漂移。
+  - 完整 npm 安装树命令退出码 0，摘要 `712d753e...15385` 与 B-ASIS 历史指纹相同；当前 `--parseable` 为 707 个安装路径，未与历史 1,695 个“依赖出现节点”混用；
+  - A0–A6 机械门禁 PASS；配套 7 项测试通过。
+  - 两份原始 JSON 结构断言通过；11 个变化路径全部位于 `docs/` 或 `docs-archive/`；A0 保持 CONDITIONAL / IN REVIEW、正式批准 PENDING，主备通道均 PENDING；`git diff --check` 通过；`55173` 空闲且临时目录不存在；六项摘要与探针前一致。
+- Result: PASS（仅四项只读探针及本轮治理记录）。B-REF、墙钟和 A1 范围已由董事会确认；A0 仍为 `REOPENED / IN REVIEW`。
+- Failure Handling:
+  - Docker socket、本机 PostgreSQL连接和回环端口首次受执行沙箱权限限制；保存错误，不采用失败输出，随后按董事会已批准的同一只读范围重试成功；
+  - 原动作包预览命令没有指定临时构建目录，会读取默认 `dist`；执行时增加 `--outDir /tmp/rmos-a0-fe-981670d4`，把实际命令和订正写入结果证据，并保留董事会批准时的动作包原文；
+  - 预览进程以 Ctrl-C 结束后返回信号退出码 1；通过端口无监听和准确临时目录删除确认清理成功；
+  - 董事会回复第 5、6 项是字面占位符，未把它们登记为真实 P0 通道，也未把第 7 项收件确认扩张为双通道送达。
+- Risks/Notes:
+  - 外部部署、生产、恢复、真机、课堂和 E2/E3/E4 未检查，继续 UNKNOWN/BLOCKED；
+  - 原 Phase 3 逐提交批准仍 `UNKNOWN + MUST_REVERIFY`；
+  - P0 主备通道及送达、A0 M-AUD-06、当前报告异源复核和最终 `确认 Audit A0` 未完成；A1～A6、R0、R1 不得正式开始；
+  - 未联网、未启动后端、未执行业务写入或迁移、未 push。
+- Next Step: 董事会提供 P0 主、备用通道真实值；完成双通道测试与八项送达；另行冻结并完成 A0 M-AUD-06。全部 A0 退出门禁闭合并完成当前报告复核后，才申请 `确认 Audit A0`。

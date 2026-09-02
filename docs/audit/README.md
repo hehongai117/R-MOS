@@ -2,17 +2,17 @@
 
 本目录保存 R-MOS 架构审查的规则、事实源和阶段结论。审查从固定提交出发，只把可复现证据写成事实；历史记录、设计目标和当前实现必须分开。
 
-## 当前状态（2026-09-02 A0 静态证据闭合 / 等待董事会与探针动作）
+## 当前状态（2026-09-02 A0 指纹已补 / 仍待治理门禁）
 
 | 项目 | 当前结论 |
 |---|---|
 | A0–A6 | **A0 已按准确口令重开并进入 IN REVIEW；A1～A6 仍为 RETURN FOR REVISION，七阶段均未重新批准** |
-| 当前正式报告 | A1 为 0.2.1，其余阶段为 0.2.0，入口见下方“当前订正版文件” |
+| 当前正式报告 | A0 为 0.2.1，A1 为 0.2.1，A2～A6 为 0.2.0；七阶段均未重新批准 |
 | 事实基线 | `29d2a5889e3b320a3e777e3d8c19efbbe31c0294`；后续 HEAD 漂移另行登记，不倒改历史 |
 | 产品问题 | **26 个：P0 8、P1 11、P2 7** |
-| 审计治理阻断 | **5 个：批准链、M-AUD-06、P0 主备送达、阶段指纹/可复现性、当前漂移** |
+| 审计治理阻断 | A0 当前剩余：**P0 主备通道及送达、A0 M-AUD-06、当前报告异源复核、最终 A0 批准**；A1～A6 仍须逐阶段复比与重验 |
 | 证据上限 | 静态 E1；E1 仍 FAIL，E2/E3/E4 与生产继续 BLOCKED |
-| 下一步 | A0 的 B-REF 候选、候选范围内干预集和当前静态漂移已复算；等待董事会正式确认 B-REF，批准本机进程/数据库/运行路由/前端入口四项只读指纹探针，并重新确认截止日期、A1 范围、P0 主备通道与收件回执。完成后固化 A0 修订报告并另行冻结 A0 M-AUD-06 十题 |
+| 下一步 | B-REF、墙钟和 A1 范围已确认，四项只读指纹探针已完成且未观察到探针漂移。第 5、6 项仍是占位符：先提供 P0 主、备用通道真实值并完成双通道送达，再另行冻结并完成 A0 M-AUD-06；门禁闭合后才申请 `确认 Audit A0` |
 
 > 下方旧状态表和历史 0.1.x 报告保留用于追溯，但其中的 Approved、100%、CLOSED、25 个 Master 和无条件完成性表述均已被订正，不得继续作为当前批准依据。
 
@@ -77,7 +77,8 @@
 
 ### 当前订正版文件
 
-- [A0 基线与事实源审计报告 0.2.0](./2026-08-29-a0-baseline-and-source-governance-audit-report-v0.2.0.md)
+- [A0 基线与事实源审计报告 0.2.1](./2026-09-02-a0-baseline-and-source-governance-audit-report-v0.2.1.md)：当前 A0 审阅对象；状态为 CONDITIONAL / IN REVIEW，尚未重新批准。
+- [A0 0.2.0（已被 0.2.1 替代）](./2026-08-29-a0-baseline-and-source-governance-audit-report-v0.2.0.md)：保留重开前的 RETURN FOR REVISION 结论。
 - [A1 全系统功能与资产清单报告 0.2.1](./2026-08-30-a1-system-function-and-asset-inventory-v0.2.1.md)
 - [A1 0.2.0（已被 0.2.1 替代）](./2026-08-29-a1-system-function-and-asset-inventory-v0.2.0.md)：保留 Claude Code 独立复核发现的历史脚本路径错误。
 - [A2 用户角色与业务闭环报告 0.2.0](./2026-08-29-a2-user-roles-and-business-closure-audit-report-v0.2.0.md)
@@ -90,10 +91,13 @@
 - [A0 治理重开与 M-AUD-06 准备记录](./evidence/2026-08-31-a0-governance-reopening-and-m-aud-06-preparation-v0.1.0.md)：保存董事会准确重开口令、现场关联、影响范围和下一道人工作业；A0 仅为 IN REVIEW，尚未重新批准。
 - [A0 M-AUD-06 董事会冻结题目与阶段资格复核](./evidence/2026-09-01-a0-m-aud-06-board-question-qualification-v0.1.0.md)：十题全部保留且异源来源成立，但 A0 报告可回答 0/10，不能计作 A0 M-AUD-06，AG-02 继续 BLOCKED。
 - [跨阶段审计题库董事会裁决](./evidence/2026-09-01-cross-stage-audit-question-bank-board-disposition-v0.1.0.md)：董事会确认原十题保留为跨阶段题库且不自动归入任何阶段；A0 M-AUD-06 另行出题，A0 与 R1 状态不提升。
-- [A0 当前静态漂移复算](./evidence/2026-09-02-a0-static-drift-recalculation-v0.1.0.md)：固定 `D-HEAD=981670d4...`，复算 B-REF 候选/候选干预集和 B-ASIS 后 35 个提交、93 个变化路径；B-REF 待董事会确认，AG-04/AG-05 仍为 PARTIAL。
-- [A0 至 R0 前置动作包](./evidence/2026-09-02-a0-pre-r0-human-and-probe-action-pack-v0.1.0.md)：列出四项待批准只读探针、六类启动安全初筛、截止日期/A1 范围/P0 通道确认项和八个 P0 通知正文；不构成批准或回执。
+- [A0 当前静态漂移复算](./evidence/2026-09-02-a0-static-drift-recalculation-v0.1.0.md)：固定 `D-HEAD=981670d4...`，复算原 B-REF 候选/干预集和 B-ASIS 后 35 个提交、93 个变化路径；B-REF 已由下一项董事会记录确认。
+- [A0 前置事项董事会确认](./evidence/2026-09-02-a0-board-preconditions-confirmation-v0.1.0.md)：确认 B-REF、墙钟、A1 范围和四项探针授权；P0 主、备用通道仍为占位符，不能计作登记或送达。
+- [A0 获批只读指纹探针结果](./evidence/2026-09-02-a0-approved-fingerprint-probe-results-v0.1.0.md)：保存本机进程/容器、数据库、运行路由和前端入口结果及前后复比；探针通过不构成应用验收或 A0 批准。
+- [A0 数据库原始指纹](./evidence/2026-09-02-a0-db-fingerprint-v0.1.0.json) / [运行时路由原始指纹](./evidence/2026-09-02-a0-runtime-route-fingerprint-v0.1.0.json)：脱敏原始 JSON。
+- [A0 至 R0 前置动作包](./evidence/2026-09-02-a0-pre-r0-human-and-probe-action-pack-v0.1.0.md)：保留董事会批准时的原始申请版本；实际执行状态和前端预览命令订正见上述探针结果。
 - [实时通道点修复复验](./evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md)：F-RT-01/F-RT-02 定向复验通过，F-RT-03 仅完成防泄露封堵；M-03 与 RT-GATE 未关闭。
-- [当前环境与漂移指纹](./evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md)：补采 Git、Python、Node、配置与本地存储元数据；AG-04/AG-05 由“无当前快照”推进为 PARTIAL，但历史同期、数据库和运行证据仍缺。
+- [2026-08-31 环境与漂移指纹](./evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md)：历史 PARTIAL 快照；其中当时缺少的当前数据库、运行路由和前端入口已由 2026-09-02 获批探针补采，A1～A6 历史同期复比仍缺。
 - [整改交接 0.1.1](../handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md)
 - [R1 启动就绪裁决](../handover/2026-08-31-r1-start-readiness-v0.1.0.md)：列明本轮已完成项、A6/R0 剩余门禁及最短合规启动路径；当前 R1 仍为 BLOCKED。
 
