@@ -2,7 +2,7 @@
 
 本目录保存 R-MOS 架构审查的规则、事实源和阶段结论。审查从固定提交出发，只把可复现证据写成事实；历史记录、设计目标和当前实现必须分开。
 
-## 当前状态（2026-09-01 跨阶段题库裁决 / A0 证据闭合）
+## 当前状态（2026-09-02 A0 静态证据闭合 / 等待董事会与探针动作）
 
 | 项目 | 当前结论 |
 |---|---|
@@ -12,7 +12,7 @@
 | 产品问题 | **26 个：P0 8、P1 11、P2 7** |
 | 审计治理阻断 | **5 个：批准链、M-AUD-06、P0 主备送达、阶段指纹/可复现性、当前漂移** |
 | 证据上限 | 静态 E1；E1 仍 FAIL，E2/E3/E4 与生产继续 BLOCKED |
-| 下一步 | 董事会已确认将 2026-09-01 十题保留为跨阶段审计题库，A0 M-AUD-06 另行出题；当前执行建议是先闭合 A0 基线、干预集、环境/漂移、P0 送达、墙钟与 A1 范围证据，再围绕稳定报告冻结 A0 十题，但这不是本次董事会决定新增的强制顺序 |
+| 下一步 | A0 的 B-REF 候选、候选范围内干预集和当前静态漂移已复算；等待董事会正式确认 B-REF，批准本机进程/数据库/运行路由/前端入口四项只读指纹探针，并重新确认截止日期、A1 范围、P0 主备通道与收件回执。完成后固化 A0 修订报告并另行冻结 A0 M-AUD-06 十题 |
 
 > 下方旧状态表和历史 0.1.x 报告保留用于追溯，但其中的 Approved、100%、CLOSED、25 个 Master 和无条件完成性表述均已被订正，不得继续作为当前批准依据。
 
@@ -90,6 +90,8 @@
 - [A0 治理重开与 M-AUD-06 准备记录](./evidence/2026-08-31-a0-governance-reopening-and-m-aud-06-preparation-v0.1.0.md)：保存董事会准确重开口令、现场关联、影响范围和下一道人工作业；A0 仅为 IN REVIEW，尚未重新批准。
 - [A0 M-AUD-06 董事会冻结题目与阶段资格复核](./evidence/2026-09-01-a0-m-aud-06-board-question-qualification-v0.1.0.md)：十题全部保留且异源来源成立，但 A0 报告可回答 0/10，不能计作 A0 M-AUD-06，AG-02 继续 BLOCKED。
 - [跨阶段审计题库董事会裁决](./evidence/2026-09-01-cross-stage-audit-question-bank-board-disposition-v0.1.0.md)：董事会确认原十题保留为跨阶段题库且不自动归入任何阶段；A0 M-AUD-06 另行出题，A0 与 R1 状态不提升。
+- [A0 当前静态漂移复算](./evidence/2026-09-02-a0-static-drift-recalculation-v0.1.0.md)：固定 `D-HEAD=981670d4...`，复算 B-REF 候选/候选干预集和 B-ASIS 后 35 个提交、93 个变化路径；B-REF 待董事会确认，AG-04/AG-05 仍为 PARTIAL。
+- [A0 至 R0 前置动作包](./evidence/2026-09-02-a0-pre-r0-human-and-probe-action-pack-v0.1.0.md)：列出四项待批准只读探针、六类启动安全初筛、截止日期/A1 范围/P0 通道确认项和八个 P0 通知正文；不构成批准或回执。
 - [实时通道点修复复验](./evidence/2026-08-30-realtime-channel-remediation-verification-v0.1.0.md)：F-RT-01/F-RT-02 定向复验通过，F-RT-03 仅完成防泄露封堵；M-03 与 RT-GATE 未关闭。
 - [当前环境与漂移指纹](./evidence/2026-08-31-current-environment-and-drift-fingerprint-v0.1.0.md)：补采 Git、Python、Node、配置与本地存储元数据；AG-04/AG-05 由“无当前快照”推进为 PARTIAL，但历史同期、数据库和运行证据仍缺。
 - [整改交接 0.1.1](../handover/2026-08-30-a0-a6-independent-review-remediation-handover-v0.1.1.md)
