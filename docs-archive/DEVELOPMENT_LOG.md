@@ -9090,3 +9090,53 @@ CLAUDE.md 记载「所有机器人变更都要过 `_require_teacher_or_admin`」
 
 - Result: PASS
 - Next Step: M-01 第 4 组，建议做任务生命周期（`tasks.py` 4 个端点，`Task.user_id` 存在，归属可判定）。
+
+## 2026-09-03 — 改造第 5 批：M-01 第 3 组（任务生命周期）
+
+- Scope: `tasks.py`；新增测试 1 文件。前端 0 改动。
+- 测试：**987 passed**（前一基线 985，+2 为新增归属回归），0 失败。
+
+### 同一文件内的「读有写没有」
+
+`tasks.py` 的三个**读**端点（`get_task` / `get_task_report` / `get_task_events`）
+均调用 `ensure_task_scope`；四个**写**端点（`start` / `step` / `pause` / `resume`）
+**一个都没有**，且无身份注入。A4 的「读 19% / 写 11%」在单个文件内的直接呈现。
+
+修复：四个写端点补 `ActorContext` 注入 + `ensure_write_owner(task.user_id)`。
+采用写口径（本人或管理员）而非读口径的 `ensure_task_scope`（放行同校教师），
+理由同第 1 组：教师介入应走显式端点，不得从读规则顺带获得。
+`Task.user_id` 可为空，无主任务由 `ensure_write_owner` 处置为仅管理员可写。
+
+### 「加了守卫却零测试失败」不是好消息
+
+前几组每次补守卫都会击穿一批依赖「任意用户可操作他人对象」的用例；本组**零失败**。
+
+原因并非代码更干净，而是**这四个写端点根本没有 HTTP 层测试**：
+`test_task_list_api.py` 等均为服务层测试（直接用 `test_db` 造对象），
+端点授权路径从未被覆盖。
+
+> 因此本组的「全量绿」**不构成守卫生效的证据**。已另写行为测试确认：
+> 非所有者对四个端点全部 403；无主任务对普通用户 403。
+>
+> 与前一次的教训同源——彼时是「源码文本断言即使守卫从未被调用也会绿」，
+> 此次是「没有测试所以不会红」。**两种情形下「绿」都不等于「对」。**
+
+新增 `tests/unit/test_task_write_ownership.py`（2 条）补齐该 HTTP 层空白。
+
+### 第三处同款角色来源缺陷
+
+`tasks.py:128` 的 `bool({"teacher", "admin"} & actor.roles)` 与上一批 robots/onboarding
+同缺陷：`actor.roles` 对正常注册用户为空集，导致注册教师永远不被视为特权方、
+只能看到自己的任务。已改用 `actor_has_role`。
+
+**累计三个文件受影响**（robots 12 处、onboarding 2 处、tasks 1 处）。
+M-13 记载「角色三处并存」，其代码侧表现是**查错来源的地方也在三处以上**。
+
+### 进度
+
+24 个高危写端点：**已修 11，阻断 4（维保草稿缺归属字段），剩 9**
+（评估 4、执行步骤 2、故障案例 2、删 SOP 1）。
+
+- Result: PASS
+- Next Step: M-01 第 4 组。建议先查 `assessments`/`fault_cases`/`sops` 三域的归属字段是否存在，
+  避免重蹈维保草稿组「做到一半才发现无归属数据」。

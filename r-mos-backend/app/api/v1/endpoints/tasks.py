@@ -8,8 +8,8 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.services.authz_guard import ActorContext, get_current_actor
-from app.services.ownership import ensure_task_scope
+from app.services.authz_guard import ActorContext, actor_has_role, get_current_actor
+from app.services.ownership import ensure_task_scope, ensure_write_owner
 from app.schemas.task import (
     TaskCreate,
     TaskResponse,
@@ -69,10 +69,21 @@ async def create_task(
 @router.post("/tasks/{task_id}/start", response_model=TaskResponse, tags=["Tasks"])
 async def start_task(
     task_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """开始Task"""
+    # 审计 M-01：同文件的三个读端点均调 ensure_task_scope，
+    # 四个写端点此前一个都没有——「读有写没有」的典型。
     service = TaskService(db)
+    existing = await service.get_task(task_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await ensure_write_owner(
+        db, request, actor, existing.user_id,
+        action="start_task", resource_type="task", resource_id=task_id,
+    )
     task = await service.start_task(task_id)
     return task
 
@@ -81,10 +92,20 @@ async def start_task(
 async def execute_step(
     task_id: int,
     request: StepExecutionRequest,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """执行步骤（核心API）"""
+    # 审计 M-01：此前无身份、无归属校验。
     service = TaskService(db)
+    existing = await service.get_task(task_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await ensure_write_owner(
+        db, http_request, actor, existing.user_id,
+        action="execute_task_step", resource_type="task", resource_id=task_id,
+    )
     response = await service.execute_step(task_id, request)
     return response
 
@@ -92,10 +113,21 @@ async def execute_step(
 @router.post("/tasks/{task_id}/pause", response_model=TaskResponse, tags=["Tasks"])
 async def pause_task(
     task_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """暂停Task"""
+    # 审计 M-01：同文件的三个读端点均调 ensure_task_scope，
+    # 四个写端点此前一个都没有——「读有写没有」的典型。
     service = TaskService(db)
+    existing = await service.get_task(task_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await ensure_write_owner(
+        db, request, actor, existing.user_id,
+        action="pause_task", resource_type="task", resource_id=task_id,
+    )
     task = await service.pause_task(task_id)
     return task
 
@@ -103,10 +135,21 @@ async def pause_task(
 @router.post("/tasks/{task_id}/resume", response_model=TaskResponse, tags=["Tasks"])
 async def resume_task(
     task_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """恢复Task"""
+    # 审计 M-01：同文件的三个读端点均调 ensure_task_scope，
+    # 四个写端点此前一个都没有——「读有写没有」的典型。
     service = TaskService(db)
+    existing = await service.get_task(task_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await ensure_write_owner(
+        db, request, actor, existing.user_id,
+        action="resume_task", resource_type="task", resource_id=task_id,
+    )
     task = await service.resume_task(task_id)
     return task
 
@@ -125,7 +168,9 @@ async def list_tasks(
     可见范围按角色收敛：学生只能看到本人的任务，教师/管理员可查看全部或指定用户。
     入参 user_id 对学生无效——权限不能依赖前端传参，否则可被直接绕过。
     """
-    is_privileged = bool({"teacher", "admin"} & actor.roles)
+    # 与 robots/onboarding 同一缺陷：`actor.roles` 对正常注册用户为空集，
+    # 只查它会使注册教师永远不被视为特权方。改用同时认两套来源的 actor_has_role。
+    is_privileged = actor_has_role(actor, "teacher", "admin")
     effective_user_id = user_id if is_privileged else actor.user_id
 
     service = TaskService(db)
