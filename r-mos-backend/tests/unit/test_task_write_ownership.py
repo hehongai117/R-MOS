@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.models.base import Base
 from app.models.school import School
 from app.models.task import Task, TaskStatus
+from app.models.task_execution import TaskExecution
 from main import app
 from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login
 
@@ -93,6 +94,43 @@ def test_unowned_task_is_not_writable_by_ordinary_user():
 
         resp = client.post(f"/api/v1/tasks/{task_id}/start")
         assert resp.status_code == 403, f"无主任务被普通用户写入: {resp.status_code}"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def _seed_execution(sf: async_sessionmaker, student_id: int) -> int:
+    async def _run() -> int:
+        async with sf() as session:
+            task = Task(title="执行归属测试", user_id=student_id, status=TaskStatus.IN_PROGRESS)
+            session.add(task)
+            await session.flush()
+            execution = TaskExecution(task_id=task.id, student_id=student_id, status="in_progress")
+            session.add(execution)
+            await session.commit()
+            return execution.id
+
+    return asyncio.run(_run())
+
+
+@pytest.mark.regression
+def test_pipeline_execution_endpoints_reject_non_owner():
+    """审计 M-01：执行记录的完成动作必须限于归属学生。"""
+    client, sf = _client()
+    try:
+        owner_id, _, _ = register_and_login(client, email_prefix="exec_owner")
+        execution_id = _seed_execution(sf, owner_id)
+
+        register_and_login(client, email_prefix="exec_intruder")
+
+        step = client.post(
+            f"/api/v1/pipeline/executions/{execution_id}/steps/complete",
+            json={"step_index": 1, "evidence_type": "photo", "evidence_value": {"url": "x"}},
+        )
+        done = client.post(f"/api/v1/pipeline/executions/{execution_id}/complete")
+        assert step.status_code == 403, f"非归属学生完成步骤未被拒绝: {step.status_code}"
+        assert done.status_code == 403, f"非归属学生完成执行未被拒绝: {done.status_code}"
     finally:
         client.close()
         app.dependency_overrides.clear()

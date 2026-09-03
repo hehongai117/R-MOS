@@ -1,10 +1,13 @@
 """Pipeline API — diagnosis-to-task-to-report flow."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.models.task_execution import TaskExecution
+from app.services.ownership import ensure_write_owner
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.pipeline.fault_diagnosis_service import FaultDiagnosisService
 from app.services.pipeline.task_pipeline_service import TaskPipelineService
 
@@ -91,9 +94,19 @@ async def create_task_from_diagnosis(
 async def complete_step(
     execution_id: int,
     request: StepCompleteRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Record step completion with evidence."""
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可完成他人执行记录。
+    execution = await db.get(TaskExecution, execution_id)
+    if execution is None:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    await ensure_write_owner(
+        db, http_request, actor, execution.student_id,
+        action="complete_execution_step", resource_type="TaskExecution", resource_id=execution_id,
+    )
     service = TaskPipelineService(db)
     result = await service.complete_step(
         execution_id=execution_id,
@@ -109,9 +122,19 @@ async def complete_step(
 @router.post("/executions/{execution_id}/complete", response_model=TaskCompleteResponse)
 async def complete_task(
     execution_id: int,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Mark task execution complete, trigger report generation."""
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可完成他人执行记录。
+    execution = await db.get(TaskExecution, execution_id)
+    if execution is None:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    await ensure_write_owner(
+        db, http_request, actor, execution.student_id,
+        action="complete_task_execution", resource_type="TaskExecution", resource_id=execution_id,
+    )
     service = TaskPipelineService(db)
     result = await service.complete_task(execution_id=execution_id)
     if "error" in result:
