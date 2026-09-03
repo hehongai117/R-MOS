@@ -11,7 +11,7 @@ from starlette.background import BackgroundTask
 
 from app.core.database import get_db
 from app.services.storage import get_storage
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, get_current_actor, actor_has_role
 from app.services.robot_service import RobotService
 from app.services.robot_asset_validator import validate_robot_assets
 from app.services.knowledge.project_ingest_service import project_ingest_service
@@ -39,7 +39,9 @@ _storage = get_storage()
 
 
 def _require_teacher_or_admin(actor: ActorContext):
-    if "teacher" not in actor.roles and "admin" not in actor.roles:
+    # 此前只查 RBAC `actor.roles`，而注册流程不写 `user_roles`，
+    # 导致正常注册的教师对全部 12 个机器人端点一律 403（实测确认）。
+    if not actor_has_role(actor, "teacher", "admin"):
         raise HTTPException(status_code=403, detail="教师或管理员权限才能操作机器人")
 
 
@@ -160,7 +162,7 @@ async def get_robot(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if "admin" in actor.roles:
+    if actor_has_role(actor, "admin"):
         return robot
     if robot.visibility == RobotVisibility.SHARED:
         return robot
@@ -188,7 +190,7 @@ async def update_robot(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以编辑")
     update_data = body.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -210,7 +212,7 @@ async def delete_robot(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以删除")
     await db.delete(robot)
     await db.commit()
@@ -229,7 +231,7 @@ async def upload_robot_files(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以上传文件")
 
     uploaded = []
@@ -304,7 +306,7 @@ async def trigger_analysis(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以触发分析")
 
     # 防止重复触发：检查是否有未完成的分析任务
@@ -353,7 +355,7 @@ async def list_analysis_tasks(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以查看分析任务")
 
     task_result = await db.execute(
@@ -377,7 +379,7 @@ async def publish_robot(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以发布")
 
     if robot.status == RobotStatus.READY:
@@ -413,7 +415,7 @@ async def set_visibility(
     robot = result.scalar_one_or_none()
     if not robot:
         raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and "admin" not in actor.roles:
+    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
         raise HTTPException(status_code=403, detail="只有创建者或管理员可以修改共享状态")
 
     if robot.visibility == RobotVisibility.SHARED:
@@ -515,7 +517,7 @@ async def _get_visible_robot_or_404(
     if robot is None:
         raise HTTPException(status_code=404, detail="机器人不存在")
 
-    if "admin" in actor.roles or actor.account_role == "admin":
+    if actor_has_role(actor, "admin") or actor.account_role == "admin":
         return robot
     if robot.visibility == RobotVisibility.SHARED:
         return robot

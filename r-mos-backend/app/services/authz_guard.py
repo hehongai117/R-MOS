@@ -134,6 +134,25 @@ async def get_current_actor(
     return actor
 
 
+def actor_has_role(actor: ActorContext, *names: str) -> bool:
+    """判断调用者是否具备给定角色之一，**同时认两套角色来源**。
+
+    系统里角色有两处（见 `ActorContext` 文档）：
+
+    - `users.role` → `actor.account_role`：**注册时写入**，正常用户唯一有值的来源；
+    - RBAC `user_roles` 表 → `actor.roles`：**只有种子脚本写**，正常注册用户为空集。
+
+    历史上多处只检查 `actor.roles`，导致**正常注册的教师/管理员被一律拒绝**——
+    例如 `POST /api/v1/robots` 对注册教师返回 403（实测确认），
+    使整个机器人管理域只有种子账号可用。
+
+    本函数是判定角色的唯一入口；新增角色分支请调用它，不要直接读任一集合。
+    """
+    if actor.account_role in names:
+        return True
+    return any(n in actor.roles for n in names)
+
+
 def resolve_actor_identity(
     actor: ActorContext,
     claimed: Any = None,

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.robot_model import RobotModel, RobotStatus, TeacherRobotBinding
 from app.models.user import User
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, get_current_actor, actor_has_role
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -22,7 +22,7 @@ async def list_available_robots(
     actor: ActorContext = Depends(get_current_actor),
 ):
     """获取可选机器人列表（教师 onboarding 用）。"""
-    if "teacher" not in actor.roles:
+    if not actor_has_role(actor, "teacher"):
         raise HTTPException(status_code=403, detail="仅教师可访问")
 
     stmt = select(RobotModel).where(RobotModel.status == RobotStatus.READY)
@@ -50,7 +50,7 @@ async def select_robots(
     actor: ActorContext = Depends(get_current_actor),
 ):
     """教师完成机器人选择（onboarding 最后一步）。"""
-    if "teacher" not in actor.roles:
+    if not actor_has_role(actor, "teacher"):
         raise HTTPException(status_code=403, detail="仅教师可访问")
 
     # 检查是否已完成 onboarding

@@ -9023,3 +9023,70 @@ A4 记载「任意登录用户可给任意作业打分」。直觉修法是补�
 
 - Result: PASS
 - Next Step: M-01 第 3 组，建议做维保草稿审批（4 个端点，语义与评分同属职权类）。
+
+## 2026-09-03 — 改造第 4 批：角色来源缺陷（新发现）+ 维保草稿组阻断登记
+
+- Scope: `authz_guard.py`、`robots.py`、`onboarding.py`；测试 1 文件。前端 0 改动。
+- 测试：**985 passed**（前一基线 982，+3 为角色来源回归），0 失败。
+
+### 一、维保草稿组：M-01 在该组**无法关闭**，属数据模型硬约束
+
+原计划本批处理维保草稿 4 个端点（`PATCH /maintenance/drafts/{id}`、`/submit-review`、
+`/approve`、`/reject`），实际**无法实现对象级归属校验**：
+
+| 表 | 归属字段 |
+|---|---|
+| `robot_sop_drafts` | **无**。仅 `project_id` / `request_id` / `draft_json` / `citations_json` / `review_status` |
+| `robot_projects`（上游） | **无**。仅 `robot_key` / `brand` / `model` / `version` / `status` / `source_package_path` / `ingest_summary_json` |
+
+**数据库未记录任何创建者或拥有者，因此归属校验无从判定。**
+且整个 `maintenance.py` 当前零授权（每个端点只有 `db: AsyncSession = Depends(get_db)`）。
+
+**登记为阻断项：** 该组需先补 `created_by_user_id`（或等价归属字段）+ 迁移，
+且历史行归属为 NULL 需另定处置，方能实施。本批不做，不以角色检查冒充归属校验。
+
+> 语义提示（供后续实施）：`approve` / `reject` 属职权类，**必须排除草稿作者本人**
+> （职责分离），与 `grade_attempt` 同型；`update` / `submit-review` 属归属类。
+
+### 二、新发现：角色来源错误使机器人管理域对正常注册用户全域不可用
+
+排查上一项时发现，`ActorContext` 自身文档明确写着：
+
+> `roles` / `permissions`：RBAC 表里的授权。**注册流程不写 `user_roles`，
+> 只有 seed 脚本会写，因此正常注册的用户这两个集合为空。**
+> `account_role`：`users.role` 列，注册时写入。教学域的角色分支用它。
+
+而 `robots.py:_require_teacher_or_admin` 只检查 `actor.roles`。**实测确认：**
+
+```
+正常注册的教师 → POST /api/v1/robots → 403「教师或管理员权限才能操作机器人」
+```
+
+**影响面：`robots.py` 全部 12 个端点 + `onboarding.py` 2 处。**
+CLAUDE.md 记载「所有机器人变更都要过 `_require_teacher_or_admin`」，
+即**整个机器人管理域只有种子账号可用**，正常注册的教师被全部挡在门外。
+
+**性质与 A6 已登记项不同**：这不是「权限过松」，而是「合法用户被全部拒绝」——
+是功能性缺陷。A6 的 26 项**未覆盖此条**。
+
+根因与 M-13（角色三处并存）同源：只要角色仍有两套存储，此类错误会持续发生。
+
+**修复（单点收口）：** 新增 `actor_has_role(actor, *names)` 作为角色判定的唯一入口，
+同时认 `account_role` 与 `roles` 两套来源；`robots.py`、`onboarding.py` 全部改调它。
+
+**复验（防止修成放宽）：**
+
+| 身份 | `POST /robots` |
+|---|---|
+| 正常注册教师 | **201**（修复前 403） |
+| 正常注册学生 | **403**（未被放宽） |
+
+新增 3 条回归：注册角色被接受 / RBAC 角色仍被接受（种子账号）/ 不放宽学生。
+
+### 进度
+
+24 个高危写端点：已处理 7，**维保草稿 4 个因数据模型缺失归属字段而阻断**，
+其余 13 个待处理（任务生命周期 4、评估 4、执行步骤 2、故障案例 2、删 SOP 1）。
+
+- Result: PASS
+- Next Step: M-01 第 4 组，建议做任务生命周期（`tasks.py` 4 个端点，`Task.user_id` 存在，归属可判定）。

@@ -48,3 +48,44 @@ def test_string_and_int_identity_compare_by_value():
     assert resolve_actor_identity(_actor(7), "7", action="a", resource_type="R") == 7
     with pytest.raises(AccessDeniedError):
         resolve_actor_identity(_actor(7), "8", action="a", resource_type="R")
+
+
+# ---------------------------------------------------------------------------
+# 角色来源（本轮新发现，A6 的 26 项未覆盖）
+# ---------------------------------------------------------------------------
+
+def _actor_with(account_role: str = "", roles: set[str] | None = None) -> ActorContext:
+    return ActorContext(
+        user_id=1, email="u@x.com", roles=roles or set(),
+        permissions=set(), account_role=account_role,
+    )
+
+
+@pytest.mark.regression
+def test_actor_has_role_accepts_registration_role():
+    """**核心回归**：正常注册用户只有 `users.role`，RBAC `user_roles` 为空。
+
+    修复前 `_require_teacher_or_admin` 只查 `actor.roles`，导致正常注册的教师
+    对全部 12 个机器人端点一律 403（已实测确认），整个域只有种子账号可用。
+    """
+    from app.services.authz_guard import actor_has_role
+
+    assert actor_has_role(_actor_with(account_role="teacher"), "teacher", "admin")
+    assert actor_has_role(_actor_with(account_role="admin"), "teacher", "admin")
+
+
+@pytest.mark.regression
+def test_actor_has_role_still_accepts_rbac_roles():
+    """种子账号只有 RBAC 角色、`account_role` 为空，必须继续放行。"""
+    from app.services.authz_guard import actor_has_role
+
+    assert actor_has_role(_actor_with(roles={"admin"}), "admin")
+
+
+@pytest.mark.regression
+def test_actor_has_role_does_not_widen_permissions():
+    """修复不得变成放宽：学生仍不具备教师/管理员角色。"""
+    from app.services.authz_guard import actor_has_role
+
+    assert not actor_has_role(_actor_with(account_role="student"), "teacher", "admin")
+    assert not actor_has_role(_actor_with(), "teacher", "admin")
