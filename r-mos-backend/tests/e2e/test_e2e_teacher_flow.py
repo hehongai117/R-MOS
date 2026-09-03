@@ -33,7 +33,7 @@ def test_e2e_teacher_flow(
 ) -> None:
     client, session_factory = e2e_env
 
-    teacher_id, teacher_email, _ = register_and_login(client, email_prefix="e2e_teacher")
+    teacher_id, teacher_email, teacher_login = register_and_login(client, email_prefix="e2e_teacher")
     student_id, _student_email, _ = register_and_login(client, email_prefix="e2e_student")
     asyncio.run(set_user_role(session_factory, user_id=teacher_id, role="teacher"))
 
@@ -88,9 +88,13 @@ def test_e2e_teacher_flow(
     assert session_status_resp.status_code == 200
     assert session_status_resp.json()["user_id"] == student_id
 
+    # 审计 M-02：此前本用例以**学生令牌**调用 force-submit、仅在请求体声明教师 id 即返回 200，
+    # 固化的正是「任意登录用户声称自己是教师即可强制提交他人训练」这一缺陷。
+    # 现在操作人身份取自认证上下文，教师动作必须以教师身份发起。
     force_submit_resp = client.post(
         f"/api/v1/training/sessions/{session_id}/force-submit",
         json={"teacher_id": teacher_id},
+        headers={"Authorization": f"Bearer {teacher_login['access_token']}"},
     )
     assert force_submit_resp.status_code == 200
     assert force_submit_resp.json()["submit_type"] == "teacher"

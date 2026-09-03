@@ -9,7 +9,7 @@ from datetime import datetime
 
 class SessionCreateRequest(BaseModel):
     """创建会话请求"""
-    user_id: int
+    user_id: Optional[int] = None  # 兼容保留；操作人身份以认证上下文为准（审计 M-02）
     project_id: str
     project_snapshot: dict
     ab_group: Optional[str] = None
@@ -189,13 +189,13 @@ class WorkbenchAssistantMessageResponse(BaseModel):
 
 class SubmitSessionRequest(BaseModel):
     """提交训练请求"""
-    user_id: int
+    user_id: Optional[int] = None  # 兼容保留；操作人身份以认证上下文为准（审计 M-02）
     confirm_incomplete: bool = False
 
 
 class ForceSubmitSessionRequest(BaseModel):
     """教师强制提交请求"""
-    teacher_id: int
+    teacher_id: Optional[int] = None  # 兼容保留；操作人身份以认证上下文为准（审计 M-02）
 
 
 class SubmitSessionResponse(BaseModel):

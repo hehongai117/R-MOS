@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Any, Callable
 
 from fastapi import Depends, Header, Request
 from sqlalchemy import select
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import (
+    AccessDeniedError,
     AuthenticationRequiredError,
     PermissionDeniedError,
     RoleRequiredError,
@@ -131,6 +132,40 @@ async def get_current_actor(
     )
     request.state.actor = actor
     return actor
+
+
+def resolve_actor_identity(
+    actor: ActorContext,
+    claimed: Any = None,
+    *,
+    action: str,
+    resource_type: str,
+    resource_id: Any = None,
+) -> int:
+    """返回**认证上下文**中的用户编号，作为写入业务记录的唯一操作人身份。
+
+    审计 M-02：系统曾在多处把请求体自带的 `user_id` / `teacher_id` 当作操作人写库，
+    甚至用它做管辖权判定。任何「是否存在身份检查」的静态扫描对这类写法都会打勾，
+    因此必须把「业务身份取自何处」这条规则收口到一个地方。
+
+    Args:
+        actor: 认证守卫解析出的调用者上下文。
+        claimed: 请求体声明的身份（若接口为兼容保留该字段）。
+            **不为 None 且与认证身份不一致时视为冒用，直接拒绝**，
+            而不是静默改用认证身份——静默改用会让冒用尝试不可见。
+
+    Returns:
+        `actor.user_id`，始终是认证身份。
+    """
+    if claimed is not None and str(claimed) != str(actor.user_id):
+        raise AccessDeniedError(
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason="identity_mismatch_between_token_and_body",
+            message="请求体声明的身份与认证身份不一致",
+        )
+    return actor.user_id
 
 
 async def enforce_authenticated(

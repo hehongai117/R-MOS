@@ -1039,7 +1039,7 @@ def test_force_submit_teacher_no_scope_returns_403(monkeypatch) -> None:
 
         resp = client.post(
             f"/api/v1/training/sessions/{data['session_id']}/force-submit",
-            json={"teacher_id": 999},
+            json={},  # 身份取自令牌；此前声明他人 id 即可越权（M-02）
         )
         assert resp.status_code == 403
         body = resp.json()
@@ -1073,7 +1073,7 @@ def test_force_submit_success_records_audit_event(monkeypatch) -> None:
 
         resp = client.post(
             f"/api/v1/training/sessions/{data['session_id']}/force-submit",
-            json={"teacher_id": 42},
+            json={},  # 同上
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -1104,7 +1104,7 @@ def test_force_submit_submit_failed_returns_400(monkeypatch) -> None:
 
         resp = client.post(
             f"/api/v1/training/sessions/{data['session_id']}/force-submit",
-            json={"teacher_id": 42},
+            json={},  # 同上
         )
         assert resp.status_code == 400
         body = resp.json()

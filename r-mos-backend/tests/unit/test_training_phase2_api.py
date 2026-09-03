@@ -215,7 +215,7 @@ def test_submit_session_uses_submission_service_manual(monkeypatch) -> None:
 
         response = client.post(
             f"/api/v1/training/sessions/{data['session_id']}/submit",
-            json={"user_id": data["user_id"], "confirm_incomplete": True},
+            json={"confirm_incomplete": True},  # 提交人取自令牌（审计 M-02）
         )
         assert response.status_code == 200
         payload = response.json()

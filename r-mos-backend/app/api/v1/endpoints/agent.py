@@ -14,7 +14,7 @@ from app.models.command_runtime import Command, AIToolCall
 from app.models.approval import Approval
 from app.services.tool_executor import validate_tool_request_security
 from app.services.access_control import log_allow_event, log_deny_event
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, get_current_actor, resolve_actor_identity
 from app.api.v1.endpoints.ai_commands import _plan_tool_call
 
 logger = logging.getLogger(__name__)
@@ -105,8 +105,15 @@ async def diagnose_error(request: DiagnoseRequest, _: None = Depends(require_per
 # ============ Multi-Agent Coordination Endpoints ============
 
 @router.post("/coordinate")
-async def coordinate_agents(request: CoordinateRequest, _: None = Depends(require_permission("agent:execute"))):
+async def coordinate_agents(
+    request: CoordinateRequest,
+    _: None = Depends(require_permission("agent:execute")),
+):
     """Coordinate multiple agents"""
+    # 注：本端点的 request.user_id 是**字符串任务标识**，经内存协调器原样回显，
+    # 不落库、不作为操作人记录（multi_agent_coordinator 全文件零数据库引用）。
+    # 因此不属于 M-02「认证身份与业务身份未绑定」的实例，本轮不改。
+    # 若将来该值被持久化或用于授权判定，须重新按 M-02 处置。
     result = await multi_agent_coordinator.coordinate(
         task_id=request.task_id,
         user_id=request.user_id,
@@ -165,7 +172,7 @@ async def execute_agent(
         actor,
         permission_key=required_permission,
     )
-    logger.info(f"[P2-1] Agent execute: mode={mode}, user_id={request.user_id}, trace_id={trace_id}")
+    logger.info(f"[P2-1] Agent execute: mode={mode}, user_id={actor.user_id}, trace_id={trace_id}")
 
     if mode == AgentExecuteMode.COMMAND:
         # A-mode: Handle as command execution
@@ -185,7 +192,7 @@ async def execute_agent(
             # 无 input_text 列。此前误用 user_id/input_text 会在构造时抛 TypeError 被吞成 error。
             command = Command(
                 trace_id=trace_id,
-                actor_user_id=request.user_id,
+                actor_user_id=actor.user_id,
                 intent=command_payload["intent"],
                 skill_id=command_payload.get("skill_id"),
                 status="pending",
@@ -305,7 +312,7 @@ async def execute_agent(
         # B-mode: Handle as message (via OrchestratorV2)
         try:
             response = await orchestrator_v2.process_request(
-                user_id=request.user_id,
+                user_id=actor.user_id,
                 message=request.message or "",
                 resource_ref=request.resource_ref,
                 policy_context=request.policy_context,

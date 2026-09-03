@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.models.audit_event import AuditEvent
 from app.models.training import TrainingSession
 from app.services.access_control import raise_read_access_denied
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, get_current_actor, resolve_actor_identity
 from app.services.ownership import ensure_user_scope
 from app.services.training.session_service import SessionService
 from app.services.training.submission_service import SubmissionService
@@ -44,12 +44,19 @@ router.include_router(training_workbench.router)
 )
 async def create_session(
     request: SessionCreateRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-06-b-1: 创建训练会话"""
+    # 审计 M-01/M-02：此前无身份注入且用请求体 user_id 建会话，
+    # 任意登录用户可为他人创建会话。
+    owner_id = resolve_actor_identity(
+        actor, request.user_id, action="create_training_session",
+        resource_type="TrainingSession",
+    )
     service = SessionService(db)
     session_id = await service.create_session(
-        user_id=request.user_id,
+        user_id=owner_id,
         project_id=request.project_id,
         project_snapshot=request.project_snapshot,
         ab_group=request.ab_group,
@@ -263,9 +270,15 @@ async def abandon_session(
 async def submit_session(
     session_id: str,
     request: SubmitSessionRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-08: 手动提交训练（走 SubmissionService）"""
+    # 审计 M-01/M-02：此前无身份注入且提交人取自请求体。
+    submitter_id = resolve_actor_identity(
+        actor, request.user_id, action="submit_training_session",
+        resource_type="TrainingSession", resource_id=session_id,
+    )
     service = SubmissionService(db)
 
     check_result = await service.check_submit_ready(session_id)
@@ -286,7 +299,7 @@ async def submit_session(
 
     submission = await service.submit_manual(
         session_id=session_id,
-        user_id=request.user_id,
+        user_id=submitter_id,
         confirm_incomplete=request.confirm_incomplete,
     )
 
@@ -311,6 +324,7 @@ async def force_submit_session(
     session_id: str,
     request: ForceSubmitSessionRequest,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """教师强制提交训练（需 teacher 对 student 有班级管辖权）。"""
     session_service = SessionService(db)
@@ -318,9 +332,15 @@ async def force_submit_session(
     if not training_session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # 审计 M-02：此前管辖权校验的输入是请求体自带的 teacher_id，
+    # 且该编号被写入审计事件作为操作人——有检查，但检查的是调用方自己提供的身份。
+    teacher_id = resolve_actor_identity(
+        actor, request.teacher_id, action="force_submit_training_session",
+        resource_type="TrainingSession", resource_id=session_id,
+    )
     membership_service = ClassMembershipService(db)
     has_scope = await membership_service.teacher_has_student_scope(
-        teacher_id=request.teacher_id,
+        teacher_id=teacher_id,
         student_id=training_session.user_id,
     )
     if not has_scope:
@@ -329,14 +349,14 @@ async def force_submit_session(
     submission_service = SubmissionService(db)
     submission = await submission_service.submit_by_teacher(
         session_id=session_id,
-        teacher_id=request.teacher_id,
+        teacher_id=teacher_id,
     )
     if not submission:
         raise HTTPException(status_code=400, detail="Force submit failed")
 
     db.add(
         AuditEvent(
-            actor_user_id=str(request.teacher_id),
+            actor_user_id=str(teacher_id),
             action="student_notified",
             resource_type="TrainingSession",
             resource_id=session_id,

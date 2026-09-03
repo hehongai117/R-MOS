@@ -150,9 +150,22 @@ def test_teacher_force_submit_requires_scope_and_records_notification_event(
     teaching_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = teaching_api_env
-    teacher_id = 901
-    outsider_teacher_id = 902
-    student_id = 9901
+
+    # 审计 M-02：force-submit 的操作人身份改由认证上下文决定后，
+    # 编造的 id（原 901/902/9901）无法通过认证。改注册真实用户，
+    # 并在每次调用前切换到对应身份——本用例要验的「管辖权强制」意图不变。
+    teacher_id, _, owner_login = register_and_login(client, email_prefix="force_owner_teacher")
+    outsider_teacher_id, _, outsider_login = register_and_login(
+        client, email_prefix="force_outsider_teacher"
+    )
+    student_id, _, student_login = register_and_login(
+        client, email_prefix="force_student", role="student", teacher_id=teacher_id
+    )
+
+    def _act_as(login: dict) -> None:
+        client.headers["Authorization"] = f"Bearer {login['access_token']}"
+
+    _act_as(owner_login)
 
     class_resp = client.post(
         "/api/v1/classes",
@@ -167,6 +180,8 @@ def test_teacher_force_submit_requires_scope_and_records_notification_event(
     )
     assert enroll_resp.status_code == 201
 
+    # 会话归学生本人所有，须以学生身份创建（M-01/M-02：不得为他人建会话）
+    _act_as(student_login)
     session_resp = client.post(
         "/api/v1/training/sessions",
         json={
@@ -178,12 +193,15 @@ def test_teacher_force_submit_requires_scope_and_records_notification_event(
     assert session_resp.status_code == 200
     session_id = session_resp.json()["session_id"]
 
+    # 无管辖权的教师：以其本人身份发起，应被管辖权检查拒绝（而非被身份不符拒绝）
+    _act_as(outsider_login)
     denied_resp = client.post(
         f"/api/v1/training/sessions/{session_id}/force-submit",
         json={"teacher_id": outsider_teacher_id},
     )
     assert denied_resp.status_code == 403
 
+    _act_as(owner_login)
     allowed_resp = client.post(
         f"/api/v1/training/sessions/{session_id}/force-submit",
         json={"teacher_id": teacher_id},
