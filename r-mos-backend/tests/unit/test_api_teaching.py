@@ -86,9 +86,22 @@ def test_teacher_scope_access_for_student_attempt(
     assert assignment_resp.status_code == 201
     assignment_id = assignment_resp.json()["id"]
 
+    # 审计 M-01：创建作业尝试已收紧为「本人或管理员」。原 setup 以教师身份为
+    # 编造的学生 3001 建尝试；该学生既未注册也未选课，不构成「教师应可代建」的证据。
+    # 本用例真正要验的是 replay 的**读**范围，故改为注册真实学生、选课后以其本人身份创建。
+    student_id, _, student_login = register_and_login(
+        client, email_prefix="scope_student", role="student", teacher_id=teacher_id
+    )
+    enroll_resp = client.post(
+        "/api/v1/enrollments",
+        json={"classId": class_id, "studentId": student_id},
+    )
+    assert enroll_resp.status_code == 201
+
+    _act_as(student_login)
     attempt_resp = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": 3001},
+        json={"studentId": student_id},
     )
     assert attempt_resp.status_code == 201
     attempt_id = attempt_resp.json()["id"]
@@ -215,3 +228,61 @@ def test_teacher_force_submit_requires_scope_and_records_notification_event(
     assert event is not None
     assert event.actor_user_id == str(teacher_id)
     assert event.reason == "teacher_force_submit"
+
+
+def test_grade_attempt_rejects_student_self_grading(
+    teaching_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    """审计 M-01：评分是教师职权，**学生本人必须被拒绝**。
+
+    修复前该端点无身份、无归属校验（A4 记载「任意登录用户可给任意作业打分」）。
+    若把它"修"成「仅对象所有者」，就会变成「学生可以给自己打分」——
+    洞只是换了位置。本用例断言三种身份的结果：
+    学生本人 403、管辖外教师 403、管辖内教师 200。
+    """
+    client, _ = teaching_api_env
+    teacher_id, _, owner_login = register_and_login(client, email_prefix="grade_owner_teacher")
+    _, _, outsider_login = register_and_login(client, email_prefix="grade_outsider_teacher")
+
+    def _act_as(login: dict) -> None:
+        client.headers["Authorization"] = f"Bearer {login['access_token']}"
+
+    _act_as(owner_login)
+    class_id = client.post(
+        "/api/v1/classes",
+        json={"name": f"grade-{uuid4().hex[:6]}", "teacherId": teacher_id},
+    ).json()["id"]
+    assignment_id = client.post(
+        "/api/v1/assignments", json={"classId": class_id, "title": "Grade Assignment"}
+    ).json()["id"]
+
+    student_id, _, student_login = register_and_login(
+        client, email_prefix="grade_student", role="student", teacher_id=teacher_id
+    )
+    assert client.post(
+        "/api/v1/enrollments", json={"classId": class_id, "studentId": student_id}
+    ).status_code == 201
+
+    _act_as(student_login)
+    attempt_id = client.post(
+        f"/api/v1/assignments/{assignment_id}/attempts",
+        json={"studentId": student_id},
+    ).json()["id"]
+    assert client.patch(
+        f"/api/v1/attempts/{attempt_id}", json={"status": "completed"}
+    ).status_code == 200
+
+    # 学生本人给自己打分：必须拒绝
+    _act_as(student_login)
+    self_grade = client.post(f"/api/v1/attempts/{attempt_id}/grade", json={"score": 100})
+    assert self_grade.status_code == 403, f"学生给自己打分未被拒绝: {self_grade.status_code}"
+
+    # 管辖外教师：必须拒绝
+    _act_as(outsider_login)
+    outsider_grade = client.post(f"/api/v1/attempts/{attempt_id}/grade", json={"score": 60})
+    assert outsider_grade.status_code == 403, f"管辖外教师未被拒绝: {outsider_grade.status_code}"
+
+    # 管辖内教师：放行
+    _act_as(owner_login)
+    ok = client.post(f"/api/v1/attempts/{attempt_id}/grade", json={"score": 88})
+    assert ok.status_code == 200, f"管辖内教师被误拒: {ok.status_code} {ok.text[:200]}"

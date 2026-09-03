@@ -8958,3 +8958,68 @@ B 类还有 20 个（打分、删 SOP、维保草稿审批、任务生命周期�
 
 - Result: PASS
 - Next Step: M-01 第 2 组。建议先做 `teaching_roster` 的 attempts/grade（教师管辖权语义已有先例）。
+
+## 2026-09-03 — 改造第 3 批：M-01 第 2 组（作业尝试与评分）
+
+- Scope: `ownership.py`、`teaching_roster.py`；测试 3 文件。前端 0 改动。
+- 测试：**982 passed**（前一基线 981，+1 为新增自评分拒绝测试），0 失败。
+
+### 核心：评分不能用「仅所有者」规则——那会把洞换个位置
+
+A4 记载「任意登录用户可给任意作业打分」。直觉修法是补归属校验，但
+**`ensure_write_owner`（仅所有者或管理员）在此处正好反了**：作业尝试的所有者是学生，
+该规则等于放行「**学生给自己打分**」。洞没堵上，只是换了位置。
+
+因此新增第二个抽象，规则方向相反：
+
+| 抽象 | 规则 | 适用 |
+|---|---|---|
+| `ensure_write_owner` | 本人或管理员 | 本人的东西本人改（暂停自己的训练会话） |
+| `ensure_teacher_scope_over_student` | **有管辖权的教师或管理员；对象所有者本人一律拒绝** | 教师对学生行使职权（评分） |
+
+管辖权判定复用 `ClassMembershipService.teacher_has_student_scope`
+（`Enrollment ⋈ TeachingClass`），与 `force-submit` 同一口径。
+
+### 本批修复的 3 个端点
+
+| 端点 | 修复前 | 采用规则 |
+|---|---|---|
+| `POST /assignments/{id}/attempts` | 无身份；`student_id` 取自请求体 | 本人或管理员（`resolve_actor_identity`） |
+| `PATCH /attempts/{id}` | 无身份、无归属 | 本人或管理员 |
+| `POST /attempts/{id}/grade` | 无身份、无归属 | **教师职权，本人拒绝** |
+
+`create_attempt` 取保守值（本人）而非放行教师代建：现有测试中「教师为学生建尝试」
+只出现在 setup 且用的是编造学生，**不构成产品需求证据**。教师若需代建应另设显式端点。
+
+### 测试处置：改 3 个端点牵出 5 文件 8 个用例
+
+全部因原写法依赖「任意用户可操作他人对象」。已固化的缺陷行为逐条记录：
+
+| 用例 | 原本固化的行为 |
+|---|---|
+| `test_attempt_status_transitions` | 同一身份「创建 → 标完成 → **给自己打分**」 |
+| `test_teacher_scope_access_for_student_attempt` | 教师为**编造学生 3001** 建尝试（该用例真实意图是验 replay 读范围） |
+| `test_read_access_denied_records_real_resource_id` | 为编造学生 1001 建尝试 |
+| `test_teaching_api` / `test_teaching_characterization` 数条 | 用编造学生 id（10/42/7001/8001）做业务用例 |
+
+> **「编造一个不存在的用户 id 传进去」在测试里是普遍模式**，
+> 而它能一直工作的唯一原因就是端点从不校验归属。
+
+处置：fixture 暴露 `client.actor_id` 与 `client.actor_login`；业务用例改用当前身份；
+需要两种角色的用例显式切换令牌。另给 `_seed_attempt` 增加 `enroll` 参数——
+评分走 `Enrollment ⋈ TeachingClass` 判定，**仅建班级与作业不足以让管辖权成立**，
+原种子函数未覆盖这一点。
+
+### 新增回归
+
+`test_grade_attempt_rejects_student_self_grading`：一次断言三种身份——
+学生本人 403、管辖外教师 403、管辖内教师 200。
+**三条都验才能证明规则方向正确**；只验前两条时把规则写成「全部拒绝」也会通过。
+
+### 进度
+
+24 个高危写端点已处理 7 个，**剩 17 个**：删 SOP 1、维保草稿 4、任务生命周期 4、
+执行步骤 2、评估 4、评估提供方 1、故障案例 2（含 1 个 PUT）。
+
+- Result: PASS
+- Next Step: M-01 第 3 组，建议做维保草稿审批（4 个端点，语义与评分同属职权类）。

@@ -119,3 +119,57 @@ async def ensure_write_owner(
         resource_id=owner_user_id if resource_id is None else resource_id,
         reason="not_object_owner" if owner_user_id is not None else "unowned_object",
     )
+
+
+async def ensure_teacher_scope_over_student(
+    db: AsyncSession,
+    request: Request,
+    actor: ActorContext,
+    student_id: int,
+    *,
+    action: str,
+    resource_type: str,
+    resource_id: int | str | None = None,
+) -> None:
+    """教师职权写路径：**有管辖权的教师或管理员；对象所有者本人一律拒绝**。
+
+    与 `ensure_write_owner` 的规则**方向相反**，不可互换（审计 M-01）：
+
+    - `ensure_write_owner` 用于「本人的东西本人改」（暂停自己的训练会话）；
+    - 本函数用于「**教师对学生行使职权**」（评分、审批）。此类操作
+      **必须排除对象所有者本人**——否则「任意登录用户可给任意作业打分」
+      会被"修"成「学生可以给自己打分」，只是把洞换了个位置。
+
+    管辖权判定复用 `ClassMembershipService.teacher_has_student_scope`
+    （Enrollment ⋈ TeachingClass），与 `force-submit` 同一口径。
+    """
+    from app.services.identity.class_membership import ClassMembershipService
+
+    if "admin" in actor.roles or actor.account_role == "admin":
+        return
+
+    if actor.user_id == student_id:
+        await raise_write_access_denied(
+            db,
+            request,
+            action=action,
+            resource_type=resource_type,
+            resource_id=student_id if resource_id is None else resource_id,
+            reason="owner_cannot_exercise_teacher_authority",
+        )
+
+    if actor.account_role == "teacher":
+        membership = ClassMembershipService(db)
+        if await membership.teacher_has_student_scope(
+            teacher_id=actor.user_id, student_id=student_id
+        ):
+            return
+
+    await raise_write_access_denied(
+        db,
+        request,
+        action=action,
+        resource_type=resource_type,
+        resource_id=student_id if resource_id is None else resource_id,
+        reason="teacher_has_no_scope_for_student",
+    )

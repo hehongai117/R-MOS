@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.services.ownership import ensure_teacher_scope_over_student, ensure_write_owner
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.models.evidence import EvidenceBundle
 from app.models.timeline import AlignmentMap, EvidenceCard, MultimodalTimeline, TimelineSegment
@@ -45,7 +46,7 @@ from app.services.access_control import (
     raise_read_access_denied,
     raise_write_access_denied,
 )
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import ActorContext, get_current_actor, resolve_actor_identity
 from app.services.teaching_service import TeachingService
 from app.services.evidence_engine import EvidenceEngine
 from app.api.v1.endpoints.teaching_common import (
@@ -337,13 +338,22 @@ async def list_attempts(assignment_id: int, db: AsyncSession = Depends(get_db)):
 async def create_attempt(
     assignment_id: int,
     request: AttemptCreateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
+    # 审计 M-01/M-02：此前无身份注入，且 student_id 取自请求体，
+    # 任意登录用户可为任意学生创建作业尝试。
+    # 规则取保守值：本人或管理员。教师若需代学生开始尝试，应另设显式端点。
+    student_id = resolve_actor_identity(
+        actor, request.student_id, action="create_attempt",
+        resource_type="AssignmentAttempt", resource_id=assignment_id,
+    )
     service = TeachingService(db)
     try:
         return await service.create_attempt(
             assignment_id=assignment_id,
-            student_id=request.student_id,
+            student_id=student_id,
             task_id=request.task_id,
         )
     except BusinessRuleViolation as exc:
@@ -708,9 +718,18 @@ async def create_evidence_card(
 async def update_attempt_status(
     attempt_id: int,
     request: AttemptStatusUpdateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可改他人尝试状态。
     service = TeachingService(db)
+    attempt = await service.get_attempt(attempt_id)
+    await ensure_write_owner(
+        db, http_request, actor, attempt.student_id,
+        action="update_attempt_status", resource_type="AssignmentAttempt",
+        resource_id=attempt_id,
+    )
     try:
         return await service.update_attempt_status(attempt_id, request.status)
     except BusinessRuleViolation as exc:
@@ -727,9 +746,18 @@ async def update_attempt_status(
 async def grade_attempt(
     attempt_id: int,
     request: AttemptGradeRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
+    # 审计 M-01：此前无身份、无归属校验——A4 记载的「任意登录用户可给任意作业打分」。
+    # **此处不可用 ensure_write_owner**：那会放行学生给自己打分，只是把洞换个位置。
     service = TeachingService(db)
+    attempt = await service.get_attempt(attempt_id)
+    await ensure_teacher_scope_over_student(
+        db, http_request, actor, attempt.student_id,
+        action="grade_attempt", resource_type="AssignmentAttempt", resource_id=attempt_id,
+    )
     try:
         return await service.grade_attempt(attempt_id, score=request.score)
     except BusinessRuleViolation as exc:

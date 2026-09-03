@@ -55,7 +55,12 @@ def client():
         # AUTH-101 默认拒绝网关 + AUTH-104 身份只来自令牌：
         # 预置一位默认教师作为客户端默认身份；需要学生身份的用例用
         # register_and_login(client, ..., role="student") 切换。
-        register_and_login(test_client, email_prefix="teaching_api_actor")
+        # 审计 M-01：作业尝试写操作已按归属收敛，用例需知道"当前是谁"。
+        actor_id, _, actor_login = register_and_login(
+            test_client, email_prefix="teaching_api_actor"
+        )
+        test_client.actor_id = actor_id
+        test_client.actor_login = actor_login
         yield test_client
 
     app.dependency_overrides.clear()
@@ -160,21 +165,24 @@ def test_create_attempts_increment_index(client):
 
     resp1 = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": 10},
+        json={"studentId": client.actor_id},
     )
     assert resp1.status_code == 201
     assert resp1.json()["attemptIndex"] == 1
 
     resp2 = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": 10},
+        json={"studentId": client.actor_id},
     )
     assert resp2.status_code == 201
     assert resp2.json()["attemptIndex"] == 2
 
 
 def test_attempt_status_transitions(client):
-    class_resp = client.post("/api/v1/classes", json={"name": "Class A"})
+    class_resp = client.post(
+        "/api/v1/classes",
+        json={"name": "Class A", "teacherId": client.actor_id},
+    )
     class_id = class_resp.json()["id"]
     assignment_resp = client.post(
         "/api/v1/assignments",
@@ -182,9 +190,21 @@ def test_attempt_status_transitions(client):
     )
     assignment_id = assignment_resp.json()["id"]
 
+    # 审计 M-01：评分是教师职权，学生本人被拒。本用例原为同一身份
+    # 「创建 → 完成 → 给自己打分」，即固化了自评分；现拆为学生做、教师评。
+    teacher_login = client.actor_login
+    student_id, _, student_login = register_and_login(
+        client, email_prefix="transition_student", role="student",
+        teacher_id=client.actor_id,
+    )
+    assert client.post(
+        "/api/v1/enrollments", json={"classId": class_id, "studentId": student_id}
+    ).status_code == 201
+
+    client.headers["Authorization"] = f"Bearer {student_login['access_token']}"
     attempt_resp = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": 42},
+        json={"studentId": student_id},
     )
     attempt_id = attempt_resp.json()["id"]
 
@@ -195,6 +215,7 @@ def test_attempt_status_transitions(client):
     assert resp.status_code == 200
     assert resp.json()["status"] == "completed"
 
+    client.headers["Authorization"] = f"Bearer {teacher_login['access_token']}"
     resp = client.post(
         f"/api/v1/attempts/{attempt_id}/grade",
         json={"score": 90.0},
@@ -203,6 +224,7 @@ def test_attempt_status_transitions(client):
     assert resp.json()["status"] == "graded"
     assert resp.json()["score"] == 90.0
 
+    client.headers["Authorization"] = f"Bearer {student_login['access_token']}"
     resp = client.patch(
         f"/api/v1/attempts/{attempt_id}",
         json={"status": "completed"},
@@ -244,9 +266,15 @@ def test_read_access_denied_records_real_resource_id(client):
         json={"classId": class_id, "title": "读越权作业"},
     )
     assignment_id = assignment_resp.json()["id"]
+    # 审计 M-01：创建尝试收紧为本人；原编造学生 1001 无法认证。
+    owner_id, _, owner_login = register_and_login(
+        client, email_prefix="deny_read_attempt_owner", role="student",
+        teacher_id=client.actor_id,
+    )
+    client.headers["Authorization"] = f"Bearer {owner_login['access_token']}"
     attempt_resp = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": 1001},
+        json={"studentId": owner_id},
     )
     attempt_id = attempt_resp.json()["id"]
 

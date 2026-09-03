@@ -75,7 +75,9 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
     # AUTH-104 之后角色也只来自令牌，X-RMOS-Role 头不再影响授权。
     # 预置一位默认教师作为客户端默认身份；需要学生身份的用例改用
     # register_and_login(client, ..., role="student", teacher_id=...) 切换。
-    register_and_login(client, email_prefix="teaching_char_actor")
+    # 审计 M-01：作业尝试写操作已按归属收敛，用例需知道"当前是谁"。
+    actor_id, _, _ = register_and_login(client, email_prefix="teaching_char_actor")
+    client.actor_id = actor_id
     return client, session_factory
 
 
@@ -85,6 +87,7 @@ async def _seed_attempt(
     teacher_id: int = 1,
     student_id: int = 42,
     task_id: int | None = None,
+    enroll: bool = False,
 ) -> tuple[int, int, int, int]:
     """
     Seed a minimal class → assignment → attempt chain.
@@ -98,6 +101,12 @@ async def _seed_attempt(
         assignment = Assignment(class_id=teaching_class.id, title="特征测试作业")
         session.add(assignment)
         await session.flush()
+
+        if enroll:
+            # 审计 M-01：评分需教师管辖权（Enrollment ⋈ TeachingClass），
+            # 仅建班级与作业不足以让 teacher_has_student_scope 成立。
+            session.add(Enrollment(class_id=teaching_class.id, student_id=student_id))
+            await session.flush()
 
         attempt = AssignmentAttempt(
             assignment_id=assignment.id,
@@ -1099,7 +1108,7 @@ def test_update_attempt_status_invalid_transition_returns_409():
     """
     client, sf = _build_client()
     try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=7001))
+        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=client.actor_id))
 
         # First complete it
         client.patch(f"/api/v1/attempts/{attempt_id}", json={"status": "completed"})
@@ -1152,7 +1161,9 @@ def test_grade_attempt_not_completed_returns_409():
     """
     client, sf = _build_client()
     try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=8001))
+        _, _, attempt_id, _ = asyncio.run(
+            _seed_attempt(sf, teacher_id=client.actor_id, student_id=8001, enroll=True)
+        )
 
         resp = client.post(
             f"/api/v1/attempts/{attempt_id}/grade",
