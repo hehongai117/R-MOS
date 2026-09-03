@@ -134,15 +134,24 @@ def _seed_training_data(session_factory: async_sessionmaker) -> dict:
     """Seed a user, session, step record, submission, and skill profile."""
     async def _seed() -> dict:
         async with session_factory() as session:
-            user = User(
-                email="char_student@example.com",
-                password_hash="pbkdf2_sha256$dummy",
-                full_name="Char Student",
-                role="student",
-                school_name=TEST_SCHOOL_NAME,
+            # 审计 M-01：会话生命周期写操作已改为「仅所有者或管理员」。
+            # 这些用例只验业务行为，因此把种子会话挂到 _build_client 预置的默认身份下，
+            # 使它们不必各自做身份接线。跨用户拒绝由
+            # test_session_lifecycle_rejects_non_owner 专门断言。
+            existing_actor = await session.execute(
+                select(User).where(User.email == "default-actor@x.com")
             )
-            session.add(user)
-            await session.flush()
+            user = existing_actor.scalar_one_or_none()
+            if user is None:
+                user = User(
+                    email="char_student@example.com",
+                    password_hash="pbkdf2_sha256$dummy",
+                    full_name="Char Student",
+                    role="student",
+                    school_name=TEST_SCHOOL_NAME,
+                )
+                session.add(user)
+                await session.flush()
 
             training_session = TrainingSession(
                 session_id="char-sess-001",
@@ -1597,6 +1606,37 @@ def test_get_student_weak_steps_unresolved_only_filter() -> None:
         assert isinstance(body, list)
         assert len(body) == 1
         assert body[0]["is_resolved"] is False
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+@pytest.mark.regression
+def test_session_lifecycle_rejects_non_owner() -> None:
+    """审计 M-01：非所有者不得暂停/恢复/放弃/写步骤他人训练会话。
+
+    修复前这四个端点无身份、无归属校验，任意登录用户即可操作他人会话。
+    本用例以**另一个已认证用户**发起，断言全部被拒。
+    """
+    client, sf = _build_client()
+    try:
+        data = _seed_training_data(sf)          # 会话归默认身份所有
+        _register_and_login(client, email="intruder@x.com", full_name="Intruder")  # 切换到他人
+
+        session_id = data["session_id"]
+        denied = [
+            client.patch(f"/api/v1/training/sessions/{session_id}/pause"),
+            client.patch(f"/api/v1/training/sessions/{session_id}/resume"),
+            client.patch(f"/api/v1/training/sessions/{session_id}/abandon"),
+            client.post(
+                f"/api/v1/training/sessions/{session_id}/steps",
+                json={"step_id": "s1", "step_index": 1, "status": "done"},
+            ),
+        ]
+        assert [r.status_code for r in denied] == [403, 403, 403, 403], (
+            f"非所有者未被拒绝: {[r.status_code for r in denied]}"
+        )
     finally:
         client.close()
         app.dependency_overrides.clear()

@@ -13,6 +13,7 @@ from app.models.audit_event import AuditEvent
 from app.models.training import TrainingSession
 from app.services.access_control import raise_read_access_denied
 from app.services.authz_guard import ActorContext, get_current_actor, resolve_actor_identity
+from app.services.ownership import ensure_write_owner
 from app.services.ownership import ensure_user_scope
 from app.services.training.session_service import SessionService
 from app.services.training.submission_service import SubmissionService
@@ -187,10 +188,21 @@ async def get_session_detail(
 )
 async def pause_session(
     session_id: str,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-06-b-1: 暂停会话"""
     service = SessionService(db)
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可操作他人训练会话。
+    # 写路径归属口径 = 本人或管理员；教师介入走 force-submit 并各自校验管辖权。
+    existing = await service.get_session(session_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await ensure_write_owner(
+        db, http_request, actor, existing.user_id,
+        action="pause_training_session", resource_type="TrainingSession", resource_id=session_id,
+    )
     session = await service.pause(session_id)
 
     if not session:
@@ -219,10 +231,21 @@ async def pause_session(
 )
 async def resume_session(
     session_id: str,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-06-b-1: 恢复会话"""
     service = SessionService(db)
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可操作他人训练会话。
+    # 写路径归属口径 = 本人或管理员；教师介入走 force-submit 并各自校验管辖权。
+    existing = await service.get_session(session_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await ensure_write_owner(
+        db, http_request, actor, existing.user_id,
+        action="resume_training_session", resource_type="TrainingSession", resource_id=session_id,
+    )
     session = await service.resume(session_id)
 
     if not session:
@@ -250,10 +273,21 @@ async def resume_session(
 )
 async def abandon_session(
     session_id: str,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-06-c-4: 放弃会话"""
     service = SessionService(db)
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可操作他人训练会话。
+    # 写路径归属口径 = 本人或管理员；教师介入走 force-submit 并各自校验管辖权。
+    existing = await service.get_session(session_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await ensure_write_owner(
+        db, http_request, actor, existing.user_id,
+        action="abandon_training_session", resource_type="TrainingSession", resource_id=session_id,
+    )
     success = await service.abandon(session_id)
 
     if not success:
@@ -383,10 +417,21 @@ async def force_submit_session(
 async def update_step(
     session_id: str,
     request: StepUpdateRequest,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-06-b-2: 更新步骤记录"""
     service = SessionService(db)
+    # 审计 M-01：此前无身份、无归属校验，任意登录用户可操作他人训练会话。
+    # 写路径归属口径 = 本人或管理员；教师介入走 force-submit 并各自校验管辖权。
+    existing = await service.get_session(session_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await ensure_write_owner(
+        db, http_request, actor, existing.user_id,
+        action="update_training_step", resource_type="TrainingSession", resource_id=session_id,
+    )
 
     record_id = await service.update_step(
         session_id=session_id,
