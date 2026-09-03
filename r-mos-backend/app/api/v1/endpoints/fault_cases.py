@@ -1,7 +1,7 @@
 """
 故障案例API端点
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -13,6 +13,8 @@ from app.schemas.fault import (
 )
 from app.services.fault_service import FaultCaseService
 from app.core.database import get_db
+from app.services.ownership import ensure_role_for_write
+from app.services.authz_guard import ActorContext, get_current_actor
 
 router = APIRouter()
 
@@ -58,9 +60,17 @@ async def create_fault_case(
 async def update_fault_case(
     fault_case_id: int,
     request: FaultCaseUpdate,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """更新故障案例"""
+    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="update_fault_case", resource_type="FaultCase", resource_id=fault_case_id,
+    )
     service = FaultCaseService(db)
     fault_case = await service.update_fault_case(fault_case_id, request)
     return fault_case
@@ -68,9 +78,17 @@ async def update_fault_case(
 @router.delete("/fault-cases/{fault_case_id}")
 async def delete_fault_case(
     fault_case_id: int,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """删除故障案例"""
+    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="delete_fault_case", resource_type="FaultCase", resource_id=fault_case_id,
+    )
     service = FaultCaseService(db)
     await service.delete_fault_case(fault_case_id)
     return {"message": "Fault case deleted successfully"}

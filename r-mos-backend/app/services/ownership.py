@@ -14,7 +14,7 @@ from app.services.access_control import (
     raise_read_access_denied,
     raise_write_access_denied,
 )
-from app.services.authz_guard import ActorContext
+from app.services.authz_guard import ActorContext, actor_has_role
 
 
 async def ensure_user_scope(
@@ -172,4 +172,45 @@ async def ensure_teacher_scope_over_student(
         resource_type=resource_type,
         resource_id=student_id if resource_id is None else resource_id,
         reason="teacher_has_no_scope_for_student",
+    )
+
+
+async def ensure_role_for_write(
+    db: AsyncSession,
+    request: Request,
+    actor: ActorContext,
+    *allowed_roles: str,
+    action: str,
+    resource_type: str,
+    resource_id: int | str | None = None,
+) -> None:
+    """角色制写路径守卫：对**无归属字段**的对象按角色授权。
+
+    董事会 2026-09-03 裁定的权限划分：
+    **管理员拥有全部权限；教师负责教学内容与学生管理。**
+
+    适用对象：数据库不记录创建者/拥有者、因而无法做对象级归属校验的写操作
+    （`sops`、`fault_cases`、`robot_sop_drafts`、`external_assessments`、
+    `assessment_providers` 五张表均无归属字段）。
+
+    ⚠️ **这不是归属校验的等价物。** 它只能表达「哪类人可以操作这类对象」，
+    不能表达「谁的东西谁能改」。因此：
+
+    - 同角色用户之间**互相不隔离**（任意教师可改任意教学内容）；
+    - 职责分离**无法实施**（无作者字段时无从判断「批准者是否即提交者」），
+      故审批类动作收紧为仅管理员，使作者与批准者天然分属不同角色。
+
+    归属字段补齐后，相关端点应改回 `ensure_write_owner` /
+    `ensure_teacher_scope_over_student`，本函数仅作为过渡。
+    """
+    if actor_has_role(actor, *allowed_roles):
+        return
+
+    await raise_write_access_denied(
+        db,
+        request,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        reason=f"role_not_allowed:{actor.account_role or 'unknown'}",
     )

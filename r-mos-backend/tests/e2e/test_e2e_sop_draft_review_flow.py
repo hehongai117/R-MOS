@@ -6,6 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.e2e.helpers import register_and_login, set_user_role
+
 from app.models.knowledge_chunk import AIKnowledgeChunk
 from app.models.robot_part_manifest import RobotPartManifest
 from app.models.robot_project import RobotProject, RobotProjectStatus
@@ -103,6 +105,10 @@ def test_e2e_sop_draft_review_flow(
     assert edit_resp.status_code == 200
     assert edit_resp.json()["draft"]["title"] == "执行器维护人工修订版"
 
+    # 董事会 2026-09-03 裁定：批准仅管理员（草稿无作者字段，教师批准=自批自）。
+    admin_id, _, admin_login = register_and_login(client, email_prefix="e2e_draft_admin")
+    asyncio.run(set_user_role(session_factory, user_id=admin_id, role="admin"))
+    client.headers["Authorization"] = f"Bearer {admin_login['access_token']}"
     approve_resp = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
     assert approve_resp.status_code == 200
     assert approve_resp.json()["review_status"] == "approved"

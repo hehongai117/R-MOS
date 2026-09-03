@@ -17,7 +17,7 @@ from app.models.robot_part_manifest import RobotPartManifest
 from app.models.robot_project import RobotProject, RobotProjectStatus
 from app.models.school import School
 from main import app
-from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login  # 复用既有登录基建（该模块与 e2e 无耦合，只是造用户/拿令牌）
+from tests.e2e.helpers import E2E_SCHOOL_NAME, register_and_login, set_user_role  # 复用既有登录基建（该模块与 e2e 无耦合，只是造用户/拿令牌）
 
 
 @pytest.fixture(scope="module")
@@ -141,6 +141,15 @@ def test_robot_sop_draft_api_lifecycle(
     assert submit_resp.status_code == 200
     assert submit_resp.json()["review_status"] == "draft_pending_review"
 
+    # 董事会 2026-09-03 裁定：批准/驳回仅管理员。草稿表无作者字段，
+    # 放行教师会使任意教师可批准自己提交的草稿（M-13 职责分离）。
+    teacher_denied = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
+    assert teacher_denied.status_code == 403, "教师不应能批准草稿"
+
+    # 注册接口只接受 student/teacher（管理员不可自助注册），故注册后改 users.role
+    admin_id, _, admin_login = register_and_login(client, email_prefix="robot_sop_draft_admin")
+    asyncio.run(set_user_role(session_factory, user_id=admin_id, role="admin"))
+    client.headers["Authorization"] = f"Bearer {admin_login['access_token']}"
     approve_resp = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
     assert approve_resp.status_code == 200
     assert approve_resp.json()["review_status"] == "approved"
@@ -165,6 +174,9 @@ def test_robot_sop_draft_api_rejects_non_executable_draft(
     assert create_resp.status_code == 200
     draft_id = create_resp.json()["draft_id"]
 
+    admin_id, _, admin_login = register_and_login(client, email_prefix="robot_sop_reject_admin")
+    asyncio.run(set_user_role(session_factory, user_id=admin_id, role="admin"))
+    client.headers["Authorization"] = f"Bearer {admin_login['access_token']}"
     reject_resp = client.post(
         f"/api/v1/maintenance/drafts/{draft_id}/reject",
         json={"reason": "模型映射不完整"},

@@ -1,10 +1,12 @@
 """
 Assessment provider and external assessment API endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.services.ownership import ensure_role_for_write
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.schemas.assessment import (
     AssessmentProviderCreate,
     AssessmentProviderUpdate,
@@ -61,9 +63,17 @@ async def get_assessment_provider(
 async def update_assessment_provider(
     provider_id: str,
     request: AssessmentProviderUpdate,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Update provider metadata."""
+    # 董事会 2026-09-03 裁定：仅管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "admin",
+        action="update_assessment_provider", resource_type="AssessmentProvider", resource_id=provider_id,
+    )
     service = AssessmentService(db)
     provider = await service.update_provider(provider_id, request)
     if not provider:
@@ -125,9 +135,17 @@ async def get_assessment_audit(
 async def revoke_assessment(
     assessment_id: str,
     request: AssessmentStatusChangeRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Revoke an assessment reference."""
+    # 董事会 2026-09-03 裁定：仅管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "admin",
+        action="revoke_assessment", resource_type="ExternalAssessment", resource_id=assessment_id,
+    )
     service = AssessmentService(db)
     assessment = await service.change_assessment_status(
         assessment_id=assessment_id,
@@ -144,9 +162,17 @@ async def revoke_assessment(
 async def dispute_assessment(
     assessment_id: str,
     request: AssessmentStatusChangeRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Dispute an assessment reference."""
+    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="dispute_assessment", resource_type="ExternalAssessment", resource_id=assessment_id,
+    )
     service = AssessmentService(db)
     assessment = await service.change_assessment_status(
         assessment_id=assessment_id,
@@ -163,9 +189,17 @@ async def dispute_assessment(
 async def reinstate_assessment(
     assessment_id: str,
     request: AssessmentStatusChangeRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Reinstate an assessment reference."""
+    # 董事会 2026-09-03 裁定：仅管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "admin",
+        action="reinstate_assessment", resource_type="ExternalAssessment", resource_id=assessment_id,
+    )
     service = AssessmentService(db)
     assessment = await service.change_assessment_status(
         assessment_id=assessment_id,

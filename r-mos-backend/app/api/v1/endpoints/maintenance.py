@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import String, cast, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.services.ownership import ensure_role_for_write
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.models.robot_project import RobotProject, RobotProjectStatus
 from app.models.robot_sop_draft import RobotSOPDraft, RobotSOPDraftReviewStatus
 from app.schemas.maintenance import (
@@ -118,8 +120,16 @@ async def get_maintenance_draft(
 async def update_maintenance_draft(
     draft_id: str,
     request: MaintenanceDraftUpdateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
+    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="update_maintenance_draft", resource_type="RobotSOPDraft", resource_id=draft_id,
+    )
     record = await _get_draft(db, draft_id)
     draft_json = dict(record.draft_json or {})
     for field in ("title", "maintenance_goal", "steps", "tools", "review_notes"):
@@ -144,8 +154,16 @@ async def update_maintenance_draft(
 @router.post("/maintenance/drafts/{draft_id}/submit-review", response_model=MaintenanceDraftResponse, tags=["Maintenance"])
 async def submit_maintenance_draft_for_review(
     draft_id: str,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
+    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="submit_maintenance_draft_for_review", resource_type="RobotSOPDraft", resource_id=draft_id,
+    )
     record = await _get_draft(db, draft_id)
     record.review_status = RobotSOPDraftReviewStatus.DRAFT_PENDING_REVIEW
     await db.commit()
@@ -156,8 +174,19 @@ async def submit_maintenance_draft_for_review(
 @router.post("/maintenance/drafts/{draft_id}/approve", response_model=MaintenanceDraftResponse, tags=["Maintenance"])
 async def approve_maintenance_draft(
     draft_id: str,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
+    # 董事会 2026-09-03 裁定：仅管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    # 批准/驳回收紧为仅管理员：草稿表无作者字段，无法判断「批准者是否即提交者」，
+    # 放行教师会使任意教师可批准自己提交的草稿（M-13 职责分离）。
+    # 归属字段补齐后可放宽至有管辖权的教师。
+    await ensure_role_for_write(
+        db, http_request, actor, "admin",
+        action="approve_maintenance_draft", resource_type="RobotSOPDraft", resource_id=draft_id,
+    )
     record = await _get_draft(db, draft_id)
     approved_rows = (
         await db.execute(
@@ -180,8 +209,19 @@ async def approve_maintenance_draft(
 async def reject_maintenance_draft(
     draft_id: str,
     request: DraftRejectRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
+    # 董事会 2026-09-03 裁定：仅管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    # 批准/驳回收紧为仅管理员：草稿表无作者字段，无法判断「批准者是否即提交者」，
+    # 放行教师会使任意教师可批准自己提交的草稿（M-13 职责分离）。
+    # 归属字段补齐后可放宽至有管辖权的教师。
+    await ensure_role_for_write(
+        db, http_request, actor, "admin",
+        action="reject_maintenance_draft", resource_type="RobotSOPDraft", resource_id=draft_id,
+    )
     record = await _get_draft(db, draft_id)
     draft_json = dict(record.draft_json or {})
     review_notes = list(draft_json.get("review_notes", []))

@@ -1,11 +1,13 @@
 """
 SOP API端点（V2.3完整版）
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from app.core.database import get_db
+from app.services.ownership import ensure_role_for_write
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.schemas.sop import (
     SOPCreate,
     SOPResponse,
@@ -153,11 +155,13 @@ async def check_sop_delete_impact(
 @router.delete("/sops/{sop_id}", response_model=SOPDeleteResponse, tags=["SOPs"])
 async def delete_sop(
     sop_id: int,
+    http_request: Request,
     force: bool = Query(
         False,
         description="是否强制删除（忽略关联Task）。如有关联Task且force=false，将返回409错误"
     ),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """删除SOP（V2.3修复版 - 实现骨架§5.5规则）
     
@@ -203,6 +207,12 @@ async def delete_sop(
       }
     }
     ```
+    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
+    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="delete_sop", resource_type="SOP", resource_id=sop_id,
+    )
     """
     try:
         service = SOPService(db)
