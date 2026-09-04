@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.exceptions import PermissionDeniedError
 from app.services.access_control import log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor, require_permission
-from app.services.orchestrator_v2 import orchestrator_v2, TaskEventType
+from app.services.orchestrator_v2 import orchestrator_v2
 from app.services.policy_matrix import policy_matrix
 from app.schemas.agent import (
     DiagnosisTraceActionRequest,
@@ -93,75 +93,6 @@ async def record_diagnosis_trace_action(
         message=message,
         recorded=True,
     )
-
-
-@router.post("/v2/task/create")
-async def create_task_v2(
-    user_id: str,
-    skill_id: Optional[str] = None,
-    budget_limit_ms: int = 300000,
-    _: None = Depends(require_permission("agent:execute")),
-):
-    """Create a new task with FSM"""
-    context = orchestrator_v2.create_task(
-        user_id=user_id,
-        skill_id=skill_id,
-        budget_limit_ms=budget_limit_ms,
-    )
-    return {
-        "task_id": context.task_id,
-        "trace_id": context.trace_id,
-        "state": context.state.value,
-        "budget_limit_ms": context.budget_limit_ms,
-    }
-
-
-@router.post("/v2/task/{task_id}/transition")
-async def transition_task_state(
-    task_id: str,
-    event: str,
-    _: None = Depends(require_permission("agent:execute")),
-):
-    """Transition task state"""
-    try:
-        event_type = TaskEventType(event)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid event: {event}")
-
-    success, message, state = orchestrator_v2.transition_state(task_id, event_type)
-
-    if not success:
-        raise HTTPException(status_code=400, detail=message)
-
-    return {
-        "task_id": task_id,
-        "state": state.value,
-        "message": message,
-    }
-
-
-@router.get("/v2/task/{task_id}")
-async def get_task_status_v2(task_id: str, _: None = Depends(require_permission("agent:read"))):
-    """Get task status"""
-    context = orchestrator_v2.get_task_context(task_id)
-
-    if not context:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    return {
-        "task_id": context.task_id,
-        "trace_id": context.trace_id,
-        "state": context.state.value,
-        "user_id": context.user_id,
-        "skill_id": context.skill_id,
-        "current_step": context.current_step,
-        "total_steps": context.total_steps,
-        "budget_used_ms": context.budget_used_ms,
-        "budget_limit_ms": context.budget_limit_ms,
-        "created_at": context.created_at,
-        "started_at": context.started_at,
-        "completed_at": context.completed_at,
-    }
 
 
 # V2: Policy Evaluation Endpoint

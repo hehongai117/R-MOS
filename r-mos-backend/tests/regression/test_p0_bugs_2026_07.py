@@ -238,63 +238,6 @@ def test_p0_3_sop_quality_full_scan_no_500(e2e_env):
 # 根因: get_request_history(limit) 把 limit 传给了 requester_id 参数位置
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_p0_4_approval_history_returns_records(e2e_env):
-    """Bug#4: GET /agent/approval/history 曾恒空（limit 传给了 requester_id）。
-
-    修复后：先创建 1 条审批请求，GET /approval/history 能查到它（非空）。
-    """
-    client, session_factory = e2e_env
-    _user_id, email, login_data = helpers.register_and_login(
-        client,
-        email_prefix="reg_p0_4",
-        role="teacher",
-    )
-    token = login_data["access_token"]
-    asyncio.run(
-        _grant_agent_permissions(
-            session_factory,
-            email=email,
-            permission_keys=["agent:read", "agent:execute"],
-        )
-    )
-
-    # 先建 1 条审批请求进入内存队列
-    unique_resource_id = "regression-p0-4-resource-001"
-    create_resp = client.post(
-        "/api/v1/agent/approval/request",
-        headers={"Authorization": f"Bearer {token}"},
-        json={
-            "requester_id": "reg_p0_4_user",
-            "resource_type": "sops",
-            "resource_id": unique_resource_id,
-            "action": "sops.write",
-            "reason": "P0#4 regression test",
-            "priority": "high",
-            "evidence_refs": [],
-            "ttl_seconds": 3600,
-        },
-    )
-    assert create_resp.status_code == 200, f"创建审批失败: {create_resp.text}"
-
-    resp = client.get(
-        "/api/v1/agent/approval/history",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
-    body = resp.json()
-    assert "requests" in body, f"缺少 requests 字段: {body}"
-    # 必须断言的正确行为：建 1 条审批后查询非空（曾恒空）
-    assert isinstance(body["requests"], list), "requests 不是列表"
-    assert any(r["resource_id"] == unique_resource_id for r in body["requests"]), (
-        f"历史列表应包含刚创建的审批请求 resource_id={unique_resource_id}，实际: {body['requests']}"
-    )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# P0#5: POST /agent/execute（command 模式）曾恒 error（Command kwarg 用错）
-# 端点: POST /api/v1/agent/execute
-# 根因: Command(user_id=...) 用错 kwarg（应 actor_user_id）导致 Command 构造失败
-# ─────────────────────────────────────────────────────────────────────────────
 
 def test_p0_5_agent_execute_command_mode_succeeds(e2e_env):
     """Bug#5: POST /agent/execute（command 模式）曾恒 error（Command kwarg 用错）。

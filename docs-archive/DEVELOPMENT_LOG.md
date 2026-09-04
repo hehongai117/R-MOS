@@ -9581,3 +9581,60 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
 - knowledge_store.json 已还原（M-15）
 - Result: 创建路径身份收敛 3 项关闭；M-02 口径修正为「部分」，剩余 5 项已定位
 - Next Step: 内存态 agent 端点（审批队列 / v2 编排器）删除与否待董事会裁定
+
+## 2026-09-04 — 改造第 11 批：删除内存态 agent 端点（董事会裁定 §9-1）
+
+- 依据：`docs/plans/2026-09-03-board-decision-...-v0.1.0.md` §9 裁定一「整体删除」
+- 处置模式沿用 M-05 先例：**删端点，能力保留**
+
+### 删了什么
+
+| 对象 | 说明 |
+|---|---|
+| `/agent/approval/*` **5 条路由** | request / pending / history / {id}/approve / {id}/reject |
+| `/agent/v2/task/*` **3 条路由** | create / {id}/transition / {id}（context） |
+| `app/services/approval_queue.py` | 整文件（唯一调用方即上述端点） |
+| `CreateApprovalRequest` schema | 端点删除后成孤儿 |
+| 前端 `agent-v2.ts` 4 函数 + `ApprovalRequest` 类型 | 前端零调用，早已迁至 `/ai/approvals` |
+| 17 条测试用例 | 断言的正是被删能力 |
+
+**裁定写的是 6 条端点，实删 8 条**：`/agent/v2/task/{id}`（context）与 create/transition
+同属一个孤岛——`create_task`/`transition_state`/`get_task_context` 三个方法**仅**被这三条
+路由调用，真实执行路径 `process_request` 从不触碰 `_task_contexts`。删前两条会让 context
+恒返回 404，留一条恒空路由无意义。
+
+### 没删什么（M-05 口径：能力保留）
+
+- **DB 审批链完整保留**：`/ai/approvals`、`/ai/approvals/{id}`、`/{id}/grant`、`/{id}/reject`
+  四条路由 + `Approval` 模型 + `ApprovalService.execute_after_grant`——这是真实执行路径上的那套
+- **`orchestrator_v2` 服务层保留**：`create_task`/`transition_state`/`get_task_context`
+  三个方法有独立单元测试（`test_orchestrator_diagnoser.py`），是有意义的 FSM 领域逻辑。
+  删的是 HTTP 攻击面，不是能力
+
+### 消除的缺陷
+
+1. **批准人身份可任意伪造**：`approve_request(request_id, approved_by: str)` 中 `approved_by`
+   是查询参数、`actor` 被 `_` 丢弃——任何持 `agent:execute` 的教师可把批准人记成任意字符串。
+   `reject_request` 更甚：拒绝方身份根本不记录
+2. **M-14 病根之一**：审批存在两套并行实现（内存字典 / DB），此为其一
+3. `create_task_v2(user_id: str)` 同型的自述身份
+
+### 测试删除的判定依据（§6 框架）
+
+17 条全部落在「测试固化的正是被删/被修的行为」一类，逐条核对无一例外。其中：
+
+- `test_p0_4_approval_history_returns_records` 是一条 **P0 回归测试**——它守护的 bug
+  （`get_request_history(limit)` 参数错位）存在于被删的内存队列中，能力消失则该守护失去对象
+- `test_agent_approval_approve_write_endpoint` 断言 `status_code in [200, 404, 403]`。
+  端点删除后返回 404，**这条测试照样绿**。宽松断言让「端点已不存在」这一事实对测试不可见——
+  与 §5「零测试失败≠守卫生效」同型，记录于此以备下轮识别
+
+### 验证
+
+- 运行期复查真实 `app` 路由表：8 条目标路由**全部消失**，`/ai/approvals` 四条**健在**
+- 后端 **970 通过**（995 − 17 删除 − 8 路由消失后不再被覆盖的分支）
+- 前端 **518 通过 / 2 skipped**，`tsc --noEmit` 无错误
+- knowledge_store.json 已还原（M-15）
+
+- Result: 内存态审批与 v2 任务端点清除；伪造批准人身份的路径消失
+- Next Step: 第 12 批 `auth.register` 同校约束（裁定 §9-4）；第 13 批 M-01 归属字段迁移（裁定 §9-2）

@@ -139,18 +139,6 @@ class DiagnosisTraceActionResponse(BaseModel):
     recorded: bool = True
 
 
-class CreateApprovalRequest(BaseModel):
-    """Request to create approval"""
-    requester_id: str
-    resource_type: str
-    resource_id: str
-    action: str
-    reason: str
-    priority: str = "normal"
-    evidence_refs: Optional[List[str]] = None
-    ttl_seconds: Optional[int] = None
-
-
 class GenerateReportRequest(BaseModel):
     """Request to generate evaluation report"""
     task_id: int
