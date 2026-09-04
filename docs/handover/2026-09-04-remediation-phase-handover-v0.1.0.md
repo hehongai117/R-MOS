@@ -12,11 +12,11 @@
 |---|---|
 | 工作区 | `/Users/xuhehong/Desktop/r-mos/.worktrees/phase3-auth-control-realtime`（**不是主仓**） |
 | 分支 | `audit/phase3-auth-control-realtime` |
-| HEAD | 见 `git log -1`（2026-09-04 已推进至第 14 批） |
+| HEAD | 见 `git log -1`（2026-09-04 已推进至第 17 批） |
 | **是否 push** | **是**。董事会裁定 §9-3 后已 push 至 `origin/audit/phase3-auth-control-realtime` |
 | 被审基线 `B-ASIS` | `29d2a5889e3b320a3e777e3d8c19efbbe31c0294` |
 | 干预前参照 `B-REF` | `361eaac85002eec4e9388ae4d7f30c2e3591eee6` |
-| 后端测试 | **979 通过**（删除内存态端点后基数下降，见 DEVELOPMENT_LOG 第 11 批） |
+| 后端测试 | **992 通过**（本地 PG 环境；Codex 沙箱下会有 3 项 DB 门禁因禁止连 `::1:5432` 失败，属环境限制） |
 | 前端测试 | **518 通过 / 2 skipped**，`tsc --noEmit` 无错误 |
 
 ### 环境陷阱（**必读，每次运行都要**）
@@ -88,15 +88,25 @@ SCORE{,2,3,4}.md      历轮评分
 | M-03 WebSocket | ⚠️ **部分**（见 §3） |
 | M-06 审批闸门 | ⚠️ **部分**（见 §3） |
 
-#### 第 10–14 批新增（2026-09-04）
+#### 第 10–17 批新增（2026-09-04）
 
-| 批 | 内容 |
-|---|---|
-| 10 | 创建路径业务身份收敛（`/tasks`、`/pipeline/tasks/from-diagnosis`、`/training/projects/generate`） |
-| 11 | 删除内存态 agent 端点 8 条（裁定 §9-1）+ `approval_queue.py` + 17 条固化被删能力的测试 |
-| 12 | 注册挂靠审计留痕 + 同校约束补行为级覆盖（裁定 §9-4） |
-| 13 | M-01 归属字段与对象级守卫（裁定 §9-2）；**发现并修复 `DELETE /sops/{id}` 守卫困在 docstring 内、从未执行** |
-| 14 | M-15 测试污染（Codex 实现，Claude 验收） |
+| 批 | 内容 | 实现方 |
+|---|---|---|
+| 10 | 创建路径业务身份收敛（`/tasks`、`/pipeline/tasks/from-diagnosis`、`/training/projects/generate`） | Claude |
+| 11 | 删除内存态 agent 端点 8 条（裁定 §9-1）+ `approval_queue.py` + 17 条固化被删能力的测试 | Claude |
+| 12 | 注册挂靠审计留痕 + 同校约束补行为级覆盖（裁定 §9-4） | Claude |
+| 13 | M-01 归属字段与对象级守卫（裁定 §9-2）；**发现并修复 `DELETE /sops/{id}` 守卫困在 docstring 内、从未执行** | Claude |
+| 14 | M-15 测试污染 | Codex |
+| 15 | WebSocket 的 `robot_id` 访问授权（M-03 剩余可做部分） | Codex |
+| 16 | 写端点授权覆盖率复测 + 8 处无争议缺口 | Codex |
+| 17 | 证据/事件/观测三表补归属（照搬 §9-2 先例） | Codex |
+
+**授权覆盖率（第 16 批运行期实测）**：87 个写端点，统一守卫 46→**54**，
+带对象 ID 的端点 30/44→**33/44**。
+
+> **Codex 的沙箱禁止连本机 PostgreSQL**，因此它报告的全量结果恒有 3 项 DB 门禁失败
+> （`test_audit_query_indexes_exist` 等）。**那是环境限制不是缺陷**，主审在无限制环境复跑均为全绿。
+> 涉及 Alembic 实迁的验证必须由主审复跑——Codex 写得出迁移，但跑不了。
 
 **授权覆盖率**：删除 8 条内存态路由后写端点为 84 个。逐条数字请**用运行期扫描现算**
 （载入真实 `app` 枚举 `APIRoute`），勿引用历史快照——本项目的静态计数已错过两次。

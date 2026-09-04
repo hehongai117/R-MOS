@@ -9883,3 +9883,35 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 没有新增抽象、依赖或外部服务；未改固定数据库和 CORS；未启动服务；未 commit、未 push
   - 全量测试后 `data/knowledge_store.json` 未出现于工作树
 - Next Step: 在允许连接固定 PostgreSQL 的本机环境依次执行 `alembic upgrade head`、`alembic downgrade -1`、`alembic upgrade head`，然后按任务原命令复跑全量；通过后再把数据库实迁状态改为 PASS
+
+## 2026-09-04 — 诊断轨迹动作归属
+
+- DateTime: 2026-09-04 23:16:53 CST
+- Task: 为 `POST /agent/v2/trace/{trace_id}/diagnosis-action` 建立活跃轨迹对象级归属，保留真实前端流程
+- Scope (files changed):
+  - `r-mos-backend/app/services/orchestrator_v2.py`：在普通消息/诊断轨迹生成时登记首个已认证创建人，并提供只读查询
+  - `r-mos-backend/app/api/v1/endpoints/agent_v2.py`：复用 `ensure_write_owner` 校验轨迹动作；跨用户和无主轨迹拒绝并审计
+  - `r-mos-backend/tests/unit/test_agent_workbench_api.py`：新增跨用户拒绝与审计、本人放行、未知轨迹普通用户拒绝及管理员放行行为测试
+  - `r-mos-backend/tests/unit/test_agent_characterization.py`：既有成功用例改为先走真实消息请求生成本人轨迹
+  - `docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`：记录预查、调用证据和验证结果
+- Commands Run:
+  - 每次 pytest 均在本 worktree 的 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_agent_workbench_api.py::test_diagnosis_action_rejects_other_user_and_allows_trace_owner`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_agent_workbench_api.py tests/unit/test_agent_characterization.py -k 'diagnosis_action or trace_events'`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_agent_workbench_api.py tests/unit/test_agent_characterization.py tests/unit/test_orchestrator_diagnoser.py tests/e2e/test_agent_diagnosis_flow.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `git diff --name-only`；`git diff --check`；`git status --short`
+- Tests:
+  - RED：`1 failed in 1.11s`，跨用户动作返回 200，准确复现缺陷
+  - GREEN 单条：`1 passed in 0.91s`
+  - 端点筛选：`7 passed, 43 deselected in 1.79s`
+  - 相关链路：`65 passed in 10.34s`
+  - 全量汇总原文：`3 failed, 992 passed in 82.50s (0:01:22)`
+- Result: **PASS（本任务行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。新增行为均通过；全量仅 3 项因沙箱禁止连接 `::1:5432` 失败
+- Risks/Notes:
+  - 预查确认轨迹没有持久化对象或可补字段；因此未新增数据库字段、迁移、依赖或权限抽象
+  - 端点有两个真实前端调用页面、前后端测试和完整执行路径，不适用 §9-1 删除条件
+  - 负责人登记与轨迹事件同为进程内生命周期；进程重启后旧轨迹成为无主对象，普通用户拒绝，管理员可按既有规则处置
+  - 未改 `DATABASE_URL`、CORS；未启动服务；未 commit、未 push
+  - 执行期间出现一份非本任务产生的 `docs/handover/2026-09-04-remediation-phase-handover-v0.1.0.md` 未提交改动，本任务未触碰或覆盖
+- Next Step: 主审在允许连接固定 PostgreSQL 的环境原样复跑全量命令，确认 3 项数据库门禁；本任务不需要数据库迁移实跑

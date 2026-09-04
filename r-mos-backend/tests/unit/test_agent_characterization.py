@@ -141,6 +141,28 @@ def _register_and_login(client: TestClient, *, email: str, password: str, full_n
     return login_resp.json()["access_token"]
 
 
+def _create_owned_trace(
+    client: TestClient,
+    *,
+    token: str,
+    user_id: int,
+    trace_id: str,
+) -> None:
+    response = client.post(
+        "/api/v1/agent/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "user_id": str(user_id),
+            "mode": "message",
+            "message": "检查当前状态。",
+            "intent_classification": "general",
+            "trace_id": trace_id,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["trace_id"] == trace_id
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 特征测试：GET /agent/task-status/{user_id}
 # 权限：agent:read + role: agent_user
@@ -1059,7 +1081,13 @@ def test_diagnosis_action_confirm_execution_returns_message() -> None:
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="diaga1@x.com", password="StrongPass123", full_name="DA1")
-        asyncio.run(_grant_role_permissions(sf, email="diaga1@x.com", role_name="agent_user", permission_keys=["agent:read"]))
+        user_id = asyncio.run(_grant_role_permissions(sf, email="diaga1@x.com", role_name="agent_user", permission_keys=["agent:read"]))
+        _create_owned_trace(
+            client,
+            token=token,
+            user_id=user_id,
+            trace_id="trace-abc-001",
+        )
 
         resp = client.post(
             "/api/v1/agent/v2/trace/trace-abc-001/diagnosis-action",
@@ -1083,7 +1111,13 @@ def test_diagnosis_action_escalate_to_teacher_returns_message() -> None:
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="diaga2@x.com", password="StrongPass123", full_name="DA2")
-        asyncio.run(_grant_role_permissions(sf, email="diaga2@x.com", role_name="agent_user", permission_keys=["agent:read"]))
+        user_id = asyncio.run(_grant_role_permissions(sf, email="diaga2@x.com", role_name="agent_user", permission_keys=["agent:read"]))
+        _create_owned_trace(
+            client,
+            token=token,
+            user_id=user_id,
+            trace_id="trace-abc-002",
+        )
 
         resp = client.post(
             "/api/v1/agent/v2/trace/trace-abc-002/diagnosis-action",
@@ -1216,9 +1250,15 @@ def test_get_trace_events_after_diagnosis_action_recorded() -> None:
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="trev2@x.com", password="StrongPass123", full_name="TREV2")
-        asyncio.run(_grant_role_permissions(sf, email="trev2@x.com", role_name="agent_user", permission_keys=["agent:read"]))
+        user_id = asyncio.run(_grant_role_permissions(sf, email="trev2@x.com", role_name="agent_user", permission_keys=["agent:read"]))
 
         trace_id = "trace-events-test-001"
+        _create_owned_trace(
+            client,
+            token=token,
+            user_id=user_id,
+            trace_id=trace_id,
+        )
 
         # 先发 diagnosis-action 写入 event
         client.post(

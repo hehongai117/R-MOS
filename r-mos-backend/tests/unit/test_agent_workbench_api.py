@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import get_db
+from app.models.audit_event import AuditEvent
 from app.models.base import Base
 from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.school import School
@@ -99,6 +100,27 @@ async def _grant_role(
             session.add(UserRole(user_id=user.id, role_id=role.id))
 
         await session.commit()
+
+
+async def _get_diagnosis_action_denial(
+    session_factory: async_sessionmaker,
+    *,
+    actor_user_id: int,
+    trace_id: str,
+) -> AuditEvent | None:
+    async with session_factory() as session:
+        result = await session.execute(
+            select(AuditEvent)
+            .where(
+                AuditEvent.actor_user_id == str(actor_user_id),
+                AuditEvent.action == "diagnosis_action",
+                AuditEvent.resource_type == "diagnosis_trace",
+                AuditEvent.resource_id == trace_id,
+                AuditEvent.decision == "deny",
+            )
+            .order_by(AuditEvent.id.desc())
+        )
+        return result.scalars().first()
 
 
 def _register_and_login(client: TestClient, *, email: str) -> tuple[int, str]:
@@ -193,7 +215,7 @@ def test_student_command_mode_still_requires_execute_permission() -> None:
 def test_student_can_record_diagnosis_action_on_trace() -> None:
     client, session_factory = _build_client()
     try:
-        _user_id, token = _register_and_login(client, email="student_diagnosis_action@example.com")
+        user_id, token = _register_and_login(client, email="student_diagnosis_action@example.com")
         asyncio.run(
             _grant_role(
                 session_factory,
@@ -203,17 +225,162 @@ def test_student_can_record_diagnosis_action_on_trace() -> None:
             )
         )
 
+        trace_id = "trace-123"
+        execute_response = client.post(
+            "/api/v1/agent/execute",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "user_id": str(user_id),
+                "mode": "message",
+                "message": "检查当前状态。",
+                "intent_classification": "general",
+                "trace_id": trace_id,
+            },
+        )
+        assert execute_response.status_code == 200
+
         response = client.post(
-            "/api/v1/agent/v2/trace/trace-123/diagnosis-action",
+            f"/api/v1/agent/v2/trace/{trace_id}/diagnosis-action",
             headers={"Authorization": f"Bearer {token}"},
             json={"action": "escalate_to_teacher"},
         )
 
         assert response.status_code == 200
         payload = response.json()
-        assert payload["trace_id"] == "trace-123"
+        assert payload["trace_id"] == trace_id
         assert payload["action"] == "escalate_to_teacher"
         assert "教师审核" in payload["message"]
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_diagnosis_action_rejects_other_user_and_allows_trace_owner() -> None:
+    client, session_factory = _build_client()
+    try:
+        owner_id, owner_token = _register_and_login(
+            client, email="diagnosis_trace_owner@example.com"
+        )
+        other_id, other_token = _register_and_login(
+            client, email="diagnosis_trace_other@example.com"
+        )
+        for email in (
+            "diagnosis_trace_owner@example.com",
+            "diagnosis_trace_other@example.com",
+        ):
+            asyncio.run(
+                _grant_role(
+                    session_factory,
+                    email=email,
+                    role_name="student",
+                    permission_keys=["agent:read"],
+                )
+            )
+
+        trace_id = "trace-diagnosis-owned-001"
+        execute_response = client.post(
+            "/api/v1/agent/execute",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "user_id": str(owner_id),
+                "mode": "message",
+                "message": "检查当前状态。",
+                "intent_classification": "general",
+                "trace_id": trace_id,
+            },
+        )
+        assert execute_response.status_code == 200
+        assert execute_response.json()["trace_id"] == trace_id
+
+        denied_response = client.post(
+            f"/api/v1/agent/v2/trace/{trace_id}/diagnosis-action",
+            headers={"Authorization": f"Bearer {other_token}"},
+            json={"action": "confirm_execution"},
+        )
+        assert denied_response.status_code == 403
+        denial = asyncio.run(
+            _get_diagnosis_action_denial(
+                session_factory,
+                actor_user_id=other_id,
+                trace_id=trace_id,
+            )
+        )
+        assert denial is not None
+        assert denial.reason == "not_object_owner"
+
+        allowed_response = client.post(
+            f"/api/v1/agent/v2/trace/{trace_id}/diagnosis-action",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={"action": "confirm_execution"},
+        )
+        assert allowed_response.status_code == 200
+        assert allowed_response.json()["recorded"] is True
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_diagnosis_action_rejects_unknown_trace_for_non_admin() -> None:
+    client, session_factory = _build_client()
+    try:
+        user_id, token = _register_and_login(
+            client, email="diagnosis_unknown_trace@example.com"
+        )
+        asyncio.run(
+            _grant_role(
+                session_factory,
+                email="diagnosis_unknown_trace@example.com",
+                role_name="student",
+                permission_keys=["agent:read"],
+            )
+        )
+
+        trace_id = "trace-diagnosis-unknown-001"
+        response = client.post(
+            f"/api/v1/agent/v2/trace/{trace_id}/diagnosis-action",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"action": "confirm_execution"},
+        )
+        assert response.status_code == 403
+        denial = asyncio.run(
+            _get_diagnosis_action_denial(
+                session_factory,
+                actor_user_id=user_id,
+                trace_id=trace_id,
+            )
+        )
+        assert denial is not None
+        assert denial.reason == "unowned_object"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+def test_diagnosis_action_allows_admin_for_unknown_trace() -> None:
+    client, session_factory = _build_client()
+    try:
+        _user_id, token = _register_and_login(
+            client, email="diagnosis_unknown_trace_admin@example.com"
+        )
+        asyncio.run(
+            _grant_role(
+                session_factory,
+                email="diagnosis_unknown_trace_admin@example.com",
+                role_name="admin",
+                permission_keys=["agent:read"],
+            )
+        )
+
+        response = client.post(
+            "/api/v1/agent/v2/trace/trace-diagnosis-unknown-admin/diagnosis-action",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"action": "escalate_to_teacher"},
+        )
+        assert response.status_code == 200
+        assert response.json()["recorded"] is True
     finally:
         client.close()
         app.dependency_overrides.clear()

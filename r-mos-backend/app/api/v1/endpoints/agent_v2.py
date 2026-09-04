@@ -13,6 +13,7 @@ from app.core.exceptions import PermissionDeniedError
 from app.services.access_control import log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor, require_permission
 from app.services.orchestrator_v2 import orchestrator_v2
+from app.services.ownership import ensure_write_owner
 from app.services.policy_matrix import policy_matrix
 from app.schemas.agent import (
     DiagnosisTraceActionRequest,
@@ -77,6 +78,16 @@ async def record_diagnosis_trace_action(
     message = action_messages.get(request.action)
     if message is None:
         raise HTTPException(status_code=400, detail=f"Unsupported diagnosis action: {request.action}")
+
+    await ensure_write_owner(
+        db,
+        http_request,
+        actor,
+        orchestrator_v2.get_trace_owner_user_id(trace_id),
+        action="diagnosis_action",
+        resource_type="diagnosis_trace",
+        resource_id=trace_id,
+    )
 
     orchestrator_v2.record_trace_event(
         trace_id,

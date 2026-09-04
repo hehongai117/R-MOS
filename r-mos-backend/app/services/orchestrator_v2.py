@@ -65,6 +65,7 @@ class OrchestratorV2:
         # Event history for replay
         self._event_history: List[Dict[str, Any]] = []
         self._last_event_sequence: int = 0
+        self._trace_owner_user_ids: Dict[str, int] = {}
 
         # Budget tracking
         self._budget_pools: Dict[str, int] = {}  # user_id -> budget_remaining_ms
@@ -335,6 +336,12 @@ class OrchestratorV2:
         # 2. Generate trace_id if not provided
         if not trace_id:
             trace_id = f"trace-{uuid.uuid4().hex[:12]}"
+        try:
+            owner_user_id = int(user_id)
+        except (TypeError, ValueError):
+            owner_user_id = None
+        if owner_user_id is not None:
+            self._trace_owner_user_ids.setdefault(trace_id, owner_user_id)
 
         # 3. Parse and validate resource binding
         resources: List[ResourceRef] = []
@@ -724,6 +731,10 @@ class OrchestratorV2:
     def get_trace_events(self, trace_id: str) -> List[Dict[str, Any]]:
         """Get events for a trace"""
         return [e for e in self._event_history if e.get("trace_id") == trace_id]
+
+    def get_trace_owner_user_id(self, trace_id: str) -> Optional[int]:
+        """Return the authenticated owner of an active in-memory trace."""
+        return self._trace_owner_user_ids.get(trace_id)
 
     def record_trace_event(self, trace_id: str, event_type: str, payload: Dict[str, Any]) -> None:
         """Public wrapper for adding custom trace events from API actions."""

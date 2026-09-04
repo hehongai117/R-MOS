@@ -425,3 +425,22 @@
   - 探针前后关键配置、依赖、数据、资产和日志摘要一致，数据库输出一致。
 - Failure Handling：首次读取 Docker socket、连接本机 PostgreSQL和绑定回环端口均受执行沙箱限制；保存错误后按董事会已批准的同一只读范围重试成功。动作包的预览命令遗漏临时 `--outDir`，执行时补入，实际命令和订正保存在结果证据；获批动作包保持原文，确保批准对象可追溯。
 - Result：PASS，仅表示四项探针按批准边界成功、清理完成且未观察到探针漂移。A0 仍 `REOPENED / IN REVIEW`；P0 主备通道、M-AUD-06、当前报告复核和最终批准未闭合；E1 仍 FAIL，E2/E3/E4 与生产继续 BLOCKED。
+
+### TRACE-OWN-001｜诊断轨迹动作归属
+
+- 归属预查（先查事实，后改代码）：
+  1. `POST /agent/execute` 的普通 message/诊断成功路径只把 `trace_id` 写入 `orchestrator_v2._event_history`；它不创建 `Command` / `AIToolCall`，`ConversationTurn` 没有 `trace_id`，`TaskExecution.diagnosis_trace_id` 是后续建维保任务时的下游引用。因此本端点收到的诊断轨迹**没有对应持久化对象**。
+  2. 既然没有持久化对象，就没有可复用的 `actor_user_id` / `user_id` / `created_by_user_id` 字段；原内存事件也没有轨迹负责人映射。
+  3. 端点原先读取动作、当前登录人和 `agent:read` 权限，只向内存事件列表追加 `diagnosis_action`；数据库会话仅用于权限拒绝审计，不保存该动作或轨迹。
+- 保留端点的证据：
+  - 前端调用：`src/api/agent-v2.ts::runDiagnosisAction`；`AgentWorkbenchPage.tsx` 与 `SOPMaintenancePage.tsx` 两个页面均调用。
+  - 测试覆盖：前端工作台对确认、上报各有交互测试；后端已有确认、上报、非法动作和事件回放测试。
+  - 真实执行路径：`sendAgentRequestV2 → POST /agent/execute → response.trace_id → runDiagnosisAction`，并由最新诊断快照带入维保页；不符合 §9-1 的“无真实调用方内存孤岛”删除条件。
+- 处置：不新增数据库字段或迁移；在与事件相同生命周期的内存态登记首个已认证创建人，复用 `ensure_write_owner` 校验动作。普通用户只能操作本人轨迹；跨用户和未知/重启后丢失的轨迹拒绝并审计；管理员沿用无主对象规则放行。客户端重复使用同一 `trace_id` 不会覆盖首个负责人。
+- Tests：
+  - RED：`1 failed in 1.11s`，跨用户动作当时错误返回 200。
+  - GREEN 定向：`7 passed, 43 deselected in 1.79s`。
+  - 相关链路：`65 passed in 10.34s`。
+  - 全量汇总原文：`3 failed, 992 passed in 82.50s (0:01:22)`。
+- Failure Handling：3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`；均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`。未跳过、改写或放宽测试。
+- Result：**PASS（本任务行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。除已知沙箱数据库失败外 992 项全绿；本批不关闭整体 E1，不代表预生产、真机、课堂或生产验收。
