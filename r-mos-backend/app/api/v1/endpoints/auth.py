@@ -18,6 +18,7 @@ from app.core.security import hash_password, hash_token, is_strong_password, ver
 from app.models.access_token import AccessToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.models.audit_event import AuditEvent
 from app.services.access_control import log_deny_event
 from app.services.login_throttle import login_throttle
 from app.services.identity.session_initializer import SessionInitializer
@@ -154,6 +155,26 @@ async def register(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    # 董事会裁定 §9-4：同校约束（上方第 5 步）已堵住跨校挂靠，但**同校内自选
+    # 挂靠哪位教师**仍由注册者决定，而该选择直接决定 `teacher_has_student_scope`
+    # 的管辖权归属。该剩余风险为明示接受，代价是必须可追溯——故留档于审计流水。
+    if teacher_id is not None:
+        db.add(
+            AuditEvent(
+                actor_user_id=str(user.id),
+                action="student_teacher_binding_self_selected",
+                resource_type="User",
+                resource_id=str(user.id),
+                decision="allow",
+                reason="self_selected_at_registration",
+                request_meta={
+                    "teacher_user_id": teacher_id,
+                    "school_name": payload.school_name,
+                },
+            )
+        )
+        await db.commit()
 
     # 7. 自动签发 token（复用已有的辅助函数）
     access_token, refresh_token = _issue_token_pair()

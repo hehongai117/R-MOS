@@ -240,3 +240,85 @@ def test_generate_training_project_rejects_impersonated_user():
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+# ---------------------------------------------------------------------------
+# 注册时的教师挂靠（董事会裁定 §9-4）
+#
+# 跨校挂靠已由注册流程第 5 步堵死；同校内「挂靠哪位教师由学生自选」是**明示
+# 接受的剩余风险**，其代价是必须可追溯——故本用例断言审计流水确实落库。
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.regression
+def test_student_teacher_binding_is_recorded_in_audit_trail():
+    """自选挂靠必须留下审计事件，否则异常挂靠不可追溯。"""
+    from app.models.audit_event import AuditEvent
+    from sqlalchemy import select
+
+    client, sf = _client()
+    try:
+        teacher_id, _, _ = register_and_login(client, email_prefix="bind_teacher")
+        student_id, _, _ = register_and_login(
+            client, email_prefix="bind_student", role="student", teacher_id=teacher_id
+        )
+
+        async def _read() -> list[AuditEvent]:
+            async with sf() as session:
+                rows = await session.execute(
+                    select(AuditEvent).where(
+                        AuditEvent.action == "student_teacher_binding_self_selected"
+                    )
+                )
+                return list(rows.scalars())
+
+        events = asyncio.run(_read())
+        mine = [e for e in events if e.actor_user_id == str(student_id)]
+        assert mine, f"自选挂靠未留审计事件（共 {len(events)} 条无一匹配）"
+        assert mine[0].request_meta["teacher_user_id"] == teacher_id, (
+            f"审计事件未记录挂靠的教师: {mine[0].request_meta}"
+        )
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+@pytest.mark.regression
+def test_cross_school_teacher_binding_is_rejected():
+    """跨校挂靠必须被拒。
+
+    裁定 §9-4 认定「同校约束已在注册流程内」，但该结论此前**只有读码依据、
+    零测试覆盖**——挂靠关系直接决定 `teacher_has_student_scope` 的管辖权，
+    这条边界必须有行为级证据。
+    """
+    from app.models.school import School
+
+    other_school = "另一所测试学校"
+    client, sf = _client()
+    try:
+        async def _add_school() -> None:
+            async with sf() as session:
+                await session.execute(School.__table__.insert().values(name=other_school))
+                await session.commit()
+
+        asyncio.run(_add_school())
+        teacher_id, _, _ = register_and_login(client, email_prefix="xschool_teacher")
+
+        resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "xschool_student@example.com",
+                "password": "StrongPass123",
+                "full_name": "跨校学生",
+                "role": "student",
+                "school_name": other_school,   # 与教师不同校
+                "teacher_id": teacher_id,
+            },
+        )
+        assert resp.status_code == 400, f"跨校挂靠未被拒绝: {resp.status_code} {resp.text}"
+        assert resp.json()["error_type"] == "InvalidTeacher", f"拒绝原因不符: {resp.json()}"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
