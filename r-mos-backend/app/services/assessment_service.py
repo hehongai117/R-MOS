@@ -66,9 +66,17 @@ class AssessmentService:
 
         return AssessmentProviderListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    async def create_provider(self, request: AssessmentProviderCreate) -> AssessmentProviderResponse:
+    async def create_provider(
+        self,
+        request: AssessmentProviderCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> AssessmentProviderResponse:
         now = datetime.now(timezone.utc)
         provider = AssessmentProvider(
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
             id=str(uuid.uuid4()),
             provider_name=request.provider_name,
             provider_type=request.provider_type.value,
@@ -170,13 +178,21 @@ class AssessmentService:
 
         return ExternalAssessmentListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    async def create_assessment(self, request: ExternalAssessmentCreate) -> ExternalAssessmentResponse | None:
+    async def create_assessment(
+        self,
+        request: ExternalAssessmentCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> ExternalAssessmentResponse | None:
         provider = await self.db.get(AssessmentProvider, request.provider_id)
         if not provider:
             return None
 
         now = datetime.now(timezone.utc)
         assessment = ExternalAssessment(
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
             id=str(uuid.uuid4()),
             provider_id=request.provider_id,
             provider_type=provider.provider_type,

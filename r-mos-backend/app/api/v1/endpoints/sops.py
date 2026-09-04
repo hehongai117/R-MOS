@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.services.ownership import ensure_role_for_write
+from app.services.ownership import ensure_role_for_write, ensure_write_owner
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.schemas.sop import (
     SOPCreate,
@@ -15,16 +15,28 @@ from app.schemas.sop import (
     SOPDeleteResponse,
     SOPAdjudicationListResponse,
 )
+from app.models.sop import SOP
 from app.services.sop_service import SOPService
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 
 router = APIRouter()
 
 
+async def _load_sop_or_404(db: AsyncSession, sop_id: int) -> SOP:
+    """取 SOP 供归属校验；不存在则 404（与守卫的 403 区分开）。"""
+    sop = await db.get(SOP, sop_id)
+    if sop is None:
+        raise HTTPException(status_code=404, detail=f"SOP {sop_id} not found")
+    return sop
+
+
+
 @router.post("/sops", response_model=SOPResponse, status_code=201, tags=["SOPs"])
 async def create_sop(
     request: SOPCreate,
-    db: AsyncSession = Depends(get_db)
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """创建SOP
     
@@ -52,8 +64,18 @@ async def create_sop(
     }
     ```
     """
+    # 审计 M-01 / 裁定 §9-2：此前无身份注入且 `sops` 无归属字段，
+    # 建出来的内容天生无主。现在建者即所有者，后续修改由 `ensure_write_owner` 判定。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="create_sop", resource_type="SOP",
+    )
     service = SOPService(db)
-    sop = await service.create_sop(request)
+    sop = await service.create_sop(
+        request,
+        created_by_user_id=actor.user_id,
+        school_name=actor.school_name,
+    )
     return sop
 
 
@@ -207,13 +229,17 @@ async def delete_sop(
       }
     }
     ```
-    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
-    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
-    await ensure_role_for_write(
-        db, http_request, actor, "teacher", "admin",
+    """
+    # 审计 M-01 / 裁定 §9-2：归属字段补齐，改为对象级校验。
+    #
+    # ⚠️ 此处此前存在**实施缺陷**：守卫代码写在 docstring 之内（`"""` 在其后才闭合），
+    # 即 `ensure_role_for_write` 从未执行——任何登录用户可删除任意 SOP。
+    # 源码文本里能搜到守卫名，AST 里函数体却没有该调用，故静态关键字扫描无法发现。
+    sop = await _load_sop_or_404(db, sop_id)
+    await ensure_write_owner(
+        db, http_request, actor, sop.created_by_user_id,
         action="delete_sop", resource_type="SOP", resource_id=sop_id,
     )
-    """
     try:
         service = SOPService(db)
         result = await service.delete_sop(sop_id, force=force)

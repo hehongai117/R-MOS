@@ -76,8 +76,18 @@ class FaultCaseService:
         
         return FaultCaseResponse.model_validate(fault_case)
     
-    async def create_fault_case(self, request: FaultCaseCreate) -> FaultCaseResponse:
-        """创建故障案例"""
+    async def create_fault_case(
+        self,
+        request: FaultCaseCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> FaultCaseResponse:
+        """创建故障案例
+
+        归属参数由端点从**认证上下文**取得（审计 M-01）。缺省 None 即
+        「系统内置内容」，仅管理员可改。
+        """
         # 检查fault_code唯一性
         stmt = select(FaultCase).where(FaultCase.fault_code == request.fault_code)
         result = await self.db.execute(stmt)
@@ -89,7 +99,11 @@ class FaultCaseService:
                 detail=f"Fault code '{request.fault_code}' already exists"
             )
         
-        fault_case = FaultCase(**request.model_dump())
+        fault_case = FaultCase(
+            **request.model_dump(),
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
+        )
         self.db.add(fault_case)
         await self.db.commit()
         await self.db.refresh(fault_case)

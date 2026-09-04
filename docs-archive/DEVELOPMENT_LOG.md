@@ -9672,3 +9672,77 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
 - knowledge_store.json 已还原（M-15）
 - Result: 裁定 §9-4 落地；同校约束获得行为级回归覆盖
 - Next Step: 第 13 批 M-01 归属字段迁移（裁定 §9-2，五表 + 11 端点）
+
+## 2026-09-04 — 改造第 13 批：M-01 归属字段补齐与对象级守卫（董事会裁定 §9-2）
+
+### 数据模型
+
+五张教学内容表补 `created_by_user_id`（FK→users，ON DELETE SET NULL）+ `school_name`：
+`sops`、`fault_cases`、`robot_sop_drafts`、`external_assessments`、`assessment_providers`。
+
+迁移 `20260904_m01_ownership`（唯一 head），已在本地 PG **实跑 upgrade → downgrade → upgrade**，
+五表十列均验证落库。
+
+**历史行不回填**：`created_by_user_id` 保持 NULL，语义为「系统内置公共内容，仅管理员可改」。
+真实创建者无从考据，编造归属会把「不知道是谁建的」伪装成「确知归某人」。
+
+`school_name` 是多租户准备维度，**本批不使其参与任何授权判定**（正式方案见路线图 S-2）——
+勿因该列存在而误认为跨租户隔离已实施。
+
+### 守卫按性质分三类处置，而非一律替换
+
+| 类别 | 端点 | 处置 |
+|---|---|---|
+| 教学内容 | `DELETE /sops/{id}`、`PUT/DELETE /fault-cases/{id}`、草稿 update/submit、`dispute_assessment` | → `ensure_write_owner`（作者或管理员；NULL＝仅管理员） |
+| 审批 | 草稿 approve / reject | → **`ensure_reviewer_not_author`**（教师与管理员均可审批，作者本人一律不得自批，**管理员不豁免**）。此前「收紧为仅管理员」的过渡措施按其原注释所述放宽 |
+| 治理 | `revoke`/`reinstate_assessment`、`create/update_assessment_provider` | **维持 admin-only**，并改写注释澄清：其授权依据是职权而非「谁建的」，归属字段不改变结论，**不是**待放宽的过渡态 |
+
+创建端点（sops / fault_cases / maintenance drafts / assessments ×2）此前**均无身份注入**，
+现已注入 actor 并落库归属——否则新建内容仍然无主。
+
+### 新增抽象（§4 要求先说明现有为何不够）
+
+`ensure_reviewer_not_author()` 是 `ownership.py` 的第 6 个守卫。现有三者均不表达该语义：
+`ensure_write_owner` 问「你是不是所有者」，方向相反；
+`ensure_teacher_scope_over_student` 的拒绝所有者口径虽同，但其管辖权查询绑定师生班级关系，
+内容草稿没有这一层。**把归属规则原样套到审批动作上，放行的恰好是「自己批准自己」。**
+
+### ⚠️ 本批发现的真实缺陷：守卫被困在 docstring 中
+
+`DELETE /sops/{sop_id}` 的 `ensure_role_for_write` 调用**写在 docstring 内部**
+（`"""` 在守卫之后才闭合），即**从未执行**——任何登录用户可删除任意 SOP。
+
+该缺陷躲过了此前所有检查：文件确实被改过、语法正确、源码文本里搜得到守卫名，
+**只是它在字符串里**。这是 §5「批量改签名须逐文件校验落地」的一种更隐蔽形态。
+
+以 AST 全仓复查（比对「docstring 提到的守卫」与「函数体实际调用的守卫」），
+真阳性仅此一处；`ownership.py` 三处为文档交叉引用，误报。
+排查脚本留在 scratchpad，其判据已固化为回归用例
+`test_sop_delete_guard_actually_runs`——直接对 `delete_sop` 的 AST 断言守卫在函数体内。
+
+### 回归测试
+
+新建 `tests/unit/test_content_ownership.py`（4 条）+ 追加职责分离 2 条：
+
+| 用例 | 为何这条能区分新旧语义 |
+|---|---|
+| 非作者教师不得删他人 SOP | 旧口径 `ensure_role_for_write("teacher","admin")` 会放行，必然失败 |
+| 作者本人可删 | 防「守卫写成无条件拒绝」也能让上一条全绿 |
+| 无主 SOP 仅管理员可处置 | 裁定对历史行的处置 |
+| `delete_sop` 守卫在函数体内（AST） | 上述 docstring 缺陷的固化判据 |
+| 非作者教师**可以**审批草稿 | 旧口径 admin-only 下必然 403——放宽是否生效的分界 |
+| 管理员不得批准自己提交的草稿 | 职责分离最容易写错的版本（「admin 一律放行」）会在此翻车 |
+
+> **既有测试 `test_robot_sop_draft_api` 换守卫后仍绿，但注释已失真**：
+> 用例里那位教师正是草稿作者，旧口径下因「角色不足」403、新口径下因「不得自批」403——
+> 结果相同、理由已变。注释已更新。**断言不变不等于语义不变。**
+
+### 覆盖率空白（换守卫「零测试失败」的真实原因）
+
+`sops/{id}` 删除、`fault-cases/`、`assessments/` 三组写端点此前 **HTTP 层零测试**。
+11 个端点换守卫后零失败**不是**安全信号，而是空白信号——与 tasks 那批同因（§5）。
+
+- 测试：后端 **978 通过**（972 + 6 新用例）
+- knowledge_store.json 已还原（M-15）
+- Result: M-01 数据模型缺陷关闭；11 个角色制过渡端点按性质重新处置；新发现并修复 SOP 删除零授权
+- Next Step: 剩余改造转由 Codex CLI 实现（恢复既有分工：Plan/验收＝Claude，实现＝Codex）

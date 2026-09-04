@@ -214,3 +214,47 @@ async def ensure_role_for_write(
         resource_id=resource_id,
         reason=f"role_not_allowed:{actor.account_role or 'unknown'}",
     )
+
+
+async def ensure_reviewer_not_author(
+    db: AsyncSession,
+    request: Request,
+    actor: ActorContext,
+    author_user_id: int | None,
+    *allowed_roles: str,
+    action: str,
+    resource_type: str,
+    resource_id: int | str | None = None,
+) -> None:
+    """审批类写路径：须具备审批角色，且**不得是提交者本人**（职责分离，M-13）。
+
+    与本模块其余守卫的方向**相反**——那些问「你是不是所有者」，这个问
+    「你是不是**不是**作者」。把归属规则原样套到审批动作上，放行的恰好是
+    「自己批准自己」，即该守卫本要防的那件事。
+
+    `author_user_id` 为 None（系统内置内容）时不构成自批，仅校验角色。
+
+    **管理员不豁免**：口径与 `ensure_teacher_scope_over_student` 的
+    「所有者本人一律拒绝」一致。审批角色同时开放给教师与管理员，
+    因此作者被拒不会造成无人可批。
+    """
+    if not actor_has_role(actor, *allowed_roles):
+        await raise_write_access_denied(
+            db,
+            request,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason=f"role_not_allowed:{actor.account_role or 'unknown'}",
+        )
+        return
+
+    if author_user_id is not None and actor.user_id == author_user_id:
+        await raise_write_access_denied(
+            db,
+            request,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            reason="self_approval_forbidden",
+        )

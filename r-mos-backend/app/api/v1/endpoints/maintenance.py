@@ -7,7 +7,11 @@ from sqlalchemy import String, cast, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.services.ownership import ensure_role_for_write
+from app.services.ownership import (
+    ensure_reviewer_not_author,
+    ensure_role_for_write,
+    ensure_write_owner,
+)
 from app.services.authz_guard import ActorContext, get_current_actor
 from app.models.robot_project import RobotProject, RobotProjectStatus
 from app.models.robot_sop_draft import RobotSOPDraft, RobotSOPDraftReviewStatus
@@ -78,8 +82,16 @@ async def _get_draft(db: AsyncSession, draft_id: str) -> RobotSOPDraft:
 @router.post("/maintenance/drafts", response_model=MaintenanceDraftResponse, tags=["Maintenance"])
 async def create_maintenance_draft(
     request: MaintenanceDraftCreateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
+    # 审计 M-01 / 裁定 §9-2：此前无身份注入，草稿建出来即无主。
+    # 现在作者落库，update/submit 按归属判定，approve/reject 按职责分离判定。
+    await ensure_role_for_write(
+        db, http_request, actor, "teacher", "admin",
+        action="create_maintenance_draft", resource_type="RobotSOPDraft",
+    )
     project = await _get_project(db, project_id=request.project_id, robot_key=request.robot_key)
     draft_payload = await SOPDraftGenerator().generate(
         db=db,
@@ -96,6 +108,8 @@ async def create_maintenance_draft(
         "manifest_mapping": draft_payload["manifest_mapping"],
     }
     record = RobotSOPDraft(
+        created_by_user_id=actor.user_id,
+        school_name=actor.school_name,
         project_id=project.id,
         request_id=request.request_id or str(uuid4()),
         draft_json=draft_json,
@@ -124,13 +138,13 @@ async def update_maintenance_draft(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
-    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
-    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
-    await ensure_role_for_write(
-        db, http_request, actor, "teacher", "admin",
+    # 审计 M-01 / 裁定 §9-2：归属字段已补齐，由角色制过渡改为对象级校验。
+    # 历史行 `created_by_user_id` 为 NULL＝系统内置内容，仅管理员可改。
+    record = await _get_draft(db, draft_id)
+    await ensure_write_owner(
+        db, http_request, actor, record.created_by_user_id,
         action="update_maintenance_draft", resource_type="RobotSOPDraft", resource_id=draft_id,
     )
-    record = await _get_draft(db, draft_id)
     draft_json = dict(record.draft_json or {})
     for field in ("title", "maintenance_goal", "steps", "tools", "review_notes"):
         value = getattr(request, field)
@@ -158,13 +172,13 @@ async def submit_maintenance_draft_for_review(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
-    # 董事会 2026-09-03 裁定：教学内容 → 教师与管理员。
-    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
-    await ensure_role_for_write(
-        db, http_request, actor, "teacher", "admin",
+    # 审计 M-01 / 裁定 §9-2：归属字段已补齐，由角色制过渡改为对象级校验。
+    # 历史行 `created_by_user_id` 为 NULL＝系统内置内容，仅管理员可改。
+    record = await _get_draft(db, draft_id)
+    await ensure_write_owner(
+        db, http_request, actor, record.created_by_user_id,
         action="submit_maintenance_draft_for_review", resource_type="RobotSOPDraft", resource_id=draft_id,
     )
-    record = await _get_draft(db, draft_id)
     record.review_status = RobotSOPDraftReviewStatus.DRAFT_PENDING_REVIEW
     await db.commit()
     await db.refresh(record)
@@ -178,16 +192,14 @@ async def approve_maintenance_draft(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
-    # 董事会 2026-09-03 裁定：仅管理员。
-    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
-    # 批准/驳回收紧为仅管理员：草稿表无作者字段，无法判断「批准者是否即提交者」，
-    # 放行教师会使任意教师可批准自己提交的草稿（M-13 职责分离）。
-    # 归属字段补齐后可放宽至有管辖权的教师。
-    await ensure_role_for_write(
-        db, http_request, actor, "admin",
+    # 审计 M-01 / 裁定 §9-2：作者字段补齐，此前「收紧为仅管理员」的过渡措施
+    # 按原注释所述放宽——改由**职责分离**表达：教师与管理员均可审批，
+    # 但**提交者本人一律不得批准自己的草稿**（M-13），管理员不豁免。
+    record = await _get_draft(db, draft_id)
+    await ensure_reviewer_not_author(
+        db, http_request, actor, record.created_by_user_id, "teacher", "admin",
         action="approve_maintenance_draft", resource_type="RobotSOPDraft", resource_id=draft_id,
     )
-    record = await _get_draft(db, draft_id)
     approved_rows = (
         await db.execute(
             select(RobotSOPDraft).where(
@@ -213,16 +225,14 @@ async def reject_maintenance_draft(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ) -> MaintenanceDraftResponse:
-    # 董事会 2026-09-03 裁定：仅管理员。
-    # 该对象无归属字段，无法做对象级校验；角色制为过渡方案（审计 M-01）。
-    # 批准/驳回收紧为仅管理员：草稿表无作者字段，无法判断「批准者是否即提交者」，
-    # 放行教师会使任意教师可批准自己提交的草稿（M-13 职责分离）。
-    # 归属字段补齐后可放宽至有管辖权的教师。
-    await ensure_role_for_write(
-        db, http_request, actor, "admin",
+    # 审计 M-01 / 裁定 §9-2：作者字段补齐，此前「收紧为仅管理员」的过渡措施
+    # 按原注释所述放宽——改由**职责分离**表达：教师与管理员均可审批，
+    # 但**提交者本人一律不得批准自己的草稿**（M-13），管理员不豁免。
+    record = await _get_draft(db, draft_id)
+    await ensure_reviewer_not_author(
+        db, http_request, actor, record.created_by_user_id, "teacher", "admin",
         action="reject_maintenance_draft", resource_type="RobotSOPDraft", resource_id=draft_id,
     )
-    record = await _get_draft(db, draft_id)
     draft_json = dict(record.draft_json or {})
     review_notes = list(draft_json.get("review_notes", []))
     review_notes.append(f"rejected: {request.reason}")

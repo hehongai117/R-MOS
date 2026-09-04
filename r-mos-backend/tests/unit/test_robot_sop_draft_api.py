@@ -141,10 +141,11 @@ def test_robot_sop_draft_api_lifecycle(
     assert submit_resp.status_code == 200
     assert submit_resp.json()["review_status"] == "draft_pending_review"
 
-    # 董事会 2026-09-03 裁定：批准/驳回仅管理员。草稿表无作者字段，
-    # 放行教师会使任意教师可批准自己提交的草稿（M-13 职责分离）。
-    teacher_denied = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
-    assert teacher_denied.status_code == 403, "教师不应能批准草稿"
+    # 裁定 §9-2 后语义已变：教师**可以**审批，但**作者本人不得批准自己的草稿**
+    # （M-13 职责分离，管理员亦不豁免）。此处这位教师正是草稿作者，故仍是 403——
+    # 断言结果不变，理由已不同：由「角色不足」变为「不得自批」。
+    author_denied = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
+    assert author_denied.status_code == 403, "作者不应能批准自己的草稿"
 
     # 注册接口只接受 student/teacher（管理员不可自助注册），故注册后改 users.role
     admin_id, _, admin_login = register_and_login(client, email_prefix="robot_sop_draft_admin")
@@ -224,3 +225,69 @@ async def _force_uppercase_status(
 
 def test_approved_status_tokens_include_pg_uppercase_storage() -> None:
     assert _approved_status_tokens() == ("approved", "APPROVED")
+
+
+# ---------------------------------------------------------------------------
+# 职责分离（审计 M-13 / 董事会裁定 §9-2）
+#
+# 补齐 `created_by_user_id` 前，草稿审批被**收紧为仅管理员**——因为无作者字段
+# 时无从判断「批准者是否即提交者」。字段补齐后按原注释所述放宽为：
+# 教师与管理员均可审批，但作者本人一律不得批准自己的草稿（管理员不豁免）。
+#
+# 下面两条是新旧语义的分界：旧口径下「另一位教师可批准」必然 403。
+# ---------------------------------------------------------------------------
+
+
+def test_draft_approval_allows_non_author_teacher(
+    maintenance_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """非作者的教师可以审批——证明放宽确实生效，而非仍是 admin-only。"""
+    client, session_factory = maintenance_api_env
+    asyncio.run(_seed_project(session_factory, "project-sod-teacher"))
+    _patch_generators(monkeypatch)
+
+    register_and_login(client, email_prefix="sod_draft_author")
+    create_resp = client.post(
+        "/api/v1/maintenance/drafts",
+        json={"project_id": "project-sod-teacher", "maintenance_goal": "肩关节复核"},
+    )
+    assert create_resp.status_code == 200
+    draft_id = create_resp.json()["draft_id"]
+
+    # 换成另一位教师（非作者）
+    register_and_login(client, email_prefix="sod_draft_reviewer")
+    approve_resp = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
+    assert approve_resp.status_code == 200, (
+        f"非作者教师无法审批，放宽未生效: {approve_resp.status_code} {approve_resp.text}"
+    )
+    assert approve_resp.json()["review_status"] == "approved"
+
+
+def test_draft_approval_denies_admin_author(
+    maintenance_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """**管理员也不豁免**：自己提交的草稿自己不能批。
+
+    若把职责分离写成「admin 一律放行」，这条会绿不了——而那正是最容易写出的版本。
+    """
+    client, session_factory = maintenance_api_env
+    asyncio.run(_seed_project(session_factory, "project-sod-admin"))
+    _patch_generators(monkeypatch)
+
+    admin_id, _, admin_login = register_and_login(client, email_prefix="sod_admin_author")
+    asyncio.run(set_user_role(session_factory, user_id=admin_id, role="admin"))
+    client.headers["Authorization"] = f"Bearer {admin_login['access_token']}"
+
+    create_resp = client.post(
+        "/api/v1/maintenance/drafts",
+        json={"project_id": "project-sod-admin", "maintenance_goal": "踝关节复核"},
+    )
+    assert create_resp.status_code == 200
+    draft_id = create_resp.json()["draft_id"]
+
+    approve_resp = client.post(f"/api/v1/maintenance/drafts/{draft_id}/approve")
+    assert approve_resp.status_code == 403, (
+        f"管理员批准了自己提交的草稿: {approve_resp.status_code} {approve_resp.text}"
+    )

@@ -27,8 +27,18 @@ class SOPService:
     def __init__(self, db: AsyncSession):
         self.db = db
     
-    async def create_sop(self, request: SOPCreate) -> SOP:
-        """创建SOP（含步骤）"""
+    async def create_sop(
+        self,
+        request: SOPCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> SOP:
+        """创建SOP（含步骤）
+
+        归属参数由端点从**认证上下文**取得（审计 M-01）。缺省 None 仅用于
+        种子脚本等无调用者身份的场景，其产物即「系统内置内容」，仅管理员可改。
+        """
         # 1. 创建SOP主记录
         sop = SOP(
             name=request.name,
@@ -38,6 +48,8 @@ class SOPService:
             difficulty_level=request.difficulty_level,
             estimated_time=request.estimated_time,
             robot_model_id=getattr(request, 'robot_model_id', None),
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
         )
         
         self.db.add(sop)
