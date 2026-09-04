@@ -135,3 +135,108 @@ def test_pipeline_execution_endpoints_reject_non_owner():
         client.close()
         app.dependency_overrides.clear()
         app.state.test_sessionmaker = None
+
+
+# ---------------------------------------------------------------------------
+# 创建路径的身份收敛（审计 M-02 残留）
+#
+# 上一批把 M-02 记为已关闭，但收敛的只是**已有身份注入**的端点。运行期扫描
+# （载入真实 app 枚举路由，因此不漏 router 前缀——A1 指出过的同一个坑）显示
+# 仍有写端点把请求体自述的 `user_id` / `student_id` 直接当作操作人。
+# 下列三条断言的是行为：拿 A 的令牌、在请求体里写 B 的编号，必须 403。
+#
+# 每条都同时断言「不声称他人身份时不被拒」——否则把守卫写成无条件拒绝
+# 也能让拒绝断言全绿，测试就分不出「拒对了」和「全拒了」。
+# ---------------------------------------------------------------------------
+
+
+def _seed_sop(sf: async_sessionmaker) -> int:
+    from app.models.sop import SOP
+
+    async def _run() -> int:
+        async with sf() as session:
+            sop = SOP(name="身份收敛测试 SOP", description="fixture", applicable_model="ATOM-01")
+            session.add(sop)
+            await session.commit()
+            return sop.id
+
+    return asyncio.run(_run())
+
+
+@pytest.mark.regression
+def test_create_task_rejects_impersonated_owner():
+    """`POST /tasks` 曾无身份注入：请求体给谁的编号，任务就归谁。"""
+    client, sf = _client()
+    try:
+        victim_id, _, _ = register_and_login(client, email_prefix="task_create_victim")
+        sop_id = _seed_sop(sf)
+        actor_id, _, _ = register_and_login(client, email_prefix="task_create_actor")
+
+        impersonated = client.post(
+            "/api/v1/tasks",
+            json={"title": "冒用他人身份建任务", "sop_id": sop_id, "user_id": victim_id},
+        )
+        assert impersonated.status_code == 403, (
+            f"请求体声称他人身份未被拒绝: {impersonated.status_code} {impersonated.text}"
+        )
+
+        own = client.post(
+            "/api/v1/tasks",
+            json={"title": "以本人身份建任务", "sop_id": sop_id},
+        )
+        assert own.status_code != 403, f"本人建任务被误拒: {own.status_code} {own.text}"
+        assert own.json()["user_id"] == actor_id, "任务未归属到认证身份"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+@pytest.mark.regression
+def test_create_task_from_diagnosis_rejects_impersonated_student():
+    """`POST /pipeline/tasks/from-diagnosis` 的 student_id 曾直接落库为执行记录归属。"""
+    client, sf = _client()
+    try:
+        victim_id, _, _ = register_and_login(client, email_prefix="diag_victim")
+        register_and_login(client, email_prefix="diag_actor")
+
+        resp = client.post(
+            "/api/v1/pipeline/tasks/from-diagnosis",
+            json={
+                "diagnosis_trace_id": "trace-identity-001",
+                "fault_type": "joint_overheat",
+                "student_id": victim_id,
+            },
+        )
+        assert resp.status_code == 403, (
+            f"为他人创建维保任务未被拒绝: {resp.status_code} {resp.text}"
+        )
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None
+
+
+@pytest.mark.regression
+def test_generate_training_project_rejects_impersonated_user():
+    """`POST /training/projects/generate` 用该编号读画像/弱项/训练历史。
+
+    拒绝必须发生在 SSE 生成器**之前**：生成器内的 `except Exception` 会把
+    拒绝异常吞成一条 200 的 error 事件，那样的"拒绝"对调用方不可见。
+    """
+    client, sf = _client()
+    try:
+        victim_id, _, _ = register_and_login(client, email_prefix="proj_victim")
+        register_and_login(client, email_prefix="proj_actor")
+
+        resp = client.post(
+            "/api/v1/training/projects/generate",
+            json={"user_id": victim_id, "robot_id": "atom-01", "difficulty": "medium"},
+        )
+        assert resp.status_code == 403, (
+            f"以他人编号生成训练项目未被拒绝: {resp.status_code} {resp.text[:300]}"
+        )
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.state.test_sessionmaker = None

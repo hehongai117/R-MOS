@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.task_execution import TaskExecution
 from app.services.ownership import ensure_write_owner
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import (
+    ActorContext,
+    get_current_actor,
+    resolve_actor_identity,
+)
 from app.services.pipeline.fault_diagnosis_service import FaultDiagnosisService
 from app.services.pipeline.task_pipeline_service import TaskPipelineService
 
@@ -33,7 +37,9 @@ class DiagnoseResponse(BaseModel):
 class CreateTaskFromDiagnosisRequest(BaseModel):
     diagnosis_trace_id: str
     fault_type: str
-    student_id: int
+    # 归属取自认证上下文；该字段仅为兼容旧客户端保留，
+    # 声称与令牌不一致的身份会被 `resolve_actor_identity` 拒绝。
+    student_id: int | None = None
 
 
 class CreateTaskFromDiagnosisResponse(BaseModel):
@@ -77,13 +83,23 @@ async def diagnose_fault(request: DiagnoseRequest):
 async def create_task_from_diagnosis(
     request: CreateTaskFromDiagnosisRequest,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Create maintenance task from diagnosis result."""
+    # 审计 M-02 残留：此前无身份注入，`student_id` 取自请求体并直接落为
+    # `TaskExecution.student_id`，任意登录用户可为他人创建维保任务。
+    # 与同文件 `complete_step` 保持同一归属口径：执行记录归调用者本人。
+    student_id = resolve_actor_identity(
+        actor,
+        request.student_id,
+        action="create_task_from_diagnosis",
+        resource_type="TaskExecution",
+    )
     service = TaskPipelineService(db)
     result = await service.create_task_from_diagnosis(
         diagnosis_trace_id=request.diagnosis_trace_id,
         fault_type=request.fault_type,
-        student_id=request.student_id,
+        student_id=student_id,
     )
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])

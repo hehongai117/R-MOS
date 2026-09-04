@@ -287,7 +287,6 @@ function AgentWorkbenchPage() {
       const result = await createTaskFromDiagnosis({
         diagnosis_trace_id: latestTraceId,
         fault_type: diagnosis.primary_hypothesis.fault_code,
-        student_id: user?.user_id ?? 1,
       })
       setCreatedTask(result)
       message.success(`维保任务已创建: ${result.sop_name}`)

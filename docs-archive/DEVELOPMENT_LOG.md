@@ -9511,3 +9511,73 @@ AG-01/03/04 仍未闭合，AG-05 部分完成。**审计线到此正式收束，
 
 - Result: 裁定已落记；README、交接文档同步；机械闸门 PASS
 - Next Step: 按交接文档 §3 推进改造；三项待定方向（归属字段、真实写工具边界、是否 push 跑 CI）仍需董事会决定
+
+## 2026-09-04 — 改造第 10 批：创建路径的业务身份收敛（M-02 残留）
+
+- 分支：`audit/phase3-auth-control-realtime`｜依据：路线 B 裁定 + 交接文档 §7「不需等决策即可推进」
+
+### 起因：上一批把 M-02 记为「✅ 关闭」，但关闭的只是已有身份注入的端点
+
+用**运行期**扫描（载入真实 `app` 枚举 `APIRoute`，因此天然不漏 router 前缀——
+A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，得到分母：
+
+| 项 | 数 |
+|---|---|
+| 自述业务身份（`user_id`/`student_id`/`approved_by` 等来自请求体或查询参数）的写端点 | 12 |
+| 已经过 `resolve_actor_identity` 收敛 | 4 |
+| **仍直接采信调用方自述** | **8** |
+
+**口径修正：M-02 此前不应记为完全关闭。**
+
+### 本批处置 3 项（另 5 项见「未处置」）
+
+| 端点 | 修复前的实际后果 |
+|---|---|
+| `POST /tasks` | 无身份注入，请求体给谁的编号任务就归谁；且**省略该字段即整段跳过 P0-4-3 执行前检查**（收敛后 `user_id` 恒有值，绕过路径一并消失） |
+| `POST /pipeline/tasks/from-diagnosis` | `student_id` 直接落为 `TaskExecution.student_id`，可为他人创建维保任务 |
+| `POST /training/projects/generate` | 该编号被生成器用于读取 `StudentSkillProfile`/`StudentWeakStep`/`TrainingSession`——**任意登录用户可凭他人编号读其画像、弱项与训练历史** |
+
+均复用既有抽象 `resolve_actor_identity()`，未新造第二套（§4 贯穿原则）。
+
+**SSE 端点的特殊处置**：`generate_training_project` 的校验必须留在生成器**外**——
+`sse_stream` 内的 `except Exception` 会把拒绝异常吞成一条 200 的 error 事件，
+那样的「拒绝」对调用方不可见。撤回验证时该端点确实返回 200，印证此判断。
+
+### 前端同步
+
+`AgentWorkbenchPage.tsx` 原传 `student_id: user?.user_id ?? 1`——
+即 §6 所述「编造用户 id」的前端版本。改为不传，后端从令牌取；
+`CreateTaskFromDiagnosisRequest.student_id` 相应改为可选（仅兼容旧客户端）。
+
+### 回归测试：行为级 + **反向验证**
+
+3 条新用例入 `tests/unit/test_task_write_ownership.py`（复用既有 HTTP 脚手架，未新建文件）。
+每条同时断言「冒用他人身份→403」与「不声称他人身份→不被拒且归属正确」——
+只有拒绝断言时，把守卫写成无条件拒绝也能全绿，测试便分不出「拒对了」和「全拒了」。
+
+**关键一步（§5 教训「零测试失败≠守卫生效」）**：`git stash` 撤回三处修复后重跑，
+3 条新用例**全红**；恢复后全绿。这是行为级证据，而非「没有用例失败」。
+
+> 本批**未击穿任何既有测试**——与 tasks 那批同因：这三个端点原本就没有 HTTP 层测试。
+> 「加守卫零失败」在本项目始终应先怀疑测试空白，而不是当作安全信号。
+
+### 未处置（已定位，待决策或另批）
+
+| 端点 | 情况 |
+|---|---|
+| `POST /agent/approval/request`、`/{id}/approve` | `requester_id`/`approved_by` 为查询参数，可任意伪造批准人；底层 `approval_queue` 是**进程内内存字典**，与 DB 审批链（`Approval` + `ApprovalService`）重复，前端已迁至 `/ai/approvals`，这 4 个端点前端零调用。**建议整体删除**（同 M-05「删端点、能力保留」先例）——需董事会裁定 |
+| `POST /agent/v2/task/create`、`/{id}/transition` | 同属内存态编排器，`user_id` 为查询参数；前端零调用 |
+| `POST /auth/register` | `teacher_id` 由注册者自选，直接决定 `teacher_has_student_scope` 管辖权归属——**学生可自选挂靠教师**。注册时无认证上下文，非 `resolve_actor_identity` 可解，需单独定方向 |
+| `POST /agent/coordinate` | 经核实**不属**本类：`user_id` 是字符串任务标识，内存协调器原样回显、不落库、不参与授权（端点内已有书面判定） |
+
+### 扫描误报（记录以免下轮重复排查）
+
+`force_submit_session`（已有 `teacher_has_student_scope` 实质校验）、
+`submit_skill_review`（已有 `created_by_user_id` 归属校验）——
+二者只是未走 `ownership.py` 的统一抽象，故被静态特征漏判。
+**静态扫描只能产出候选清单，每一条仍须读代码确认。**
+
+- 测试：后端 **995 通过**（基线 992，+3）；前端 **518 通过 / 2 skipped**，`tsc --noEmit` 无错误
+- knowledge_store.json 已还原（M-15）
+- Result: 创建路径身份收敛 3 项关闭；M-02 口径修正为「部分」，剩余 5 项已定位
+- Next Step: 内存态 agent 端点（审批队列 / v2 编排器）删除与否待董事会裁定

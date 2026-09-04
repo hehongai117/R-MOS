@@ -8,7 +8,12 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.services.authz_guard import ActorContext, actor_has_role, get_current_actor
+from app.services.authz_guard import (
+    ActorContext,
+    actor_has_role,
+    get_current_actor,
+    resolve_actor_identity,
+)
 from app.services.ownership import ensure_task_scope, ensure_write_owner
 from app.schemas.task import (
     TaskCreate,
@@ -32,34 +37,43 @@ router = APIRouter()
 @router.post("/tasks", response_model=TaskResponse, tags=["Tasks"])
 async def create_task(
     request: TaskCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """创建Task（带执行前检查）"""
+    # 审计 M-02 残留：此前无身份注入，执行人取自请求体 `user_id`，
+    # 任意登录用户可为他人建任务；且省略该字段即可整段跳过 P0-4-3 执行前检查。
+    # 收敛到认证身份后 `user_id` 恒有值，执行前检查不再可绕过。
+    request.user_id = resolve_actor_identity(
+        actor,
+        request.user_id,
+        action="create_task",
+        resource_type="Task",
+    )
+
     # P0-4-3: 执行前检查
-    if request.user_id:
-        # 将 user_id 转换为字符串（preflight check 使用字符串）
-        user_id_str = str(request.user_id)
+    # 将 user_id 转换为字符串（preflight check 使用字符串）
+    user_id_str = str(request.user_id)
 
-        # 获取 SOP 中的 robot_id（如果有）
+    # 获取 SOP 中的 robot_id（如果有）
+    robot_id = None
 
-        robot_id = None
+    can_proceed, reason = await preflight_check_service.can_proceed(
+        user_id=user_id_str,
+        sop_id=request.sop_id,
+        robot_id=robot_id,
+        db=db,
+    )
 
-        can_proceed, reason = await preflight_check_service.can_proceed(
-            user_id=user_id_str,
-            sop_id=request.sop_id,
-            robot_id=robot_id,
-            db=db,
+    if not can_proceed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_type": "PreflightCheckFailed",
+                "message": "执行前检查未通过",
+                "reason": reason
+            }
         )
-
-        if not can_proceed:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_type": "PreflightCheckFailed",
-                    "message": "执行前检查未通过",
-                    "reason": reason
-                }
-            )
 
     service = TaskService(db)
     task = await service.create_task(request)

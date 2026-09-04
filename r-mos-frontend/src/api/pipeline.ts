@@ -19,7 +19,6 @@ export interface DiagnoseResponse {
 export interface CreateTaskRequest {
   diagnosis_trace_id: string
   fault_type: string
-  student_id: number
 }
 
 export interface CreateTaskResponse {

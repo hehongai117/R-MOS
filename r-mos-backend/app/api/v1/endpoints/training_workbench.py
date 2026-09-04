@@ -10,7 +10,11 @@ import logging
 
 from app.core.database import get_db
 from app.services.training.session_service import SessionService
-from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.authz_guard import (
+    ActorContext,
+    get_current_actor,
+    resolve_actor_identity,
+)
 from app.schemas.training_workbench import (
     ProjectGenerateRequest,
     ProjectGenerateResponse,
@@ -64,12 +68,25 @@ def _build_workbench_project_snapshot(payload: dict) -> dict:
 )
 async def generate_training_project(
     request: ProjectGenerateRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-04-b-2: 生成训练项目
 
     使用 SSE 流式返回项目配置
     """
+    # 审计 M-02 残留：此前无身份注入，`user_id` 取自请求体，而生成器用它去读
+    # `StudentSkillProfile` / `StudentWeakStep` / `TrainingSession`——
+    # 即任意登录用户可凭他人编号读取其画像、弱项与训练历史。
+    # 校验必须留在生成器**外**：`sse_stream` 内的 `except Exception` 会把
+    # 拒绝异常吞成一条 200 的 error 事件，拒绝就不再是拒绝。
+    owner_id = resolve_actor_identity(
+        actor,
+        request.user_id,
+        action="generate_training_project",
+        resource_type="TrainingProject",
+    )
+
     async def sse_stream():
         try:
             from app.services.training.project_generator import ProjectGenerator
@@ -87,7 +104,7 @@ async def generate_training_project(
             intent = IntentPlaceholder()
 
             # 流式生成项目
-            async for chunk in generator.generate(intent, request.user_id):
+            async for chunk in generator.generate(intent, owner_id):
                 if "error" in chunk:
                     yield f"data: {json.dumps(chunk)}\n\n"
                     break
