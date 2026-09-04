@@ -1,6 +1,6 @@
 # R-MOS 当前测试报告
 
-- 版本：0.1.1
+- 版本：0.1.2
 - 建立日期：2026-08-21
 - 状态：Active
 - 上位规则：`docs/testing/ACCEPTANCE_CHARTER.md`
@@ -22,7 +22,8 @@
 | Phase 3 第 1–3 批收口 | PARTIAL | 后端全量 `956 passed, 0 failed`；AUTH-GATE-01～12 定向通过；**AUTH-101～105 均为 IN_PROGRESS、未关闭**——浏览器实测未做，且 3D 网格加载被网关打断的回归未修 |
 | Phase 3 第 3b 批（P3-3b，3D 资产带令牌） | PARTIAL | 提交 `70e9c078`；前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测 PASS**（`/3d-viewer` 与 `/maintenance` 资产请求 401 数为 0、模型渲染）。**只关闭了 3D 加载回归本身**；`AUTH-101`～`AUTH-105` 仍为 IN_PROGRESS，对象归属与资产拒绝审计缺口未动 |
 | Phase 3 第 2c 批（P3-2c，对象归属第一刀） | PARTIAL | 提交 `c7ad217a`；定向 `15 passed`；后端全量 **971 tests / 0 failed / 0 error（退出码 0）**。**只覆盖 8 条路由**（training 5 + tasks 3）；全仓约 115 条路由仍无归属校验，`AUTH-101` 不关闭 |
-| 实时通道点修复复验 | CONDITIONAL | 定向 `22 passed`；慢连接、连接关闭、心跳、日志及时间双后缀已补正；后端排除 3 项未获准的数据库写入门禁后收集 973 项并执行到 100%、退出码 0；F-RT-03 仅完成防泄露封堵，M-03/RT-GATE 仍 OPEN/NOT_RUN |
+| M-03 WebSocket robot_id 订阅授权 | BLOCKED | 真实连接定向回归 `26 passed`；完整测试收集 982 项，其中 `979 passed`，3 个既有 PostgreSQL 门禁因当前执行环境禁止连接 `localhost:5432` 而失败。授权边界定向证据 PASS，但“全量通过”门禁未满足，不作整体 PASS |
+| 实时通道点修复复验 | CONDITIONAL | 该批历史定向 `22 passed`；慢连接、连接关闭、心跳、日志及时间双后缀已补正。当时 M-03/RT-GATE 仍 OPEN/NOT_RUN；M-03 后续状态以本表当前 M-03 行为准 |
 | A0 获批只读指纹探针 | PASS（仅探针） | 进程/容器、数据库、运行路由和前端公开入口四项已执行，前后摘要一致；不构成应用测试、E2、A0 批准或 R1 放行 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
 | E2 预生产非功能 | BLOCKED | 预生产环境和正式演练证据未在本批核实 |
@@ -41,6 +42,30 @@
 | 归档前 | `docs-archive/TEST_REPORT.md` | 旧测试报告 | HISTORICAL |
 
 ## 4. 当前批次记录
+
+### M03-WS-ROBOT-AUTH-001｜带 robot_id 的 WebSocket 订阅授权
+
+- 基线提交：`f0f94960`；结果为未提交工作树（按任务要求不 commit）
+- 环境：`audit/phase3-auth-control-realtime` 隔离工作区；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；配置从主工作区 `.env` 加载，随后 `unset CORS_ORIGINS`、`DEBUG=true`
+- 范围：仅为 `/ws/robot/{robot_id}/status` 增加握手前机器人可见性校验；不改变 `/ws/robot/status`，不实现按机器人过滤遥测
+- Commands Run：
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_websocket_robot_authorization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_websocket_robot_authorization.py tests/e2e/test_agent_diagnosis_flow.py::test_websocket_telemetry_protocol_is_consistent tests/unit/test_robot_asset_boundary.py tests/unit/test_websocket_targeting.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `rg -n 'async def get_visible_robot_or_404' r-mos-backend/app`
+  - `rg -n 'get_visible_robot_or_404' r-mos-backend/app/api/v1/endpoints/robots.py r-mos-backend/app/api/v1/endpoints/websocket.py r-mos-backend/app/services/robot_visibility.py`
+  - `git diff --check`；`git status --short`
+- Key Output：
+  - RED：`1 failed, 2 passed in 1.06s`；失败为无权用户连接私有机器人时 `DID NOT RAISE WebSocketDisconnect`，直接复现 robot_id 未授权漏洞。两条正向用例当时已能收到遥测，排除测试本身“全拒绝”的假阳性。
+  - GREEN：真实连接授权、兼容入口、既有资产边界和既有 WebSocket 行为最终合并回归 `26 passed in 3.35s`。
+  - 无权用户在握手前收到 `1008 / robot_forbidden`；所有者和其他登录用户访问 SHARED 机器人均连接成功并收到 `telemetry`。既有认证失败固定为 `1008 / unauthenticated`。
+  - 可见性函数定义只有 `app/services/robot_visibility.py` 1 处；HTTP 资产入口与 WebSocket 均引用它；旧 `_get_visible_robot_or_404` 命中 0。
+  - 完整测试原始汇总：`3 failed, 979 passed in 80.74s (0:01:20)`。3 项均在连接 `::1:5432` 时收到 `PermissionError: [Errno 1] Operation not permitted`：`test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`。
+  - `git diff --check` 退出码 0；`git status --short` 中 `data/knowledge_store.json` 命中 0。
+- Evidence：`r-mos-backend/tests/e2e/test_websocket_robot_authorization.py`；本条记录；`docs-archive/DEVELOPMENT_LOG.md` 同日 M-03 条目
+- Result：**BLOCKED**。本任务行为级定向范围 PASS；完整测试共收集 982 项，数量高于 979 基线，但因当前执行环境禁止访问固定配置中的本机 PostgreSQL，未达到“全量 pytest 通过”，因此不得写整体 PASS。
+- Failure Handling：已确认 `.env` 的固定数据库目标为 PostgreSQL `localhost:5432/rmos`，且 `/tmp/.s.PGSQL.5432` 存在；失败来自执行环境禁止 TCP 连接。未改 `DATABASE_URL`、未跳过失败用例、未用 SQLite 替代、未重跑伪造全绿。须由主审在允许访问固定数据库的本机环境复跑同一完整命令。
+- Notes：当前 adapter 仍是单一全局实例，只产生一份遥测；本批只建立“谁能订阅哪个 robot_id”的授权边界，不把结果写成按机器人数据过滤已经完成。E1、E2、E3、E4 与生产状态均不因本条提升。
 
 ### RT-POINT-FIX-001｜实时通道慢连接、心跳与投递日志复验
 

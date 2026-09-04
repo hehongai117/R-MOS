@@ -9775,3 +9775,34 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
 
 - Result: M-15 关闭；交接文档中「每轮手动还原」这条纪律可以删除
 - Next Step: M-03 WebSocket 的 robot_id 数据过滤（交接 §3 仍为 ⬜）
+
+## 2026-09-04 — M-03 剩余部分：WebSocket robot_id 访问授权
+
+- DateTime: 2026-09-04 16:16:42 CST
+- Task: 为 `/ws/robot/{robot_id}/status` 建立握手前机器人可见性授权；保留无 robot_id 的兼容路由，不实现遥测数据过滤
+- Scope (files changed):
+  - `r-mos-backend/app/services/robot_visibility.py`：承接唯一一份 admin / SHARED / owner / TeacherRobotBinding 可见性规则
+  - `r-mos-backend/app/api/v1/endpoints/robots.py`：改为引用共享规则，删除端点文件中的原实现
+  - `r-mos-backend/app/api/v1/endpoints/websocket.py`：认证后、接纳连接前执行 robot_id 授权；拒绝码为 `1008 / robot_forbidden`；更新边界说明
+  - `r-mos-backend/tests/e2e/test_websocket_robot_authorization.py`：新增 3 条真实连接行为测试
+  - `r-mos-backend/tests/unit/test_websocket_targeting.py`：锁定认证失败 reason 为 `unauthenticated`
+  - `docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`：记录执行证据与阻塞
+- Commands Run:
+  - 每次 pytest 均先加载 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/.env`，再执行 `unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_websocket_robot_authorization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_websocket_robot_authorization.py tests/e2e/test_agent_diagnosis_flow.py::test_websocket_telemetry_protocol_is_consistent tests/unit/test_robot_asset_boundary.py tests/unit/test_websocket_targeting.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `rg -n 'async def get_visible_robot_or_404' r-mos-backend/app`
+  - `rg -n 'get_visible_robot_or_404' r-mos-backend/app/api/v1/endpoints/robots.py r-mos-backend/app/api/v1/endpoints/websocket.py r-mos-backend/app/services/robot_visibility.py`
+  - `git diff --check`；`git status --short`
+- Tests:
+  - RED：`1 failed, 2 passed in 1.06s`，失败准确复现无权用户被错误接纳
+  - GREEN 定向最终复验：`26 passed in 3.35s`，含无权拒绝、owner 放行、SHARED 放行、兼容入口、既有 HTTP 可见性与 WebSocket 行为
+  - 全量：`3 failed, 979 passed in 80.74s (0:01:20)`；失败仅为 3 个既有 PostgreSQL 门禁连接 `::1:5432` 时遭执行环境拒绝
+- Result: **BLOCKED**。本任务行为范围 PASS；完整测试收集 982 项，数量高于 979 基线，但“全量通过”未满足，不能写整体 PASS
+- Risks/Notes:
+  - 未改 `DATABASE_URL`，未跳过或放宽失败测试，未 commit、未 push
+  - `data/knowledge_store.json` 未出现在测试后工作树
+  - 单一 adapter 仍只产生一份遥测；本批没有实现、也不声称实现按机器人过滤遥测
+  - 工作期间 HEAD 由外部推进为 `f0f94960`（交接文档提交）；本批改动保持未提交
+- Next Step: 主审在允许连接固定 PostgreSQL 的本机环境执行任务书中的完整 pytest 命令；若 982 项全绿，再把本批整体状态从 BLOCKED 更新为 PASS

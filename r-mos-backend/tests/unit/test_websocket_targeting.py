@@ -336,8 +336,7 @@ async def test_websocket_rejects_unauthenticated(monkeypatch):
 
     assert ws.accepted is False, "未认证连接不得被 accept"
     assert connected == [], "未认证连接不得进入连接表"
-    assert ws.closed_with is not None
-    assert ws.closed_with[0] == 1008, f"应以 1008 Policy Violation 关闭，实际 {ws.closed_with}"
+    assert ws.closed_with == (1008, "unauthenticated")
 
 
 @pytest.mark.regression

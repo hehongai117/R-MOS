@@ -14,6 +14,7 @@ from app.services.storage import get_storage
 from app.services.authz_guard import ActorContext, get_current_actor, actor_has_role
 from app.services.robot_service import RobotService
 from app.services.robot_asset_validator import validate_robot_assets
+from app.services.robot_visibility import get_visible_robot_or_404
 from app.services.knowledge.project_ingest_service import project_ingest_service
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.models.robot_asset import RobotAsset, AssetType
@@ -497,44 +498,6 @@ async def unbind_shared_robot(
     await db.commit()
 
 
-async def _get_visible_robot_or_404(
-    db: AsyncSession, robot_id: int, actor: ActorContext
-) -> RobotModel:
-    """按可见性/绑定规则取机器人；不存在或无权一律 404（AUTH-103）。
-
-    越权读对外返回 404 而不是 403：403 会泄漏"这台机器人存在"。
-    见验收章程 G1 与单校五机验收矩阵对 AUTH-103 的复验口径。
-
-    可见性只有 PRIVATE / SHARED 两档（app/models/robot_model.py:8-11），
-    **没有面向匿名的公开档**——SHARED 意为"对已认证用户可见"，
-    因此资产不存在合法的匿名读取场景。
-
-    注：`get_robot`（:150）目前对无权访问返回 403 且不认 owner_teacher_id，
-    与本函数口径不一致；那属于既有行为，未在本批一并改动。
-    """
-    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
-    robot = result.scalar_one_or_none()
-    if robot is None:
-        raise HTTPException(status_code=404, detail="机器人不存在")
-
-    if actor_has_role(actor, "admin") or actor.account_role == "admin":
-        return robot
-    if robot.visibility == RobotVisibility.SHARED:
-        return robot
-    if robot.owner_teacher_id == actor.user_id:
-        return robot
-
-    binding_result = await db.execute(
-        select(TeacherRobotBinding).where(
-            TeacherRobotBinding.teacher_id == actor.user_id,
-            TeacherRobotBinding.robot_model_id == robot_id,
-        )
-    )
-    if binding_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=404, detail="机器人不存在")
-    return robot
-
-
 @router.get("/{robot_id}/tools")
 async def get_robot_tools(
     robot_id: int,
@@ -544,7 +507,7 @@ async def get_robot_tools(
     """获取机器人工具列表（从 assembly_manifest.json 中读取）。"""
     import json
 
-    await _get_visible_robot_or_404(db, robot_id, actor)
+    await get_visible_robot_or_404(db, robot_id, actor)
 
     try:
         manifest_bytes = await to_thread.run_sync(
@@ -564,7 +527,7 @@ async def list_robot_assets(
     actor: ActorContext = Depends(get_current_actor),
 ):
     """列出机器人的资产文件，支持按 asset_type 过滤。"""
-    await _get_visible_robot_or_404(db, robot_id, actor)
+    await get_visible_robot_or_404(db, robot_id, actor)
     query = select(RobotAsset).where(RobotAsset.robot_model_id == robot_id)
     if asset_type:
         query = query.where(RobotAsset.asset_type == asset_type)
@@ -602,7 +565,7 @@ async def get_robot_asset(
     前端需改为先用带令牌的客户端取回二进制、再交给加载器
     （`RuntimeAssetPreview.tsx` 已有该模式）。
     """
-    await _get_visible_robot_or_404(db, robot_id, actor)
+    await get_visible_robot_or_404(db, robot_id, actor)
 
     ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
     content_types = {
@@ -628,4 +591,3 @@ async def get_robot_asset(
         raise HTTPException(status_code=404, detail="文件不存在")
 
     return StreamingResponse(stream, media_type=media_type, background=BackgroundTask(stream.close))
-

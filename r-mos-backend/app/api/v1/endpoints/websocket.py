@@ -3,11 +3,12 @@ WebSocket端点（V2.2完整版）
 """
 import logging
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 
 from app.core.database import AsyncSessionLocal
 from app.core.exceptions import AuthenticationRequiredError
 from app.services.authz_guard import ActorContext, resolve_actor_from_token
+from app.services.robot_visibility import get_visible_robot_or_404
 from app.services.websocket_manager import manager
 
 router = APIRouter()
@@ -48,7 +49,9 @@ async def _authenticate(websocket: WebSocket, token: str | None) -> ActorContext
     # WebSocket 不经过 FastAPI 的依赖注入，拿不到被 `dependency_overrides`
     # 替换的 `get_db`。沿用测试基建既有的 `app.state.test_sessionmaker` 约定，
     # 使 WS 在测试环境连到同一个内存库；生产路径不受影响。
-    session_factory = getattr(websocket.app.state, "test_sessionmaker", None) or AsyncSessionLocal
+    session_factory = (
+        getattr(websocket.app.state, "test_sessionmaker", None) or AsyncSessionLocal
+    )
     try:
         async with session_factory() as db:
             return await resolve_actor_from_token(db, raw)
@@ -60,6 +63,43 @@ async def _authenticate(websocket: WebSocket, token: str | None) -> ActorContext
         logger.error(f"WebSocket 认证异常，拒绝握手: {exc}")
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION, reason="unauthenticated")
         return None
+
+
+async def _authorize_robot_subscription(
+    websocket: WebSocket,
+    robot_id: int,
+    actor: ActorContext,
+) -> bool:
+    """在握手前复用 HTTP 机器人可见性规则校验订阅权限。"""
+    session_factory = getattr(websocket.app.state, "test_sessionmaker", None) or AsyncSessionLocal
+    try:
+        async with session_factory() as db:
+            await get_visible_robot_or_404(db, robot_id, actor)
+    except HTTPException as exc:
+        logger.warning(
+            "WebSocket 机器人订阅被拒绝 user_id=%s robot_id=%s: %s",
+            actor.user_id,
+            robot_id,
+            exc.detail,
+        )
+        await websocket.close(
+            code=WS_CLOSE_POLICY_VIOLATION,
+            reason="robot_forbidden",
+        )
+        return False
+    except Exception as exc:  # 授权过程异常必须安全拒绝，不能进入连接表
+        logger.error(
+            "WebSocket 机器人订阅校验异常 user_id=%s robot_id=%s: %s",
+            actor.user_id,
+            robot_id,
+            exc,
+        )
+        await websocket.close(
+            code=WS_CLOSE_POLICY_VIOLATION,
+            reason="robot_forbidden",
+        )
+        return False
+    return True
 
 
 async def _handle_websocket(
@@ -77,6 +117,10 @@ async def _handle_websocket(
     """
     actor = await _authenticate(websocket, token)
     if actor is None:
+        return
+    if robot_id is not None and not await _authorize_robot_subscription(
+        websocket, robot_id, actor
+    ):
         return
 
     # 身份随连接登记，使 send_to_user / broadcast_to_channel 的定向过滤生效
@@ -128,8 +172,11 @@ async def websocket_endpoint_with_robot(
     路径参数：
     - robot_id: 机器人ID
 
-    ⚠️ **`robot_id` 目前仍不用于数据过滤**（审计 M-03 未完部分）：
-    遥测推送是单一全局流，尚无「按机器人归属订阅」的机制。
-    本轮只解决认证与用户维度定向，机器人级隔离需另立批次。
+    已在握手前按 admin / SHARED / owner / 教师绑定规则校验订阅权限。
+
+    ⚠️ **`robot_id` 仍不用于遥测数据过滤**：
+    当前只有一个全局 adapter，产生的是唯一一份遥测，并不存在多台机器人各自的
+    数据源可供过滤。按机器人分发遥测需要多 adapter 实例与订阅分发，超出本端点
+    当前的授权边界。
     """
     await _handle_websocket(websocket, token=token, robot_id=robot_id)
