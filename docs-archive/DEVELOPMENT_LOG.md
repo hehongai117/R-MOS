@@ -9746,3 +9746,32 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
 - knowledge_store.json 已还原（M-15）
 - Result: M-01 数据模型缺陷关闭；11 个角色制过渡端点按性质重新处置；新发现并修复 SOP 删除零授权
 - Next Step: 剩余改造转由 Codex CLI 实现（恢复既有分工：Plan/验收＝Claude，实现＝Codex）
+
+## 2026-09-04 — 改造第 14 批：M-15 测试污染工作区文件（Codex 实现，Claude 验收）
+
+- **分工恢复**：Plan/验收＝Claude，实现＝Codex CLI（本批起）
+
+### 问题
+跑 pytest 会写脏 `r-mos-backend/data/knowledge_store.json`，此前每轮靠人手
+`git checkout --` 还原——一条写进交接文档的手工纪律，本身就是缺陷。
+
+### 处置
+`tests/conftest.py` 加 session 级 autouse fixture，把 `knowledge_governance`
+单例的 `_store_path` 指向临时目录，退出时还原。**不改生产持久化行为、未新增抽象层、仅 2 个文件**。
+
+### 验收（实测，非读码）
+跑全量前后对 `knowledge_store.json` 取 SHA-256 比对：
+
+```
+测试前 6d00252d...5c0475f
+测试后 6d00252d...5c0475f   ← 一致
+```
+
+`git status` 跑完不再出现该文件。**979 通过**（978 + 1 条行为级用例：
+断言写入落在临时路径、且被跟踪文件字节未变）。
+
+> 该验收刻意不采信「读 fixture 代码觉得对」——单例属性替换的时机是否早于
+> 任何一次写盘，只有实跑才能证明。
+
+- Result: M-15 关闭；交接文档中「每轮手动还原」这条纪律可以删除
+- Next Step: M-03 WebSocket 的 robot_id 数据过滤（交接 §3 仍为 ⬜）

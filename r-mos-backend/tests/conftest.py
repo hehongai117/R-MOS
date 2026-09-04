@@ -1,6 +1,9 @@
 from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
@@ -14,6 +17,19 @@ from app.models.training import TrainingSession
 from app.models.user import User
 from app.schemas.task import TaskCreate
 from app.services.task_service import TaskService
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolate_knowledge_store():
+    from app.services.knowledge_governance import knowledge_governance
+
+    production_store_path = knowledge_governance._store_path
+    with TemporaryDirectory(prefix="rmos-knowledge-store-", dir="/tmp") as temp_dir:
+        knowledge_governance._store_path = Path(temp_dir) / "knowledge_store.json"
+        try:
+            yield
+        finally:
+            knowledge_governance._store_path = production_store_path
 
 
 @pytest_asyncio.fixture

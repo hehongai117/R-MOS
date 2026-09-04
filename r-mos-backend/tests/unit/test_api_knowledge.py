@@ -4,6 +4,8 @@ T-03-d knowledge API tests (current endpoint capability).
 from __future__ import annotations
 
 import asyncio
+import json
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -145,6 +147,49 @@ async def _get_user_id(
 
 def _auth_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def test_knowledge_create_persists_without_touching_tracked_store(
+    knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = knowledge_api_env
+    agent_endpoints.knowledge_governance._knowledge_store.clear()
+
+    tracked_store_path = Path(__file__).parents[2] / "data" / "knowledge_store.json"
+    tracked_store_before = tracked_store_path.read_bytes()
+
+    email = f"knowledge_store_{uuid4().hex[:8]}@example.com"
+    token = _register_and_login(client, email=email)
+    asyncio.run(
+        _grant_role_permissions(
+            session_factory,
+            email=email,
+            role_name="knowledge_store_editor",
+            permission_keys=["agent:execute"],
+        )
+    )
+
+    create_resp = client.post(
+        "/api/v1/agent/knowledge",
+        headers=_auth_headers(token),
+        json={
+            "type": "document",
+            "title": "Isolated knowledge store",
+            "content": "persisted outside the tracked worktree data file",
+            "risk_level": "R1",
+        },
+    )
+
+    assert create_resp.status_code == 200
+    entry_id = create_resp.json()["id"]
+    persisted_store = json.loads(
+        agent_endpoints.knowledge_governance._store_path.read_text(encoding="utf-8")
+    )
+    assert entry_id in persisted_store
+    assert agent_endpoints.knowledge_governance._store_path.resolve().is_relative_to(
+        Path("/tmp").resolve()
+    )
+    assert tracked_store_path.read_bytes() == tracked_store_before
 
 
 def test_knowledge_submit_and_status_query(
