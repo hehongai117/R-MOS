@@ -148,6 +148,65 @@ def _detect_mode(request: AgentExecuteRequest) -> str:
     return AgentExecuteMode.MESSAGE
 
 
+async def _create_pending_approval(
+    *,
+    db: AsyncSession,
+    trace_id: str,
+    actor: ActorContext,
+    intent: str,
+    policy_decision: dict,
+) -> Approval:
+    """为被闸门拦截的请求建立持久化审批记录（审计 M-06）。
+
+    与 command 模式建立同构的三件套（`Command` / `AIToolCall` / `Approval`），
+    使批准后的执行链（`ApprovalService.execute_after_grant`）可直接复用，
+    不为 message 模式另造一套审批对象。
+
+    操作人一律取自认证上下文（审计 M-02）。
+    """
+    command = Command(
+        trace_id=trace_id,
+        actor_user_id=str(actor.user_id),
+        intent=intent,
+        skill_id=None,
+        status="waiting_approval",
+    )
+    db.add(command)
+    await db.commit()
+    await db.refresh(command)
+
+    tool_call = AIToolCall(
+        command_id=command.id,
+        trace_id=trace_id,
+        actor_user_id=str(actor.user_id),
+        skill_id=None,
+        tool_name=intent,
+        side_effects=list(policy_decision.get("evidence_required") or []),
+        status="pending",
+        approval_id=None,
+    )
+    db.add(tool_call)
+    await db.commit()
+    await db.refresh(tool_call)
+
+    approval = Approval(
+        trace_id=trace_id,
+        command_id=command.id,
+        tool_call_id=tool_call.id,
+        status="pending",
+        reason="awaiting_approval",
+        created_by_user_id=str(actor.user_id),
+    )
+    db.add(approval)
+    await db.commit()
+    await db.refresh(approval)
+
+    command.approval_id = approval.id
+    tool_call.approval_id = approval.id
+    await db.commit()
+    return approval
+
+
 @router.post("/execute", response_model=AgentExecuteResponse, deprecated=False)
 async def execute_agent(
     request: AgentExecuteRequest,
@@ -321,6 +380,27 @@ async def execute_agent(
                 trace_id=trace_id,
                 idempotency_key=request.idempotency_key,
             )
+
+            # 审计 M-06：编排器在分派前拦截了需审批的请求（无副作用产生）。
+            # 此处补建持久化审批记录，使其可追溯、可在审批队列中处置。
+            # 此前 message 模式从不创建 Command / AIToolCall / Approval，
+            # 导致 /ai/approvals 侧的完整设施在真实用户路径上永不被触发。
+            if response.get("requires_approval"):
+                approval = await _create_pending_approval(
+                    db=db,
+                    trace_id=trace_id,
+                    actor=actor,
+                    intent=response.get("intent") or "unknown",
+                    policy_decision=response.get("policy_decision") or {},
+                )
+                return AgentExecuteResponse(
+                    status="pending_approval",
+                    result=response,
+                    trace_id=trace_id,
+                    from_cache=False,
+                    approval_id=approval.id,
+                    mode_used=AgentExecuteMode.MESSAGE,
+                )
 
             return AgentExecuteResponse(
                 status="success",

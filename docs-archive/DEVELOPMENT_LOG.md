@@ -9322,3 +9322,56 @@ WS 不经 FastAPI 依赖注入，拿不到被 `dependency_overrides` 替换的 `
 
 - Result: PASS
 - Next Step: 待董事会指示。M-03 剩余机器人级隔离；M-06 审批闸门接线为下一候选。
+
+## 2026-09-04 — 改造第 9 批：M-06 审批闸门进入执行路径（部分关闭）
+
+- Scope: `orchestrator_v2.py`、`agent.py`；新增测试 1 文件。前端 0 改动。
+- 测试：**992 passed**（前一基线 990，+2），0 失败。
+
+### 缺的是一个 `if`
+
+策略层**早已算出** `policy_decision.requires_approval`（`policy_matrix.py` 中
+`write-kb`、`execute-task` 等规则均为 True），但 `OrchestratorV2.process_request`
+在策略放行后直接进入第 5 步分派，把该标志仅作为**执行之后**回填的说明字段
+放进响应——即「先执行、后标记」。界面上长期显示「需要审批」，实际从未拦截过任何请求。
+
+修复：在分派前插入闸门，需审批的请求**不产生任何副作用**即返回 `pending_approval`。
+
+### 两个设计决定
+
+**闸门在编排器、落库在端点。** `policy_decision` 只在编排器内可得，
+而编排器不持有数据库会话（M-19 的一部分），故编排器只做拦截、不落库；
+端点层收到 `requires_approval` 后建立持久化审批记录。
+
+**审批记录与 command 模式同构**（`Command` / `AIToolCall` / `Approval` 三件套），
+使批准后的执行链 `ApprovalService.execute_after_grant` 可直接复用，
+**不为 message 模式另造一套审批对象**——与本轮 M-03「不另写一套认证」同一原则。
+操作人一律取自认证上下文（M-02）。
+
+### 测试写两条而非一条
+
+- `test_gate_blocks_before_dispatch`：断言 **`_dispatch_module` 未被调用**
+  （而非仅断言返回值形态）；
+- `test_gate_lets_through_when_not_required`：断言不需审批时照常分派。
+
+> 只写第一条的话，把代码改成无条件 `return` 也能通过。
+> 第二条是防止闸门退化为「全部拦截」。
+
+过程记录：初版用手写假对象充当分派返回值，逐个补属性两次仍失败；
+改用真实类型 `ModuleDispatchResult` 后通过。**假对象不如真类型可靠。**
+
+### M-06 **仍未完全关闭**——四处断点解决两处
+
+| 断点 | 状态 |
+|---|---|
+| ① 闸门不在执行路径上 | ✅ 已修 |
+| ② message 模式从不建审批记录 | ✅ 已修 |
+| ③ 前端 `agent-v2.ts:193` 硬编码 `mode:'message'` | ⬜ 未修（command 模式仍永不触发） |
+| ④ 批准后执行 `execute_write_tool_stub`（明写「不触发外部 IO」） | ⬜ 未修 |
+
+**断点④尤其关键：闸门现在拦得住，但「批准即生效」依然不成立**——
+批准后运行的仍是桩，不产生真实副作用。
+在 ④ 解决前，不得声称审批闭环已建立。
+
+- Result: PASS
+- Next Step: 待董事会指示。M-06 剩余 ③④；③ 属前端改造，④ 需先定「真实写工具」的范围与安全边界。

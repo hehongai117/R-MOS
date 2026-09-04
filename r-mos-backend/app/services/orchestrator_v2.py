@@ -365,6 +365,33 @@ class OrchestratorV2:
                 "policy_decision": self._to_dict(policy_decision),
             }
 
+        # 4b. 审批闸门（审计 M-06）
+        #
+        # 此前策略层已算出 `requires_approval`，编排器却直接跳到第 5 步分派，
+        # 把该标志仅作为**执行后**回填的说明字段放进响应——即「先执行、后标记」，
+        # 人工闸门根本不在执行路径上。
+        #
+        # 现改为在分派前阻断：需要审批的请求不产生任何副作用，
+        # 由调用方（端点层）据此建立可追溯的审批记录。
+        # 闸门放在此处而非端点层，是因为 `policy_decision` 只在编排器内可得；
+        # 编排器不持有数据库会话（M-19），故只做拦截、不落库。
+        if policy_decision.requires_approval:
+            self._record_event(trace_id, "approval_required", {
+                "intent": intent,
+                "policy_intent": policy_intent,
+                "approval_level": policy_decision.approval_level,
+                "risk_level": policy_decision.risk_level.value,
+            })
+            return {
+                "success": False,
+                "status": "pending_approval",
+                "requires_approval": True,
+                "error": "Approval required before execution",
+                "intent": intent,
+                "policy_decision": self._to_dict(policy_decision),
+                "trace_id": trace_id,
+            }
+
         # 5. Dispatch to appropriate module
         module_result = await self._dispatch_module(
             intent=intent,
