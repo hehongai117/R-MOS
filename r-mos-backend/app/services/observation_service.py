@@ -46,7 +46,13 @@ class ObservationService:
 
         return ObservationListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    async def create_observation(self, request: ObservationCreate) -> ObservationResponse:
+    async def create_observation(
+        self,
+        request: ObservationCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> ObservationResponse:
         ingest_time = datetime.now(timezone.utc)
         observation = Observation(
             id=str(uuid.uuid4()),
@@ -61,6 +67,8 @@ class ObservationService:
             metrics=[metric.model_dump() for metric in request.metrics] if request.metrics else None,
             payload_uri=request.payload_uri,
             payload_hash=request.payload_hash,
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
         )
         self.db.add(observation)
         await self.db.commit()

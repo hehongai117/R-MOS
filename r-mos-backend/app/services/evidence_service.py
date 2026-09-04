@@ -88,7 +88,13 @@ class EvidenceService:
 
         return EvidenceBundleListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    async def create_bundle(self, request: EvidenceBundleCreate) -> EvidenceBundleResponse:
+    async def create_bundle(
+        self,
+        request: EvidenceBundleCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> EvidenceBundleResponse:
         bundle_id = str(uuid.uuid4())
         bundle_hash = _compute_bundle_hash(request)
         ingest_time = datetime.now(timezone.utc)
@@ -106,6 +112,8 @@ class EvidenceService:
             sealed_at=sealed_at,
             human_summary=request.human_summary,
             machine_tags=request.machine_tags,
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
         )
         self.db.add(bundle)
 

@@ -47,7 +47,13 @@ class IncidentService:
 
         return IncidentListResponse(items=items, total=total, page=page, size=size, pages=pages)
 
-    async def create_incident(self, request: IncidentCreate) -> IncidentResponse:
+    async def create_incident(
+        self,
+        request: IncidentCreate,
+        *,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
+    ) -> IncidentResponse:
         incident = Incident(
             id=str(uuid.uuid4()),
             robot_id=request.robot_id,
@@ -61,6 +67,8 @@ class IncidentService:
             machine_tags=request.machine_tags,
             related_observation_ids=request.related_observation_ids,
             related_evidence_bundle_ids=request.related_evidence_bundle_ids,
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
         )
         self.db.add(incident)
         await self.db.commit()

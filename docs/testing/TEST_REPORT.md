@@ -1,6 +1,6 @@
 # R-MOS 当前测试报告
 
-- 版本：0.1.3
+- 版本：0.1.4
 - 建立日期：2026-08-21
 - 状态：Active
 - 上位规则：`docs/testing/ACCEPTANCE_CHARTER.md`
@@ -24,6 +24,7 @@
 | Phase 3 第 2c 批（P3-2c，对象归属第一刀） | PARTIAL | 提交 `c7ad217a`；定向 `15 passed`；后端全量 **971 tests / 0 failed / 0 error（退出码 0）**。**只覆盖 8 条路由**（training 5 + tasks 3）；全仓约 115 条路由仍无归属校验，`AUTH-101` 不关闭 |
 | M-03 WebSocket robot_id 订阅授权 | BLOCKED | 真实连接定向回归 `26 passed`；完整测试收集 982 项，其中 `979 passed`，3 个既有 PostgreSQL 门禁因当前执行环境禁止连接 `localhost:5432` 而失败。授权边界定向证据 PASS，但“全量通过”门禁未满足，不作整体 PASS |
 | 写端点授权覆盖率复测与无争议缺口修复 | PASS（任务范围）/ 环境受限 | 运行期枚举 87 个写端点，并以 AST 只认函数体实际调用；统一守卫覆盖由 `46/87` 提升为 `54/87`，带对象 ID 的端点覆盖由 `30/44` 提升为 `33/44`。新增行为回归 4 项，均同时断言拒绝与放行；完整回归 `983 passed`，仅 3 个 PostgreSQL 门禁因沙箱禁止连接 `::1:5432` 失败 |
+| 证据包、事件、观测创建归属 | PASS（任务行为范围）/ BLOCKED（数据库实迁） | 三个创建入口均注入当前身份并落库创建人与学校；HTTP 行为测试 `6 passed`，相关回归 `97 passed`；完整回归 `989 passed`，仅 3 个既有 PostgreSQL 门禁受沙箱限制。唯一迁移头与正反向 SQL 已验证，实际 `upgrade → downgrade → upgrade` 因沙箱禁止连接 `::1:5432` 未执行成功 |
 | 实时通道点修复复验 | CONDITIONAL | 该批历史定向 `22 passed`；慢连接、连接关闭、心跳、日志及时间双后缀已补正。当时 M-03/RT-GATE 仍 OPEN/NOT_RUN；M-03 后续状态以本表当前 M-03 行为准 |
 | A0 获批只读指纹探针 | PASS（仅探针） | 进程/容器、数据库、运行路由和前端公开入口四项已执行，前后摘要一致；不构成应用测试、E2、A0 批准或 R1 放行 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
@@ -43,6 +44,36 @@
 | 归档前 | `docs-archive/TEST_REPORT.md` | 旧测试报告 | HISTORICAL |
 
 ## 4. 当前批次记录
+
+### AUTH-RECORD-OWNERSHIP-001｜证据包、事件、观测创建归属
+
+- 基线提交：`08032195`；结果为未提交工作树（按任务要求不 commit）
+- 环境：`audit/phase3-auth-control-realtime` 隔离工作区；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；配置从主工作区 `.env` 加载，随后 `unset CORS_ORIGINS`、`DEBUG=true`
+- 范围：为 `evidence_bundles`、`incidents`、`observations` 增加可空创建人和学校字段；历史行不回填；三个创建入口把当前身份传给既有服务并落库。三类对象当前均无更新、删除、状态变更、审批或复核入口，因此本批没有可替换为对象级守卫的创建后写端点。
+- Commands Run：
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_record_creation_ownership.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_record_creation_ownership.py tests/unit/test_evidence_engine.py tests/unit/test_diagnosis_service.py tests/unit/test_preflight_check.py tests/unit/test_teaching_api.py tests/unit/test_teaching_characterization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_content_ownership.py::test_unowned_sop_is_admin_only`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic heads`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic current`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic upgrade head`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic downgrade -1`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic upgrade head`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic upgrade 20260904_m01_ownership:20260904_m02_ownership --sql`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic downgrade 20260904_m02_ownership:20260904_m01_ownership --sql`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `git diff --name-only`；`git diff --check`；`git status --short`
+- Key Output：
+  - RED：`3 failed, 3 passed in 1.47s`。三个未登录拒绝断言已通过；三个已登录创建请求虽返回 201，但读取落库对象时均因缺少 `created_by_user_id` 失败。
+  - GREEN：三个端点分别覆盖未登录 401、已登录 201、创建人和学校真实落库，最终 `6 passed in 1.28s`；相关调用链 `97 passed in 14.21s`。
+  - 复用守卫的无主对象规则定向复验：`1 passed in 0.96s`，确认普通教师被拒、管理员获准。
+  - 迁移图只有 `20260904_m02_ownership (head)` 一个 head。离线 PostgreSQL 正向与反向 SQL 均生成成功，包含三表各两列、两索引和 `ON DELETE SET NULL` 外键，且没有历史行回填。
+  - 实际数据库三步均已原样发起，但每一步都在连接 `::1:5432` 时被沙箱拒绝并以退出码 1 结束：`PermissionError: [Errno 1] Operation not permitted`。因此未把 `upgrade head → downgrade -1 → upgrade head` 登记为成功。
+  - 最终完整回归原始汇总：`3 failed, 989 passed in 84.31s (0:01:24)`。失败仅为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，三项均为同一沙箱数据库连接限制。
+- Evidence：`r-mos-backend/tests/unit/test_record_creation_ownership.py`；`r-mos-backend/alembic/versions/20260904_m02_record_ownership.py`；本条记录；`docs-archive/DEVELOPMENT_LOG.md` 同日条目
+- Result：**PASS（本任务行为范围）/ BLOCKED（数据库实迁）**。模型、创建归属传递和 HTTP 行为已达 E1 自动测试范围；实际迁移往返未完成，不得把本批整体写成全部验收通过。
+- Failure Handling：未改固定 `DATABASE_URL`，未用 SQLite 代替正式迁移，未跳过或放宽 3 个失败门禁。须在允许连接固定 PostgreSQL 的环境依次执行 `alembic upgrade head`、`alembic downgrade -1`、`alembic upgrade head`，再复跑完整测试。
+- Notes：没有新增抽象、依赖、公开字段或接口；复用既有身份解析与服务层。系统内部直接创建仍默认无主。`school_name` 只作路线图 S-2 的准备字段，当前不参与授权。无主对象“仅管理员可写”由既有 `ensure_write_owner` 定义且已有通用回归，但这三类对象没有创建后写入口，故本批没有对应的 HTTP 路径可测；若将来新增此类入口，必须接入该守卫并补拒绝和放行测试。本条不关闭 AUTH-101、EVID-GATE 或 E1。
 
 ### AUTH-WRITE-COVERAGE-001｜写端点授权覆盖率复测与无争议缺口修复
 

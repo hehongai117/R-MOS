@@ -24,6 +24,15 @@ class EvidenceBundle(Base):
     human_summary = Column(String(500), nullable=True)
     machine_tags = Column(JSON, nullable=True)
 
+    # 审计 M-01 / 董事会裁定 §9-2：补归属维度。
+    # `created_by_user_id` 为 NULL 的历史行视为系统内置公共内容，仅管理员可改。
+    # `school_name` 仅为多租户准备维度，当前不参与授权判定；正式方案见路线图 S-2。
+    created_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True, index=True, comment="创建者用户 ID；NULL 表示系统内置内容",
+    )
+    school_name = Column(String(200), nullable=True, index=True, comment="所属学校（租户维度预留）")
+
     items = relationship("EvidenceItem", back_populates="bundle", cascade="all, delete-orphan")
 
 

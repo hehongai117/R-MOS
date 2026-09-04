@@ -9844,3 +9844,42 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 执行期间 HEAD 由外部提交从 `80bfb901` 前进到 `4030f6f3`；该外部提交为董事会第三批裁定，本任务未改写或提交其内容，扫描与第二次全量均在新 HEAD 上完成
   - 未改 `DATABASE_URL`、CORS；未 commit、未 push
 - Next Step: 用户在当前 worktree 验收未提交差异；如需验证 3 项 PostgreSQL 门禁，在允许连接固定本机数据库的环境原样复跑全量命令
+
+## 2026-09-04 — 证据包、事件、观测三表补归属字段
+
+- DateTime: 2026-09-04 22:59:27 CST
+- Task: 套用董事会裁定 §9-2，为 `evidence_bundles`、`incidents`、`observations` 补创建人和学校字段，并让三个创建入口落库当前身份
+- Scope (files changed):
+  - `r-mos-backend/app/models/evidence.py`、`incident.py`、`observation.py`：新增可空创建人、学校字段及既定语义注释
+  - `r-mos-backend/alembic/versions/20260904_m02_record_ownership.py`：新增单头迁移，历史行不回填
+  - `r-mos-backend/app/api/v1/endpoints/evidence.py`、`incidents.py`、`observations.py`：三个创建入口注入当前身份
+  - `r-mos-backend/app/services/evidence_service.py`、`incident_service.py`、`observation_service.py`：既有创建方法接收并落库归属；内部调用默认保持无主
+  - `r-mos-backend/tests/unit/test_record_creation_ownership.py`：三个入口的拒绝、放行和归属落库行为测试
+  - `docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`：记录当前证据与阻塞
+- Commands Run:
+  - 每次 pytest 均在 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_record_creation_ownership.py`（RED 与 GREEN）
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_record_creation_ownership.py tests/unit/test_evidence_engine.py tests/unit/test_diagnosis_service.py tests/unit/test_preflight_check.py tests/unit/test_teaching_api.py tests/unit/test_teaching_characterization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_content_ownership.py::test_unowned_sop_is_admin_only`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic heads`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic current`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic upgrade head`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic downgrade -1`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic upgrade head`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic upgrade 20260904_m01_ownership:20260904_m02_ownership --sql`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m alembic downgrade 20260904_m02_ownership:20260904_m01_ownership --sql`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `git diff --name-only`；`git diff --check`；`git status --short`
+- Tests:
+  - RED：`3 failed, 3 passed in 1.47s`，失败均为创建成功后没有创建人字段
+  - GREEN：端点行为 `6 passed in 1.28s`；相关调用链 `97 passed in 14.21s`
+  - 无主对象通用规则复验：`1 passed in 0.96s`，普通教师拒绝、管理员放行
+  - 最终全量复跑：`3 failed, 989 passed in 84.31s (0:01:24)`；3 项失败均为沙箱禁止连接 `::1:5432`
+  - Alembic：唯一 head 为 `20260904_m02_ownership`；正反向 PostgreSQL SQL 生成成功；实际数据库三步均发起，但都在连接阶段因相同沙箱限制以退出码 1 结束
+- Result: **PASS（任务行为范围）/ BLOCKED（数据库实迁）**。创建身份与归属落库已受测；实际 `upgrade head → downgrade -1 → upgrade head` 未满足
+- Risks/Notes:
+  - 未回填历史行；NULL 继续表示系统内置公共内容。学校字段不参与当前授权
+  - 三类对象目前没有 update/delete/status/review 入口，无可接入 `ensure_write_owner` 或 `ensure_reviewer_not_author` 的创建后写路径；未新增接口或伪造覆盖
+  - 没有新增抽象、依赖或外部服务；未改固定数据库和 CORS；未启动服务；未 commit、未 push
+  - 全量测试后 `data/knowledge_store.json` 未出现于工作树
+- Next Step: 在允许连接固定 PostgreSQL 的本机环境依次执行 `alembic upgrade head`、`alembic downgrade -1`、`alembic upgrade head`，然后按任务原命令复跑全量；通过后再把数据库实迁状态改为 PASS

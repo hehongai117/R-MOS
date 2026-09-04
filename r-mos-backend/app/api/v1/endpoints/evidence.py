@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.schemas.evidence import EvidenceBundleCreate, EvidenceBundleResponse, EvidenceBundleListResponse
+from app.services.authz_guard import ActorContext, get_current_actor
 from app.services.evidence_service import EvidenceService
 
 router = APIRouter()
@@ -26,10 +27,15 @@ async def list_evidence_bundles(
 async def create_evidence_bundle(
     request: EvidenceBundleCreate,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     """Create an evidence bundle."""
     service = EvidenceService(db)
-    return await service.create_bundle(request)
+    return await service.create_bundle(
+        request,
+        created_by_user_id=actor.user_id,
+        school_name=actor.school_name,
+    )
 
 
 @router.get("/evidence-bundles/{bundle_id}", response_model=EvidenceBundleResponse)
