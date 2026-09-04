@@ -14,6 +14,7 @@ from fastapi import WebSocketDisconnect
 
 from app.adapters.schemas import SensorData
 from app.api.v1.endpoints import websocket as websocket_endpoint_module
+from app.services.authz_guard import ActorContext
 from app.services.websocket_manager import ConnectionManager, ConnectionState
 
 
@@ -274,12 +275,19 @@ async def test_endpoint_routes_pong_to_connection_state(monkeypatch):
     )
     live_connections: dict[str, ConnectionState] = {}
 
-    async def fake_connect(websocket):
+    async def fake_connect(websocket, user_id=None, channels=None):
         live_connections[str(id(websocket))] = state
 
     def fake_disconnect(websocket):
         return None
 
+    # 审计 M-03：端点现在先认证再握手。本用例验的是 pong 路由，
+    # 故把认证打桩为固定身份；认证行为本身由
+    # test_websocket_rejects_unauthenticated 覆盖。
+    async def fake_auth(websocket, token):
+        return ActorContext(user_id=1, email="u@x.com", roles=set(), permissions=set())
+
+    monkeypatch.setattr(websocket_endpoint_module, "_authenticate", fake_auth)
     monkeypatch.setattr(websocket_endpoint_module.manager, "connections", live_connections)
     monkeypatch.setattr(websocket_endpoint_module.manager, "connect", fake_connect)
     monkeypatch.setattr(websocket_endpoint_module.manager, "disconnect", fake_disconnect)
@@ -289,3 +297,79 @@ async def test_endpoint_routes_pong_to_connection_state(monkeypatch):
     assert state.missed_pongs == 0
     assert state.is_healthy is True
     assert state.last_pong > stale
+
+
+@pytest.mark.regression
+@pytest.mark.asyncio
+async def test_websocket_rejects_unauthenticated(monkeypatch):
+    """审计 M-03：无令牌必须在 accept() **之前**被拒，不得先接纳再驱逐。"""
+
+    class _State:
+        test_sessionmaker = None
+
+    class _App:
+        state = _State()
+
+    class RecordingWS(FakeWS):
+        def __init__(self):
+            super().__init__()
+            self.headers = {}
+            self.app = _App()
+            self.accepted = False
+            self.closed_with = None
+
+        async def accept(self):
+            self.accepted = True
+
+        async def close(self, code=1000, reason=""):
+            self.closed_with = (code, reason)
+
+    ws = RecordingWS()
+    connected = []
+
+    async def fake_connect(websocket, user_id=None, channels=None):
+        connected.append(websocket)
+
+    monkeypatch.setattr(websocket_endpoint_module.manager, "connect", fake_connect)
+
+    await websocket_endpoint_module._handle_websocket(ws, token=None)
+
+    assert ws.accepted is False, "未认证连接不得被 accept"
+    assert connected == [], "未认证连接不得进入连接表"
+    assert ws.closed_with is not None
+    assert ws.closed_with[0] == 1008, f"应以 1008 Policy Violation 关闭，实际 {ws.closed_with}"
+
+
+@pytest.mark.regression
+@pytest.mark.asyncio
+async def test_websocket_registers_identity_for_targeted_delivery(monkeypatch):
+    """审计 M-03/F-RT-03：认证通过后身份必须随连接登记，定向投递才有接收者。"""
+
+    class OneShotWS(FakeWS):
+        def __init__(self):
+            super().__init__()
+            self.headers = {}
+            self.n = 0
+
+        async def receive_text(self):
+            self.n += 1
+            raise WebSocketDisconnect()
+
+    ws = OneShotWS()
+    captured = {}
+
+    async def fake_auth(websocket, token):
+        return ActorContext(user_id=77, email="u@x.com", roles=set(), permissions=set())
+
+    async def fake_connect(websocket, user_id=None, channels=None):
+        captured["user_id"] = user_id
+        captured["channels"] = channels
+
+    monkeypatch.setattr(websocket_endpoint_module, "_authenticate", fake_auth)
+    monkeypatch.setattr(websocket_endpoint_module.manager, "connect", fake_connect)
+    monkeypatch.setattr(websocket_endpoint_module.manager, "disconnect", lambda ws: None)
+
+    await websocket_endpoint_module._handle_websocket(ws, token="t")
+
+    assert captured["user_id"] == 77, "连接未携带认证身份，定向消息将无接收者"
+    assert "user:77" in captured["channels"]

@@ -66,22 +66,14 @@ def _parse_bearer_token(authorization: str | None) -> str | None:
     return token or None
 
 
-async def get_current_actor(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    authorization: str | None = Header(default=None, alias="Authorization"),
-) -> ActorContext:
-    """从 Access Token 持久化表解析当前用户与权限上下文。
+async def resolve_actor_from_token(db: AsyncSession, token: str | None) -> ActorContext:
+    """由**原始令牌**解析用户上下文。HTTP 与 WebSocket 共用同一套校验。
 
-    结果缓存在 `request.state.actor`：默认拒绝网关（`enforce_authenticated`）
-    与端点自身的 `Depends(get_current_actor)` 会在同一个请求里各要一次上下文，
-    缓存后整个请求只查一次库。
+    审计 M-03：WebSocket 此前零认证。补认证时**不另写一套校验**——
+    否则会形成第二套身份体系（M-14 类问题）。因此把「令牌 → ActorContext」
+    从 `get_current_actor` 抽出，两个通道共用；令牌吊销、过期、用户停用
+    这三类判定对 WS 与 HTTP 完全一致。
     """
-    cached = getattr(request.state, "actor", None)
-    if cached is not None:
-        return cached
-
-    token = _parse_bearer_token(authorization)
     if token is None:
         raise AuthenticationRequiredError("未登录，请先登录后重试")
 
@@ -99,9 +91,7 @@ async def get_current_actor(
     ):
         raise AuthenticationRequiredError("登录态已失效，请重新登录")
 
-    user_result = await db.execute(
-        select(User).where(User.id == access_token.user_id)
-    )
+    user_result = await db.execute(select(User).where(User.id == access_token.user_id))
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise AuthenticationRequiredError("用户不可用，请联系管理员")
@@ -121,7 +111,7 @@ async def get_current_actor(
     )
     permissions = {row[0] for row in permission_rows.all()}
 
-    actor = ActorContext(
+    return ActorContext(
         user_id=user.id,
         email=user.email,
         roles=roles,
@@ -130,6 +120,24 @@ async def get_current_actor(
         account_role=(user.role or "").strip().lower(),
         school_name=user.school_name,
     )
+
+
+async def get_current_actor(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> ActorContext:
+    """从 Access Token 持久化表解析当前用户与权限上下文。
+
+    结果缓存在 `request.state.actor`：默认拒绝网关（`enforce_authenticated`）
+    与端点自身的 `Depends(get_current_actor)` 会在同一个请求里各要一次上下文，
+    缓存后整个请求只查一次库。
+    """
+    cached = getattr(request.state, "actor", None)
+    if cached is not None:
+        return cached
+
+    actor = await resolve_actor_from_token(db, _parse_bearer_token(authorization))
     request.state.actor = actor
     return actor
 

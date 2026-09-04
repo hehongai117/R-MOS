@@ -12,6 +12,7 @@
  * - 消息格式必须包含 type、timestamp、payload
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getAccessToken } from '@/store/authStore';
 import { message } from 'antd';
 
 // WebSocket配置
@@ -108,10 +109,21 @@ export const useWebSocket = (robotId?: number | string | null): UseWebSocketResu
   const connect = useCallback(() => {
     try {
       setStatus('connecting');
-      const wsUrl = robotId
+      const basePath = robotId
         ? `${WS_BASE_URL}/ws/robot/${robotId}/status`
         : `${WS_BASE_URL}/ws/robot/status`;
-      console.log('[WS] 正在连接:', wsUrl);
+      // 审计 M-03：WebSocket 现在需要认证。浏览器原生 WebSocket 构造器
+      // 无法自定义请求头，令牌只能走查询参数。
+      const token = getAccessToken();
+      if (!token) {
+        console.warn('[WS] 未登录，跳过连接');
+        setStatus('failed');
+        setError('未登录，无法建立实时连接');
+        return;
+      }
+      const wsUrl = `${basePath}?token=${encodeURIComponent(token)}`;
+      // 日志里不打印令牌
+      console.log('[WS] 正在连接:', basePath);
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

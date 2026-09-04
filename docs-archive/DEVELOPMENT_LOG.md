@@ -9268,3 +9268,57 @@ M-13 记载「角色三处并存」，其代码侧表现是**查错来源的地�
 
 - Result: PASS
 - Next Step: 待董事会指示。M-01 代码侧已到边界，进一步需补归属字段与迁移。
+
+## 2026-09-04 — 改造第 8 批：M-03 WebSocket 认证与用户维度定向（部分关闭）
+
+- Scope: `authz_guard.py`、`websocket.py`（后端）、`useWebSocket.ts`（前端）；测试 1 文件。
+- 测试：**后端 990 passed**（前一基线 988，+2）、**前端 518 passed / 2 skipped**、`tsc --noEmit` 无错误。
+
+### 不另写一套认证
+
+把「令牌 → ActorContext」从 `get_current_actor` 抽出为 `resolve_actor_from_token(db, token)`，
+**HTTP 与 WebSocket 共用同一套校验**。令牌吊销、过期、用户停用三类判定完全一致。
+
+> 若给 WS 单独写一份校验，即形成第二套身份体系——正是 M-14 所记的那类问题。
+> `get_current_actor` 改为薄封装，请求级缓存行为不变。
+
+### 认证发生在 `accept()` 之前
+
+`_authenticate()` 在握手前完成校验，失败以 **1008 Policy Violation** 关闭。
+先 `accept()` 再校验等于「先接纳、后驱逐」，其间客户端已可接收推送。
+
+令牌获取优先级：**查询参数 > `Authorization` 头 > `Sec-WebSocket-Protocol`**。
+浏览器原生 `WebSocket` 构造器无法自定义请求头，查询参数是前端唯一可用通道；
+保留后两者供服务端到服务端调用。日志不打印令牌。
+
+WS 不经 FastAPI 依赖注入，拿不到被 `dependency_overrides` 替换的 `get_db`，
+故沿用测试基建既有的 `app.state.test_sessionmaker` 约定；生产路径不受影响。
+
+### 前端同步改造（否则实时监控直接中断）
+
+`useWebSocket.ts` 连接时附带 `?token=`（经 `getAccessToken()`），
+未登录时置 `failed` 状态并给出明确错误，而非静默失败。
+`useRobotData.ts` 已有 `wsUrlWithAuth`，但该文件在不可达清单内，本轮未动。
+
+### F-RT-03 的副作用已解除
+
+连接现携带 `user_id` 与 `user:{id}` 频道，`send_to_user` 有了接收者——
+上一批因「安全默认关闭」而暂停投递的教师定向消息恢复正常。
+
+### M-03 **未完全关闭**
+
+`robot_id` 仍不用于数据过滤：遥测是单一全局流，尚无「按机器人归属订阅」机制。
+**本轮只完成认证与用户维度定向，机器人级隔离需另立批次。**
+已在端点 docstring 中明确标注，避免其看起来像已完成。
+
+### 测试处置
+
+`test_endpoint_routes_pong_to_connection_state` 因端点新增认证而失败——
+该用例验的是 pong 路由，故将认证打桩为固定身份，并**另加两条真正验认证的用例**：
+
+- `test_websocket_rejects_unauthenticated`：断言 `accept()` **未被调用**、
+  连接未进入连接表、以 1008 关闭——即验证「拒绝发生在握手前」；
+- `test_websocket_registers_identity_for_targeted_delivery`：断言身份随连接登记。
+
+- Result: PASS
+- Next Step: 待董事会指示。M-03 剩余机器人级隔离；M-06 审批闸门接线为下一候选。
