@@ -92,6 +92,7 @@ def test_teacher_scope_access_for_student_attempt(
     student_id, _, student_login = register_and_login(
         client, email_prefix="scope_student", role="student", teacher_id=teacher_id
     )
+    _act_as(owner_login)
     enroll_resp = client.post(
         "/api/v1/enrollments",
         json={"classId": class_id, "studentId": student_id},
@@ -121,24 +122,34 @@ def test_class_create_and_add_member(
     teaching_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, _ = teaching_api_env
+    teacher_id, _, teacher_login = register_and_login(
+        client, email_prefix="member_owner_teacher"
+    )
+    student_id, _, _ = register_and_login(
+        client,
+        email_prefix="member_student",
+        role="student",
+        teacher_id=teacher_id,
+    )
+    client.headers["Authorization"] = f"Bearer {teacher_login['access_token']}"
 
     class_resp = client.post(
         "/api/v1/classes",
-        json={"name": f"T03-members-{uuid4().hex[:6]}", "teacherId": 501},
+        json={"name": f"T03-members-{uuid4().hex[:6]}", "teacherId": teacher_id},
     )
     assert class_resp.status_code == 201
     class_id = class_resp.json()["id"]
 
     enroll_resp = client.post(
         "/api/v1/enrollments",
-        json={"classId": class_id, "studentId": 7001},
+        json={"classId": class_id, "studentId": student_id},
     )
     assert enroll_resp.status_code == 201
 
     list_resp = client.get(f"/api/v1/enrollments?class_id={class_id}")
     assert list_resp.status_code == 200
     items = list_resp.json()
-    assert any(item["studentId"] == 7001 for item in items)
+    assert any(item["studentId"] == student_id for item in items)
 
 
 async def _find_force_submit_notify_event(
@@ -259,6 +270,7 @@ def test_grade_attempt_rejects_student_self_grading(
     student_id, _, student_login = register_and_login(
         client, email_prefix="grade_student", role="student", teacher_id=teacher_id
     )
+    _act_as(owner_login)
     assert client.post(
         "/api/v1/enrollments", json={"classId": class_id, "studentId": student_id}
     ).status_code == 201

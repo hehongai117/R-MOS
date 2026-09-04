@@ -281,7 +281,7 @@ def test_update_class_student_role_denied():
         body = resp.json()
         assert body["error_type"] == "WriteAccessDeniedError"
         assert body["details"]["code"] == "WRITE_ACCESS_DENIED"
-        assert body["details"]["details"]["reason"] == "missing_role:teacher_or_admin"
+        assert body["details"]["details"]["reason"] == "not_object_owner"
     finally:
         client.close()
         app.dependency_overrides.clear()

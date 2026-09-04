@@ -9806,3 +9806,41 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 单一 adapter 仍只产生一份遥测；本批没有实现、也不声称实现按机器人过滤遥测
   - 工作期间 HEAD 由外部推进为 `f0f94960`（交接文档提交）；本批改动保持未提交
 - Next Step: 主审在允许连接固定 PostgreSQL 的本机环境执行任务书中的完整 pytest 命令；若 982 项全绿，再把本批整体状态从 BLOCKED 更新为 PASS
+
+## 2026-09-04 — 写端点授权覆盖率复测与无争议缺口修复
+
+- DateTime: 2026-09-04 22:40:50 CST
+- Task: 运行期重算全部写端点的身份与对象授权覆盖率，逐条核对候选，并修复不需要产品决策的真实缺口
+- Scope (files changed):
+  - `r-mos-backend/app/api/v1/endpoints/teaching.py`：教学策略创建增加教师/管理员身份门槛
+  - `r-mos-backend/app/api/v1/endpoints/teaching_roster.py`：班级、课程、选课、作业、作答共 6 个入口绑定当前身份与班级/学生归属
+  - `r-mos-backend/app/api/v1/endpoints/training.py`：训练提交增加会话所有者校验
+  - `r-mos-backend/tests/unit/test_write_authorization_coverage.py`：新增 4 条真实 HTTP 行为回归，每条同时覆盖拒绝与放行
+  - 既有 teaching/training/e2e 测试：把旧用例的身份与种子数据接到合法归属上，不放宽安全断言
+  - `docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`：记录扫描和测试证据
+- Commands Run:
+  - 每次 Python/pytest 均在 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/rmos_write_auth_scan.py --json-out /tmp/rmos_write_auth_before.json`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/rmos_write_auth_scan.py --json-out /tmp/rmos_write_auth_after.json`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_write_authorization_coverage.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_write_authorization_coverage.py tests/unit/test_teaching_api.py tests/unit/test_api_teaching.py tests/unit/test_teaching_characterization.py tests/e2e/test_e2e_teacher_flow.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_training_characterization.py::test_submit_session_cannot_submit_returns_400 tests/unit/test_training_characterization.py::test_submit_session_incomplete_without_confirm_returns_409 tests/unit/test_training_characterization.py::test_submit_session_submit_failed_returns_400 tests/unit/test_training_phase2_api.py::test_submit_session_uses_submission_service_manual`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `git diff --name-only`；`git diff --check`；`git status --short`
+- Tests:
+  - 扫描修复前：87 个写端点；身份 `83/87`（95.4%）；统一守卫 `46/87`（52.9%）；带对象 ID 的统一守卫覆盖 `30/44`（68.2%）
+  - 扫描修复后：身份仍为 `83/87`（95.4%）；统一守卫 `54/87`（62.1%）；带对象 ID 的统一守卫覆盖 `33/44`（75.0%）。4 个无身份端点均为显式公开认证入口
+  - 新增测试 RED：`4 failed in 2.43s`；GREEN：`4 passed in 2.32s`
+  - 相关测试首次：`10 failed, 67 passed in 14.73s`；校正旧用例合法身份与审计理由后：`77 passed in 15.59s`
+  - 第一次全量：`7 failed, 979 passed in 83.63s (0:01:23)`；其中 3 项沙箱数据库失败，4 项旧训练测试缺少合法会话归属
+  - 4 项旧训练测试修正后定向：`4 passed in 1.49s`
+  - 第二次全量：`3 failed, 983 passed in 82.07s (0:01:22)`；3 项失败均为沙箱连接 `::1:5432` 被 `PermissionError: [Errno 1] Operation not permitted` 拒绝
+- Result: **PASS（任务行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。除明确允许的沙箱数据库失败外，983 项全绿；未把该结果提升为 AUTH-101、E1 或生产批准
+- Risks/Notes:
+  - 临时扫描器及 JSON 证据只在 `/tmp`，未污染工作区；扫描基于真实 `main:app`，守卫仅认 AST 函数体中的实际 Call
+  - 收尾自检发现首版身份统计漏算应用统一挂载的 `enforce_authenticated`；修正 `/tmp` 扫描器后，从 HEAD 的 `/tmp` 干净副本和当前工作树分别重跑前后扫描。该校正只改变身份统计，不改变守卫候选、8 个修复项或测试结论
+  - 未新增抽象、依赖、数据结构或迁移；复用 `ownership.py` 六个守卫与 `resolve_actor_identity`
+  - 需决策而未修：证据包、事件、观测入口缺少归属字段；诊断轨迹没有持久化归属；M-06 断点④的真实写工具范围与安全边界
+  - 执行期间 HEAD 由外部提交从 `80bfb901` 前进到 `4030f6f3`；该外部提交为董事会第三批裁定，本任务未改写或提交其内容，扫描与第二次全量均在新 HEAD 上完成
+  - 未改 `DATABASE_URL`、CORS；未 commit、未 push
+- Next Step: 用户在当前 worktree 验收未提交差异；如需验证 3 项 PostgreSQL 门禁，在允许连接固定本机数据库的环境原样复跑全量命令

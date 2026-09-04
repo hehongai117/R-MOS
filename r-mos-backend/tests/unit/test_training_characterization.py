@@ -941,13 +941,15 @@ def test_submit_session_cannot_submit_returns_400(monkeypatch) -> None:
     """POST /training/sessions/{session_id}/submit — 其他不可提交原因返回 400（覆盖 line 702）."""
     client, sf = _build_client()
     try:
+        data = _seed_training_data(sf)
+
         async def _fake_check_not_ready(self, session_id: str):
             return SimpleNamespace(can_submit=False, message="会话已提交", incomplete_steps=[])
 
         monkeypatch.setattr(training_endpoints.SubmissionService, "check_submit_ready", _fake_check_not_ready)
 
         resp = client.post(
-            "/api/v1/training/sessions/some-session-id/submit",
+            f"/api/v1/training/sessions/{data['session_id']}/submit",
             json={"user_id": 1, "confirm_incomplete": False},
         )
         assert resp.status_code == 400
@@ -963,6 +965,8 @@ def test_submit_session_incomplete_without_confirm_returns_409(monkeypatch) -> N
     """POST /training/sessions/{session_id}/submit — 有未完成步骤且未确认时返回 409（覆盖 lines 704-712）."""
     client, sf = _build_client()
     try:
+        data = _seed_training_data(sf)
+
         async def _fake_check_incomplete(self, session_id: str):
             return SimpleNamespace(
                 can_submit=True,
@@ -973,7 +977,7 @@ def test_submit_session_incomplete_without_confirm_returns_409(monkeypatch) -> N
         monkeypatch.setattr(training_endpoints.SubmissionService, "check_submit_ready", _fake_check_incomplete)
 
         resp = client.post(
-            "/api/v1/training/sessions/some-session-id/submit",
+            f"/api/v1/training/sessions/{data['session_id']}/submit",
             json={"user_id": 1, "confirm_incomplete": False},
         )
         assert resp.status_code == 409
@@ -992,6 +996,8 @@ def test_submit_session_submit_failed_returns_400(monkeypatch) -> None:
     """POST /training/sessions/{session_id}/submit — submit_manual 返回 None 时返回 400（覆盖 line 721）."""
     client, sf = _build_client()
     try:
+        data = _seed_training_data(sf)
+
         async def _fake_check_ready(self, session_id: str):
             return SimpleNamespace(can_submit=True, message="ok", incomplete_steps=[])
 
@@ -1002,7 +1008,7 @@ def test_submit_session_submit_failed_returns_400(monkeypatch) -> None:
         monkeypatch.setattr(training_endpoints.SubmissionService, "submit_manual", _fake_submit_none)
 
         resp = client.post(
-            "/api/v1/training/sessions/some-session-id/submit",
+            f"/api/v1/training/sessions/{data['session_id']}/submit",
             json={"user_id": 1, "confirm_incomplete": True},
         )
         assert resp.status_code == 400

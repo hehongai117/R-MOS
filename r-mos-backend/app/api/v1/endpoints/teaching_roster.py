@@ -11,7 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.services.ownership import ensure_teacher_scope_over_student, ensure_write_owner
+from app.services.ownership import (
+    ensure_role_for_write,
+    ensure_teacher_scope_over_student,
+    ensure_write_owner,
+)
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.models.evidence import EvidenceBundle
 from app.models.timeline import AlignmentMap, EvidenceCard, MultimodalTimeline, TimelineSegment
@@ -46,7 +50,12 @@ from app.services.access_control import (
     raise_read_access_denied,
     raise_write_access_denied,
 )
-from app.services.authz_guard import ActorContext, get_current_actor, resolve_actor_identity
+from app.services.authz_guard import (
+    ActorContext,
+    actor_has_role,
+    get_current_actor,
+    resolve_actor_identity,
+)
 from app.services.teaching_service import TeachingService
 from app.services.evidence_engine import EvidenceEngine
 from app.api.v1.endpoints.teaching_common import (
@@ -75,10 +84,30 @@ async def list_classes(db: AsyncSession = Depends(get_db)):
     status_code=201,
     response_model_by_alias=True,
 )
-async def create_class(request: ClassCreate, db: AsyncSession = Depends(get_db)):
+async def create_class(
+    request: ClassCreate,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    await ensure_role_for_write(
+        db,
+        http_request,
+        actor,
+        "teacher",
+        "admin",
+        action="create_teaching_class",
+        resource_type="TeachingClass",
+    )
     service = TeachingService(db)
     try:
         payload = request.model_dump()
+        payload["teacher_id"] = resolve_actor_identity(
+            actor,
+            payload.get("teacher_id"),
+            action="create_teaching_class",
+            resource_type="TeachingClass",
+        )
         metadata = payload.pop("metadata_json", None)
         if metadata is not None:
             payload["metadata"] = metadata
@@ -157,18 +186,15 @@ async def update_class(
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
 
-    # AUTH-104：白名单式判断——只有显式命中允许角色才放行。
-    # 改造前写成 `if x_rmos_role and ... not in {...}`，省略该头即可绕过整条判断。
-    if actor.account_role not in {"teacher", "admin"}:
-        await raise_write_access_denied(
-            db,
-            http_request,
-            action="permission_denied",
-            resource_type="TeachingClass",
-            resource_id=teaching_class.id,
-            reason="missing_role:teacher_or_admin",
-            message="权限不足：仅teacher/admin可修改class",
-        )
+    await ensure_write_owner(
+        db,
+        http_request,
+        actor,
+        teaching_class.teacher_id,
+        action="update_teaching_class",
+        resource_type="TeachingClass",
+        resource_id=teaching_class.id,
+    )
 
     payload = request.model_dump(exclude_unset=True)
     metadata = payload.pop("metadata_json", None)
@@ -201,9 +227,24 @@ async def list_courses(
     status_code=201,
     response_model_by_alias=True,
 )
-async def create_course(request: CourseCreate, db: AsyncSession = Depends(get_db)):
+async def create_course(
+    request: CourseCreate,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
     service = TeachingService(db)
     try:
+        teaching_class = await service.get_class(request.class_id)
+        await ensure_write_owner(
+            db,
+            http_request,
+            actor,
+            teaching_class.teacher_id,
+            action="create_course",
+            resource_type="TeachingClass",
+            resource_id=teaching_class.id,
+        )
         payload = request.model_dump()
         metadata = payload.pop("metadata_json", None)
         if metadata is not None:
@@ -247,9 +288,24 @@ async def list_enrollments(
     status_code=201,
     response_model_by_alias=True,
 )
-async def enroll_student(request: EnrollmentCreate, db: AsyncSession = Depends(get_db)):
+async def enroll_student(
+    request: EnrollmentCreate,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
     service = TeachingService(db)
     try:
+        teaching_class = await service.get_class(request.class_id)
+        await ensure_write_owner(
+            db,
+            http_request,
+            actor,
+            teaching_class.teacher_id,
+            action="enroll_student",
+            resource_type="TeachingClass",
+            resource_id=teaching_class.id,
+        )
         return await service.enroll_student(**request.model_dump())
     except BusinessRuleViolation as exc:
         _raise_business_error(exc)
@@ -282,20 +338,18 @@ async def create_assignment(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
-    # AUTH-104：白名单式判断，省略角色不再等于放行
-    if actor.account_role not in {"teacher", "admin"}:
-        await raise_write_access_denied(
-            db,
-            http_request,
-            action="permission_denied",
-            resource_type="TeachingClass",
-            resource_id=payload.class_id,
-            reason="missing_role:teacher_or_admin",
-            message="权限不足：仅teacher/admin可创建assignment",
-        )
-
     service = TeachingService(db)
     try:
+        teaching_class = await service.get_class(payload.class_id)
+        await ensure_write_owner(
+            db,
+            http_request,
+            actor,
+            teaching_class.teacher_id,
+            action="create_assignment",
+            resource_type="TeachingClass",
+            resource_id=teaching_class.id,
+        )
         return await service.create_assignment(**payload.model_dump())
     except BusinessRuleViolation as exc:
         _raise_business_error(exc)
@@ -351,6 +405,33 @@ async def create_attempt(
     )
     service = TeachingService(db)
     try:
+        assignment = await service.get_assignment(assignment_id)
+        await ensure_write_owner(
+            db,
+            http_request,
+            actor,
+            student_id,
+            action="create_attempt",
+            resource_type="AssignmentAttempt",
+            resource_id=assignment_id,
+        )
+        if not actor_has_role(actor, "admin"):
+            enrollment_result = await db.execute(
+                select(Enrollment.id).where(
+                    Enrollment.class_id == assignment.class_id,
+                    Enrollment.student_id == student_id,
+                )
+            )
+            if enrollment_result.scalar_one_or_none() is None:
+                await raise_write_access_denied(
+                    db,
+                    http_request,
+                    action="create_attempt",
+                    resource_type="Assignment",
+                    resource_id=assignment_id,
+                    reason="student_not_enrolled_in_assignment_class",
+                    message="权限不足",
+                )
         return await service.create_attempt(
             assignment_id=assignment_id,
             student_id=student_id,

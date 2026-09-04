@@ -59,7 +59,7 @@ import app.models as app_models  # noqa: F401  # Ensure all models are registere
 import app.api.v1.endpoints.training as training_endpoints
 
 
-def _build_client() -> tuple[TestClient, async_sessionmaker]:
+def _build_client() -> tuple[TestClient, async_sessionmaker, int]:
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -83,11 +83,15 @@ def _build_client() -> tuple[TestClient, async_sessionmaker]:
     client = TestClient(app)
     # AUTH-101 默认拒绝网关生效后，/api/v1 调用一律需要令牌；
     # 预置一位默认教师作为客户端默认身份。
-    register_and_login(client, email_prefix="training_phase2_actor")
-    return client, session_factory
+    actor_id, _, _ = register_and_login(client, email_prefix="training_phase2_actor")
+    return client, session_factory, actor_id
 
 
-def _seed_phase2_data(session_factory: async_sessionmaker) -> dict:
+def _seed_phase2_data(
+    session_factory: async_sessionmaker,
+    *,
+    session_owner_id: int | None = None,
+) -> dict:
     async def _seed() -> dict:
         async with session_factory() as session:
             user = User(
@@ -103,7 +107,7 @@ def _seed_phase2_data(session_factory: async_sessionmaker) -> dict:
             training_session = TrainingSession(
                 session_id="sess-phase2-001",
                 project_id="project-phase2-001",
-                user_id=user.id,
+                user_id=session_owner_id or user.id,
                 status="active",
                 current_step=1,
                 project_snapshot={"estimated_time": 60},
@@ -185,9 +189,9 @@ def _seed_phase2_data(session_factory: async_sessionmaker) -> dict:
 
 
 def test_submit_session_uses_submission_service_manual(monkeypatch) -> None:
-    client, session_factory = _build_client()
+    client, session_factory, actor_id = _build_client()
     try:
-        data = _seed_phase2_data(session_factory)
+        data = _seed_phase2_data(session_factory, session_owner_id=actor_id)
 
         async def _fake_check_submit_ready(self, session_id: str):
             return SimpleNamespace(can_submit=True, message="ok", incomplete_steps=[])
@@ -229,7 +233,7 @@ def test_submit_session_uses_submission_service_manual(monkeypatch) -> None:
 
 
 def test_get_training_feedback_by_session_id() -> None:
-    client, session_factory = _build_client()
+    client, session_factory, _ = _build_client()
     try:
         data = _seed_phase2_data(session_factory)
         response = client.get(f"/api/v1/training/feedback/{data['session_id']}")
@@ -245,7 +249,7 @@ def test_get_training_feedback_by_session_id() -> None:
 
 
 def test_get_student_skill_profile() -> None:
-    client, session_factory = _build_client()
+    client, session_factory, _ = _build_client()
     try:
         data = _seed_phase2_data(session_factory)
         response = client.get(f"/api/v1/students/{data['user_id']}/profile")
@@ -260,7 +264,7 @@ def test_get_student_skill_profile() -> None:
 
 
 def test_get_student_weak_steps() -> None:
-    client, session_factory = _build_client()
+    client, session_factory, _ = _build_client()
     try:
         data = _seed_phase2_data(session_factory)
         response = client.get(f"/api/v1/students/{data['user_id']}/weak-steps")

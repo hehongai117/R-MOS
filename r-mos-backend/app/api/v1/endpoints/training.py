@@ -304,10 +304,24 @@ async def abandon_session(
 async def submit_session(
     session_id: str,
     request: SubmitSessionRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     """UF-08: 手动提交训练（走 SubmissionService）"""
+    session_service = SessionService(db)
+    training_session = await session_service.get_session(session_id)
+    if training_session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await ensure_write_owner(
+        db,
+        http_request,
+        actor,
+        training_session.user_id,
+        action="submit_training_session",
+        resource_type="TrainingSession",
+        resource_id=session_id,
+    )
     # 审计 M-01/M-02：此前无身份注入且提交人取自请求体。
     submitter_id = resolve_actor_identity(
         actor, request.user_id, action="submit_training_session",

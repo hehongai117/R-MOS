@@ -155,6 +155,7 @@ def test_create_assignment_and_get(client):
 
 
 def test_create_attempts_increment_index(client):
+    teacher_login = client.actor_login
     class_resp = client.post("/api/v1/classes", json={"name": "Class A"})
     class_id = class_resp.json()["id"]
     assignment_resp = client.post(
@@ -163,16 +164,29 @@ def test_create_attempts_increment_index(client):
     )
     assignment_id = assignment_resp.json()["id"]
 
+    student_id, _, student_login = register_and_login(
+        client,
+        email_prefix="attempt_index_student",
+        role="student",
+        teacher_id=client.actor_id,
+    )
+    client.headers["Authorization"] = f"Bearer {teacher_login['access_token']}"
+    assert client.post(
+        "/api/v1/enrollments",
+        json={"classId": class_id, "studentId": student_id},
+    ).status_code == 201
+    client.headers["Authorization"] = f"Bearer {student_login['access_token']}"
+
     resp1 = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": client.actor_id},
+        json={"studentId": student_id},
     )
     assert resp1.status_code == 201
     assert resp1.json()["attemptIndex"] == 1
 
     resp2 = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
-        json={"studentId": client.actor_id},
+        json={"studentId": student_id},
     )
     assert resp2.status_code == 201
     assert resp2.json()["attemptIndex"] == 2
@@ -197,6 +211,7 @@ def test_attempt_status_transitions(client):
         client, email_prefix="transition_student", role="student",
         teacher_id=client.actor_id,
     )
+    client.headers["Authorization"] = f"Bearer {teacher_login['access_token']}"
     assert client.post(
         "/api/v1/enrollments", json={"classId": class_id, "studentId": student_id}
     ).status_code == 201
@@ -271,6 +286,11 @@ def test_read_access_denied_records_real_resource_id(client):
         client, email_prefix="deny_read_attempt_owner", role="student",
         teacher_id=client.actor_id,
     )
+    client.headers["Authorization"] = f"Bearer {client.actor_login['access_token']}"
+    assert client.post(
+        "/api/v1/enrollments",
+        json={"classId": class_id, "studentId": owner_id},
+    ).status_code == 201
     client.headers["Authorization"] = f"Bearer {owner_login['access_token']}"
     attempt_resp = client.post(
         f"/api/v1/assignments/{assignment_id}/attempts",
@@ -329,7 +349,7 @@ def test_audit_permission_denied_records_deny_event(client):
             result = await session.execute(
                 select(AuditEvent)
                 .where(
-                    AuditEvent.action == "permission_denied",
+                    AuditEvent.action == "create_assignment",
                     AuditEvent.resource_type == "TeachingClass",
                     AuditEvent.decision == "deny",
                 )
@@ -340,7 +360,7 @@ def test_audit_permission_denied_records_deny_event(client):
             # 审计操作者必须等于令牌主体，而不是任何客户端可控的值
             assert event.actor_user_id == str(student_id)
             assert event.resource_id == str(class_id)
-            assert event.reason == "missing_role:teacher_or_admin"
+            assert event.reason == "not_object_owner"
 
     asyncio.run(assert_audit_event())
 
@@ -400,7 +420,7 @@ def test_class_write_permission_denied_records_real_resource_id(client):
             result = await session.execute(
                 select(AuditEvent)
                 .where(
-                    AuditEvent.action == "permission_denied",
+                    AuditEvent.action == "update_teaching_class",
                     AuditEvent.resource_type == "TeachingClass",
                     AuditEvent.resource_id == str(class_id),
                     AuditEvent.decision == "deny",
@@ -411,7 +431,7 @@ def test_class_write_permission_denied_records_real_resource_id(client):
             assert event is not None
             # 审计操作者必须等于令牌主体
             assert event.actor_user_id == str(student_id)
-            assert event.reason == "missing_role:teacher_or_admin"
+            assert event.reason == "not_object_owner"
 
     asyncio.run(assert_write_deny_audit_event())
 

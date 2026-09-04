@@ -4,7 +4,7 @@ Teaching domain API endpoints.
 import logging
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -14,6 +14,8 @@ from app.schemas.teaching import (
     GuidancePolicyResponse,
 )
 from app.services.teaching_service import TeachingService
+from app.services.authz_guard import ActorContext, get_current_actor
+from app.services.ownership import ensure_role_for_write
 from app.api.v1.endpoints.teaching_common import (
     _raise_business_error,
     _raise_not_found,
@@ -42,12 +44,23 @@ async def list_guidance_policies(db: AsyncSession = Depends(get_db)):
     response_model_by_alias=True,
 )
 async def create_guidance_policy(
-    request: GuidancePolicyCreate,
+    payload: GuidancePolicyCreate,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
+    await ensure_role_for_write(
+        db,
+        http_request,
+        actor,
+        "teacher",
+        "admin",
+        action="create_guidance_policy",
+        resource_type="GuidancePolicy",
+    )
     service = TeachingService(db)
     try:
-        return await service.create_guidance_policy(**request.model_dump())
+        return await service.create_guidance_policy(**payload.model_dump())
     except BusinessRuleViolation as exc:
         _raise_business_error(exc)
 

@@ -1,6 +1,6 @@
 # R-MOS 当前测试报告
 
-- 版本：0.1.2
+- 版本：0.1.3
 - 建立日期：2026-08-21
 - 状态：Active
 - 上位规则：`docs/testing/ACCEPTANCE_CHARTER.md`
@@ -23,6 +23,7 @@
 | Phase 3 第 3b 批（P3-3b，3D 资产带令牌） | PARTIAL | 提交 `70e9c078`；前端门禁 `7 passed`、全量 `518 passed / 2 skipped`、构建与 `tsc` 通过；**浏览器实测 PASS**（`/3d-viewer` 与 `/maintenance` 资产请求 401 数为 0、模型渲染）。**只关闭了 3D 加载回归本身**；`AUTH-101`～`AUTH-105` 仍为 IN_PROGRESS，对象归属与资产拒绝审计缺口未动 |
 | Phase 3 第 2c 批（P3-2c，对象归属第一刀） | PARTIAL | 提交 `c7ad217a`；定向 `15 passed`；后端全量 **971 tests / 0 failed / 0 error（退出码 0）**。**只覆盖 8 条路由**（training 5 + tasks 3）；全仓约 115 条路由仍无归属校验，`AUTH-101` 不关闭 |
 | M-03 WebSocket robot_id 订阅授权 | BLOCKED | 真实连接定向回归 `26 passed`；完整测试收集 982 项，其中 `979 passed`，3 个既有 PostgreSQL 门禁因当前执行环境禁止连接 `localhost:5432` 而失败。授权边界定向证据 PASS，但“全量通过”门禁未满足，不作整体 PASS |
+| 写端点授权覆盖率复测与无争议缺口修复 | PASS（任务范围）/ 环境受限 | 运行期枚举 87 个写端点，并以 AST 只认函数体实际调用；统一守卫覆盖由 `46/87` 提升为 `54/87`，带对象 ID 的端点覆盖由 `30/44` 提升为 `33/44`。新增行为回归 4 项，均同时断言拒绝与放行；完整回归 `983 passed`，仅 3 个 PostgreSQL 门禁因沙箱禁止连接 `::1:5432` 失败 |
 | 实时通道点修复复验 | CONDITIONAL | 该批历史定向 `22 passed`；慢连接、连接关闭、心跳、日志及时间双后缀已补正。当时 M-03/RT-GATE 仍 OPEN/NOT_RUN；M-03 后续状态以本表当前 M-03 行为准 |
 | A0 获批只读指纹探针 | PASS（仅探针） | 进程/容器、数据库、运行路由和前端公开入口四项已执行，前后摘要一致；不构成应用测试、E2、A0 批准或 R1 放行 |
 | E1 软件安全与主链路 | FAIL | 全量自动测试通过，但 Phase 1 已确认 G1、G2 反证；详见 AUDIT-P1-E1-001 |
@@ -42,6 +43,30 @@
 | 归档前 | `docs-archive/TEST_REPORT.md` | 旧测试报告 | HISTORICAL |
 
 ## 4. 当前批次记录
+
+### AUTH-WRITE-COVERAGE-001｜写端点授权覆盖率复测与无争议缺口修复
+
+- 基线提交：`4030f6f3`；结果为未提交工作树（按任务要求不 commit）
+- 环境：`audit/phase3-auth-control-realtime` 隔离工作区；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；配置从主工作区 `.env` 加载，随后 `unset CORS_ORIGINS`、`DEBUG=true`
+- 范围：载入真实 `main:app` 枚举所有 `APIRoute` 写方法；身份检查递归读取依赖树，授权守卫仅统计函数体 AST 的实际调用。修复 8 个无需产品决策的缺口，不新增授权抽象，不处理需要新字段、迁移或产品边界决策的项目。
+- Commands Run：
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/rmos_write_auth_scan.py --json-out /tmp/rmos_write_auth_before.json`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/rmos_write_auth_scan.py --json-out /tmp/rmos_write_auth_after.json`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_write_authorization_coverage.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_write_authorization_coverage.py tests/unit/test_teaching_api.py tests/unit/test_api_teaching.py tests/unit/test_teaching_characterization.py tests/e2e/test_e2e_teacher_flow.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_training_characterization.py::test_submit_session_cannot_submit_returns_400 tests/unit/test_training_characterization.py::test_submit_session_incomplete_without_confirm_returns_409 tests/unit/test_training_characterization.py::test_submit_session_submit_failed_returns_400 tests/unit/test_training_phase2_api.py::test_submit_session_uses_submission_service_manual`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `git diff --check`；`git status --short`；`git diff --name-only`
+- Key Output：
+  - 修复前：87 个写端点；身份注入 `83/87`（95.4%）；统一守卫 `46/87`（52.9%）；带对象 ID `44/87`，其中统一守卫覆盖 `30/44`（68.2%）。
+  - 修复后：87 个写端点；身份注入仍为 `83/87`（95.4%）；统一守卫 `54/87`（62.1%）；带对象 ID 仍为 `44/87`，其中统一守卫覆盖 `33/44`（75.0%）。4 个无身份端点均为显式公开的注册、登录、刷新和退出。
+  - RED：新增 4 条行为测试最初为 `4 failed in 2.43s`，分别证明 8 个端点可以被越权调用；每条测试都包含拒绝和合法放行两类真实 HTTP 断言。
+  - GREEN：新增行为测试 `4 passed in 2.32s`；相关范围最终 `77 passed in 15.59s`；全量中暴露的 4 条旧训练测试在补齐合法会话归属后复验 `4 passed in 1.49s`。
+  - 完整回归原始汇总：`3 failed, 983 passed in 82.07s (0:01:22)`。失败仅为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均在连接 `::1:5432` 时收到 `PermissionError: [Errno 1] Operation not permitted`。
+- Evidence：`r-mos-backend/tests/unit/test_write_authorization_coverage.py`；本条记录；`docs-archive/DEVELOPMENT_LOG.md` 同日条目
+- Result：**PASS（本任务行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。983 个非外部数据库用例全绿，超过任务要求的 982；不把环境失败写成产品缺陷，也不把本批写成 AUTH-101 或 E1 正式关闭。
+- Failure Handling：扫描脚本首次从 `/tmp` 运行时因后端目录未进入 `sys.path` 报 `ModuleNotFoundError: main`；仅修正临时脚本的导入路径后重跑。收尾自检发现身份统计最初漏算真实应用统一挂载的 `enforce_authenticated` 依赖；修正规则后，从 HEAD 的 `/tmp` 干净副本重跑修复前扫描、从当前工作树重跑修复后扫描，最终口径如上，守卫数字不变。第一次完整回归除 3 项环境失败外还有 4 条旧训练测试失败，原因是新增会话归属校验在测试虚构业务分支前先拒绝无主/他人会话；补齐测试的合法归属数据后，4 条定向复验和第二次完整回归均通过。
+- Notes：未新增抽象、依赖、数据字段或迁移；未改固定数据库和 CORS；未启动服务；未 commit、未 push。证据包、事件、观测三个写入口缺少归属字段，诊断轨迹缺少持久化归属，M-06 真实写工具范围均保留为需决策项。
 
 ### M03-WS-ROBOT-AUTH-001｜带 robot_id 的 WebSocket 订阅授权
 

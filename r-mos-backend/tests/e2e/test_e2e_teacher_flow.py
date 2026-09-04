@@ -34,7 +34,12 @@ def test_e2e_teacher_flow(
     client, session_factory = e2e_env
 
     teacher_id, teacher_email, teacher_login = register_and_login(client, email_prefix="e2e_teacher")
-    student_id, _student_email, _ = register_and_login(client, email_prefix="e2e_student")
+    student_id, _student_email, student_login = register_and_login(
+        client,
+        email_prefix="e2e_student",
+        role="student",
+        teacher_id=teacher_id,
+    )
     asyncio.run(set_user_role(session_factory, user_id=teacher_id, role="teacher"))
 
     teacher_login_resp = client.post(
@@ -43,6 +48,7 @@ def test_e2e_teacher_flow(
     )
     assert teacher_login_resp.status_code == 200
     assert teacher_login_resp.json()["role"] == "teacher"
+    client.headers["Authorization"] = f"Bearer {teacher_login['access_token']}"
 
     class_resp = client.post(
         "/api/v1/classes",
@@ -61,6 +67,7 @@ def test_e2e_teacher_flow(
     assert class_list_resp.status_code == 200
     assert any(item["id"] == class_id for item in class_list_resp.json())
 
+    client.headers["Authorization"] = f"Bearer {student_login['access_token']}"
     session_resp = client.post(
         "/api/v1/training/sessions",
         json={
