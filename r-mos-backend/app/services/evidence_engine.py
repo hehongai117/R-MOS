@@ -12,9 +12,10 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.enums import EventType
 from app.core.exceptions import BusinessRuleViolation
 from app.models.evidence import EvidenceBundle
-from app.models.event import Event, EventType
+from app.models.event import Event
 from app.models.snapshot import Snapshot
 from app.models.task import Task
 from app.models.teaching import AssignmentAttempt, Assignment, EvidenceLink

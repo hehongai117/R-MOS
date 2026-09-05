@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconn
 from app.core.database import AsyncSessionLocal
 from app.core.exceptions import AuthenticationRequiredError
 from app.services.authz_guard import ActorContext, resolve_actor_from_token
-from app.services.robot_visibility import get_visible_robot_or_404
+from app.services.robot.visibility import get_visible_robot_or_404
 from app.services.websocket_manager import manager
 
 router = APIRouter()

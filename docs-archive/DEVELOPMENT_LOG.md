@@ -9944,3 +9944,40 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 当前应用检查点仍为 `616db22a...`；S0-01 尚未冻结整改后的正式基线或重算 26 项历史问题。
   - 未启动服务、未连接数据库、未 push。
 - Next Step: 执行主干唯一下一步 `RMOS-S0-001`：统一现行状态，冻结整改后的当前基线，并生成唯一的当前问题清单；完成后申请董事会确认 S0。
+
+## 2026-09-05 — RMOS-S3-001 第一批模块 A 结构归位
+
+- DateTime: 2026-09-05 20:44:31 +0800
+- Task: `RMOS-S3-001（第一批：结构）`；按 `RMOS-S2-001` v0.1.1 §2.1、§2.2、§5.2 第 1–4 项完成模块 A 的文件归位与解耦，不触碰 M-13，不改变运行行为。
+- Scope (files changed):
+  - `r-mos-backend/app/services/orchestration_app/`：新建应用编排包并接收 `session_initializer.py`
+  - `r-mos-backend/app/services/teaching/`：接收 `class_membership.py`、`teacher_monitor.py`
+  - `r-mos-backend/app/services/robot/`：新建机器人资产服务包并接收唯一的可见性实现 `visibility.py`
+  - `r-mos-backend/app/services/identity/__init__.py` 及相关端点：同步新位置 import
+  - `r-mos-backend/app/services/ownership.py`、`app/api/v1/endpoints/tasks.py`：`ensure_task_scope` 改收 `owner_user_id`，调用方传 `task.user_id` 并继续传真实任务编号
+  - `r-mos-backend/app/core/enums.py`、`app/models/event.py` 及六个使用方：`EventType` 移至共享位置，原模型模块保持同对象再导出
+  - `r-mos-backend/tests/unit/test_session_initializer.py`、`test_class_membership.py`、`test_teacher_monitor.py`：仅同步被移动模块的 import/monkeypatch 路径
+  - `docs-archive/DEVELOPMENT_LOG.md`：本记录
+- Commands Run:
+  - 每次 pytest 均在本 worktree 的 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - 迁移前、迁移后各执行一次 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - 逐个变更文件执行 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m py_compile <file>`，并以 `rg` 确认新路径、类、函数、签名和 import 已落盘
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_session_initializer.py tests/unit/test_class_membership.py tests/unit/test_teacher_monitor.py tests/test_api_student_robots.py tests/e2e/test_websocket_robot_authorization.py tests/e2e/test_object_ownership_boundary.py tests/unit/test_task_write_ownership.py`
+  - AST 检查 `ownership.py` 不导入 `app.models.task`、`admin.py` 不导入 `app.models.event`
+  - 哈希对比四个移动实现与 HEAD 原文件；`import main`；`EventType` 新旧路径同对象检查；唯一实现与旧路径残留扫描
+  - 在 `r-mos-frontend` 执行 `npx tsc --noEmit`
+  - `git diff --name-only`；`git diff --check`；`git status --short`
+- Tests:
+  - 迁移前全量原文：`3 failed, 992 passed in 85.00s (0:01:24)`
+  - 定向回归：`36 passed in 8.45s`
+  - 迁移后全量原文：`3 failed, 992 passed in 84.15s (0:01:24)`
+  - 前端 TypeScript 检查无输出，退出码 0
+  - 前后全量的 3 个失败完全相同：`test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均在连接 `::1:5432` 时被沙箱以 `PermissionError: [Errno 1] Operation not permitted` 拒绝
+- Result: **PASS（本批结构与行为保持范围）/ 环境受限（3 项 PostgreSQL 门禁）**。迁移前后通过数同为 992、总收集数同为 995，未新增失败；无沙箱环境的 995 通过未在本轮伪造为已执行结果。
+- Risks/Notes:
+  - 四个被移动实现的前后 SHA-256 分别完全一致；全仓只有一份 `get_visible_robot_or_404` 实现
+  - 未出现循环导入，未新增延迟 import；保留 `ownership.py` 原有的函数内教学关系 import，仅更新其目标路径
+  - 既有 `admin.py` 使用 `EventType.ROLE_CHANGE`，但迁移前枚举没有该成员；为保持行为不变，本批未补成员，留待另项处理
+  - 本批不改角色与权限判定，不触碰 M-13；不新增依赖、数据结构、迁移或抽象；未改 `DATABASE_URL`、CORS，未启动服务，未 commit、未 push
+  - 全量测试后 `data/knowledge_store.json` 未出现于工作树
+- Next Step: 用户验收当前未提交差异；在无沙箱限制环境按同一命令复跑后端全量以取得 995 通过证据，再单独安排第二批 M-13。

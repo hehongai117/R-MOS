@@ -8,9 +8,9 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 import logging
 
+from app.core.enums import EventType
 from app.models.task import Task, TaskStatus
 from app.models.sop import SOP, SOPStep
-from app.models.event import EventType
 from app.schemas.task import TaskCreate, StepExecutionRequest, StepExecutionResponse
 from app.core.exceptions import BusinessRuleViolation
 from app.services.snapshot_service import SnapshotService

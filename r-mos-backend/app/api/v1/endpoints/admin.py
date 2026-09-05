@@ -11,10 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.enums import EventType
 from app.models.user import User
 from app.services.authz_guard import ActorContext, require_permission
 from app.models.audit_event import AuditEvent
-from app.models.event import EventType
 
 
 router = APIRouter()

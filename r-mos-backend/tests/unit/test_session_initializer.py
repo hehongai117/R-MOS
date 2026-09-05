@@ -11,7 +11,7 @@ import pytest
 from app.models.teaching import TeachingClass
 from app.models.training import TrainingSession
 from app.models.user import User
-from app.services.identity.session_initializer import SessionInitializer
+from app.services.orchestration_app.session_initializer import SessionInitializer
 
 
 class _FakeMemoryHub:

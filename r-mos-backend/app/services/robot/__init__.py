@@ -1,0 +1,1 @@
+"""Robot asset domain services."""

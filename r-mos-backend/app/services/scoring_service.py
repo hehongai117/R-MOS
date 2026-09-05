@@ -8,8 +8,9 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import logging
 
+from app.core.enums import EventType
 from app.models.task import Task
-from app.models.event import Event, EventType
+from app.models.event import Event
 from app.models.sop import SOP, SOPStep
 from app.models.snapshot import Snapshot
 from app.schemas.report import ScoreBreakdown, StepScore

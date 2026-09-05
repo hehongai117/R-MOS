@@ -8,6 +8,24 @@ every service imports a single, authoritative definition.
 from enum import Enum
 
 
+class EventType(str, Enum):
+    """事件类型枚举（V2.3完整版）"""
+
+    TASK_STARTED = "task_started"
+    TASK_COMPLETED = "task_completed"
+    TASK_FAILED = "task_failed"
+    TASK_PAUSED = "task_paused"          # V2.1.2补充
+    TASK_RESUMED = "task_resumed"        # V2.1.2补充
+    STEP_EXECUTED = "step_executed"
+    STEP_SKIPPED = "step_skipped"        # V2.1.2补充
+    STEP_BLOCKED = "step_blocked"         # 安全中断
+    STEP_WARNING = "step_warning"        # 步骤警告
+    FAULT_DETECTED = "fault_detected"
+    FAULT_CLEARED = "fault_cleared"
+    SNAPSHOT_CREATED = "snapshot_created"
+    SNAPSHOT_FAILED = "snapshot_failed"  # V2.1.2补充
+
+
 class RiskLevel(str, Enum):
     """Unified risk-level enum.
 

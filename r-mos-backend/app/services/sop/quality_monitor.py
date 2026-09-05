@@ -16,9 +16,10 @@ from typing import Any, Optional
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.enums import EventType
 from app.models.teaching import AssignmentAttempt, Assignment
 from app.models.sop import SOP, SOPStep
-from app.models.event import Event, EventType
+from app.models.event import Event
 
 logger = logging.getLogger(__name__)
 

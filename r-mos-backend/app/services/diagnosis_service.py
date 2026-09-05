@@ -10,9 +10,9 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.enums import EventType
 from app.core.exceptions import BusinessRuleViolation
 from app.models.evidence import EvidenceBundle
-from app.models.event import EventType
 from app.models.task import TaskStatus
 from app.models.teaching import EvidenceLink
 from app.schemas.teaching import (

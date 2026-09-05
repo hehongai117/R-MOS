@@ -9,7 +9,7 @@ import pytest
 
 from app.models.teaching import Enrollment, TeachingClass
 from app.models.user import User
-from app.services.identity.class_membership import ClassMembershipService
+from app.services.teaching.class_membership import ClassMembershipService
 
 
 @pytest.mark.asyncio

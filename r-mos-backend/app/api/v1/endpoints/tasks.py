@@ -209,7 +209,9 @@ async def get_task(
     """查询Task"""
     service = TaskService(db)
     task = await service.get_task(task_id)
-    await ensure_task_scope(db, request, actor, task, action="read_task")
+    await ensure_task_scope(
+        db, request, actor, task.user_id, action="read_task", resource_id=task.id
+    )
     return task
 
 
@@ -224,7 +226,14 @@ async def get_task_report(
     # 1. 加载Task
     service = TaskService(db)
     task = await service.get_task(task_id)
-    await ensure_task_scope(db, request, actor, task, action="read_task_report")
+    await ensure_task_scope(
+        db,
+        request,
+        actor,
+        task.user_id,
+        action="read_task_report",
+        resource_id=task.id,
+    )
 
     # 2. 加载评分（如果已完成）
     if task.status == TaskStatus.COMPLETED:
@@ -309,7 +318,14 @@ async def get_task_events(
     # 验证Task存在
     service = TaskService(db)
     task = await service.get_task(task_id)  # 如果不存在会抛异常
-    await ensure_task_scope(db, request, actor, task, action="read_task_events")
+    await ensure_task_scope(
+        db,
+        request,
+        actor,
+        task.user_id,
+        action="read_task_events",
+        resource_id=task.id,
+    )
 
     # 获取事件列表
     event_service = EventService(db)

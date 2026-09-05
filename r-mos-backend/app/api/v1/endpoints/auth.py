@@ -21,7 +21,7 @@ from app.models.user import User
 from app.models.audit_event import AuditEvent
 from app.services.access_control import log_deny_event
 from app.services.login_throttle import login_throttle
-from app.services.identity.session_initializer import SessionInitializer
+from app.services.orchestration_app.session_initializer import SessionInitializer
 from app.schemas.auth import (
     LoginRequest,
     MessageResponse,

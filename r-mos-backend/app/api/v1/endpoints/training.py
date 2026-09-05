@@ -18,7 +18,7 @@ from app.services.ownership import ensure_user_scope
 from app.services.training.session_service import SessionService
 from app.services.training.submission_service import SubmissionService
 from app.services.training.feedback_generator import FeedbackGenerator, FeedbackRole
-from app.services.identity.class_membership import ClassMembershipService
+from app.services.teaching.class_membership import ClassMembershipService
 from app.services.memory.skill_profile_service import SkillProfileService
 from app.models.training_submission import TrainingSubmission
 from app.schemas.training_workbench import (

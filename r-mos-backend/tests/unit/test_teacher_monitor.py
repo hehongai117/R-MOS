@@ -8,7 +8,7 @@ from datetime import datetime
 
 import pytest
 
-from app.services.identity.teacher_monitor import TeacherMonitorService
+from app.services.teaching.teacher_monitor import TeacherMonitorService
 
 
 @pytest.mark.asyncio
@@ -24,8 +24,8 @@ async def test_teacher_monitor_publish_update_and_message(monkeypatch):
         captured["direct"].append((user_id, message))
         return 1
 
-    monkeypatch.setattr("app.services.identity.teacher_monitor.manager.broadcast_to_channel", fake_broadcast)
-    monkeypatch.setattr("app.services.identity.teacher_monitor.manager.send_to_user", fake_send)
+    monkeypatch.setattr("app.services.teaching.teacher_monitor.manager.broadcast_to_channel", fake_broadcast)
+    monkeypatch.setattr("app.services.teaching.teacher_monitor.manager.send_to_user", fake_send)
 
     await service.publish_session_update(
         class_id=101,
@@ -62,11 +62,11 @@ async def test_teacher_monitor_does_not_log_success_when_nothing_delivered(
         return 0
 
     monkeypatch.setattr(
-        "app.services.identity.teacher_monitor.manager.broadcast_to_channel",
+        "app.services.teaching.teacher_monitor.manager.broadcast_to_channel",
         deliver_nothing,
     )
     monkeypatch.setattr(
-        "app.services.identity.teacher_monitor.manager.send_to_user",
+        "app.services.teaching.teacher_monitor.manager.send_to_user",
         deliver_nothing,
     )
 

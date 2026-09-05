@@ -8,7 +8,6 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.task import Task
 from app.models.user import User
 from app.services.access_control import (
     raise_read_access_denied,
@@ -53,20 +52,21 @@ async def ensure_task_scope(
     db: AsyncSession,
     request: Request,
     actor: ActorContext,
-    task: Task,
+    owner_user_id: int | None,
     *,
     action: str,
+    resource_id: int | str,
 ) -> None:
     """Apply user ownership rules to a task; only admins may read ownerless tasks."""
     if "admin" in actor.roles or actor.account_role == "admin":
         return
-    if task.user_id is None:
+    if owner_user_id is None:
         await raise_read_access_denied(
             db,
             request,
             action=action,
             resource_type="task",
-            resource_id=task.id,
+            resource_id=resource_id,
             reason="unowned_task",
         )
 
@@ -74,10 +74,10 @@ async def ensure_task_scope(
         db,
         request,
         actor,
-        task.user_id,
+        owner_user_id,
         action=action,
         resource_type="task",
-        resource_id=task.id,
+        resource_id=resource_id,
     )
 
 
@@ -143,7 +143,7 @@ async def ensure_teacher_scope_over_student(
     管辖权判定复用 `ClassMembershipService.teacher_has_student_scope`
     （Enrollment ⋈ TeachingClass），与 `force-submit` 同一口径。
     """
-    from app.services.identity.class_membership import ClassMembershipService
+    from app.services.teaching.class_membership import ClassMembershipService
 
     if "admin" in actor.roles or actor.account_role == "admin":
         return

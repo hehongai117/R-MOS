@@ -14,7 +14,7 @@ from app.services.storage import get_storage
 from app.services.authz_guard import ActorContext, get_current_actor, actor_has_role
 from app.services.robot_service import RobotService
 from app.services.robot_asset_validator import validate_robot_assets
-from app.services.robot_visibility import get_visible_robot_or_404
+from app.services.robot.visibility import get_visible_robot_or_404
 from app.services.knowledge.project_ingest_service import project_ingest_service
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.models.robot_asset import RobotAsset, AssetType
