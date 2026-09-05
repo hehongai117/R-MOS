@@ -13,7 +13,7 @@ from app.core.exceptions import ReadAccessDeniedError, ResourceNotFoundError, Ro
 from app.models.approval import Approval
 from app.services.access_control import log_allow_event, log_deny_event
 from app.services.approval_service import ApprovalService
-from app.services.authz_guard import ActorContext, require_permission
+from app.services.authz_guard import ActorContext, actor_has_role, require_permission
 
 
 router = APIRouter()
@@ -23,8 +23,24 @@ class ApprovalDecisionRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=256)
 
 
-def _ensure_admin_or_auditor(actor: ActorContext) -> bool:
-    return bool({"admin", "auditor"}.intersection(actor.roles))
+def _can_read_approvals(actor: ActorContext) -> bool:
+    """读审批：管理员与审计员。**审计员的知情权不受职责分离限制。**"""
+    return actor_has_role(actor, "admin", "auditor")
+
+
+def _can_decide_approval(actor: ActorContext) -> bool:
+    """决策审批（批准／拒绝）：**仅管理员**。
+
+    审计 M-13 职责分离：此处原为「管理员或审计员」，使审计者同时是执行者——
+    审计员批准了自己将来要审计的操作，「谁监督监督者」无解。
+    审计员保留读权限（见 `_can_read_approvals`），失去的只是决策权。
+
+    两个函数都走 `actor_has_role()` 这个角色判定唯一入口，
+    它同时认 `account_role`（注册写入，正常用户唯一有值的来源）与 RBAC `roles`
+    （仅种子脚本写）。原实现直接读 `actor.roles`，导致**正常注册的管理员被一律拒绝**
+    ——这正是 `actor_has_role` 文档记载过的历史事故，本次在审批域重现。
+    """
+    return actor_has_role(actor, "admin")
 
 
 def _serialize_approval(approval: Approval) -> dict[str, Any]:
@@ -56,7 +72,7 @@ async def list_approvals(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(require_permission("approvals:read")),
 ):
-    if not _ensure_admin_or_auditor(actor):
+    if not _can_read_approvals(actor):
         reason = "missing_role:admin_or_auditor"
         await log_deny_event(
             db,
@@ -137,7 +153,7 @@ async def get_approval_detail(
         raise ResourceNotFoundError("Approval", id)
 
     request.state.trace_id = approval.trace_id or getattr(request.state, "trace_id", None)
-    if not _ensure_admin_or_auditor(actor):
+    if not _can_read_approvals(actor):
         reason = "missing_role:admin_or_auditor"
         await log_deny_event(
             db,
@@ -178,7 +194,7 @@ async def grant_approval(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(require_permission("approvals:grant")),
 ):
-    if not _ensure_admin_or_auditor(actor):
+    if not _can_decide_approval(actor):
         reason = "missing_role:admin_or_auditor"
         await log_deny_event(
             db,
@@ -194,7 +210,7 @@ async def grant_approval(
             resource_type="Approval",
             resource_id=id,
             reason=reason,
-            message="仅管理员或审计员可执行审批通过",
+            message="仅管理员可执行审批通过（审计员不得决策，职责分离）",
         )
 
     service = ApprovalService(db)
@@ -285,7 +301,7 @@ async def reject_approval(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(require_permission("approvals:reject")),
 ):
-    if not _ensure_admin_or_auditor(actor):
+    if not _can_decide_approval(actor):
         reason = "missing_role:admin_or_auditor"
         await log_deny_event(
             db,
@@ -301,7 +317,7 @@ async def reject_approval(
             resource_type="Approval",
             resource_id=id,
             reason=reason,
-            message="仅管理员或审计员可执行审批拒绝",
+            message="仅管理员可执行审批拒绝（审计员不得决策，职责分离）",
         )
 
     service = ApprovalService(db)

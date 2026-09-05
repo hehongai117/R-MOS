@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.exceptions import RoleRequiredError
 from app.models.audit_event import AuditEvent
 from app.services.access_control import log_allow_event, log_deny_event
-from app.services.authz_guard import ActorContext, require_permission
+from app.services.authz_guard import actor_has_role, ActorContext, require_permission
 
 
 router = APIRouter()
@@ -55,8 +55,10 @@ async def list_audit_events(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(require_permission("audit_events:read")),
 ):
-    allowed_roles = {"admin", "auditor"}
-    if not (actor.roles & allowed_roles):
+    # 审计 M-13：改走 `actor_has_role()` 唯一入口。原实现只读 `actor.roles`
+    # （仅种子脚本写），正常注册的管理员该集合为空会被一律拒绝。
+    # 这是只读端点，审计员保留知情权。
+    if not actor_has_role(actor, "admin", "auditor"):
         reason = "missing_role:admin_or_auditor"
         await log_deny_event(
             db,

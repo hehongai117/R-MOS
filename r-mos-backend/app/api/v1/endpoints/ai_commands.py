@@ -19,7 +19,7 @@ from app.models.audit_event import AuditEvent
 from app.models.command_runtime import AIToolCall
 from app.models.knowledge_chunk import AIKnowledgeChunk
 from app.services.access_control import log_allow_event, log_deny_event
-from app.services.authz_guard import ActorContext, get_current_actor, require_permission
+from app.services.authz_guard import actor_has_role, ActorContext, get_current_actor, require_permission
 
 
 router = APIRouter()
@@ -77,7 +77,12 @@ def _plan_tool_call(payload: CommandCreateRequest) -> PlannedToolCall:
 
 
 def _is_trace_replay_reader(actor: ActorContext) -> bool:
-    return bool({"admin", "auditor"} & actor.roles)
+    """审计 M-13：改走 `actor_has_role()` 唯一入口。
+
+    原实现只读 `actor.roles`（仅种子脚本写），正常注册的管理员该集合为空，
+    会被一律拒绝。这是只读端点，审计员保留知情权。
+    """
+    return actor_has_role(actor, "admin", "auditor")
 
 
 READ_TOOL_SUCCESS_RATE_METRIC_ID = "read_tool_success_rate"
@@ -112,7 +117,8 @@ async def get_ai_citation(
         raise ResourceNotFoundError("Citation", ref_id)
 
     owner_user_id = (chunk.owner_user_id or "").strip()
-    privileged = bool({"admin", "auditor"}.intersection(actor.roles))
+    # 审计 M-13：同上，改走唯一入口；此处是引用查看的越权豁免，属读路径。
+    privileged = actor_has_role(actor, "admin", "auditor")
     if owner_user_id and owner_user_id != str(actor.user_id) and not privileged:
         await log_deny_event(
             db,
