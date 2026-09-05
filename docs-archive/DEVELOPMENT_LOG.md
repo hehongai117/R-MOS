@@ -9915,3 +9915,32 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 未改 `DATABASE_URL`、CORS；未启动服务；未 commit、未 push
   - 执行期间出现一份非本任务产生的 `docs/handover/2026-09-04-remediation-phase-handover-v0.1.0.md` 未提交改动，本任务未触碰或覆盖
 - Next Step: 主审在允许连接固定 PostgreSQL 的环境原样复跑全量命令，确认 3 项数据库门禁；本任务不需要数据库迁移实跑
+
+## 2026-09-05 — 建立 R-MOS 董事会项目主干
+
+- DateTime: 2026-09-05 10:04:12 +0800
+- Task: `RMOS-S0-000`；把董事会确认的长期目标、S0～S6 顺序、轻量通过条件、偏离返回规则和新窗口接手方式固化为唯一项目主干。
+- Scope (files changed):
+  - `docs/governance/RMOS_PROJECT_MAINLINE.md`（新增）
+  - `docs/handover/RMOS_HANDOVER_TEMPLATE.md`（新增）
+  - `AGENTS.md`、`docs/ops/CODEX_RULES.md`（同步增加强制主干入口）
+  - `CLAUDE.md`（增加强制主干入口）
+  - `docs-archive/DEVELOPMENT_LOG.md`（本记录）
+- Commands Run:
+  - `cmp -s AGENTS.md docs/ops/CODEX_RULES.md`
+  - `git diff --check`
+  - 固定后端解释器执行主干与交接模板本地 Markdown 链接检查
+  - `rg` 核对 S0～S6、唯一当前阶段、唯一活动任务和三处强制入口
+  - `git diff --name-only`、`git status --short`
+- Tests:
+  - 主干和交接模板共 7 个本地链接，缺失 0。
+  - `AGENTS.md` 与 `docs/ops/CODEX_RULES.md` 内容一致。
+  - 当前阶段唯一为 S0；当前唯一活动任务为 `RMOS-S0-001`；S0～S6 顺序齐全。
+  - AGENTS、CLAUDE 和交接模板均指向同一个主干文件，没有建立第二份当前状态。
+  - 本批只修改治理和交接文档，没有修改应用、测试、依赖、配置、迁移或数据，因此未运行应用测试。
+- Result: PASS（限项目主干文件、入口和交接规则的结构及一致性）。阶段 S0 仍为 IN PROGRESS，不因本文件建立而自动通过。
+- Risks/Notes:
+  - 旧审计索引与 2026-09-04 董事会裁定的状态时间差仍存在，已明确纳入 `RMOS-S0-001`，本批未越界顺手改写。
+  - 当前应用检查点仍为 `616db22a...`；S0-01 尚未冻结整改后的正式基线或重算 26 项历史问题。
+  - 未启动服务、未连接数据库、未 push。
+- Next Step: 执行主干唯一下一步 `RMOS-S0-001`：统一现行状态，冻结整改后的当前基线，并生成唯一的当前问题清单；完成后申请董事会确认 S0。

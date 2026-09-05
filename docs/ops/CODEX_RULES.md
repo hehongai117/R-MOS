@@ -5,6 +5,10 @@
 > 生效优先级：AGENTS.md > docs/testing/ACCEPTANCE_CHARTER.md > 已批准且适用的 docs/adr/* > 当前任务明确指定的 docs/superpowers/plans/* 或 docs/plans/* > docs/testing/2026-08-10-rmos-single-school-five-robot-acceptance-matrix-v0.1.0.md > docs/plans/2026-08-10-rmos-single-school-five-robot-deployment-rollback-v0.1.0.md > docs/testing/TEST_PLAN.md > docs/testing/TEST_REPORT.md > docs/audit/* > docs-archive/DEVELOPMENT_LOG.md > docs-archive/* 与 Git 历史
 > “任何任务必须对齐 docs/testing/ACCEPTANCE_CHARTER.md 的门禁与证据要求。”
 
+## 项目主干（每次任务强制读取）
+
+开始任何 R-MOS 工作前，必须完整读取 `docs/governance/RMOS_PROJECT_MAINLINE.md`。长期目标、当前阶段和唯一下一步只由该文件定义；任务无法对应当前主干任务编号时，停止执行并向董事会报告。交接文件、计划和历史状态不得覆盖项目主干。
+
 ---
 
 ## 0) 当前项目状态快照（2026-08-25）

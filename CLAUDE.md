@@ -1,5 +1,9 @@
 # R-MOS (Robot Maintenance Operating System)
 
+> **项目主干（每次任务强制读取）：** `docs/governance/RMOS_PROJECT_MAINLINE.md`
+>
+> 长期目标、当前阶段和唯一下一步只由项目主干定义。本文件下方的功能进度和历史快照只提供背景；与项目主干冲突时，不得据此改变当前任务方向。
+
 ## AI 协作规范
 
 - **模型分工：** 所有 Plan 编写使用 Fable 5 模型（claude-fable-5）；所有 Task 执行默认使用最新 Sonnet 模型（当前为 Sonnet 4.6）；遇到非常复杂的 Task 可切换为 Fable 5 模型；执行过程中根据任务复杂度自动切换，无需用户干预。
