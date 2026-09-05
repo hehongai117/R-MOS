@@ -140,21 +140,6 @@ export interface AgentResponseV2 {
   error?: string;
 }
 
-export interface TaskContext {
-  task_id: string;
-  trace_id: string;
-  state: string;
-  user_id: string;
-  skill_id?: string;
-  current_step: number;
-  total_steps: number;
-  budget_used_ms: number;
-  budget_limit_ms: number;
-  created_at: number;
-  started_at?: number;
-  completed_at?: number;
-}
-
 export interface PolicyDecision {
   allowed: boolean;
   risk_level: 'R0' | 'R1' | 'R2' | 'R3';
@@ -208,59 +193,6 @@ export const sendAgentRequestV2 = async (request: AgentRequestV2): Promise<Agent
     trace_id: result.trace_id || payload.trace_id,
     from_cache: result.from_cache ?? payload.from_cache,
   };
-};
-
-/**
- * Create a new task with FSM
- */
-export const createTaskV2 = async (
-  userId: string,
-  skillId?: string,
-  budgetLimitMs: number = 300000
-): Promise<{
-  task_id: string;
-  trace_id: string;
-  state: string;
-  budget_limit_ms: number;
-}> => {
-  const response = await client.post<{
-    task_id: string;
-    trace_id: string;
-    state: string;
-    budget_limit_ms: number;
-  }>('/agent/v2/task/create', null, {
-    params: { user_id: userId, skill_id: skillId, budget_limit_ms: budgetLimitMs }
-  });
-  return response.data;
-};
-
-/**
- * Transition task state
- */
-export const transitionTaskState = async (
-  taskId: string,
-  event: string
-): Promise<{
-  task_id: string;
-  state: string;
-  message: string;
-}> => {
-  const response = await client.post<{
-    task_id: string;
-    state: string;
-    message: string;
-  }>(`/agent/v2/task/${taskId}/transition`, null, {
-    params: { event }
-  });
-  return response.data;
-};
-
-/**
- * Get task status
- */
-export const getTaskStatusV2 = async (taskId: string): Promise<TaskContext> => {
-  const response = await client.get<TaskContext>(`/agent/v2/task/${taskId}`);
-  return response.data;
 };
 
 /**
