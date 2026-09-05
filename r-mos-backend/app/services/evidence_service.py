@@ -67,11 +67,28 @@ class EvidenceService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def list_bundles(self, page: int, size: int) -> EvidenceBundleListResponse:
+    async def list_bundles(
+        self,
+        page: int,
+        size: int,
+        *,
+        owner_user_id: int,
+        school_name: str | None,
+        include_all: bool,
+    ) -> EvidenceBundleListResponse:
         count_query = select(func.count()).select_from(EvidenceBundle)
+        query = select(EvidenceBundle)
+        if not include_all:
+            scope_filter = (
+                EvidenceBundle.school_name == school_name
+                if school_name is not None
+                else EvidenceBundle.created_by_user_id == owner_user_id
+            )
+            count_query = count_query.where(scope_filter)
+            query = query.where(scope_filter)
         total = (await self.db.execute(count_query)).scalar() or 0
 
-        query = select(EvidenceBundle).offset((page - 1) * size).limit(size)
+        query = query.offset((page - 1) * size).limit(size)
         rows = (await self.db.execute(query)).scalars().all()
 
         items = [

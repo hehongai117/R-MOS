@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.services.ownership import (
     ensure_role_for_write,
     ensure_teacher_scope_over_student,
+    ensure_user_scope,
     ensure_write_owner,
 )
 from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
@@ -854,13 +855,25 @@ async def grade_attempt(
 )
 async def get_attempt_evidence(
     attempt_id: int,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
 ):
     service = TeachingService(db)
     try:
         attempt = await service.get_attempt(attempt_id)
     except ResourceNotFoundError as exc:
         _raise_not_found(exc)
+
+    await ensure_user_scope(
+        db,
+        http_request,
+        actor,
+        attempt.student_id,
+        action="read_attempt_evidence",
+        resource_type="AssignmentAttempt",
+        resource_id=attempt_id,
+    )
 
     async def load_latest_link() -> EvidenceLink | None:
         result = await db.execute(

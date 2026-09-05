@@ -1,7 +1,7 @@
 """RMOS-S3-002 模块 H：27 条路由的 HTTP 行为安全网。
 
-本文件只通过真实 HTTP 请求固定当前行为。疑似缺陷不在本批修复；对应测试的
-docstring 会明确写出当前行为和待模块 H 改造时处置的事项。
+本文件只通过真实 HTTP 请求固定行为。RMOS-S3-002 第二步已把 G1-G4 改为批准后的
+安全规则；未纳入本批的疑似缺陷继续在对应 docstring 中明确标注。
 """
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from app.models.rbac import Permission, Role, RolePermission, UserRole
 from app.models.school import School
 from app.models.teaching import EvidenceLink
 from app.models.timeline import MultimodalTimeline, TimelineSegment
+from app.models.user import User
 from app.services.evidence_enforcement import evidence_enforcer
 from app.services.teaching_service import TeachingService
 from app.services.training.session_service import SessionService
@@ -35,6 +36,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.characterization]
 
 NOW = "2026-09-05T08:00:00Z"
 HASH = "a" * 64
+OTHER_SCHOOL_NAME = "模块 H 其他学校"
 
 
 @pytest.fixture(scope="module")
@@ -50,6 +52,7 @@ def module_h_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             await conn.execute(School.__table__.insert().values(name=E2E_SCHOOL_NAME))
+            await conn.execute(School.__table__.insert().values(name=OTHER_SCHOOL_NAME))
 
     asyncio.run(_init())
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -65,6 +68,16 @@ def module_h_env() -> tuple[TestClient, async_sessionmaker[AsyncSession]]:
     app.dependency_overrides.clear()
     app.state.test_sessionmaker = None
     asyncio.run(engine.dispose())
+
+
+async def _set_user_school(
+    session_factory: async_sessionmaker[AsyncSession], *, user_id: int, school_name: str
+) -> None:
+    async with session_factory() as session:
+        user = await session.get(User, user_id)
+        assert user is not None
+        user.school_name = school_name
+        await session.commit()
 
 
 async def _grant_permissions(
@@ -105,6 +118,16 @@ def actors(module_h_env) -> dict[str, int | str]:
     other_id, other_email, other_login = register_and_login(
         client, email_prefix="module_h_other"
     )
+    cross_school_id, _, cross_school_login = register_and_login(
+        client, email_prefix="module_h_cross_school"
+    )
+    asyncio.run(
+        _set_user_school(
+            session_factory,
+            user_id=cross_school_id,
+            school_name=OTHER_SCHOOL_NAME,
+        )
+    )
     student_id, _, student_login = register_and_login(
         client,
         email_prefix="module_h_student",
@@ -139,6 +162,8 @@ def actors(module_h_env) -> dict[str, int | str]:
         "other_id": other_id,
         "other_email": other_email,
         "other_token": other_login["access_token"],
+        "cross_school_id": cross_school_id,
+        "cross_school_token": cross_school_login["access_token"],
         "student_id": student_id,
         "student_token": student_login["access_token"],
         "admin_id": admin_id,
@@ -243,25 +268,25 @@ def test_core_record_create_rejects_invalid_body(
 
 
 @pytest.mark.parametrize(("name", "path", "payload_factory", "id_key"), CORE_RESOURCES)
-def test_core_record_create_allows_student_current_behavior(
+def test_core_record_create_rejects_student_after_h_auth_01_fix(
     module_h_env, actors, name, path, payload_factory, id_key
 ) -> None:
-    """这是当前行为，疑似缺陷 H-AUTH-01：三类记录没有角色级写入限制，待模块 H 改造时处置。"""
+    """原断言固化 H-AUTH-01：学生创建三类记录会成功；修复后必须拒绝。"""
     client, _ = module_h_env
     response = client.post(
         path,
         headers=_auth(actors["student_token"]),
         json=payload_factory(f"student-{name}"),
     )
-    assert response.status_code == 201, response.text
-    assert response.json()[id_key]
+    assert response.status_code == 403, response.text
+    assert response.json()["error_type"] == "WriteAccessDeniedError"
 
 
 @pytest.mark.parametrize(("name", "path", "payload_factory", "id_key"), CORE_RESOURCES)
-def test_core_record_list_and_detail_are_cross_user_visible_current_behavior(
+def test_core_record_reads_enforce_school_scope_and_allow_same_school_teacher(
     module_h_env, actors, name, path, payload_factory, id_key
 ) -> None:
-    """这是当前行为，疑似缺陷 H-AUTH-02：列表和详情未按创建者过滤，待模块 H 改造时处置。学校边界未在本用例覆盖。"""
+    """原测试只证明同校教师可读，未覆盖 H-AUTH-02；修复后补跨校拒绝，保留同校放行。"""
     client, _ = module_h_env
     created = client.post(
         path,
@@ -281,6 +306,20 @@ def test_core_record_list_and_detail_are_cross_user_visible_current_behavior(
     detail = client.get(f"{path}/{record_id}", headers=_auth(actors["other_token"]))
     assert detail.status_code == 200, detail.text
     assert detail.json()[id_key] == record_id
+
+    cross_school_listing = client.get(
+        path,
+        headers=_auth(actors["cross_school_token"]),
+        params={"page": 1, "size": 100},
+    )
+    assert cross_school_listing.status_code == 200, cross_school_listing.text
+    assert record_id not in {item[id_key] for item in cross_school_listing.json()["items"]}
+
+    cross_school_detail = client.get(
+        f"{path}/{record_id}", headers=_auth(actors["cross_school_token"])
+    )
+    assert cross_school_detail.status_code == 404, cross_school_detail.text
+    assert cross_school_detail.json()["error_type"] == "ReadAccessDeniedError"
 
 
 @pytest.mark.parametrize(("name", "path", "payload_factory", "id_key"), CORE_RESOURCES)
@@ -377,26 +416,41 @@ def test_create_assessment_provider_rejects_invalid_body(module_h_env, actors) -
     assert response.status_code == 422
 
 
-def test_provider_list_and_detail_are_cross_user_visible_current_behavior(module_h_env, actors) -> None:
-    """这是当前行为，疑似缺陷 H-AUTH-03：学生可读取机构列表、详情和联系方式，待模块 H 改造时处置。学校边界未在本用例覆盖。"""
+def test_provider_reads_reject_student_and_allow_teacher(module_h_env, actors) -> None:
+    """原断言固化 H-AUTH-03：学生可读机构及联系人；修复后学生拒绝、教师放行。"""
     client, _ = module_h_env
     provider = _create_provider(client, actors, "cross-user-read")
     provider_id = provider["provider_id"]
 
-    listing = client.get(
+    student_listing = client.get(
         "/api/v1/assessment-providers",
         headers=_auth(actors["student_token"]),
         params={"size": 100},
     )
-    assert listing.status_code == 200
-    assert provider_id in {item["provider_id"] for item in listing.json()["items"]}
+    assert student_listing.status_code == 403
+    assert student_listing.json()["error_type"] == "RoleRequiredError"
 
-    detail = client.get(
+    student_detail = client.get(
         f"/api/v1/assessment-providers/{provider_id}",
         headers=_auth(actors["student_token"]),
     )
-    assert detail.status_code == 200
-    assert detail.json()["provider_name"] == provider["provider_name"]
+    assert student_detail.status_code == 403
+    assert student_detail.json()["error_type"] == "RoleRequiredError"
+
+    teacher_listing = client.get(
+        "/api/v1/assessment-providers",
+        headers=_auth(actors["owner_token"]),
+        params={"size": 100},
+    )
+    assert teacher_listing.status_code == 200
+    assert provider_id in {item["provider_id"] for item in teacher_listing.json()["items"]}
+
+    teacher_detail = client.get(
+        f"/api/v1/assessment-providers/{provider_id}",
+        headers=_auth(actors["owner_token"]),
+    )
+    assert teacher_detail.status_code == 200
+    assert teacher_detail.json()["contact_email"] == provider["contact_email"]
 
 
 def test_get_assessment_provider_missing_returns_404(module_h_env, actors) -> None:
@@ -495,27 +549,61 @@ def test_create_assessment_rejects_invalid_body(module_h_env, actors) -> None:
     assert response.status_code == 422
 
 
-def test_create_assessment_accepts_missing_evidence_references_current_behavior(module_h_env, actors) -> None:
-    """这是当前行为，疑似缺陷 H-EVID-01：不存在的证据引用仍可用于评估，待模块 H 改造时处置。"""
+@pytest.mark.parametrize(
+    "reference_field",
+    ("evidence_bundle_ids", "incident_ids", "observation_ids"),
+)
+def test_create_assessment_rejects_each_missing_reference(
+    module_h_env, actors, reference_field
+) -> None:
+    """原断言固化 H-EVID-01：三类不存在引用仍创建成功；修复后逐类返回 404。"""
     client, _ = module_h_env
     provider = _create_provider(client, actors, "missing-references")
     payload = _assessment_payload(provider["provider_id"], "missing-references")
-    payload["evidence_bundle_ids"] = [f"missing-{uuid4()}"]
-    payload["incident_ids"] = [f"missing-{uuid4()}"]
-    payload["observation_ids"] = [f"missing-{uuid4()}"]
+    payload[reference_field] = [f"missing-{uuid4()}"]
+    response = client.post(
+        "/api/v1/assessments",
+        headers=_auth(actors["owner_token"]),
+        json=payload,
+    )
+    assert response.status_code == 404, response.text
+    assert response.json()["error_type"] == "ResourceNotFoundError"
+
+
+def test_create_assessment_accepts_existing_references(module_h_env, actors) -> None:
+    client, _ = module_h_env
+    references: dict[str, list[str]] = {}
+    for name, path, payload_factory, id_key in CORE_RESOURCES:
+        created = client.post(
+            path,
+            headers=_auth(actors["owner_token"]),
+            json=payload_factory(f"assessment-reference-{name}"),
+        )
+        assert created.status_code == 201, created.text
+        field = {
+            "evidence": "evidence_bundle_ids",
+            "incident": "incident_ids",
+            "observation": "observation_ids",
+        }[name]
+        references[field] = [created.json()[id_key]]
+
+    provider = _create_provider(client, actors, "existing-references")
+    payload = _assessment_payload(provider["provider_id"], "existing-references") | references
     response = client.post(
         "/api/v1/assessments",
         headers=_auth(actors["owner_token"]),
         json=payload,
     )
     assert response.status_code == 201, response.text
-    assert response.json()["evidence_bundle_ids"] == payload["evidence_bundle_ids"]
+    assert response.json()["evidence_bundle_ids"] == references["evidence_bundle_ids"]
+    assert response.json()["incident_ids"] == references["incident_ids"]
+    assert response.json()["observation_ids"] == references["observation_ids"]
 
 
-def test_assessment_list_detail_and_audit_are_cross_user_visible_current_behavior(
+def test_assessment_reads_reject_other_student_and_allow_same_school_teacher(
     module_h_env, actors
 ) -> None:
-    """这是当前行为，疑似缺陷 H-AUTH-04：非创建者学生可读取评估及审计，待模块 H 改造时处置。学校边界未在本用例覆盖。"""
+    """原断言固化 H-AUTH-04：非创建者学生可读评估和审计；修复后拒绝并保留同校教师读取。"""
     client, _ = module_h_env
     assessment = _create_assessment(client, actors, "cross-user-read")
     assessment_id = assessment["assessment_id"]
@@ -526,23 +614,36 @@ def test_assessment_list_detail_and_audit_are_cross_user_visible_current_behavio
         params={"size": 100},
     )
     assert listing.status_code == 200
-    assert assessment_id in {item["assessment_id"] for item in listing.json()["items"]}
+    assert assessment_id not in {item["assessment_id"] for item in listing.json()["items"]}
 
     detail = client.get(
         f"/api/v1/assessments/{assessment_id}",
         headers=_auth(actors["student_token"]),
     )
-    assert detail.status_code == 200
-    assert detail.json()["report_uri"] == assessment["report_uri"]
+    assert detail.status_code == 404
+    assert detail.json()["error_type"] == "ReadAccessDeniedError"
 
     audit = client.get(
         f"/api/v1/assessments/{assessment_id}/audit",
         headers=_auth(actors["student_token"]),
     )
-    assert audit.status_code == 200
-    assert audit.json()["assessment_id"] == assessment_id
-    assert audit.json()["total"] == 1
-    assert audit.json()["events"][0]["action"] == "submitted"
+    assert audit.status_code == 404
+    assert audit.json()["error_type"] == "ReadAccessDeniedError"
+
+    teacher_detail = client.get(
+        f"/api/v1/assessments/{assessment_id}",
+        headers=_auth(actors["other_token"]),
+    )
+    assert teacher_detail.status_code == 200
+    assert teacher_detail.json()["report_uri"] == assessment["report_uri"]
+
+    teacher_audit = client.get(
+        f"/api/v1/assessments/{assessment_id}/audit",
+        headers=_auth(actors["other_token"]),
+    )
+    assert teacher_audit.status_code == 200
+    assert teacher_audit.json()["assessment_id"] == assessment_id
+    assert teacher_audit.json()["total"] == 1
 
 
 def test_get_assessment_missing_returns_404(module_h_env, actors) -> None:
@@ -567,7 +668,7 @@ STATUS_CHANGE = {"reason_code": "operator_error", "reason_note": "模块 H 行�
 
 
 def test_dispute_assessment_allows_owner_and_returns_content(module_h_env, actors) -> None:
-    """这是当前行为，疑似缺陷 H-AUDIT-01：状态变更审计记为 system 而非真实操作者，待模块 H 改造时处置。"""
+    """原断言固化 H-AUDIT-01：争议操作记为 system；修复后必须记录令牌用户。"""
     client, _ = module_h_env
     assessment = _create_assessment(client, actors, "dispute-owner")
     assessment_id = assessment["assessment_id"]
@@ -585,8 +686,8 @@ def test_dispute_assessment_allows_owner_and_returns_content(module_h_env, actor
     )
     event = audit.json()["events"][-1]
     assert event["action"] == "disputed"
-    assert event["actor_type"] == "system"
-    assert event["actor_id"] == "system"
+    assert event["actor_type"] == "user"
+    assert event["actor_id"] == str(actors["owner_id"])
 
 
 def test_dispute_assessment_rejects_other_teacher(module_h_env, actors) -> None:
@@ -639,6 +740,15 @@ def test_admin_status_change_allows_and_returns_content(
     assert response.status_code == 200, response.text
     assert response.json()["assessment_id"] == assessment["assessment_id"]
     assert response.json()["status"] == expected_status
+
+    audit = client.get(
+        f"/api/v1/assessments/{assessment['assessment_id']}/audit",
+        headers=_auth(actors["admin_token"]),
+    )
+    event = audit.json()["events"][-1]
+    assert event["action"] == {"revoke": "revoked", "reinstate": "reinstated"}[action]
+    assert event["actor_type"] == "user"
+    assert event["actor_id"] == str(actors["admin_id"])
 
 
 @pytest.mark.parametrize("action", ("revoke", "reinstate"))
@@ -825,8 +935,10 @@ async def _seed_attempt_evidence(
         return attempt.id, bundle_id
 
 
-def test_attempt_evidence_is_cross_user_visible_current_behavior(module_h_env, actors) -> None:
-    """这是当前行为，疑似缺陷 H-AUTH-05：他人可读取学生尝试证据，待模块 H 改造时处置。"""
+def test_attempt_evidence_rejects_cross_school_teacher_and_allows_same_school_teacher(
+    module_h_env, actors
+) -> None:
+    """原断言仅证明同校教师可读；修复后该放行保留，并补 H-AUTH-05 的跨校拒绝。"""
     client, session_factory = module_h_env
     attempt_id, bundle_id = asyncio.run(
         _seed_attempt_evidence(
@@ -835,6 +947,13 @@ def test_attempt_evidence_is_cross_user_visible_current_behavior(module_h_env, a
             student_id=actors["student_id"],
         )
     )
+    cross_school_response = client.get(
+        f"/api/v1/attempts/{attempt_id}/evidence",
+        headers=_auth(actors["cross_school_token"]),
+    )
+    assert cross_school_response.status_code == 404, cross_school_response.text
+    assert cross_school_response.json()["error_type"] == "ReadAccessDeniedError"
+
     response = client.get(
         f"/api/v1/attempts/{attempt_id}/evidence",
         headers=_auth(actors["other_token"]),

@@ -1,6 +1,6 @@
 # R-MOS 当前测试报告
 
-- 版本：0.1.4
+- 版本：0.1.5
 - 建立日期：2026-08-21
 - 状态：Active
 - 上位规则：`docs/testing/ACCEPTANCE_CHARTER.md`
@@ -444,3 +444,42 @@
   - 全量汇总原文：`3 failed, 992 passed in 82.50s (0:01:22)`。
 - Failure Handling：3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`；均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`。未跳过、改写或放宽测试。
 - Result：**PASS（本任务行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。除已知沙箱数据库失败外 992 项全绿；本批不关闭整体 E1，不代表预生产、真机、课堂或生产验收。
+
+### RMOS-S3-002-H-FIX｜模块 H 第二步 G1-G4 根因修复
+
+- Test ID / 门禁编号：`RMOS-S3-002-H-G1`、`RMOS-S3-002-H-G2`、`RMOS-S3-002-H-G3`、`RMOS-S3-002-H-G4`
+- 提交：以 `b711b6e67bf843daad533e5621339a03f523ef02` 为基线的未提交工作树；分支 `audit/phase3-auth-control-realtime`。按用户要求未 commit、未 push
+- 执行环境：本 worktree 的 `r-mos-backend`；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；加载主工作区 `.env` 后执行 `unset CORS_ORIGINS; export DEBUG=true`
+- 修复范围：
+  - G1：证据包、事件、观测、评估及评估审计、学生尝试证据的读路径使用既有归属守卫；同校教师保留读取，其他学生或跨校教师拒绝
+  - G2：证据包、事件、观测创建及评估机构读取使用既有角色判定入口；学生拒绝，教师放行
+  - G3：评估撤销、争议、恢复使用已认证用户身份写入审计；不再记为 `system`
+  - G4：创建评估时逐类校验证据包、事件、观测引用；不存在返回 404，存在且可读的引用放行
+- Commands Run：
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_h_behavior.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_h_behavior.py tests/unit/test_teaching_api.py tests/unit/test_teaching_characterization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m compileall -q app tests/e2e/test_module_h_behavior.py`
+  - `git diff --check`、`git diff --name-only`、`git status --short`
+- Tests / 关键原始输出：
+  - 改动前模块 H 基线：`70 passed in 0.95s`
+  - RED：`15 failed, 58 passed in 1.25s`，G1-G4 的旧漏洞断言被新规则准确击穿
+  - GREEN：`73 passed in 1.09s`
+  - 模块 H 与受影响教学链路：`100 passed in 8.75s`
+  - 教学链路复验：`65 passed in 13.33s`
+  - 全量汇总原文：`3 failed, 1068 passed in 86.09s (0:01:26)`
+- 被修改的既有断言分类：
+  - `H-AUTH-01`：学生创建三类核心记录的 `201 + 记录编号` 改为 `403 + WriteAccessDeniedError`；两条均为“测试固化漏洞”
+  - `H-AUTH-03`：学生读取机构列表、详情的 `200 + 数据内容` 改为 `403 + RoleRequiredError`；四条均为“测试固化漏洞”
+  - `H-EVID-01`：不存在引用的 `201 + 回显引用` 改为逐类 `404 + ResourceNotFoundError`；两条均为“测试固化漏洞”
+  - `H-AUTH-04`：其他学生能在列表看到评估、详情和审计返回 200 的断言，改为列表不含目标、详情和审计均 `404 + ReadAccessDeniedError`；相关旧断言均为“测试固化漏洞”
+  - `H-AUDIT-01`：争议操作审计的 `system/system` 改为 `user/真实用户编号`；两条均为“测试固化漏洞”
+  - 其余改动是补充拒绝/放行断言或把旧测试数据中的虚构学生编号替换为真实注册学生；原业务断言保持不变
+  - 没有任何既有断言因“生产改错了”而修改；两次全量回归暴露的 5 项教学测试失败均通过修正测试数据前置条件解决，没有放宽断言
+- 分层依赖重测：跨模块边总数 `94`；`service -> service` 跨模块边 `45`；业务模块强连通分量 `0`。与 RMOS-S3-001 基线一致，没有新增跨模块 `service -> service` 边
+- Failure Handling：
+  - 首轮全量 `8 failed, 1063 passed`，其中 5 项旧教学测试使用数据库中不存在的学生编号；改为注册真实学生后复验通过
+  - 次轮全量 `4 failed, 1067 passed`，剩余 1 项同类测试漏传新学生编号；补齐后复验通过
+  - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`；均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`，与任务给定的环境限制一致
+- Result：**PASS（RMOS-S3-002 模块 H 第二步 G1-G4 范围）/ 环境受限（3 项 PostgreSQL 门禁）**。未新增抽象层、依赖、迁移或跨模块服务依赖；未触碰明确排除的 Agent 证据状态共享问题。本条不自动推进 S3，也不代表预生产、真机、课堂或生产验收。

@@ -438,6 +438,12 @@ def test_class_write_permission_denied_records_real_resource_id(client):
 
 def test_get_attempt_evidence(client):
     Session = client.app.state.test_sessionmaker
+    student_id, _, _ = register_and_login(
+        client,
+        email_prefix="attempt_evidence_student",
+        role="student",
+        teacher_id=client.actor_id,
+    )
 
     async def setup_data():
         async with Session() as session:
@@ -484,14 +490,14 @@ def test_get_attempt_evidence(client):
 
             task_service = TaskService(session)
             task = await task_service.create_task(
-                TaskCreate(title="任务一", sop_id=sop.id, user_id=1, pass_score=70)
+                TaskCreate(title="任务一", sop_id=sop.id, user_id=student_id, pass_score=70)
             )
             task.assignment_id = assignment.id
             await session.commit()
 
             attempt = await teaching_service.create_attempt(
                 assignment_id=assignment.id,
-                student_id=101,
+                student_id=student_id,
                 task_id=task.id,
             )
 
@@ -547,7 +553,9 @@ def test_get_attempt_evidence_link_not_found(client):
     assert resp.status_code == 404
 
 
-async def _setup_completed_attempt(session, *, set_task_assignment: bool) -> tuple[int, int]:
+async def _setup_completed_attempt(
+    session, *, student_id: int, set_task_assignment: bool
+) -> tuple[int, int]:
     sop_service = SOPService(session)
     sop = await sop_service.create_sop(
         SOPCreate(
@@ -591,7 +599,7 @@ async def _setup_completed_attempt(session, *, set_task_assignment: bool) -> tup
 
     task_service = TaskService(session)
     task = await task_service.create_task(
-        TaskCreate(title="证据兜底任务", sop_id=sop.id, user_id=1, pass_score=70)
+        TaskCreate(title="证据兜底任务", sop_id=sop.id, user_id=student_id, pass_score=70)
     )
     if set_task_assignment:
         task.assignment_id = assignment.id
@@ -599,7 +607,7 @@ async def _setup_completed_attempt(session, *, set_task_assignment: bool) -> tup
 
     attempt = await teaching_service.create_attempt(
         assignment_id=assignment.id,
-        student_id=201,
+        student_id=student_id,
         task_id=task.id,
     )
 
@@ -619,11 +627,17 @@ async def _setup_completed_attempt(session, *, set_task_assignment: bool) -> tup
 
 def test_evidence_completed_attempt_without_link_returns_200(client):
     Session = client.app.state.test_sessionmaker
+    student_id, _, _ = register_and_login(
+        client,
+        email_prefix="completed_attempt_evidence_student",
+        role="student",
+        teacher_id=client.actor_id,
+    )
 
     async def setup_data():
         async with Session() as session:
             attempt_id, task_id = await _setup_completed_attempt(
-                session, set_task_assignment=False
+                session, student_id=student_id, set_task_assignment=False
             )
             # 模拟历史数据缺失 EvidenceLink 的场景
             await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
@@ -648,11 +662,17 @@ def test_evidence_completed_attempt_without_link_returns_200(client):
 
 def test_report_then_evidence_creates_link_and_returns_200(client):
     Session = client.app.state.test_sessionmaker
+    student_id, _, _ = register_and_login(
+        client,
+        email_prefix="report_evidence_student",
+        role="student",
+        teacher_id=client.actor_id,
+    )
 
     async def setup_data():
         async with Session() as session:
             attempt_id, task_id = await _setup_completed_attempt(
-                session, set_task_assignment=False
+                session, student_id=student_id, set_task_assignment=False
             )
             await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
             await session.commit()
@@ -681,11 +701,17 @@ def test_report_then_evidence_creates_link_and_returns_200(client):
 
 def test_report_and_evidence_are_idempotent(client):
     Session = client.app.state.test_sessionmaker
+    student_id, _, _ = register_and_login(
+        client,
+        email_prefix="idempotent_evidence_student",
+        role="student",
+        teacher_id=client.actor_id,
+    )
 
     async def setup_data():
         async with Session() as session:
             attempt_id, task_id = await _setup_completed_attempt(
-                session, set_task_assignment=False
+                session, student_id=student_id, set_task_assignment=False
             )
             await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
             await session.commit()
@@ -792,7 +818,7 @@ def test_get_attempt_diagnosis_fallback_generates_evidence(client):
     async def setup_data():
         async with Session() as session:
             attempt_id, _task_id = await _setup_completed_attempt(
-                session, set_task_assignment=False
+                session, student_id=client.actor_id, set_task_assignment=False
             )
             await session.execute(delete(EvidenceLink).where(EvidenceLink.attempt_id == attempt_id))
             await session.commit()

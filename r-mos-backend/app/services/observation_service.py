@@ -25,11 +25,28 @@ class ObservationService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def list_observations(self, page: int, size: int) -> ObservationListResponse:
+    async def list_observations(
+        self,
+        page: int,
+        size: int,
+        *,
+        owner_user_id: int,
+        school_name: str | None,
+        include_all: bool,
+    ) -> ObservationListResponse:
         count_query = select(func.count()).select_from(Observation)
+        query = select(Observation)
+        if not include_all:
+            scope_filter = (
+                Observation.school_name == school_name
+                if school_name is not None
+                else Observation.created_by_user_id == owner_user_id
+            )
+            count_query = count_query.where(scope_filter)
+            query = query.where(scope_filter)
         total = (await self.db.execute(count_query)).scalar() or 0
 
-        query = select(Observation).offset((page - 1) * size).limit(size)
+        query = query.offset((page - 1) * size).limit(size)
         rows = (await self.db.execute(query)).scalars().all()
 
         items = [

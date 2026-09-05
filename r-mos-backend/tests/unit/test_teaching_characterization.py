@@ -1208,7 +1208,15 @@ def test_get_attempt_evidence_no_task_no_link_returns_404():
     """
     client, sf = _build_client()
     try:
-        _, _, attempt_id, _ = asyncio.run(_seed_attempt(sf, student_id=9001, task_id=None))
+        student_id, _, _ = register_and_login(
+            client,
+            email_prefix="char_attempt_evidence_student",
+            role="student",
+            teacher_id=client.actor_id,
+        )
+        _, _, attempt_id, _ = asyncio.run(
+            _seed_attempt(sf, student_id=student_id, task_id=None)
+        )
 
         resp = client.get(f"/api/v1/attempts/{attempt_id}/evidence")
         assert resp.status_code == 404

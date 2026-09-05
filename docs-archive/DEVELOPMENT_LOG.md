@@ -9981,3 +9981,40 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 本批不改角色与权限判定，不触碰 M-13；不新增依赖、数据结构、迁移或抽象；未改 `DATABASE_URL`、CORS，未启动服务，未 commit、未 push
   - 全量测试后 `data/knowledge_store.json` 未出现于工作树
 - Next Step: 用户验收当前未提交差异；在无沙箱限制环境按同一命令复跑后端全量以取得 995 通过证据，再单独安排第二批 M-13。
+
+## 2026-09-05 — RMOS-S3-002 模块 H 第二步 G1-G4 根因修复
+
+- DateTime: 2026-09-05 21:47:59 +0800
+- Task: `RMOS-S3-002（模块 H 第二步：修复）`；按根因组修复读路径归属、角色门、评估状态审计身份和评估引用完整性，不处理本批明确排除的 Agent 证据状态共享问题。
+- Scope (files changed):
+  - `r-mos-backend/app/api/v1/endpoints/{assessments,evidence,incidents,observations,teaching_roster}.py`
+  - `r-mos-backend/app/services/{assessment_service,evidence_service,incident_service,observation_service}.py`
+  - `r-mos-backend/tests/e2e/test_module_h_behavior.py`
+  - `r-mos-backend/tests/unit/{test_teaching_api,test_teaching_characterization}.py`
+  - `docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - 每次 pytest 均在本 worktree 的 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_h_behavior.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_h_behavior.py tests/unit/test_teaching_api.py tests/unit/test_teaching_characterization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_teaching_api.py tests/unit/test_teaching_characterization.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m compileall -q app tests/e2e/test_module_h_behavior.py`
+  - `git diff --check`、`git diff --name-only`、`git status --short`
+- Tests:
+  - 模块 H 基线：`70 passed in 0.95s`
+  - RED：`15 failed, 58 passed in 1.25s`
+  - GREEN：`73 passed in 1.09s`
+  - 模块 H 与受影响教学链路：`100 passed in 8.75s`
+  - 教学链路复验：`65 passed in 13.33s`
+  - 全量汇总原文：`3 failed, 1068 passed in 86.09s (0:01:26)`
+  - 分层依赖：跨模块边 `94`，`service -> service` 跨模块边 `45`，业务模块强连通分量 `0`；与上一批基线一致
+- Result: **PASS（本任务 G1-G4 行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。G1-G4 的拒绝与放行行为均由 HTTP 测试覆盖，通过数达到 1068；无功能回归失败。
+- Risks/Notes:
+  - 全量最终 3 项失败均为任务预先声明的沙箱限制：连接 `::1:5432` 被 `PermissionError: [Errno 1] Operation not permitted` 拒绝；未跳过、改写或放宽测试
+  - 改动复用 `ownership.py` 和 `authz_guard.py` 现有入口，没有新增抽象层、依赖、迁移或跨模块 `service -> service` 边
+  - 所有被修改的旧行为断言都属于“测试固化漏洞”；没有“生产改错了”而需要放宽的断言。5 项旧测试仅修正了虚构学生编号的前置数据，原业务断言不变
+  - 结构性改动为零，本批只有功能修复与相应测试/证据更新，无需拆分独立结构批
+  - 未触碰任务明确排除的 Agent 证据状态共享问题；未改 `DATABASE_URL`、CORS，未启动服务，未 commit、未 push
+  - 全量测试后 `data/knowledge_store.json` 未出现于工作树
+- Next Step: 由用户复核本工作树差异；如需取得 1071 项全绿证据，在无沙箱限制环境按相同全量命令复跑 3 项 PostgreSQL 门禁。本记录不自动推进 S3 阶段状态。
