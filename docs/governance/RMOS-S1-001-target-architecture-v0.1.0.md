@@ -1,10 +1,17 @@
 # RMOS-S1-001｜目标架构
 
-- 版本：0.1.0｜日期：2026-09-05
+- 版本：**0.1.1**｜日期：2026-09-05
 - 主干阶段：**S1｜目标架构**
 - 主干任务编号：**RMOS-S1-001**
 - 事实基线：`cb00b293`
 - 取证依据：`evidence/2026-09-05-s1-current-module-and-data-ownership-facts-v0.1.0.md`（异源产出）
+
+> **0.1.1 修订**（董事会 2026-09-05 退回，四处修正 + 四项裁决）：
+> ①主干残留 S0-001 引用已改为 S1-001（主干文件侧）；
+> ②「16 个子包全部保留」与删除 `policy/` 自相矛盾，已改为保留 15 个；
+> ③Agent 空置表**漏了 `conversation_turns`**，已补入并一并裁决（四表→五表处置）；
+> ④`audit_events` 直写者为 **3 个 endpoint + 2 个 service**，初稿误写 4+2。
+> §3.4 由「待裁决」改为「已裁决」，目标表数由 65 降为 62。
 
 ---
 
@@ -30,7 +37,7 @@
 |---|---:|---|
 | 业务表 | 65 | 数据归属的分母 |
 | 有归属字段的表 | 23 | 42 张无——但并非全都需要（见 §3.2） |
-| 有应用层写入路径的表 | 50 | **15 张无**，即定义了却没有应用在写 |
+| 有应用层写入路径的表 | 50 | **15 张无**，即定义了却没有应用在写；其中 12 张已由 §3.4 裁决处置 |
 | `services/` 根目录文件 | 36 | 平铺，未归组 |
 | `services/` 一级子包 | 16 | 已按域/能力组织，组织良好 |
 | 内部模块 / import 边 | 229 / 636 | 循环依赖仅 **1 组**（LLM provider 互引） |
@@ -61,9 +68,15 @@
 | **F** | **教学** | 班级、课程、选课、作业、尝试、教学证据与时间线 | `classes`、`courses`、`enrollments`、`assignments`、`assignment_attempts`、`guidance_policies`、`evidence_cards`、`evidence_links`、`alignment_map`、`multimodal_timelines`、`timeline_segments` | 11 |
 | **G** | **训练** | 训练会话、提交、步骤记录、技能画像 | `training_sessions`、`training_submissions`、`session_step_records`、`student_skill_profiles`、`student_weak_steps` | 5 |
 | **H** | **证据与评估** | 证据包与条目、事件、观测、外部评估 | `evidence_bundles`、`evidence_items`、`incidents`、`observations`、`external_assessments`、`assessment_providers`、`assessment_audit_events` | 7 |
-| **I** | **Agent 运行时** | 意图、编排、工具调用、审批闸门、技能注册、记忆与回放 | `commands`、`ai_tool_calls`、`approvals`、`approval_records`、`skills`、`skill_reviews`、`skill_releases`、`belief_state_records`、`conversation_turns`、`decision_records`、`replay_checkpoints`、`agent_runtime_snapshots` | 12 |
+| **I** | **Agent 运行时** | 意图、编排、工具调用、审批闸门、技能注册、记忆与回放 | `commands`、`ai_tool_calls`、`approvals`、`skills`、`skill_reviews`、`skill_releases`、`belief_state_records`、`conversation_turns`、`agent_runtime_snapshots` | 9 |
 
-**合计 10+7+2+6+5+11+5+7+12 ＝ 65**，与运行期 ORM 枚举的 65 张业务表一一对应。
+**目标态合计 10+7+2+6+5+11+5+7+9 ＝ 62。**
+
+当前运行期 ORM 枚举为 **65 张**；差额 3 张来自 §3.4 裁决三的合并
+（`approval_records`→`approvals`、`decision_records`→`audit_events`、`replay_checkpoints`→`agent_runtime_snapshots`）。
+**数据不丢，是并表**；`decision_records` 的承接方 `audit_events` 属模块 **A**，故 A 的表数不变。
+
+> 65 → 62 是**目标态**。合并动作属 S3，需迁移脚本与数据搬运，本文件不设计其步骤。
 
 ### 2.2 支撑模块（不拥有业务表）
 
@@ -84,7 +97,7 @@
 - **M-12**（租户隔离）：租户维度只需在拥有该表的模块内实施一次
 
 **当前违反该规则的实例**（S2 需逐条处置，本文件只登记）：
-`audit_events` 现被 4 个 endpoint + 2 个 service 直写；
+`audit_events` 现被 **3 个 endpoint**（`admin`／`auth`／`training`）**+ 2 个 service**（`audit_event_service`／`llm/audit`）直写；
 `assignment_attempts` 被 `evidence_engine` 与 `teaching_service` 两处写。
 
 ---
@@ -93,7 +106,7 @@
 
 ### 3.1 保留（多数）
 
-16 个一级子包**全部保留**，它们已按域/能力组织，与 §2 的模块划分基本吻合：
+16 个一级子包中**保留 15 个**（`policy/` 删除，见 §3.3），它们已按域/能力组织，与 §2 的模块划分基本吻合：
 `analysis/`→B、`knowledge/`→C、`maintenance/`+`sop/`→D、`pipeline/`→E、
 `teaching/`→F、`training/`+`memory/`→G、`orchestration/`+`intent/`→I、
 `llm/`→S1、`simulation/`+`diagnosis/`→S3、`storage/`→B、`identity/`→A。
@@ -120,16 +133,53 @@
 
 > 删除前须按 M-05／裁定 §9-1 的先例核验：无前端调用、无测试依赖、不在真实执行路径上。
 
-### 3.4 需董事会裁决的重复与空置（M-14／M-16）
+### 3.4 重复与空置的处置（M-14／M-16）——**董事会 2026-09-05 已裁决**
 
-本文件**不替董事会决定**，只把选项摆清：
+原为待决四组，董事会已逐组裁定如下。**本节记录裁决结果与其对模块边界的影响**。
 
-| 组 | 事实 | 待决 |
+#### 裁决一：两套 replay 都保留，各司其职
+
+| 接口 | 归属模块 | 职责边界 |
 |---|---|---|
-| replay 两套 | `/ai/replay/{trace_id}`（读 `audit_events`）与 `/teaching/attempts/{id}/replay`（读时间线四表）；**前端均无调用** | 保留哪套，或都留但明确各自场景 |
-| 教学时间线三表 | `alignment_map`、`multimodal_timelines`、`timeline_segments` **整组无应用写入** | 是补写入路径，还是承认为未实现能力并从模块 F 的归属中移出 |
-| Agent 四表 | `approval_records`、`decision_records`、`replay_checkpoints`、`agent_runtime_snapshots` 无应用写入 | 同上 |
-| RBAC 四表 | `roles`／`permissions`／`role_permissions`／`user_roles` 仅种子脚本写 | 是否需要运行期管理入口 |
+| `GET /ai/replay/{trace_id}` | **I** Agent 运行时 | **Agent 审计回放**——读 `audit_events`，回答「这次 Agent 调用做了什么」 |
+| `GET /teaching/attempts/{id}/replay` | **F** 教学 | **教学过程回放**——读时间线诸表，回答「学生这次作业是怎么做的」 |
+
+两者场景不重叠，**不属 M-14 的「同一件事多套实现」**。前端目前均无调用，属未接入而非冗余。
+
+#### 裁决二：教学时间线三表保留在模块 F，标记为「尚未实现」
+
+`alignment_map`、`multimodal_timelines`、`timeline_segments` 留在模块 **F** 的数据归属内，
+但状态明确为**尚未实现**：**先补写入路径，再开放教学过程回放**。
+
+> 顺序不可颠倒：无写入即无数据，此时开放回放接口只会返回空结果，
+> 那正是「接口存在但能力不存在」——本项目已有的病症之一。
+
+#### 裁决三：Agent 数据简化，四表变两表
+
+| 表 | 处置 | 去向 |
+|---|---|---|
+| `agent_runtime_snapshots` | **保留** | 模块 **I**；承接 `replay_checkpoints` 的职责 |
+| `conversation_turns` | **保留** | 模块 **I** |
+| `approval_records` | **合并** | → 现有审批表 `approvals`（模块 **I**） |
+| `decision_records` | **合并** | → 审计记录 `audit_events`（模块 **A**）承接 |
+| `replay_checkpoints` | **合并** | → 运行快照 `agent_runtime_snapshots`（模块 **I**） |
+
+模块 **I** 因此由 12 张表降为 **9 张**，全系统目标态 **62 张**。
+
+> **口径更正**：本文件 0.1.0 初稿把该组写成「Agent 四表」，**漏了 `conversation_turns`**——
+> 它同样无应用写入路径，理应一并裁决。经董事会指出后补入，现为五表处置。
+
+#### 裁决四：RBAC 四表保留，基础身份与细粒度权限分开
+
+`roles`／`permissions`／`role_permissions`／`user_roles` **全部保留**在模块 **A**，
+并明确两条边界：
+
+1. **权限定义**（`permissions`、`role_permissions`）**不开放普通运行期管理**——
+   仅通过发布流程变更，不提供运行期 CRUD 入口；
+2. **用户与权限的关系**（`user_roles`）由模块 **A** 统一分配和撤销，其他模块不得直写。
+
+这与 §2.3「一张表只有一个模块可以写」一致，也是 **M-13（角色多源）** 的收口方向——
+但 M-13 本身仍未解决（见 §4.3），本裁决只确立目标，不代表已实施。
 
 ---
 
@@ -140,9 +190,9 @@
 | 问题 | 解法 |
 |---|---|
 | **M-25** 模块责任／目录边界模糊 | §2 的 12 个模块 + §3.2 的归位规则 |
-| **M-16** 定义先行与内存代替落库 | §2.3 写入权唯一 + §3.4 逐组裁决空置表 |
+| **M-16** 定义先行与内存代替落库 | §2.3 写入权唯一 + §3.4 五表处置已裁决（保留 2、合并 3） |
 | **M-22** 任务终态写入责任未收口 | 终态写入者唯一归模块 **E** |
-| **M-14** 新旧实现并存 | §3.4 逐组裁决，不做整体关闭 |
+| **M-14** 新旧实现并存 | §3.4 已逐组裁决：两套 replay 场景不重叠故均保留，不属本问题；Agent 五表合并为两表 |
 
 ### 4.2 本架构给出方向、但需 S2／S3 落实的
 
@@ -187,6 +237,7 @@
 ### 6.1 批准前需注意
 
 1. **本文件不改变任何代码。** 通过后进入 S2 决定模块改造顺序，S3 才动代码。
-2. **§3.4 的四组待决事项**建议在 S2 一并裁决——它们决定模块 F 与 I 的真实边界。
+2. **§3.4 四组已由董事会 2026-09-05 裁决完毕**，模块 F 与 I 的边界据此确定；
+   其中裁决三使目标表数由 65 降为 62，**合并动作属 S3**，本文件不设计其步骤。
 3. 本架构**不推翻 A6 的判定**「整体重写缺乏架构依据」：目标架构是给现有结构划清边界，不是重写。
 4. §4.3 列出的七个问题**不因 S1 通过而推进**。

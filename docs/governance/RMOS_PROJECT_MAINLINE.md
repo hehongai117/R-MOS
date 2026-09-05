@@ -37,6 +37,7 @@
 | 阶段 | 口令原文 | 批准人 | 日期 | 对应交付物 | 批准时提交 |
 |---|---|---|---|---|---|
 | S0 | `确认主干阶段 S0 完成，进入 S1` | 董事会（用户） | 2026-09-05 | `RMOS-S0-001-current-state-unification-v0.1.0.md` | `cb00b293` |
+| S1 | *（待批准）* | — | — | `RMOS-S1-001-target-architecture-v0.1.0.md` | `8219b928` |
 
 > 记录要求见治理闭环包：批准必须用准确口令，不得以「继续」「确认，继续」或报告自述替代。
 > A0–A6 的 AG-01 被判为批准链缺失，原因即在于此。
@@ -179,7 +180,7 @@
 | 必要阻断 | 不解决就无法继续主干；形成简短申请，由董事会决定是否插入当前阶段 |
 | 普通支线 | 功能想法、体验优化和非紧急重构进入当前问题清单，不改变当前阶段和唯一下一步 |
 
-所有正式任务使用 `RMOS-S<阶段>-<三位序号>` 编号。当前唯一活动任务为 `RMOS-S0-001`，对应 S0-01。
+所有正式任务使用 `RMOS-S<阶段>-<三位序号>` 编号。当前唯一活动任务为 **`RMOS-S1-001`**，对应 S1-01。
 
 ## 6. 偏离后的返回规则
 
@@ -237,9 +238,9 @@
 
 - [董事会路线 B 与后续裁定](../plans/2026-09-03-board-decision-suspend-certification-start-remediation-v0.1.0.md)
 - [验收总纲](../testing/ACCEPTANCE_CHARTER.md)
-- [审计索引](../audit/README.md)——当前存在状态时间差，纳入 S0-01 统一
+- [审计索引](../audit/README.md)——状态时间差已由 S0-01 统一，见 `RMOS-S0-001-current-state-unification-v0.1.0.md` §3 C5
 - [整改阶段交接](../handover/2026-09-04-remediation-phase-handover-v0.1.0.md)
-- [历史 26 项问题台账](../audit/evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md)——只作 S0 重算输入
+- [历史 26 项问题台账](../audit/evidence/2026-08-29-a6-corrected-consolidation-ledger-v0.2.0.md)——已由 S0-01 §2 重算，当前清单以 S0-01 为准
 
 ## 11. 主干变更规则
 
