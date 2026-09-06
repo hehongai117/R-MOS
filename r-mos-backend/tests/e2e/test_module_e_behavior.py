@@ -160,7 +160,7 @@ def test_module_e_route_census_uses_runtime_app() -> None:
 
 
 def test_m22_terminal_status_writer_census_uses_ast() -> None:
-    """用 AST 锁定 tasks/task_executions 当前全部终态赋值位置。"""
+    """M-22：旧断言固化了父任务终态有两个写入点，修复后只允许任务服务写入。"""
     app_root = Path(__file__).parents[2] / "app"
     terminal_tokens = {
         "COMPLETED",
@@ -225,12 +225,6 @@ def test_m22_terminal_status_writer_census_uses_ast() -> None:
             "execution.status",
             "'completed'",
         ),
-        (
-            "app/services/pipeline/task_pipeline_service.py",
-            "TaskPipelineService.complete_task",
-            "task.status",
-            "TaskStatus.COMPLETED.value",
-        ),
     }
 
 
@@ -280,6 +274,35 @@ def test_task_owner_can_run_create_start_step_pause_resume_lifecycle(e2e_env) ->
     assert resumed.status_code == 200, resumed.text
     assert resumed.json()["status"] == "in_progress"
     assert resumed.json()["paused_at"] is None
+
+
+def test_standard_task_completion_allows_final_step_from_in_progress(e2e_env) -> None:
+    """G1+G2 放行证据：进行中任务完成最后一步后可经唯一入口进入终态。"""
+    client, session_factory = e2e_env
+    register_and_login(
+        client, email_prefix="module_e_standard_completion", role="student"
+    )
+    sop_id = _seed_sop(session_factory, step_count=1)
+    created = client.post(
+        "/api/v1/tasks",
+        json={"title": "标准任务完成", "sop_id": sop_id},
+    )
+    assert created.status_code == 200, created.text
+    task_id = int(created.json()["id"])
+    assert client.post(f"/api/v1/tasks/{task_id}/start").status_code == 200
+
+    completed = client.post(
+        f"/api/v1/tasks/{task_id}/step",
+        json={"step_index": 1, "action": "inspect"},
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["is_task_completed"] is True
+    assert completed.json()["next_step_index"] is None
+
+    detail = client.get(f"/api/v1/tasks/{task_id}")
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["status"] == "completed"
+    assert detail.json()["completed_at"] is not None
 
 
 def test_task_list_detail_and_events_return_owner_content(e2e_env) -> None:
@@ -332,55 +355,47 @@ def test_pipeline_diagnose_rejects_anonymous_and_returns_structured_result(e2e_e
     }
 
 
-def test_pipeline_creation_bypasses_blocked_preflight_current_behavior(
+def test_pipeline_creation_obeys_blocked_preflight_and_allows_passing_preflight(
     e2e_env, monkeypatch
 ) -> None:
-    """这是当前行为，疑似缺陷 E-PREFLIGHT-01，待模块 E 改造时处置。
+    """E-PREFLIGHT-01：旧断言固化了诊断入口可绕过执行前检查的缺陷。
 
-    同一执行前检查被强制设为阻止时，普通任务创建返回 400；诊断转任务接口却仍可
-    创建任务与执行记录，说明存在绕过执行前检查的入口。
+    同一诊断转任务入口在检查阻止时拒绝，在检查通过时放行。
     """
-    client, session_factory = e2e_env
-    owner_id, _, _ = register_and_login(
+    client, _ = e2e_env
+    register_and_login(
         client, email_prefix="module_e_preflight", role="student"
     )
-    sop_id = _seed_sop(session_factory)
-    monkeypatch.setattr(
-        preflight_check_service,
-        "can_proceed",
-        AsyncMock(return_value=(False, "测试阻止")),
-    )
+    check = AsyncMock(return_value=(False, "测试阻止"))
+    monkeypatch.setattr(preflight_check_service, "can_proceed", check)
 
     blocked = client.post(
-        "/api/v1/tasks",
-        json={"title": "应被阻止", "sop_id": sop_id},
+        "/api/v1/pipeline/tasks/from-diagnosis",
+        json={"diagnosis_trace_id": "trace-preflight-block", "fault_type": "E001_OVERHEAT"},
     )
     assert blocked.status_code == 400, blocked.text
     assert blocked.json()["message"]["reason"] == "测试阻止"
+    check.assert_awaited_once()
 
-    bypassed = client.post(
+    check.reset_mock(return_value=True)
+    check.return_value = (True, None)
+    allowed = client.post(
         "/api/v1/pipeline/tasks/from-diagnosis",
-        json={"diagnosis_trace_id": "trace-preflight-bypass", "fault_type": "E001_OVERHEAT"},
+        json={"diagnosis_trace_id": "trace-preflight-pass", "fault_type": "E001_OVERHEAT"},
     )
-    assert bypassed.status_code == 200, bypassed.text
-    assert bypassed.json()["fault_type"] == "E001_OVERHEAT"
-    assert bypassed.json()["task_id"] > 0
-    assert bypassed.json()["execution_id"] > 0
-
-    execution_status, task_status, _ = _load_execution_state(
-        session_factory, bypassed.json()["execution_id"]
-    )
-    assert execution_status == "in_progress"
-    assert task_status == "in_progress"
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["fault_type"] == "E001_OVERHEAT"
+    assert allowed.json()["task_id"] > 0
+    assert allowed.json()["execution_id"] > 0
+    assert check.await_count == 1
 
 
-def test_task_creation_without_tool_inventory_still_passes_preflight_current_behavior(
+def test_task_creation_requires_declared_tools_and_allows_available_tools(
     e2e_env,
 ) -> None:
-    """这是当前行为，疑似缺陷 E-PREFLIGHT-02，待模块 E 改造时处置。
+    """E-PREFLIGHT-02：旧断言固化了工具清单未知仍可执行的缺陷。
 
-    SOP 明确要求专用工具，但创建接口不传可用工具清单，工具检查会把“没有清单”
-    当作全部可用，任务仍创建成功。
+    SOP 要求专用工具时，缺清单应拒绝；完整清单应放行。
     """
     client, session_factory = e2e_env
     owner_id, _, _ = register_and_login(
@@ -388,13 +403,24 @@ def test_task_creation_without_tool_inventory_still_passes_preflight_current_beh
     )
     sop_id = _seed_sop(session_factory, required_tools=["专用扭矩扳手"])
 
-    response = client.post(
+    blocked = client.post(
         "/api/v1/tasks",
         json={"title": "缺少工具清单仍创建", "sop_id": sop_id},
     )
-    assert response.status_code == 200, response.text
-    assert response.json()["user_id"] == owner_id
-    assert response.json()["status"] == "pending"
+    assert blocked.status_code == 400, blocked.text
+    assert "工具状态未知" in blocked.json()["message"]["reason"]
+
+    allowed = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "工具清单完整",
+            "sop_id": sop_id,
+            "available_tools": ["专用扭矩扳手"],
+        },
+    )
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["user_id"] == owner_id
+    assert allowed.json()["status"] == "pending"
 
 
 def test_pipeline_step_completion_allows_owner_and_persists_content(e2e_env) -> None:
@@ -425,11 +451,17 @@ def test_pipeline_step_completion_allows_owner_and_persists_content(e2e_env) -> 
     assert result_count == 1
 
 
-def test_pipeline_step_accepts_negative_values_current_behavior(e2e_env) -> None:
-    """这是当前行为，疑似缺陷 E-INPUT-01，待模块 E 改造时处置。
-
-    步骤编号和耗时均为负数时接口仍返回成功，并把记录写入数据库。
-    """
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"step_index": -1, "duration_seconds": 5}, id="negative-step-index"),
+        pytest.param({"step_index": 1, "duration_seconds": -5}, id="negative-duration"),
+    ],
+)
+def test_pipeline_step_rejects_negative_values_without_writing(
+    e2e_env, payload: dict
+) -> None:
+    """E-INPUT-01：旧断言固化了负数步骤编号和负数耗时可落库的缺陷。"""
     client, session_factory = e2e_env
     owner_id, _, _ = register_and_login(
         client, email_prefix="module_e_negative_step", role="student"
@@ -438,32 +470,38 @@ def test_pipeline_step_accepts_negative_values_current_behavior(e2e_env) -> None
 
     response = client.post(
         f"/api/v1/pipeline/executions/{execution_id}/steps/complete",
-        json={"step_index": -1, "duration_seconds": -5},
+        json=payload,
     )
-    assert response.status_code == 200, response.text
-    assert response.json()["step_index"] == -1
+    assert response.status_code == 422, response.text
     _, _, result_count = _load_execution_state(session_factory, execution_id)
-    assert result_count == 1
+    assert result_count == 0
 
 
-def test_completed_execution_still_accepts_step_writes_current_behavior(e2e_env) -> None:
-    """这是当前行为，疑似缺陷 E-STATE-02，待模块 E 改造时处置。
+def test_completed_execution_rejects_further_step_writes(e2e_env) -> None:
+    """E-STATE-02：旧断言固化了完成后的执行记录仍可继续写步骤结果的缺陷。
 
-    执行记录已处于 completed 终态后，步骤完成接口仍允许继续写入新结果。
+    进行中的执行记录先放行一步并正常完成，完成后再写必须拒绝且不新增结果。
     """
     client, session_factory = e2e_env
     owner_id, _, _ = register_and_login(
         client, email_prefix="module_e_terminal_step", role="student"
     )
     _, execution_id = _seed_execution(session_factory, owner_id=owner_id)
+    first_step = client.post(
+        f"/api/v1/pipeline/executions/{execution_id}/steps/complete",
+        json={"step_index": 1},
+    )
+    assert first_step.status_code == 200, first_step.text
+
     completed = client.post(f"/api/v1/pipeline/executions/{execution_id}/complete")
     assert completed.status_code == 200, completed.text
 
     response = client.post(
         f"/api/v1/pipeline/executions/{execution_id}/steps/complete",
-        json={"step_index": 1},
+        json={"step_index": 2},
     )
-    assert response.status_code == 200, response.text
+    assert response.status_code == 409, response.text
+    assert response.json()["details"]["code"] == "EXECUTION_NOT_IN_PROGRESS"
     execution_status, _, result_count = _load_execution_state(
         session_factory, execution_id
     )
@@ -471,11 +509,10 @@ def test_completed_execution_still_accepts_step_writes_current_behavior(e2e_env)
     assert result_count == 1
 
 
-def test_pipeline_completion_jumps_pending_task_to_completed_current_behavior(e2e_env) -> None:
-    """这是当前行为，疑似缺陷 E-STATE-01，待模块 E 改造时处置。
+def test_pipeline_completion_rejects_pending_parent_task(e2e_env) -> None:
+    """E-STATE-01：旧断言固化了父任务可从 pending 直接跳 completed 的缺陷。
 
-    父任务仍为 pending 且没有任何步骤结果时，完成执行记录接口仍把父任务和执行
-    记录同时写成 completed，形成 pending 直接跳终态且终态可空步骤写入。
+    即使已有步骤结果，pending 父任务也不能跳过 in_progress 直接进入终态。
     """
     client, session_factory = e2e_env
     owner_id, _, _ = register_and_login(
@@ -487,19 +524,39 @@ def test_pipeline_completion_jumps_pending_task_to_completed_current_behavior(e2
         task_status=TaskStatus.PENDING.value,
     )
 
+    step = client.post(
+        f"/api/v1/pipeline/executions/{execution_id}/steps/complete",
+        json={"step_index": 1},
+    )
+    assert step.status_code == 200, step.text
+
     response = client.post(f"/api/v1/pipeline/executions/{execution_id}/complete")
-    assert response.status_code == 200, response.text
-    assert response.json() == {
-        "execution_id": execution_id,
-        "task_id": task_id,
-        "status": "completed",
-        "report_generation": "triggered",
-    }
+    assert response.status_code == 409, response.text
+    assert response.json()["details"]["code"] == "TASK_NOT_IN_PROGRESS"
     execution_status, task_status, result_count = _load_execution_state(
         session_factory, execution_id
     )
-    assert execution_status == "completed"
-    assert task_status == "completed"
+    assert execution_status == "in_progress"
+    assert task_status == "pending"
+    assert result_count == 1
+
+
+def test_pipeline_completion_rejects_empty_step_results(e2e_env) -> None:
+    """E-STATE-01：进行中父任务没有任何步骤结果时不得完成执行记录。"""
+    client, session_factory = e2e_env
+    owner_id, _, _ = register_and_login(
+        client, email_prefix="module_e_empty_completion", role="student"
+    )
+    _, execution_id = _seed_execution(session_factory, owner_id=owner_id)
+
+    response = client.post(f"/api/v1/pipeline/executions/{execution_id}/complete")
+    assert response.status_code == 409, response.text
+    assert response.json()["details"]["code"] == "TASK_STEP_RESULTS_REQUIRED"
+    execution_status, task_status, result_count = _load_execution_state(
+        session_factory, execution_id
+    )
+    assert execution_status == "in_progress"
+    assert task_status == "in_progress"
     assert result_count == 0
 
 
@@ -520,18 +577,17 @@ def test_pipeline_completion_jumps_pending_task_to_completed_current_behavior(e2
         pytest.param("get", "/api/v1/tasks/999999/events", None, id="task-events"),
     ],
 )
-def test_missing_task_id_currently_returns_409_instead_of_404(
+def test_missing_task_id_returns_404(
     e2e_env, method: str, path: str, json_body: dict | None
 ) -> None:
-    """这是当前行为，疑似缺陷 E-HTTP-01，待模块 E 改造时处置。
+    """E-HTTP-01：旧断言固化了不存在任务被错误映射为 409 的缺陷。
 
-    TaskService 把不存在资源包装成业务冲突，导致任务读写接口统一返回 409，而不是
-    任务要求和既有资源口径中的 404。
+    七条任务读写接口统一复用资源不存在口径并返回 404。
     """
     client, _ = e2e_env
     response = client.request(method.upper(), path, json=json_body)
-    assert response.status_code == 409, response.text
-    assert response.json()["details"]["code"] == "TASK_NOT_FOUND"
+    assert response.status_code == 404, response.text
+    assert response.json()["details"]["code"] == "RESOURCE_NOT_FOUND"
 
 
 @pytest.mark.parametrize(

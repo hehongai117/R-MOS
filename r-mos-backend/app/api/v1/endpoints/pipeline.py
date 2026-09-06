@@ -1,6 +1,6 @@
 """Pipeline API — diagnosis-to-task-to-report flow."""
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +40,7 @@ class CreateTaskFromDiagnosisRequest(BaseModel):
     # 归属取自认证上下文；该字段仅为兼容旧客户端保留，
     # 声称与令牌不一致的身份会被 `resolve_actor_identity` 拒绝。
     student_id: int | None = None
+    available_tools: list[str] | None = None
 
 
 class CreateTaskFromDiagnosisResponse(BaseModel):
@@ -51,10 +52,10 @@ class CreateTaskFromDiagnosisResponse(BaseModel):
 
 
 class StepCompleteRequest(BaseModel):
-    step_index: int
+    step_index: int = Field(..., ge=1)
     evidence_type: Optional[str] = None
     evidence_value: Optional[dict] = None
-    duration_seconds: Optional[int] = None
+    duration_seconds: Optional[int] = Field(None, ge=0)
     is_compliant: bool = True
 
 
@@ -100,7 +101,17 @@ async def create_task_from_diagnosis(
         diagnosis_trace_id=request.diagnosis_trace_id,
         fault_type=request.fault_type,
         student_id=student_id,
+        available_tools=request.available_tools,
     )
+    if result.get("error_type") == "PreflightCheckFailed":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_type": "PreflightCheckFailed",
+                "message": "执行前检查未通过",
+                "reason": result["reason"],
+            },
+        )
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return CreateTaskFromDiagnosisResponse(**result)

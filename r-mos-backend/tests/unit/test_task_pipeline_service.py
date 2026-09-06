@@ -64,6 +64,8 @@ async def test_complete_step_records_result():
     # Mock execution query
     mock_execution = MagicMock()
     mock_execution.id = 1
+    mock_execution.status = "in_progress"
+    mock_db.get = AsyncMock(return_value=mock_execution)
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_execution
     mock_db.execute = AsyncMock(return_value=mock_result)
@@ -94,6 +96,8 @@ async def test_complete_step_without_evidence_remains_backward_compatible():
     added_results = []
     mock_db.add = MagicMock(side_effect=added_results.append)
     mock_db.commit = AsyncMock()
+    mock_execution = MagicMock(status="in_progress")
+    mock_db.get = AsyncMock(return_value=mock_execution)
 
     request = StepCompleteRequest(step_index=2)
     service = TaskPipelineService(mock_db)

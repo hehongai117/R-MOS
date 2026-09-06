@@ -483,3 +483,41 @@
   - 次轮全量 `4 failed, 1067 passed`，剩余 1 项同类测试漏传新学生编号；补齐后复验通过
   - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`；均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`，与任务给定的环境限制一致
 - Result：**PASS（RMOS-S3-002 模块 H 第二步 G1-G4 范围）/ 环境受限（3 项 PostgreSQL 门禁）**。未新增抽象层、依赖、迁移或跨模块服务依赖；未触碰明确排除的 Agent 证据状态共享问题。本条不自动推进 S3，也不代表预生产、真机、课堂或生产验收。
+
+### RMOS-S3-003-E-FIX｜模块 E 第二步 G1-G5 根因修复
+
+- Test ID / 门禁编号：`RMOS-S3-003-E-G1G2`、`RMOS-S3-003-E-G3`、`RMOS-S3-003-E-G4`、`RMOS-S3-003-E-G5`
+- 提交：以 `570babd7` 为基线的未提交工作树；分支 `audit/phase3-auth-control-realtime`。按用户要求未 commit、未 push
+- 执行环境：本 worktree 的 `r-mos-backend`；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；加载主工作区 `.env` 后执行 `unset CORS_ORIGINS; export DEBUG=true`
+- 行为结果：
+  - G1+G2 拒绝：pending 父任务、有零条步骤结果的执行完成请求均返回 409；completed 执行记录再写步骤返回 409，数据库结果数不增加
+  - G1+G2 放行：普通任务从 in_progress 完成最后一步进入 completed；in_progress 执行记录有步骤结果时可完成
+  - G3 拒绝：诊断转任务在执行前检查阻止时返回 400；SOP 要求工具但未提供工具清单时返回 400
+  - G3 放行：执行前检查通过时诊断转任务成功；SOP 所需工具全部在清单中时普通任务创建成功
+  - G4 拒绝：负数步骤编号、负数耗时分别返回 422 且均不写数据库；放行：正数步骤编号和非负耗时正常写入
+  - G5 拒绝：任务 start、step、pause、resume、detail、report、events 共 7 条接口对不存在编号统一返回 404；放行：对应本人任务的生命周期、详情、报告前置状态和事件读取路径保持既有行为
+- Commands Run：
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_e_behavior.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_e_behavior.py tests/unit/test_task_service.py tests/unit/test_task_pipeline_service.py tests/unit/test_preflight_check.py tests/unit/test_task_write_ownership.py tests/unit/test_task_list_api.py tests/e2e/test_object_ownership_boundary.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/rmos_s3_003_terminal_writers.py`
+- Tests / 关键原始输出：
+  - 基线：`29 passed in 7.32s`
+  - RED：`15 failed, 16 passed in 8.11s`
+  - 模块 E GREEN：`32 passed in 8.47s`
+  - 相关链路：`83 passed in 16.29s`
+  - 全量汇总原文：`3 failed, 1100 passed in 94.48s (0:01:34)`
+  - AST：`tasks.status terminal writers: 1`；唯一位置为 `TaskService._complete_task`
+- 被修改的既有断言分类：
+  - M-22 的两个父任务终态写入点预期，改为只允许任务服务一处：测试固化漏洞
+  - E-PREFLIGHT-01 的诊断入口阻止时仍返回 200：测试固化漏洞
+  - E-PREFLIGHT-02 的工具清单未知仍返回 200：测试固化漏洞
+  - E-INPUT-01 的负数输入返回 200 且写入一条：测试固化漏洞
+  - E-STATE-02 的完成后继续写步骤返回 200：测试固化漏洞
+  - E-STATE-01 的 pending 父任务与空步骤执行直接完成：测试固化漏洞
+  - E-HTTP-01 参数化覆盖的 7 条接口由 `409 + TASK_NOT_FOUND` 改为 `404 + RESOURCE_NOT_FOUND`：测试固化漏洞
+  - 没有任何既有断言属于“生产改错了”；单元测试两处只补状态前置数据，未修改断言
+- 分层依赖重测：跨模块边 `94`；`service -> service` 跨模块边 `45`、方向 `27`；业务模块强连通分量 `0`。与批准基线一致，没有新增跨模块 `service -> service` 边
+- Failure Handling：首轮全量只有 3 项已知沙箱数据库失败，但通过数为 1099，未满足本任务 `>=1100`；补充普通任务合法完成的正向行为证据后重新执行全量，通过数达到 1100。最终 3 项失败仍固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均因沙箱拒绝连接 `::1:5432`
+- Result：**PASS（RMOS-S3-003 模块 E 第二步 G1-G5 软件行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。本条不自动宣布模块 E 完成，不代表预生产、真机、课堂或生产验收。

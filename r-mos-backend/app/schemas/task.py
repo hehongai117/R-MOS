@@ -15,6 +15,7 @@ class TaskCreate(BaseModel):
     title: str = Field(..., max_length=200, description="任务标题")
     sop_id: int = Field(..., gt=0, description="SOP ID")
     user_id: Optional[int] = Field(None, description="执行用户ID")
+    available_tools: Optional[List[str]] = Field(None, description="当前可用工具清单")
     time_limit: Optional[int] = Field(None, ge=60, description="时间限制（秒）")
     pass_score: int = Field(70, ge=0, le=100, description="及格分数")
 

@@ -10,9 +10,10 @@ import logging
 
 from app.core.enums import EventType
 from app.models.task import Task, TaskStatus
+from app.models.task_execution import TaskStepResult
 from app.models.sop import SOP, SOPStep
 from app.schemas.task import TaskCreate, StepExecutionRequest, StepExecutionResponse
-from app.core.exceptions import BusinessRuleViolation
+from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.services.snapshot_service import SnapshotService
 from app.services.event_service import EventService
 from app.services.scoring_service import ScoringService
@@ -303,7 +304,7 @@ class TaskService:
             is_task_completed=is_task_completed
         )
     
-    async def _complete_task(self, task_id: int):
+    async def _complete_task(self, task_id: int, *, execution_id: Optional[int] = None):
         """完成Task（V2.3新增 - 响应审计P1-NEW-10）
         
         ⚠️ 内部方法，不直接对外暴露
@@ -315,6 +316,34 @@ class TaskService:
         4. 创建TASK_COMPLETED事件
         """
         task = await self._get_task(task_id)
+
+        if task.status != TaskStatus.IN_PROGRESS:
+            raise BusinessRuleViolation(
+                message="只有进行中的Task可以完成",
+                code="TASK_NOT_IN_PROGRESS",
+                details={
+                    "current_status": task.status.value
+                    if hasattr(task.status, "value")
+                    else task.status
+                },
+            )
+
+        if execution_id is None:
+            has_step_results = task.current_step_index > 0
+        else:
+            step_result = await self.db.execute(
+                select(TaskStepResult.id)
+                .where(TaskStepResult.execution_id == execution_id)
+                .limit(1)
+            )
+            has_step_results = step_result.scalar_one_or_none() is not None
+
+        if not has_step_results:
+            raise BusinessRuleViolation(
+                message="Task没有步骤结果，无法完成",
+                code="TASK_STEP_RESULTS_REQUIRED",
+                details={"task_id": task_id, "execution_id": execution_id},
+            )
         
         # 1. 更新状态
         task.status = TaskStatus.COMPLETED
@@ -435,11 +464,7 @@ class TaskService:
         )
         task = result.scalar_one_or_none()
         if not task:
-            raise BusinessRuleViolation(
-                message="Task不存在",
-                code="TASK_NOT_FOUND",
-                details={"task_id": task_id}
-            )
+            raise ResourceNotFoundError("Task", task_id)
         return task
     
     async def _get_sop(self, sop_id: int) -> Optional[SOP]:

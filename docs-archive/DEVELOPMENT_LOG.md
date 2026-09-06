@@ -10018,3 +10018,43 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 未触碰任务明确排除的 Agent 证据状态共享问题；未改 `DATABASE_URL`、CORS，未启动服务，未 commit、未 push
   - 全量测试后 `data/knowledge_store.json` 未出现于工作树
 - Next Step: 由用户复核本工作树差异；如需取得 1071 项全绿证据，在无沙箱限制环境按相同全量命令复跑 3 项 PostgreSQL 门禁。本记录不自动推进 S3 阶段状态。
+
+## 2026-09-06 — RMOS-S3-003 模块 E 第二步 G1-G5 根因修复
+
+- DateTime: 2026-09-06 09:33:23 +0800
+- Task: `RMOS-S3-003（模块 E 第二步：修复）`；按根因组修复终态写入责任、任务与执行记录状态约束、执行前检查绕过、工具状态缺失放行、负数输入落库及 7 条不存在任务接口的错误状态码。
+- Scope (files changed):
+  - 结构收口：`r-mos-backend/app/services/pipeline/task_pipeline_service.py` 的父任务终态写入改为调用 `TaskService._complete_task`；父任务终态赋值由两处减为一处
+  - 功能修复：`r-mos-backend/app/services/{task_service,preflight_check}.py`、`app/services/pipeline/task_pipeline_service.py`、`app/api/v1/endpoints/{tasks,pipeline}.py`、`app/schemas/task.py`
+  - 测试：`r-mos-backend/tests/e2e/test_module_e_behavior.py`、`tests/unit/test_task_pipeline_service.py`
+  - 证据：`docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - 每次 pytest 均在本 worktree 的 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_e_behavior.py`（基线、RED、GREEN）
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_e_behavior.py tests/unit/test_task_service.py tests/unit/test_task_pipeline_service.py tests/unit/test_preflight_check.py tests/unit/test_task_write_ownership.py tests/unit/test_task_list_api.py tests/e2e/test_object_ownership_boundary.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`（两次全量；未加 `-q`、未加 `--timeout`）
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python /tmp/rmos_s3_003_terminal_writers.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m compileall -q app tests/e2e/test_module_e_behavior.py tests/unit/test_task_pipeline_service.py`
+  - `git diff --name-only`；`git diff --check`；`git status --short`
+- Tests:
+  - 改动前模块 E 基线：`29 passed in 7.32s`
+  - RED：`15 failed, 16 passed in 8.11s`；15 个失败准确覆盖 1 个 AST 收口、2 类执行前检查、2 类负数输入、2 类非法终态和 7 条 409 状态码
+  - GREEN 模块 E：`32 passed in 8.47s`
+  - 模块 E 与任务归属／对象边界相关链路：`83 passed in 16.29s`
+  - 首轮全量：`3 failed, 1099 passed in 98.04s (0:01:38)`；功能失败为 0，但通过数未达任务要求，补 1 条普通任务合法完成正向证据后重跑
+  - 最终全量汇总原文：`3 failed, 1100 passed in 94.48s (0:01:34)`
+  - AST 原文：`tasks.status terminal writers: 1`；唯一位置 `app/services/task_service.py:349 | TaskService._complete_task | task.status = TaskStatus.COMPLETED`
+  - 分层依赖：跨模块边 `94`；`service -> service` 跨模块边 `45`、方向 `27`；业务模块强连通分量 `0`；与批准基线一致
+- Result: **PASS（RMOS-S3-003 模块 E 第二步 G1-G5 行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。除任务预先声明的 3 项数据库连接失败外均通过，通过数达到 1100；未新增跨模块服务依赖。
+- Risks/Notes:
+  - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`；均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`
+  - G1+G2：结构上移除流水线服务自己的父任务终态赋值；功能上仅允许 `in_progress -> completed`，普通任务须已有步骤进度，流水线执行须至少有一条步骤结果；完成后的执行记录拒绝继续写步骤
+  - G3：诊断转任务复用 `preflight_check_service`；SOP 声明工具时，工具清单未知改为阻止，完整清单放行
+  - G4：步骤编号使用 `ge=1`，耗时使用 `ge=0`；未在业务代码手写输入判断
+  - G5：`TaskService` 复用既有 `ResourceNotFoundError`，7 条任务接口统一从 409 改为 404；相关扩大回归未出现模块外契约失败
+  - 被修改的既有断言分类：M-22 两写入点、E-PREFLIGHT-01 绕过、E-PREFLIGHT-02 工具未知放行、E-INPUT-01 负数落库、E-STATE-02 终态后继续写、E-STATE-01 pending 直跳终态、E-HTTP-01 的 7 条 409，全部属于“测试固化漏洞”；没有“生产改错了”而修改的断言
+  - `tests/unit/test_task_pipeline_service.py` 两处只补合法执行状态的测试前置数据，原业务断言未改
+  - 未新增抽象、依赖、数据结构或迁移；结构收口与功能约束是独立差异块，可分别反向应用；按任务要求未 commit、未 push
+  - 最终 `git status --short` 未出现 `data/knowledge_store.json`
+- Next Step: 由董事会复核当前未提交差异；在无沙箱限制环境原样复跑全量可补齐 3 项 PostgreSQL 门禁。本记录不自行宣布模块 E 或 S3 阶段完成。

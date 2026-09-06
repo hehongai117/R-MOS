@@ -285,15 +285,31 @@ class ToolAvailabilityChecker(BaseChecker):
                         if isinstance(tool, str) and tool.strip():
                             required_tools.add(tool.strip())
 
-        if required_tools and isinstance(available_tools, list):
-            missing_tools = sorted(required_tools - {str(tool).strip() for tool in available_tools if str(tool).strip()})
+        if required_tools:
+            if not isinstance(available_tools, list):
+                return CheckResult(
+                    status=CheckStatus.BLOCK,
+                    message="工具状态未知，无法开始任务",
+                    details={
+                        "tools_required": sorted(required_tools),
+                        "tools_available": [],
+                        "shortages": sorted(required_tools),
+                        "source": "db+runtime",
+                    },
+                    checker_name=self.name,
+                )
+
+            normalized_tools = {
+                str(tool).strip() for tool in available_tools if str(tool).strip()
+            }
+            missing_tools = sorted(required_tools - normalized_tools)
             if missing_tools:
                 return CheckResult(
                     status=CheckStatus.BLOCK,
                     message="存在缺失工具，无法开始任务",
                     details={
                         "tools_required": sorted(required_tools),
-                        "tools_available": sorted({str(tool).strip() for tool in available_tools if str(tool).strip()}),
+                        "tools_available": sorted(normalized_tools),
                         "shortages": missing_tools,
                         "source": "db+runtime",
                     },

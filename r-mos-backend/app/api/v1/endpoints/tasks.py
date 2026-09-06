@@ -63,6 +63,7 @@ async def create_task(
         sop_id=request.sop_id,
         robot_id=robot_id,
         db=db,
+        available_tools=request.available_tools,
     )
 
     if not can_proceed:

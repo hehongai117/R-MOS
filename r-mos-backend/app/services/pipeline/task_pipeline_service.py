@@ -12,6 +12,9 @@ from app.models.task import Task, TaskStatus
 from app.models.sop import SOP
 from app.models.fault_sop_mapping import FaultSOPMapping
 from app.models.task_execution import TaskExecution, TaskStepResult
+from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
+from app.services.preflight_check import preflight_check_service
+from app.services.task_service import TaskService
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +30,7 @@ class TaskPipelineService:
         diagnosis_trace_id: str,
         fault_type: str,
         student_id: int,
+        available_tools: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """Create a maintenance task from diagnosis result."""
         # Find SOP via fault_sop_mapping
@@ -46,6 +50,19 @@ class TaskPipelineService:
             sop_result = await self.db.execute(select(SOP).where(SOP.id == sop_id))
             sop = sop_result.scalar_one_or_none()
             sop_name = sop.name if sop else ""
+
+        can_proceed, reason = await preflight_check_service.can_proceed(
+            user_id=str(student_id),
+            sop_id=sop_id,
+            db=self.db,
+            available_tools=available_tools,
+        )
+        if not can_proceed:
+            return {
+                "error": "Preflight check failed",
+                "error_type": "PreflightCheckFailed",
+                "reason": reason,
+            }
 
         # Create Task
         task = Task(
@@ -88,6 +105,16 @@ class TaskPipelineService:
         is_compliant: bool = True,
     ) -> dict[str, Any]:
         """Record step completion with evidence."""
+        execution = await self.db.get(TaskExecution, execution_id)
+        if execution is None:
+            raise ResourceNotFoundError("TaskExecution", execution_id)
+        if execution.status != "in_progress":
+            raise BusinessRuleViolation(
+                message="只有进行中的执行记录可以写入步骤结果",
+                code="EXECUTION_NOT_IN_PROGRESS",
+                details={"current_status": execution.status},
+            )
+
         step_result = TaskStepResult(
             execution_id=execution_id,
             step_index=step_index,
@@ -118,16 +145,20 @@ class TaskPipelineService:
         if not execution:
             return {"error": "Execution not found"}
 
+        if execution.status != "in_progress":
+            raise BusinessRuleViolation(
+                message="只有进行中的执行记录可以完成",
+                code="EXECUTION_NOT_IN_PROGRESS",
+                details={"current_status": execution.status},
+            )
+
+        # Parent task terminal state has a single owner in TaskService.
+        await TaskService(self.db)._complete_task(
+            execution.task_id, execution_id=execution_id
+        )
+
         execution.status = "completed"
         execution.completed_at = datetime.now(timezone.utc)
-
-        # Update parent task
-        task_stmt = select(Task).where(Task.id == execution.task_id)
-        task_result = await self.db.execute(task_stmt)
-        task = task_result.scalar_one_or_none()
-        if task:
-            task.status = TaskStatus.COMPLETED.value
-            task.completed_at = datetime.now(timezone.utc)
 
         await self.db.commit()
 
