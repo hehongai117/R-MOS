@@ -4,10 +4,12 @@ P1-7-4: KnowledgeHub hybrid retrieval tests.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 import pytest
 
 from app.models.knowledge_chunk import AIKnowledgeChunk
+from app.models.user import User
 from app.services.knowledge.hub import KnowledgeHub
 
 
@@ -171,15 +173,50 @@ async def test_knowledge_hub_semantic_search_ranks_by_similarity(test_db):
 
 
 @pytest.mark.asyncio
-async def test_knowledge_hub_returns_other_owner_chunk_current_behavior(test_db):
-    """这是当前行为，疑似缺陷 C-AUTH-05：检索不按条目归属过滤，待模块 C 改造时处置。"""
-    test_db.add(
-        _chunk(
-            source_id="other-user-private-chunk",
-            content="private calibration secret",
-            embedding=None,
-            owner_user_id="other-user",
-        )
+async def test_knowledge_hub_filters_by_owner_school_and_keeps_public_chunks(test_db):
+    """C-AUTH-05：分片经 owner→User 学校过滤；无主公共分片继续放行。"""
+    suffix = uuid4().hex
+    viewer = User(
+        email=f"hub-viewer-{suffix}@example.com",
+        password_hash="test",
+        role="teacher",
+        school_name="Hub School A",
+    )
+    same_school_owner = User(
+        email=f"hub-same-{suffix}@example.com",
+        password_hash="test",
+        role="teacher",
+        school_name="Hub School A",
+    )
+    other_school_owner = User(
+        email=f"hub-other-{suffix}@example.com",
+        password_hash="test",
+        role="teacher",
+        school_name="Hub School B",
+    )
+    test_db.add_all([viewer, same_school_owner, other_school_owner])
+    await test_db.flush()
+    test_db.add_all(
+        [
+            _chunk(
+                source_id="same-school-private-chunk",
+                content="private calibration secret",
+                embedding=None,
+                owner_user_id=str(same_school_owner.id),
+            ),
+            _chunk(
+                source_id="other-school-private-chunk",
+                content="private calibration secret",
+                embedding=None,
+                owner_user_id=str(other_school_owner.id),
+            ),
+            _chunk(
+                source_id="public-chunk",
+                content="private calibration secret",
+                embedding=None,
+                owner_user_id=None,
+            ),
+        ]
     )
     await test_db.commit()
 
@@ -187,6 +224,17 @@ async def test_knowledge_hub_returns_other_owner_chunk_current_behavior(test_db)
         db=test_db,
         query="private calibration secret",
         top_k=5,
+        viewer_user_id=viewer.id,
     )
 
-    assert "other-user-private-chunk" in {item.title for item in results}
+    titles = {item.title for item in results}
+    assert "same-school-private-chunk" in titles
+    assert "public-chunk" in titles
+    assert "other-school-private-chunk" not in titles
+
+    unscoped_results = await KnowledgeHub().search(
+        db=test_db,
+        query="private calibration secret",
+        top_k=5,
+    )
+    assert {item.title for item in unscoped_results} == {"public-chunk"}

@@ -323,9 +323,10 @@ def test_knowledge_search_returns_results_list() -> None:
         body = resp.json()
         assert "results" in body
         assert isinstance(body["results"], list)
-        # >= 2：预置 knowledge_store.json 至少包含 ABB/FANUC 2 条 APPROVED 条目
-        # 实际数量因 test_approve_knowledge_* 写入共享 JSON 文件而随测试顺序增加（非确定性）
-        assert len(body["results"]) >= 2
+        # 原断言 >= 2 固化的是缺陷 C-AUTH-01／05（检索不按归属过滤）：
+        # 它依赖预置条目，而那些条目的 created_by 是编造的 '2'——
+        # 测试库里既无该用户、也谈不上同校（§6 记载的「编造用户 id」正是此类）。
+        assert body["results"] == [], "调用者不应看到 created_by 为他人的预置条目"
     finally:
         client.close()
         app.dependency_overrides.clear()

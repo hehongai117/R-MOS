@@ -50,6 +50,7 @@ class KnowledgeHub:
         filters: Optional[dict[str, Any]] = None,
         allow_degraded: bool = False,
         allow_expired: bool = False,
+        viewer_user_id: Optional[int] = None,
     ) -> list[RetrievalResult]:
         """
         搜索知识
@@ -66,14 +67,23 @@ class KnowledgeHub:
         """
         results = []
 
+        # 审计 C-AUTH-01／C-AUTH-05：检索此前不按条目归属过滤，
+        # 任何调用者都能召回他人（含他校）的私有知识块。
+        # 口径与模块 F 一致（见 `ownership.py` 的 `ensure_user_scope` 文档）：
+        # **同校可读是既定设计，跨校不是**——学校是租户边界。
+        # `viewer_user_id` 缺省表示无调用者身份（后台任务等），此时只放行公共条目。
+        visible_owner_ids = await self._resolve_visible_owner_ids(db, viewer_user_id)
+
         # 1. 关键词召回
-        keyword_results = await self._keyword_search(db, query, top_k * 2)
+        keyword_results = await self._keyword_search(
+            db, query, top_k * 2, visible_owner_ids=visible_owner_ids
+        )
         results.extend(keyword_results)
 
         # 2. 向量语义召回 (如果提供了 embedding)
         if embedding:
             semantic_results = await self._semantic_search(
-                db, embedding, top_k * 2
+                db, embedding, top_k * 2, visible_owner_ids=visible_owner_ids
             )
             results.extend(semantic_results)
 
@@ -99,11 +109,54 @@ class KnowledgeHub:
         # 6. 取 top_k
         return filtered[:top_k]
 
+
+    async def _resolve_visible_owner_ids(
+        self,
+        db: AsyncSession,
+        viewer_user_id: Optional[int],
+    ) -> Optional[set[str]]:
+        """返回该调用者可见的私有条目 owner 集合；`None` 表示不限制（管理员）。
+
+        公共条目（`owner_user_id IS NULL`）对所有人可见，不在本集合内单独表达。
+        无 `viewer_user_id`（后台任务等）返回空集——只剩公共条目可见。
+        """
+        if viewer_user_id is None:
+            return set()
+
+        from app.models.user import User
+
+        viewer = (
+            await db.execute(select(User).where(User.id == viewer_user_id))
+        ).scalar_one_or_none()
+        if viewer is None:
+            return set()
+        if (viewer.role or "").strip().lower() == "admin":
+            return None
+
+        if not viewer.school_name:
+            return {str(viewer.id)}
+
+        same_school = await db.execute(
+            select(User.id).where(User.school_name == viewer.school_name)
+        )
+        return {str(uid) for uid in same_school.scalars()}
+
+    @staticmethod
+    def _owner_visibility_clause(visible_owner_ids: Optional[set[str]]):
+        """构造归属可见性条件；`None` 表示不加限制。"""
+        if visible_owner_ids is None:
+            return None
+        public_only = KnowledgeChunk.owner_user_id.is_(None)
+        if not visible_owner_ids:
+            return public_only
+        return or_(public_only, KnowledgeChunk.owner_user_id.in_(visible_owner_ids))
+
     async def _keyword_search(
         self,
         db: AsyncSession,
         query: str,
         limit: int,
+        visible_owner_ids: Optional[set[str]] = None,
     ) -> list[RetrievalResult]:
         """关键词搜索"""
         try:
@@ -120,10 +173,10 @@ class KnowledgeHub:
                     )
                 )
 
+            visibility = self._owner_visibility_clause(visible_owner_ids)
+            where_clause = and_(*conditions) if visibility is None else and_(*conditions, visibility)
             result = await db.execute(
-                select(KnowledgeChunk).where(
-                    and_(*conditions)
-                ).limit(limit)
+                select(KnowledgeChunk).where(where_clause).limit(limit)
             )
 
             chunks = result.scalars().all()
@@ -147,6 +200,7 @@ class KnowledgeHub:
         db: AsyncSession,
         embedding: list[float],
         limit: int,
+        visible_owner_ids: Optional[set[str]] = None,
     ) -> list[RetrievalResult]:
         """语义向量搜索。
 
@@ -160,11 +214,11 @@ class KnowledgeHub:
                     # SAVEPOINT 隔离 pgvector 查询：失败时只回滚到 savepoint，
                     # 外部事务及已加载的 ORM 对象均不受影响（不 expire）。
                     async with db.begin_nested():
-                        return await self._semantic_search_pgvector(db, embedding, limit)
+                        return await self._semantic_search_pgvector(db, embedding, limit, visible_owner_ids)
                 except Exception as exc:
                     logger.warning(f"pgvector semantic search failed, falling back to Python cosine search: {exc}")
 
-            return await self._semantic_search_python(db, embedding, limit)
+            return await self._semantic_search_python(db, embedding, limit, visible_owner_ids)
         except Exception as e:
             logger.warning(f"Semantic search failed: {e}")
             return []
@@ -174,11 +228,22 @@ class KnowledgeHub:
         db: AsyncSession,
         embedding: list[float],
         limit: int,
+        visible_owner_ids: Optional[set[str]] = None,
     ) -> list[RetrievalResult]:
         query_vector = "[" + ",".join(f"{value:.12g}" for value in embedding) + "]"
+        params: dict[str, Any] = {"query_vector": query_vector, "limit": limit}
+        # 归属可见性必须**在 SQL 里**过滤：若先取回再筛，pgvector 的 LIMIT
+        # 会先被他人条目占满，同校条目反而被挤掉。
+        if visible_owner_ids is None:
+            visibility_sql = ""
+        elif visible_owner_ids:
+            visibility_sql = " AND (owner_user_id IS NULL OR owner_user_id = ANY(:owner_ids))"
+            params["owner_ids"] = list(visible_owner_ids)
+        else:
+            visibility_sql = " AND owner_user_id IS NULL"
         result = await db.execute(
             text(
-                """
+                f"""
                 SELECT
                     id,
                     source_id,
@@ -186,12 +251,12 @@ class KnowledgeHub:
                     metadata,
                     1 - (embedding_vec <=> CAST(:query_vector AS vector)) AS similarity
                 FROM ai_knowledge_chunks
-                WHERE embedding_vec IS NOT NULL
+                WHERE embedding_vec IS NOT NULL{visibility_sql}
                 ORDER BY embedding_vec <=> CAST(:query_vector AS vector)
                 LIMIT :limit
                 """
             ),
-            {"query_vector": query_vector, "limit": limit},
+            params,
         )
 
         rows = result.mappings().all()
@@ -212,10 +277,13 @@ class KnowledgeHub:
         db: AsyncSession,
         embedding: list[float],
         limit: int,
+        visible_owner_ids: Optional[set[str]] = None,
     ) -> list[RetrievalResult]:
+        visibility = self._owner_visibility_clause(visible_owner_ids)
+        base = KnowledgeChunk.embedding.isnot(None)
         result = await db.execute(
             select(KnowledgeChunk).where(
-                KnowledgeChunk.embedding.isnot(None)
+                base if visibility is None else and_(base, visibility)
             )
         )
         chunks = result.scalars().all()

@@ -44,6 +44,8 @@ class ProjectIngestService:
         brand: str | None,
         model: str | None,
         version: str | None,
+        created_by_user_id: int | None = None,
+        school_name: str | None = None,
     ) -> RobotProjectUploadJobResponse:
         project_id = str(uuid.uuid4())
         robot_key = f"{_slug(brand)}-{_slug(model)}-{_slug(version)}-{project_id[:8]}"
@@ -55,6 +57,8 @@ class ProjectIngestService:
         classified = classify_file(filename)
         project = RobotProject(
             id=project_id,
+            created_by_user_id=created_by_user_id,
+            school_name=school_name,
             robot_key=robot_key,
             brand=brand or "unknown",
             model=model or "unknown",
@@ -222,9 +226,22 @@ class ProjectIngestService:
             version=project.version,
         )
 
-    async def list_projects(self, db: AsyncSession) -> RobotProjectListResponse:
+    async def list_projects(
+        self, db: AsyncSession, *, school_name: str | None = None
+    ) -> RobotProjectListResponse:
+        """列出机器人项目；`school_name` 非空时只返回该校项目。
+
+        审计 C-AUTH-03：此前不按学校过滤，他校用户可看到全部项目。
+        `school_name` 为 None 表示不过滤——仅管理员走该分支。
+        """
         projects = (
-            await db.execute(select(RobotProject).order_by(RobotProject.updated_at.desc()))
+            await db.execute(
+                (
+                    select(RobotProject)
+                    if school_name is None
+                    else select(RobotProject).where(RobotProject.school_name == school_name)
+                ).order_by(RobotProject.updated_at.desc())
+            )
         ).scalars().all()
         return RobotProjectListResponse(
             projects=[

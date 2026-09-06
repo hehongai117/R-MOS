@@ -58,6 +58,13 @@ class ProjectIngestWorker:
                     content=chunk.content,
                     embedding=embedding,
                     metadata_json=chunk.metadata,
+                    # 审计 C-AUTH-03／C-AUTH-05：切块必须继承所属项目的归属，
+                    # 否则项目层过滤住了，检索层仍会把内容漏给他校。
+                    owner_user_id=(
+                        str(project.created_by_user_id)
+                        if project.created_by_user_id is not None
+                        else None
+                    ),
                 )
                 db.add(record)
                 await db.flush()

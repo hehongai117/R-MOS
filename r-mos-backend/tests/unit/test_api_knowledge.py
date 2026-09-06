@@ -551,10 +551,10 @@ def test_create_invalid_enum_returns_server_error_current_behavior(
     assert response.status_code == 500
 
 
-def test_cross_school_user_can_search_other_school_knowledge_current_behavior(
+def test_cross_school_search_filters_foreign_knowledge_but_same_school_can_read(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
-    """这是当前行为，疑似缺陷 C-AUTH-01：跨校可读知识，待模块 C 改造时处置。"""
+    """C-AUTH-01：学校是租户边界，同校教师仍按既定读规则放行。"""
     client, session_factory = knowledge_api_env
     agent_endpoints.knowledge_governance._knowledge_store.clear()
 
@@ -601,14 +601,32 @@ def test_cross_school_user_can_search_other_school_knowledge_current_behavior(
         )
     )
 
-    search_response = client.post(
+    cross_school_response = client.post(
         "/api/v1/agent/knowledge/search",
         headers=_auth_headers(reader_token),
         json={"query": unique_title, "status": "APPROVED"},
     )
 
-    assert search_response.status_code == 200
-    assert entry_id in {item["id"] for item in search_response.json()["results"]}
+    same_school_email = f"knowledge_same_school_{uuid4().hex[:8]}@example.com"
+    same_school_token = _register_and_login(client, email=same_school_email)
+    asyncio.run(
+        _grant_role_permissions(
+            session_factory,
+            email=same_school_email,
+            role_name=f"knowledge_same_school_{uuid4().hex[:8]}",
+            permission_keys=["agent:read"],
+        )
+    )
+    same_school_response = client.post(
+        "/api/v1/agent/knowledge/search",
+        headers=_auth_headers(same_school_token),
+        json={"query": unique_title, "status": "APPROVED"},
+    )
+
+    assert cross_school_response.status_code == 200
+    assert entry_id not in {item["id"] for item in cross_school_response.json()["results"]}
+    assert same_school_response.status_code == 200
+    assert entry_id in {item["id"] for item in same_school_response.json()["results"]}
 
 
 def test_knowledge_approval_does_not_create_retrieval_records_current_behavior(
@@ -654,10 +672,10 @@ def test_knowledge_approval_does_not_create_retrieval_records_current_behavior(
     assert asyncio.run(_retrieval_record_counts(session_factory)) == counts_before
 
 
-def test_other_school_user_can_submit_foreign_draft_current_behavior(
+def test_other_school_user_cannot_submit_foreign_draft(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
-    """这是当前行为，疑似缺陷 C-AUTH-04：跨校可提交他人草稿，待模块 C 改造时处置。"""
+    """C-AUTH-04：跨校用户不能提交他人草稿。"""
     client, session_factory = knowledge_api_env
     agent_endpoints.knowledge_governance._knowledge_store.clear()
 
@@ -699,8 +717,8 @@ def test_other_school_user_can_submit_foreign_draft_current_behavior(
         headers=_auth_headers(foreign_token),
     )
 
-    assert submit_response.status_code == 200
-    assert submit_response.json() == {"status": "submitted"}
+    assert submit_response.status_code == 403
+    assert agent_endpoints.knowledge_governance._knowledge_store[entry_id].status.value == "DRAFT"
 
 
 def test_approve_accepts_unknown_decision_as_rejection_current_behavior(
@@ -743,12 +761,12 @@ def test_approve_accepts_unknown_decision_as_rejection_current_behavior(
     assert agent_endpoints.knowledge_governance._knowledge_store[entry_id].status.value == "REJECTED"
 
 
-def test_upload_accepts_parent_path_and_unsupported_type_current_behavior(
+def test_upload_rejects_parent_path_with_unsupported_type(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """这是当前行为，疑似缺陷 C-UPLOAD-01：路径与类型未拦截，待模块 C 改造时处置。"""
+    """C-UPLOAD-01：路径型文件名不能把不支持的文件写到项目目录外。"""
     client, session_factory = knowledge_api_env
     storage_root = tmp_path / "projects"
     monkeypatch.setattr(knowledge_endpoints.project_ingest_service, "storage_root", storage_root)
@@ -770,23 +788,55 @@ def test_upload_accepts_parent_path_and_unsupported_type_current_behavior(
         files={"file": ("../../escaped.exe", b"MZ-current-behavior", "application/x-msdownload")},
     )
 
-    assert response.status_code == 200
-    project_id = response.json()["project_id"]
-    project_file, chunks = asyncio.run(
-        _project_file_and_chunks(session_factory, project_id=project_id)
-    )
-    assert project_file.relative_path == "../../escaped.exe"
-    assert Path(project_file.storage_path).resolve() == (tmp_path / "escaped.exe").resolve()
-    assert Path(project_file.storage_path).read_bytes() == b"MZ-current-behavior"
-    assert chunks == []
+    assert response.status_code == 415
+    assert response.json()["message"] == "Unsupported knowledge file type"
+    assert not (tmp_path / "escaped.exe").exists()
+    assert not storage_root.exists()
 
 
-def test_upload_accepts_multi_megabyte_file_without_limit_current_behavior(
+def test_upload_uses_basename_for_supported_path_filename(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """这是当前行为，疑似缺陷 C-UPLOAD-02：上传未设大小上限，待模块 C 改造时处置。"""
+    """C-UPLOAD-01 放行：支持的文件只保存 basename，不保留用户路径。"""
+    client, session_factory = knowledge_api_env
+    storage_root = tmp_path / "projects"
+    monkeypatch.setattr(knowledge_endpoints.project_ingest_service, "storage_root", storage_root)
+
+    email = f"knowledge_safe_path_{uuid4().hex[:8]}@example.com"
+    token = _register_and_login(client, email=email)
+    asyncio.run(
+        _grant_role_permissions(
+            session_factory,
+            email=email,
+            role_name=f"knowledge_safe_path_{uuid4().hex[:8]}",
+            permission_keys=["agent:execute"],
+        )
+    )
+
+    response = client.post(
+        "/api/v1/agent/knowledge/upload",
+        headers=_auth_headers(token),
+        files={"file": ("../../manual.txt", b"safe manual", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    project_file, _ = asyncio.run(
+        _project_file_and_chunks(session_factory, project_id=response.json()["project_id"])
+    )
+    assert project_file.filename == "manual.txt"
+    assert project_file.relative_path == "manual.txt"
+    assert Path(project_file.storage_path).resolve().is_relative_to(storage_root.resolve())
+    assert Path(project_file.storage_path).read_bytes() == b"safe manual"
+
+
+def test_upload_rejects_file_over_size_limit(
+    knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """C-UPLOAD-02：超过 10 MiB 的单文件在进入导入流程前被拒绝。"""
     client, session_factory = knowledge_api_env
     monkeypatch.setattr(
         knowledge_endpoints.project_ingest_service,
@@ -804,7 +854,7 @@ def test_upload_accepts_multi_megabyte_file_without_limit_current_behavior(
             permission_keys=["agent:execute"],
         )
     )
-    content = b"x" * (2 * 1024 * 1024)
+    content = b"x" * (10 * 1024 * 1024 + 1)
 
     response = client.post(
         "/api/v1/agent/knowledge/upload",
@@ -812,16 +862,16 @@ def test_upload_accepts_multi_megabyte_file_without_limit_current_behavior(
         files={"file": ("large.txt", content, "text/plain")},
     )
 
-    assert response.status_code == 200
-    assert response.json()["size_bytes"] == len(content)
+    assert response.status_code == 413
+    assert response.json()["message"] == "Knowledge file exceeds 10 MiB limit"
 
 
-def test_other_school_can_read_uploaded_robot_project_current_behavior(
+def test_other_school_cannot_read_uploaded_project_but_same_school_can(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """这是当前行为，疑似缺陷 C-AUTH-03：机器人项目跨校可读，待模块 C 改造时处置。"""
+    """C-AUTH-03：项目按上传者学校隔离，同校教师仍可读。"""
     client, session_factory = knowledge_api_env
     monkeypatch.setattr(
         knowledge_endpoints.project_ingest_service,
@@ -847,6 +897,7 @@ def test_other_school_can_read_uploaded_robot_project_current_behavior(
     )
     assert upload_response.status_code == 200
     project_id = upload_response.json()["project_id"]
+    owner_user_id = asyncio.run(_get_user_id(session_factory, email=owner_email))
 
     reader_email = f"project_reader_{uuid4().hex[:8]}@example.com"
     reader_token = _register_and_login(
@@ -876,14 +927,44 @@ def test_other_school_can_read_uploaded_robot_project_current_behavior(
     )
     _, chunks = asyncio.run(_project_file_and_chunks(session_factory, project_id=project_id))
 
-    assert job_response.status_code == 200
+    assert job_response.status_code == 404
     assert projects_response.status_code == 200
-    assert project_id in {
+    assert project_id not in {
         project["project_id"] for project in projects_response.json()["projects"]
     }
-    assert manifest_response.status_code == 200
-    assert manifest_response.json()["project_id"] == project_id
-    assert asset_response.status_code == 200
-    assert asset_response.content == content
+    assert manifest_response.status_code == 404
+    assert asset_response.status_code == 404
     assert chunks
-    assert all(chunk.owner_user_id is None for chunk in chunks)
+    assert all(chunk.owner_user_id == str(owner_user_id) for chunk in chunks)
+
+    same_school_email = f"project_same_school_{uuid4().hex[:8]}@example.com"
+    same_school_token = _register_and_login(client, email=same_school_email)
+    asyncio.run(
+        _grant_role_permissions(
+            session_factory,
+            email=same_school_email,
+            role_name=f"project_same_school_{uuid4().hex[:8]}",
+            permission_keys=["agent:read"],
+        )
+    )
+    same_school_headers = _auth_headers(same_school_token)
+
+    assert client.get(
+        f"/api/v1/agent/knowledge/upload/{project_id}", headers=same_school_headers
+    ).status_code == 200
+    same_school_projects = client.get(
+        "/api/v1/agent/knowledge/projects", headers=same_school_headers
+    )
+    assert project_id in {
+        project["project_id"] for project in same_school_projects.json()["projects"]
+    }
+    assert client.get(
+        f"/api/v1/agent/knowledge/projects/{project_id}/manifest",
+        headers=same_school_headers,
+    ).status_code == 200
+    same_school_asset = client.get(
+        f"/api/v1/agent/knowledge/projects/{project_id}/assets/manual.txt",
+        headers=same_school_headers,
+    )
+    assert same_school_asset.status_code == 200
+    assert same_school_asset.content == content
