@@ -175,8 +175,14 @@ def test_module_f_route_census_uses_runtime_app() -> None:
     assert actual == MODULE_F_ROUTES
 
 
-def test_timeline_tables_still_have_no_application_writer_by_ast() -> None:
-    """S1-001 裁决二：三张时间线表当前仍无应用写入路径，状态为尚未实现。"""
+def test_timeline_tables_have_exactly_one_application_writer_by_ast() -> None:
+    """S1-001 裁决二已落地：三张时间线表的写入路径**存在且唯一**。
+
+    原断言固化的是「整组无应用写入」这一未实现状态。裁定要求「先补写入再开放回放」，
+    写入已补于 `TeachingService._build_attempt_timeline`，故断言由「无写入者」
+    改为「写入者只在教学服务一处」——仍然防止写入权扩散（S1-001 §2.3：
+    一张表只有一个模块可以写）。
+    """
     app_root = Path(__file__).parents[2] / "app"
     model_names = {"AlignmentMap", "MultimodalTimeline", "TimelineSegment"}
     writer_calls: set[tuple[str, str]] = set()
@@ -206,8 +212,10 @@ def test_timeline_tables_still_have_no_application_writer_by_ast() -> None:
                     if root in {"timeline", "segment", "alignment"}:
                         attribute_writes.add((relative_path, ast.unparse(target)))
 
-    assert writer_calls == set()
-    assert attribute_writes == set()
+    writer_files = {path for path, _ in writer_calls} | {path for path, _ in attribute_writes}
+    assert writer_files == {"app/services/teaching_service.py"}, (
+        f"时间线写入者应只有教学服务一处，实际: {sorted(writer_files)}"
+    )
 
 
 def test_assignment_attempt_writer_census_uses_ast() -> None:
@@ -558,3 +566,149 @@ def test_admin_can_grade_any_attempt(
         f"/api/v1/attempts/{context['attempt_id']}/grade", json={"score": 77}
     )
     assert graded.status_code == 200, f"管理员被拒: {graded.status_code} {graded.text}"
+
+
+# ---------------------------------------------------------------------------
+# 跨校边界（董事会 2026-09-06 指出）
+#
+# 与 F-AUTH-01 严格区分：**同校**教师可读他人班级已裁定为设计
+# （`ensure_user_scope` 文档：读规则允许同校教师，供教研与教务查看本校学生）。
+# 本节针对的是**另一所学校**的教师——那是租户边界，不在该设计意图内。
+# ---------------------------------------------------------------------------
+
+OTHER_SCHOOL_NAME = "另一所学校"
+
+
+def _register_at_school(client: TestClient, *, prefix: str, school: str) -> dict:
+    """在指定学校注册教师并登录。
+
+    不能用 `register_and_login`——它把 `school_name` 硬编码为 `E2E_SCHOOL_NAME`，
+    而本节正需要第二所学校。
+    """
+    email = f"{prefix}_{uuid4().hex[:8]}@example.com"
+    resp = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "password": "StrongPass123",
+            "full_name": prefix,
+            "role": "teacher",
+            "school_name": school,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    login = client.post(
+        "/api/v1/auth/login", json={"email": email, "password": "StrongPass123"}
+    )
+    assert login.status_code == 200, login.text
+    return login.json()
+
+
+def _seed_other_school(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from app.models.school import School
+
+    async def _run() -> None:
+        async with session_factory() as session:
+            await session.execute(School.__table__.insert().values(name=OTHER_SCHOOL_NAME))
+            await session.commit()
+
+    asyncio.run(_run())
+
+
+def test_foreign_school_teacher_cannot_list_classes(cross_class_context, e2e_env) -> None:
+    """跨校教师不得在班级列表中看到他校班级。"""
+    context = cross_class_context
+    client = context["client"]
+    _, session_factory = e2e_env
+    _seed_other_school(session_factory)
+
+    outsider = _register_at_school(
+        client, prefix="module_f_foreign_teacher", school=OTHER_SCHOOL_NAME
+    )
+    _act_as(client, outsider)
+
+    listing = client.get("/api/v1/classes")
+    assert listing.status_code == 200, listing.text
+    ids = [item["id"] for item in listing.json()]
+    assert context["class_id"] not in ids, (
+        f"他校教师在班级列表中看到了本校班级 {context['class_id']}: {ids}"
+    )
+
+
+def test_foreign_school_teacher_cannot_read_class_detail(cross_class_context, e2e_env) -> None:
+    """跨校教师读班级详情必须被拒（口径与既有读路径一致：404 不泄露存在性）。"""
+    context = cross_class_context
+    client = context["client"]
+    _, session_factory = e2e_env
+    _seed_other_school(session_factory)
+
+    outsider = _register_at_school(
+        client, prefix="module_f_foreign_detail", school=OTHER_SCHOOL_NAME
+    )
+    _act_as(client, outsider)
+
+    detail = client.get(f"/api/v1/classes/{context['class_id']}")
+    assert detail.status_code in (403, 404), (
+        f"他校教师读到了本校班级详情: {detail.status_code} {detail.text}"
+    )
+
+
+def test_same_school_teacher_still_sees_classes(cross_class_context) -> None:
+    """同校教师仍可见——F-AUTH-01 已裁定为设计，收紧跨校不得误伤同校。"""
+    context = cross_class_context
+    client = context["client"]
+
+    _act_as(client, context["teacher_a_login"])  # A 与 B 同校，A 不带该班
+    listing = client.get("/api/v1/classes")
+    assert listing.status_code == 200, listing.text
+    ids = [item["id"] for item in listing.json()]
+    assert context["class_id"] in ids, "同校教师看不到本校班级，收紧过度"
+
+
+# ---------------------------------------------------------------------------
+# 教学时间线写入（S1-001 §3.4 裁决二，董事会 2026-09-06 指出仍缺）
+#
+# 裁定原文：时间线三表保留在模块 F，标记「尚未实现」，**先补写入再开放回放**。
+# 顺序不可颠倒——无写入即无数据，此时开放回放只会返回空结果，
+# 那正是「接口存在但能力不存在」。
+# ---------------------------------------------------------------------------
+
+
+def test_attempt_completion_writes_timeline(cross_class_context, e2e_env) -> None:
+    """尝试完成时应落成时间线，回放随之从 insufficient_data 变为 ok。"""
+    context = cross_class_context
+    client = context["client"]
+
+    _act_as(client, context["student_login"])
+    before = client.get(f"/api/v1/teaching/attempts/{context['attempt_id']}/replay")
+    assert before.status_code == 200
+    assert before.json()["status"] == "insufficient_data", "前置条件不成立：完成前不该有时间线"
+
+    client.patch(f"/api/v1/attempts/{context['attempt_id']}", json={"status": "completed"})
+
+    after = client.get(f"/api/v1/teaching/attempts/{context['attempt_id']}/replay")
+    assert after.status_code == 200
+    assert after.json()["status"] == "ok", (
+        f"完成后回放仍无数据，写入路径未生效: {after.text}"
+    )
+    assert after.json()["evidenceRefs"], "回放返回 ok 但证据引用为空"
+
+
+def test_timeline_write_is_idempotent(cross_class_context) -> None:
+    """重复置为 completed 不得重复建时间线。"""
+    from app.models.timeline import MultimodalTimeline
+
+    context = cross_class_context
+    client = context["client"]
+    _act_as(client, context["student_login"])
+    client.patch(f"/api/v1/attempts/{context['attempt_id']}", json={"status": "completed"})
+    first = client.get(f"/api/v1/teaching/attempts/{context['attempt_id']}/replay")
+    assert first.json()["status"] == "ok"
+
+    # 再次提交同一状态（幂等路径）
+    client.patch(f"/api/v1/attempts/{context['attempt_id']}", json={"status": "completed"})
+    second = client.get(f"/api/v1/teaching/attempts/{context['attempt_id']}/replay")
+    assert second.json()["status"] == "ok"
+    assert len(second.json()["evidenceRefs"]) == len(first.json()["evidenceRefs"]), (
+        "重复完成导致时间线段翻倍"
+    )

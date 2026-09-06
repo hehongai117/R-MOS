@@ -18,6 +18,7 @@ from app.models.teaching import (
     Enrollment,
     Assignment,
     AssignmentAttempt,
+    EvidenceLink,
 )
 
 
@@ -82,8 +83,21 @@ class TeachingService:
         await self.db.refresh(teaching_class)
         return teaching_class
 
-    async def list_classes(self) -> List[TeachingClass]:
-        result = await self.db.execute(select(TeachingClass).order_by(TeachingClass.id))
+    async def list_classes(self, *, school_name: str | None = None) -> List[TeachingClass]:
+        """列出班级；`school_name` 非空时只返回该校班级。
+
+        `classes` 表本身没有学校维度，学校经班主任推导
+        （`TeachingClass.teacher_id` → `User.school_name`）。
+        `school_name` 为 None 表示不过滤——仅管理员走该分支。
+        """
+        stmt = select(TeachingClass).order_by(TeachingClass.id)
+        if school_name is not None:
+            from app.models.user import User
+
+            stmt = stmt.join(User, User.id == TeachingClass.teacher_id).where(
+                User.school_name == school_name
+            )
+        result = await self.db.execute(stmt)
         return result.scalars().all()
 
     async def get_class(self, class_id: int) -> TeachingClass:
@@ -297,9 +311,71 @@ class TeachingService:
         attempt.status = normalized
         if normalized == "abandoned":
             attempt.abandoned_at = datetime.now(timezone.utc)
+        if normalized == "completed":
+            await self._build_attempt_timeline(attempt)
         await self.db.commit()
         await self.db.refresh(attempt)
         return attempt
+
+    async def _build_attempt_timeline(self, attempt: AssignmentAttempt) -> None:
+        """尝试完成时，把它已有的证据链接落成一条多模态时间线。
+
+        S1-001 §3.4 裁决二：时间线三表（`multimodal_timelines`／`timeline_segments`／
+        `alignment_map`）此前**整组无应用写入路径**，裁定为「**先补写入再开放回放**」。
+        本方法即该写入路径。
+
+        **数据来源是该尝试真实的 `EvidenceLink`，不编造内容**——
+        没有证据就不建时间线，回放继续如实返回 `insufficient_data`。
+        这与「接口存在但能力不存在」相反：有多少证据就回放多少。
+
+        幂等：同一 attempt 已有时间线时直接返回，不重复建。
+        """
+        from app.models.timeline import AlignmentMap, MultimodalTimeline, TimelineSegment
+
+        existing = await self.db.execute(
+            select(MultimodalTimeline.id).where(
+                MultimodalTimeline.scope_type == "attempt",
+                MultimodalTimeline.scope_id == str(attempt.id),
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            return
+
+        links_result = await self.db.execute(
+            select(EvidenceLink)
+            .where(EvidenceLink.attempt_id == attempt.id)
+            .order_by(EvidenceLink.id)
+        )
+        links = list(links_result.scalars())
+        if not links:
+            return
+
+        timeline = MultimodalTimeline(
+            scope_type="attempt",
+            scope_id=str(attempt.id),
+            created_by_user_id=str(attempt.student_id),
+        )
+        self.db.add(timeline)
+        await self.db.flush()
+
+        for index, link in enumerate(links):
+            segment = TimelineSegment(
+                timeline_id=timeline.id,
+                segment_type="evidence",
+                ref_id=link.bundle_id,
+                start_ts_ms=index * 1000,
+                end_ts_ms=(index + 1) * 1000,
+            )
+            self.db.add(segment)
+            await self.db.flush()
+            self.db.add(
+                AlignmentMap(
+                    timeline_id=timeline.id,
+                    anchor_key=f"evidence:{link.bundle_id}",
+                    segment_id=segment.id,
+                    ref_id=link.bundle_id,
+                )
+            )
 
     async def grade_attempt(self, attempt_id: int, *, score: float) -> AssignmentAttempt:
         attempt = await self.get_attempt(attempt_id)

@@ -21,6 +21,7 @@ from app.core.exceptions import BusinessRuleViolation, ResourceNotFoundError
 from app.models.evidence import EvidenceBundle
 from app.models.timeline import AlignmentMap, EvidenceCard, MultimodalTimeline, TimelineSegment
 from app.models.teaching import Assignment, Enrollment, EvidenceLink, TeachingClass
+from app.models.user import User
 from app.schemas.teaching import (
     ClassCreate,
     ClassResponse,
@@ -74,9 +75,17 @@ logger = logging.getLogger(__name__)
     response_model=List[ClassResponse],
     response_model_by_alias=True,
 )
-async def list_classes(db: AsyncSession = Depends(get_db)):
+async def list_classes(
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    # 审计 M-12 / 董事会 2026-09-06：此前**无身份注入、无任何过滤**，
+    # 任何登录用户（含他校教师）都能列出全部班级。
+    # 同校可见是既定设计（F-AUTH-01 裁定），跨校不是——学校是租户边界。
     service = TeachingService(db)
-    return await service.list_classes()
+    if actor_has_role(actor, "admin"):
+        return await service.list_classes()
+    return await service.list_classes(school_name=actor.school_name)
 
 
 @router.post(
@@ -145,6 +154,23 @@ async def get_class(
             reason="unknown_account_role",
             message="资源不存在",
         )
+
+    # 审计 M-12 / 董事会 2026-09-06：教师分支此前**完全无校验**，
+    # 他校教师可读任意班级详情。学校经班主任推导（classes 表无学校列）。
+    if not actor_has_role(actor, "admin"):
+        owner_school = await db.execute(
+            select(User.school_name).where(User.id == teaching_class.teacher_id)
+        )
+        if owner_school.scalar_one_or_none() != actor.school_name:
+            await raise_read_access_denied(
+                db,
+                http_request,
+                action="read_access_denied",
+                resource_type="TeachingClass",
+                resource_id=teaching_class.id,
+                reason="cross_school_class_access",
+                message="资源不存在",
+            )
 
     if actor.account_role == "student":
         actor_student_id = actor.user_id
