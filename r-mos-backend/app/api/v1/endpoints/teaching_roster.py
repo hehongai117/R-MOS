@@ -836,9 +836,14 @@ async def grade_attempt(
     # **此处不可用 ensure_write_owner**：那会放行学生给自己打分，只是把洞换个位置。
     service = TeachingService(db)
     attempt = await service.get_attempt(attempt_id)
+    # 审计 F-AUTH-04：管辖权必须绑定到**该尝试所属班级**。
+    # 原先只问「这位教师的任一班级里有没有这个学生」，于是教师 A 只要在自己某个班
+    # 教过学生 X，就能给 X 在教师 B 班级里的尝试打分——粒度过粗。
+    assignment = await service.get_assignment(attempt.assignment_id)
     await ensure_teacher_scope_over_student(
         db, http_request, actor, attempt.student_id,
         action="grade_attempt", resource_type="AssignmentAttempt", resource_id=attempt_id,
+        class_id=assignment.class_id,
     )
     try:
         return await service.grade_attempt(attempt_id, score=request.score)

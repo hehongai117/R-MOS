@@ -451,12 +451,13 @@ def test_other_teacher_can_read_foreign_evidence_and_diagnosis_current_behavior(
     assert diagnosis.json()["diagnosisCode"] == "OK"
 
 
-def test_teacher_can_grade_foreign_class_attempt_when_student_is_in_any_owned_class(
+def test_teacher_cannot_grade_attempt_in_another_teachers_class(
     cross_class_context,
 ) -> None:
-    """这是当前行为，疑似缺陷 F-AUTH-04，待模块 F 改造时处置。
+    """F-AUTH-04：管辖权必须绑定到**该尝试所属班级**，不是「任一自有班级」。
 
-    评分只核实教师是否在任一自有班级带过该学生，没有绑定目标尝试所属班级。
+    原断言固化的缺陷：教师 A 只要在自己某个班教过学生 X，
+    就能给 X 在教师 B 班级里的尝试打分——管辖权粒度过粗。
     """
     context = cross_class_context
     client = context["client"]
@@ -487,6 +488,73 @@ def test_teacher_can_grade_foreign_class_attempt_when_student_is_in_any_owned_cl
     graded = client.post(
         f"/api/v1/attempts/{context['attempt_id']}/grade", json={"score": 91}
     )
-    assert graded.status_code == 200
-    assert graded.json()["status"] == "graded"
-    assert graded.json()["score"] == 91
+    assert graded.status_code == 403, (
+        f"他班教师给本不属其班级的尝试打分未被拒: {graded.status_code} {graded.text}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# F-AUTH-04 的完整方向验证
+#
+# 单有「他班教师被拒」不足以证明修对了——把守卫写成无条件拒绝也能让那条绿。
+# 下面三条把方向的四个角都钉住：本班教师放行、学生自评被拒、管理员放行。
+#
+# 其中「学生不得给自己打分」尤其关键：`ensure_teacher_scope_over_student` 的
+# 文档记载过，若把此处误改为 `ensure_write_owner`，
+# 「任意登录用户可给任意作业打分」会被"修"成「学生可以给自己打分」，
+# 只是把洞换了个位置。这条用例就是防止那种改法。
+# ---------------------------------------------------------------------------
+
+
+def test_owning_class_teacher_can_grade(cross_class_context) -> None:
+    """本班教师可评分——放行侧，防止守卫被写成无条件拒绝。"""
+    context = cross_class_context
+    client = context["client"]
+
+    _act_as(client, context["student_login"])
+    client.patch(f"/api/v1/attempts/{context['attempt_id']}", json={"status": "completed"})
+
+    _act_as(client, context["teacher_b_login"])  # B 是该尝试所属班级的教师
+    graded = client.post(
+        f"/api/v1/attempts/{context['attempt_id']}/grade", json={"score": 88}
+    )
+    assert graded.status_code == 200, f"本班教师被拒: {graded.status_code} {graded.text}"
+    assert graded.json()["score"] == 88
+
+
+def test_student_still_cannot_grade_own_attempt(cross_class_context) -> None:
+    """学生不得给自己打分——若误改为 `ensure_write_owner`，这条会翻红。"""
+    context = cross_class_context
+    client = context["client"]
+
+    _act_as(client, context["student_login"])
+    client.patch(f"/api/v1/attempts/{context['attempt_id']}", json={"status": "completed"})
+    graded = client.post(
+        f"/api/v1/attempts/{context['attempt_id']}/grade", json={"score": 100}
+    )
+    assert graded.status_code == 403, (
+        f"学生给自己打分未被拒: {graded.status_code} {graded.text}"
+    )
+
+
+def test_admin_can_grade_any_attempt(
+    cross_class_context,
+    e2e_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    """管理员不受班级边界限制——既有行为，收紧班级粒度后须保持不变。"""
+    from tests.e2e.helpers import set_user_role
+
+    context = cross_class_context
+    client = context["client"]
+    _, session_factory = e2e_env
+
+    _act_as(client, context["student_login"])
+    client.patch(f"/api/v1/attempts/{context['attempt_id']}", json={"status": "completed"})
+
+    admin_id, _, admin_login = register_and_login(client, email_prefix="module_f_admin")
+    asyncio.run(set_user_role(session_factory, user_id=admin_id, role="admin"))
+    _act_as(client, admin_login)
+    graded = client.post(
+        f"/api/v1/attempts/{context['attempt_id']}/grade", json={"score": 77}
+    )
+    assert graded.status_code == 200, f"管理员被拒: {graded.status_code} {graded.text}"

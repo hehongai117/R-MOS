@@ -130,6 +130,7 @@ async def ensure_teacher_scope_over_student(
     action: str,
     resource_type: str,
     resource_id: int | str | None = None,
+    class_id: int | None = None,
 ) -> None:
     """教师职权写路径：**有管辖权的教师或管理员；对象所有者本人一律拒绝**。
 
@@ -142,6 +143,9 @@ async def ensure_teacher_scope_over_student(
 
     管辖权判定复用 `ClassMembershipService.teacher_has_student_scope`
     （Enrollment ⋈ TeachingClass），与 `force-submit` 同一口径。
+
+    `class_id` 非空时收紧到**该班级**（审计 F-AUTH-04）。
+    依附于具体班级的职权（评分）必须传；与班级无关的职权（force-submit）留空。
     """
     from app.services.teaching.class_membership import ClassMembershipService
 
@@ -161,7 +165,7 @@ async def ensure_teacher_scope_over_student(
     if actor.account_role == "teacher":
         membership = ClassMembershipService(db)
         if await membership.teacher_has_student_scope(
-            teacher_id=actor.user_id, student_id=student_id
+            teacher_id=actor.user_id, student_id=student_id, class_id=class_id
         ):
             return
 
