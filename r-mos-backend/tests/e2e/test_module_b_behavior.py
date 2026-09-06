@@ -1,11 +1,13 @@
 """RMOS-S3-006 模块 B：机器人资产路由覆盖与当前行为安全网。
 
-本文件只通过真实 HTTP 请求、运行时路由枚举或 ORM 元数据固定当前事实；
-第一步不修改生产代码。疑似缺陷按当前返回结果断言，留待模块 B 改造时处置。
+本文件通过真实 HTTP 请求、运行时路由枚举、AST 或 ORM 元数据固定模块 B 行为；
+第二步已将确认的 G1-G3 缺陷断言反转为目标契约，B-FUNC-01 仍只登记不实施。
 """
 from __future__ import annotations
 
 import asyncio
+import ast
+import inspect
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -178,7 +180,7 @@ def module_b_env() -> dict:
 async def _seed_robot(
     session_factory: async_sessionmaker[AsyncSession],
     *,
-    owner_teacher_id: int,
+    owner_teacher_id: int | None,
     visibility: RobotVisibility = RobotVisibility.PRIVATE,
     status: RobotStatus = RobotStatus.DRAFT,
     with_owner_binding: bool = True,
@@ -193,7 +195,7 @@ async def _seed_robot(
         )
         session.add(robot)
         await session.flush()
-        if with_owner_binding:
+        if with_owner_binding and owner_teacher_id is not None:
             session.add(
                 TeacherRobotBinding(
                     teacher_id=owner_teacher_id,
@@ -306,8 +308,8 @@ def test_robot_crud_allows_owner_and_rejects_non_owner(module_b_env: dict) -> No
     assert client.get(f"/api/v1/robots/{robot_id}", headers=owner_headers).status_code == 404
 
 
-def test_robot_lists_and_private_detail_current_behavior(module_b_env: dict) -> None:
-    """这是当前行为，疑似缺陷 B-AUTH-01：详情读取绕过唯一可见性实现并返回 403。"""
+def test_robot_lists_and_private_detail_use_read_denial_contract(module_b_env: dict) -> None:
+    """B-AUTH-01：详情读取复用唯一可见性实现，越权不泄露存在性。"""
     client = module_b_env["client"]
     created = _create_robot(client, module_b_env["owner_token"], suffix="read")
     robot_id = created["id"]
@@ -326,8 +328,35 @@ def test_robot_lists_and_private_detail_current_behavior(module_b_env: dict) -> 
         f"/api/v1/robots/{robot_id}",
         headers=_auth_headers(module_b_env["peer_token"]),
     )
-    assert denied.status_code == 403
-    assert denied.json()["message"] == "无权访问该机器人"
+    assert denied.status_code == 404
+
+
+def test_all_robot_id_read_endpoints_use_single_visibility_guard() -> None:
+    """B-AUTH-01：所有按机器人编号读取的 HTTP 端点都调用唯一可见性守卫。"""
+    read_endpoints = (
+        robot_endpoints.get_robot,
+        robot_endpoints.list_analysis_tasks,
+        robot_endpoints.get_robot_tools,
+        robot_endpoints.list_robot_assets,
+        robot_endpoints.get_robot_asset,
+    )
+
+    for endpoint in read_endpoints:
+        tree = ast.parse(inspect.getsource(endpoint))
+        calls = {
+            node.func.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        assert "_get_audited_visible_robot_or_404" in calls, endpoint.__name__
+
+    wrapper_tree = ast.parse(inspect.getsource(robot_endpoints._get_audited_visible_robot_or_404))
+    wrapper_calls = {
+        node.func.id
+        for node in ast.walk(wrapper_tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+    assert "get_visible_robot_or_404" in wrapper_calls
 
 
 def test_upload_and_analysis_allow_owner_reject_peer_and_return_content(
@@ -378,12 +407,12 @@ def test_upload_and_analysis_allow_owner_reject_peer_and_return_content(
     assert analyzed.json()["input_document_ids"] == [upload_body["uploaded"][0]["id"]]
 
 
-def test_uploaded_asset_response_path_cannot_be_downloaded_current_behavior(
+def test_uploaded_asset_response_path_can_be_downloaded(
     module_b_env: dict,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """这是当前行为，疑似缺陷 B-STORAGE-01：上传返回的路径带重复机器人目录。"""
+    """B-STORAGE-01：上传响应给出的相对路径可直接用于资产下载。"""
     client = module_b_env["client"]
     created = _create_robot(client, module_b_env["owner_token"], suffix="path-contract")
     robot_id = created["id"]
@@ -406,17 +435,13 @@ def test_uploaded_asset_response_path_cannot_be_downloaded_current_behavior(
     )
     assert uploaded.status_code == 200
     returned_path = uploaded.json()["uploaded"][0]["file_path"]
-    assert returned_path == f"{robot_id}/uploads/manual.pdf"
+    assert returned_path == "uploads/manual.pdf"
 
     returned_path_response = client.get(
         f"/api/v1/robots/{robot_id}/assets/{returned_path}", headers=headers
     )
-    assert returned_path_response.status_code == 404
-    actual_storage_path_response = client.get(
-        f"/api/v1/robots/{robot_id}/assets/uploads/manual.pdf", headers=headers
-    )
-    assert actual_storage_path_response.status_code == 200
-    assert actual_storage_path_response.content == b"download-me"
+    assert returned_path_response.status_code == 200
+    assert returned_path_response.content == b"download-me"
 
 
 def test_publish_and_visibility_allow_owner_and_reject_peer(
@@ -476,7 +501,7 @@ def test_analysis_tasks_are_visible_only_through_parent_robot_owner(module_b_env
         f"/api/v1/robots/{robot_id}/analysis-tasks",
         headers=_auth_headers(module_b_env["peer_token"]),
     )
-    assert denied.status_code == 403
+    assert denied.status_code == 404
 
     allowed = client.get(
         f"/api/v1/robots/{robot_id}/analysis-tasks",
@@ -514,12 +539,12 @@ def test_bind_and_unbind_allow_teacher_reject_student_or_missing_binding(
     assert unbound.status_code == 204
 
 
-def test_cross_school_teacher_can_read_assets_and_bind_shared_robot_current_behavior(
+def test_shared_robot_stays_visible_in_school_and_is_hidden_across_schools(
     module_b_env: dict,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """这是当前行为，疑似缺陷 B-AUTH-02：共享机器人没有学校边界。"""
+    """B-AUTH-02：SHARED 只在校内共享；同校放行、跨校拒绝。"""
     client = module_b_env["client"]
     robot_id = asyncio.run(
         _seed_robot(
@@ -546,34 +571,52 @@ def test_cross_school_teacher_can_read_assets_and_bind_shared_robot_current_beha
             await session.commit()
 
     asyncio.run(_seed_asset())
+    peer_headers = _auth_headers(module_b_env["peer_token"])
+    same_school_detail = client.get(f"/api/v1/robots/{robot_id}", headers=peer_headers)
+    assert same_school_detail.status_code == 200
+    same_school_shared = client.get("/api/v1/robots/shared", headers=peer_headers)
+    assert robot_id in {item["id"] for item in same_school_shared.json()["items"]}
+    same_school_assets = client.get(f"/api/v1/robots/{robot_id}/assets", headers=peer_headers)
+    assert same_school_assets.status_code == 200
+
     headers = _auth_headers(module_b_env["foreign_token"])
 
     detail = client.get(f"/api/v1/robots/{robot_id}", headers=headers)
-    assert detail.status_code == 200
-    assert detail.json()["id"] == robot_id
+    assert detail.status_code == 404
     shared = client.get("/api/v1/robots/shared", headers=headers)
     assert shared.status_code == 200
-    assert robot_id in {item["id"] for item in shared.json()["items"]}
+    assert robot_id not in {item["id"] for item in shared.json()["items"]}
     assets = client.get(f"/api/v1/robots/{robot_id}/assets", headers=headers)
-    assert assets.status_code == 200
-    assert assets.json()["items"][0]["id"]
+    assert assets.status_code == 404
     downloaded = client.get(
         f"/api/v1/robots/{robot_id}/assets/models/cross.glb", headers=headers
     )
-    assert downloaded.status_code == 200
-    assert downloaded.content == b"cross-school"
+    assert downloaded.status_code == 404
 
     bound = client.post(f"/api/v1/robots/{robot_id}/bind", headers=headers)
-    assert bound.status_code == 201
+    assert bound.status_code == 404
+
+    async def _seed_legacy_cross_school_binding() -> None:
+        async with module_b_env["session_factory"]() as session:
+            session.add(
+                TeacherRobotBinding(
+                    teacher_id=module_b_env["foreign_id"],
+                    robot_model_id=robot_id,
+                    binding_type="shared_ref",
+                )
+            )
+            await session.commit()
+
+    asyncio.run(_seed_legacy_cross_school_binding())
     own_listing = client.get("/api/v1/robots", headers=headers)
     assert own_listing.status_code == 200
-    assert robot_id in {item["id"] for item in own_listing.json()["items"]}
+    assert robot_id not in {item["id"] for item in own_listing.json()["items"]}
 
 
-def test_onboarding_lists_and_binds_cross_school_private_ready_robot_current_behavior(
+def test_onboarding_uses_visibility_and_school_boundary(
     module_b_env: dict,
 ) -> None:
-    """这是当前行为，疑似缺陷 B-AUTH-03：首次选择绕过可见性及学校边界。"""
+    """B-AUTH-03：首次选择只列出并绑定对当前教师可见的机器人。"""
     client = module_b_env["client"]
     robot_id = asyncio.run(
         _seed_robot(
@@ -586,15 +629,33 @@ def test_onboarding_lists_and_binds_cross_school_private_ready_robot_current_beh
     foreign_headers = _auth_headers(module_b_env["foreign_token"])
     listed = client.get("/api/v1/onboarding/robots", headers=foreign_headers)
     assert listed.status_code == 200
-    assert robot_id in {item["id"] for item in listed.json()["items"]}
+    assert robot_id not in {item["id"] for item in listed.json()["items"]}
 
     selected = client.post(
         "/api/v1/onboarding/robots",
         headers=foreign_headers,
         json={"robot_ids": [robot_id]},
     )
-    assert selected.status_code == 200
-    assert selected.json() == {"message": "机器人选择完成", "bound_count": 1}
+    assert selected.status_code == 404
+
+    shared_robot_id = asyncio.run(
+        _seed_robot(
+            module_b_env["session_factory"],
+            owner_teacher_id=module_b_env["owner_id"],
+            visibility=RobotVisibility.SHARED,
+            status=RobotStatus.READY,
+        )
+    )
+    peer_headers = _auth_headers(module_b_env["peer_token"])
+    peer_listing = client.get("/api/v1/onboarding/robots", headers=peer_headers)
+    assert shared_robot_id in {item["id"] for item in peer_listing.json()["items"]}
+    same_school_selected = client.post(
+        "/api/v1/onboarding/robots",
+        headers=peer_headers,
+        json={"robot_ids": [shared_robot_id]},
+    )
+    assert same_school_selected.status_code == 200
+    assert same_school_selected.json() == {"message": "机器人选择完成", "bound_count": 1}
 
     student_headers = _auth_headers(module_b_env["student_token"])
     assert client.get("/api/v1/onboarding/robots", headers=student_headers).status_code == 403
@@ -603,6 +664,28 @@ def test_onboarding_lists_and_binds_cross_school_private_ready_robot_current_beh
         headers=student_headers,
         json={"robot_ids": [robot_id]},
     ).status_code == 403
+
+
+def test_system_shared_robot_remains_available_without_a_school_owner(
+    module_b_env: dict,
+) -> None:
+    """SHARED 语义：无 owner 的系统内置机器人不被错误归入任一学校。"""
+    robot_id = asyncio.run(
+        _seed_robot(
+            module_b_env["session_factory"],
+            owner_teacher_id=None,
+            visibility=RobotVisibility.SHARED,
+            status=RobotStatus.READY,
+            with_owner_binding=False,
+        )
+    )
+
+    response = module_b_env["client"].get(
+        "/api/v1/onboarding/robots",
+        headers=_auth_headers(module_b_env["foreign_token"]),
+    )
+    assert response.status_code == 200
+    assert robot_id in {item["id"] for item in response.json()["items"]}
 
 
 @pytest.mark.parametrize(
@@ -667,15 +750,14 @@ def test_module_b_robot_id_routes_return_404_for_missing_id(
     assert response.status_code == 404, response.text
 
 
-def test_onboarding_missing_robot_returns_400_current_behavior(module_b_env: dict) -> None:
-    """这是当前行为，疑似缺陷 B-HTTP-01：不存在的机器人被归为 400 而非 404。"""
+def test_onboarding_missing_robot_returns_404(module_b_env: dict) -> None:
+    """B-HTTP-01：首次选择不存在的机器人返回 404。"""
     response = module_b_env["client"].post(
         "/api/v1/onboarding/robots",
         headers=_auth_headers(module_b_env["owner_token"]),
         json={"robot_ids": [99999999]},
     )
-    assert response.status_code == 400
-    assert response.json()["message"] == "机器人 ID=99999999 不存在或不可用"
+    assert response.status_code == 404
 
 
 def test_robot_asset_http_path_traversal_is_blocked(
@@ -703,7 +785,7 @@ def test_robot_asset_http_path_traversal_is_blocked(
 
 
 def test_analysis_tasks_have_no_cancel_route_current_behavior() -> None:
-    """这是当前行为，疑似缺陷 B-FUNC-01：分析任务可创建和查看，但没有取消入口。"""
+    """登记 B-FUNC-01：分析任务可创建和查看，但本批不新增取消入口。"""
     analysis_routes = {
         (method, route.path)
         for route in app.routes
@@ -718,8 +800,8 @@ def test_analysis_tasks_have_no_cancel_route_current_behavior() -> None:
     }
 
 
-def test_robot_asset_denial_has_no_audit_record_current_behavior(module_b_env: dict) -> None:
-    """这是当前行为，疑似缺陷 B-AUDIT-01：资产越权拒绝没有留下审计记录。"""
+def test_robot_asset_denial_writes_audit_record(module_b_env: dict) -> None:
+    """B-AUDIT-01：资产越权拒绝记录真实机器人编号与调用者。"""
     robot_id = asyncio.run(
         _seed_robot(
             module_b_env["session_factory"], owner_teacher_id=module_b_env["owner_id"]
@@ -738,4 +820,10 @@ def test_robot_asset_denial_has_no_audit_record_current_behavior(module_b_env: d
             )
             return list(result.scalars().all())
 
-    assert asyncio.run(_audit_rows()) == []
+    audit_rows = asyncio.run(_audit_rows())
+    assert len(audit_rows) == 1
+    assert audit_rows[0].decision == "deny"
+    assert audit_rows[0].action == "list_robot_assets"
+    assert audit_rows[0].resource_type == "robot_model"
+    assert audit_rows[0].resource_id == str(robot_id)
+    assert audit_rows[0].actor_user_id == str(module_b_env["foreign_id"])

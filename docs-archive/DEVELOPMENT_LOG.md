@@ -10094,3 +10094,44 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`
   - 按任务要求未 commit、未 push；最终 `git status --short` 未出现 `data/knowledge_store.json`。该文件是仓库既有跟踪文件，工作区与 HEAD 的 SHA-256 均为 `6d00252d03194ba0a67948a0e9b48beff0b4ca6418198bd9ab55b35b15c0475f`，内容未变
 - Next Step: 由董事会复核当前未提交差异；如需补齐数据库门禁的全绿证据，在无沙箱限制环境按同一全量命令复跑。本记录不自行宣布模块 C 或 S3 阶段完成。
+
+## 2026-09-06 — RMOS-S3-006 模块 B 第二步七类缺陷修复
+
+- DateTime: 2026-09-06 21:30:19 +0800
+- Task: `RMOS-S3-006（模块 B 第二步）`；按 G1 绕过唯一实现、G2 跨校边界、G3 契约与审计三组修复 B-AUTH-01/02/03、B-HTTP-01、B-AUDIT-01、B-STORAGE-01；B-FUNC-01 只保留登记，不新增取消端点。
+- Scope (files changed):
+  - 安全 G1/G2：`r-mos-backend/app/services/robot/visibility.py`、`r-mos-backend/app/api/v1/endpoints/robots.py`、`r-mos-backend/app/api/v1/endpoints/onboarding.py`
+  - 契约/审计 G3：`r-mos-backend/app/api/v1/endpoints/robots.py`、`r-mos-backend/app/api/v1/endpoints/onboarding.py`
+  - 断言：`r-mos-backend/tests/e2e/test_module_b_behavior.py`、`r-mos-backend/tests/e2e/test_websocket_robot_authorization.py`、`r-mos-backend/tests/unit/test_robot_asset_boundary.py`、`r-mos-backend/tests/unit/test_robot_asset_serving.py`
+  - 证据：`docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - 每次 pytest 均在本 worktree 的 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_b_behavior.py tests/unit/test_robot_asset_boundary.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_b_behavior.py tests/unit/test_robot_asset_boundary.py tests/e2e/test_websocket_robot_authorization.py tests/unit/test_robot_asset_serving.py tests/test_api_robots.py tests/test_api_student_robots.py tests/test_storage.py tests/test_s3_storage.py tests/unit/test_robot_asset_validator.py tests/unit/test_pdf_extractor.py tests/unit/test_cad_converter.py tests/unit/test_manifest_generator.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_b_behavior.py tests/e2e/test_websocket_robot_authorization.py tests/unit/test_robot_asset_boundary.py tests/unit/test_robot_asset_serving.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`（两次；未加 `-q`、未加 `--timeout`）
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`（结构调整前后重测）
+  - `git diff --check`、`git diff --name-only`、`git status --short`
+- Tests:
+  - 基线模块 B：`35 passed in 1.15s`
+  - 首轮 RED：`8 failed, 39 passed in 4.66s`；八个失败分别命中详情/分析读取 403、唯一入口缺失、跨校共享、首次选择、404 契约、上传路径和拒绝审计
+  - 首轮 GREEN：`47 passed in 4.58s`
+  - 扩大回归首次：`7 failed, 166 passed in 13.67s`；7 项均为直接调用端点的旧测试未提供新增的 Request 前置，补真实请求夹具，断言不变
+  - 扩大回归复验：`173 passed in 13.70s`
+  - 历史跨校绑定 RED：`1 failed in 0.90s`；证明旧绑定仍可从“我的机器人”列表泄漏，补统一过滤后复验通过
+  - 最终模块 B/WS/资产回归：`59 passed in 7.32s`
+  - 首轮全量：`3 failed, 1189 passed in 171.76s (0:02:51)`；行为正确但未达到本任务通过数门槛，因此补充 WS 跨校拒绝与系统内置共享机器人两条边界证据
+  - 最终全量汇总原文：`3 failed, 1191 passed in 162.49s (0:02:42)`
+  - 分层依赖中间版本曾出现 `service -> service` 46 条，定位为可见性服务直接依赖审计服务；改为接口层组合后最终恢复为 `45` 条、方向 `27`，业务模块强连通分量 `0`，没有新增跨模块 service→service 边
+- Result: **PASS（RMOS-S3-006 模块 B 第二步 G1-G3 软件行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。除任务预先声明的 3 项数据库连接失败外，1191 项通过。
+- Risks/Notes:
+  - G1：详情、分析任务、工具、资产清单、资产下载五个按机器人编号读取的 HTTP 端点，经接口层审计组合后全部调用既有 `get_visible_robot_or_404`；AST 断言锁定该关系。私有机器人对非绑定教师返回 404，owner 正常返回 200
+  - G2：教师所有的 SHARED 机器人只对同校已认证用户可见；跨校详情/资产/下载/绑定均 404，共享库和“我的机器人”列表均不出现，WS 在握手期以 1008 拒绝；同校详情、共享库、资产与首次选择保持放行。owner 为空的系统内置 SHARED 机器人不属于任何学校，继续对所有已认证学校可见
+  - SHARED 语义裁决：旧 `visibility.py` 与旧资产测试写的是“全平台已认证用户可见”；本次按更高优先级的验收章程/已接受 ADR 的学校租户边界、模块 F/C 已执行口径和本任务明确要求，改为“教师所有资产同校共享”。系统内置例外依据既有导入规格中 owner 为空且通过 SHARED 提供平台资产的设计
+  - G3：onboarding 选择确实不存在的机器人由 400 改为 404；资产越权 404 同时写入 `deny` 审计，记录真实机器人编号与真实调用者；上传响应去掉重复机器人目录后可直接用于下载。数据库仍保留既有存储路径格式，未迁移历史数据、未改存储抽象
+  - 被修改的旧断言：详情 403、分析任务 403、跨校共享全放行、跨校首次选择成功、不存在机器人 400、上传路径不可下载、资产拒绝无审计，全部属于“测试固化漏洞”；没有任何旧断言因“生产改错了”而放宽
+  - `test_robot_asset_boundary.py` 仅把旧 SHARED 文字改为同校语义，原放行断言不变；`test_robot_asset_serving.py` 仅补直接函数调用所缺的 Request 前置，原 7 条断言不变；WebSocket 同校断言只改名并新增跨校拒绝断言
+  - 四张无归属表继续通过父对象推导，本批未加字段、未写迁移；未新增依赖。B-FUNC-01 继续由 `test_analysis_tasks_have_no_cancel_route_current_behavior` 登记，未实现取消入口
+  - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均在连接 `::1:5432` 时收到 `PermissionError: [Errno 1] Operation not permitted`
+  - 回退分组：安全组回退可见性、机器人读取/列表与 onboarding 过滤；契约/审计组单独回退 onboarding 404、资产拒绝审计组合和上传响应路径。按任务要求未 commit、未 push
+- Next Step: 由董事会复核当前未提交差异；若需要 3 项 PostgreSQL 门禁全绿，在无沙箱限制环境用同一全量命令复跑。本记录不自行宣布模块 B 或 S3 阶段完成。

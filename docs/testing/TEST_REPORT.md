@@ -549,3 +549,24 @@
   - 首轮全量为 `3 failed, 1150 passed`，现场收集为 1153；补充 2 条合法枚举边界和 1 条已存在错误状态证据后，最终通过数达到 1153
   - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均因沙箱拒绝连接 `::1:5432`
 - Result：**PASS（RMOS-S3-005 模块 C 第三步三条 HTTP 契约软件行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。本条不自动宣布模块 C 完成，不代表预生产、真机、课堂或生产验收。
+
+### RMOS-S3-006-B-FIX｜模块 B 第二步 G1-G3 七类缺陷修复
+
+- Test ID / 门禁编号：`B-AUTH-01`、`B-AUTH-02`、`B-AUTH-03`、`B-HTTP-01`、`B-AUDIT-01`、`B-STORAGE-01`；`B-FUNC-01` 仅登记
+- 提交：以 `b4b08070ce017853d16824c7484baa8d9096f1fc` 为基线的未提交工作树；分支 `audit/phase3-auth-control-realtime`。按用户要求未 commit、未 push
+- 执行环境：指定 worktree 的 `r-mos-backend`；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；加载主工作区 `.env` 后执行 `unset CORS_ORIGINS; export DEBUG=true`
+- 复用与行为证据：
+  - G1：详情、分析任务、工具、资产清单、资产下载五个按编号读取端点全部经审计组合调用既有 `get_visible_robot_or_404`，AST 断言固定；拒绝为私有机器人非绑定教师 404，放行为 owner 200
+  - G2：教师所有 SHARED 机器人采用同校共享；跨校详情/资产/下载/绑定 404、列表不可见、WS 1008，连历史遗留跨校绑定也不能穿透；同校详情/资产/共享列表/绑定/首次选择保持放行。owner 为空的系统内置 SHARED 机器人保持平台可用
+  - G3：不存在机器人选择返回 404；资产越权拒绝使用既有 `log_deny_event` 留下真实机器人编号、调用者与 `deny` 决策；owner 资产读取放行；上传响应给出的 `uploads/manual.pdf` 可原样下载
+- SHARED 语义：旧代码和旧测试把它写成“全平台已认证用户可见”，与学校租户边界不一致。本批依据验收章程、已接受 ADR、模块 F/C 的同校/跨校既定口径和本任务明确要求，改为教师所有资产“同校可见、跨校不可见”；无 owner 的系统内置共享机器人不归属任何学校，保留平台可见
+- 被修改的既有断言：详情 403→404、分析任务 403→404、跨校共享放行→拒绝/过滤、跨校首次选择成功→404、不存在机器人 400→404、重复路径且不可下载→相对路径可下载、拒绝审计空列表→真实 deny 记录，均属于“测试固化漏洞”；没有“生产改错了”而放宽的断言。资产存储单元测试只补 Request 前置，原断言不变
+- Commands：
+  - RED/GREEN：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_b_behavior.py tests/unit/test_robot_asset_boundary.py`
+  - 最终模块/WS/资产：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/e2e/test_module_b_behavior.py tests/e2e/test_websocket_robot_authorization.py tests/unit/test_robot_asset_boundary.py tests/unit/test_robot_asset_serving.py`
+  - 全量：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`（未加 `-q`、未加 `--timeout`）
+  - 依赖：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`
+- Key Output：RED `8 failed, 39 passed in 4.66s`；最终模块/WS/资产 `59 passed in 7.32s`；全量汇总原文 `3 failed, 1191 passed in 162.49s (0:02:42)`
+- 分层依赖重测：最终 `service -> service` 跨模块边 `45`、方向 `27`，业务模块强连通分量 `0`；与改前基线一致，没有新增跨模块 service→service 边
+- Failure Handling：实现中间态曾使 service→service 增至 46，立即将审计组合移回接口层后恢复 45；扩大回归 7 项失败是直接函数调用缺 Request，补真实测试前置且不改断言；历史跨校绑定新增 RED 后补列表统一过滤。最终 3 项失败固定为两个审计索引门禁和技能迁移门禁，均因沙箱禁止连接 `::1:5432`
+- Result：**PASS（RMOS-S3-006 模块 B 第二步 G1-G3 软件行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。通过数达到 1191；不代表模块 B、S3、预生产、真机、课堂或生产验收已通过。

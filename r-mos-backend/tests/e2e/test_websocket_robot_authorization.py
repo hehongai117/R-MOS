@@ -6,9 +6,11 @@ import asyncio
 import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.robot_model import RobotModel, RobotStatus, RobotVisibility
+from app.models.user import User
 from tests.e2e.helpers import register_and_login
 
 
@@ -30,6 +32,17 @@ async def _seed_robot(
         await session.commit()
         await session.refresh(robot)
         return robot.id
+
+
+async def _set_user_school(
+    session_factory: async_sessionmaker[AsyncSession], user_id: int, school_name: str
+) -> None:
+    async with session_factory() as session:
+        user = (
+            await session.execute(select(User).where(User.id == user_id))
+        ).scalar_one()
+        user.school_name = school_name
+        await session.commit()
 
 
 def _robot_ws_path(robot_id: int, token: str) -> str:
@@ -86,7 +99,7 @@ def test_owner_can_subscribe_to_private_robot(
 
 
 @pytest.mark.regression
-def test_authenticated_user_can_subscribe_to_shared_robot(
+def test_same_school_user_can_subscribe_to_shared_robot(
     e2e_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     """SHARED 规则必须与 HTTP 机器人可见性保持一致。"""
@@ -107,3 +120,32 @@ def test_authenticated_user_can_subscribe_to_shared_robot(
         message = websocket.receive_json()
 
     assert message["type"] == "telemetry"
+
+
+@pytest.mark.regression
+def test_cross_school_user_cannot_subscribe_to_shared_robot(
+    e2e_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    """SHARED 的学校边界必须由 HTTP 与 WebSocket 的唯一实现共同执行。"""
+    client, session_factory = e2e_env
+    owner_id, _, _ = register_and_login(client, email_prefix="ws_shared_owner")
+    foreign_id, _, foreign_login = register_and_login(
+        client, email_prefix="ws_shared_foreign"
+    )
+    asyncio.run(_set_user_school(session_factory, foreign_id, "WebSocket 外校"))
+    robot_id = asyncio.run(
+        _seed_robot(
+            session_factory,
+            owner_teacher_id=owner_id,
+            visibility=RobotVisibility.SHARED,
+        )
+    )
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(
+            _robot_ws_path(robot_id, foreign_login["access_token"])
+        ):
+            pass
+
+    assert exc_info.value.code == 1008
+    assert exc_info.value.reason == "robot_forbidden"

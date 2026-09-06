@@ -2,7 +2,7 @@
 import logging
 from functools import partial
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,10 +11,11 @@ from starlette.background import BackgroundTask
 
 from app.core.database import get_db
 from app.services.storage import get_storage
+from app.services.access_control import log_deny_event
 from app.services.authz_guard import ActorContext, get_current_actor, actor_has_role
 from app.services.robot_service import RobotService
 from app.services.robot_asset_validator import validate_robot_assets
-from app.services.robot.visibility import get_visible_robot_or_404
+from app.services.robot.visibility import get_visible_robot_or_404, visible_robot_filter
 from app.services.knowledge.project_ingest_service import project_ingest_service
 from app.models.robot_model import RobotModel, RobotVisibility, RobotStatus, TeacherRobotBinding
 from app.models.robot_asset import RobotAsset, AssetType
@@ -44,6 +45,30 @@ def _require_teacher_or_admin(actor: ActorContext):
     # 导致正常注册的教师对全部 12 个机器人端点一律 403（实测确认）。
     if not actor_has_role(actor, "teacher", "admin"):
         raise HTTPException(status_code=403, detail="教师或管理员权限才能操作机器人")
+
+
+async def _get_audited_visible_robot_or_404(
+    db: AsyncSession,
+    request: Request,
+    actor: ActorContext,
+    robot_id: int,
+    *,
+    action: str,
+) -> RobotModel:
+    """组合唯一可见性守卫与既有拒绝审计，不复制访问规则。"""
+    try:
+        return await get_visible_robot_or_404(db, robot_id, actor)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            await log_deny_event(
+                db,
+                request,
+                action=action,
+                resource_type="robot_model",
+                resource_id=robot_id,
+                reason="robot_not_visible_or_missing",
+            )
+        raise
 
 
 @router.post("", response_model=RobotModelResponse, status_code=status.HTTP_201_CREATED)
@@ -87,7 +112,10 @@ async def list_robots(
     stmt = (
         select(RobotModel, TeacherRobotBinding.binding_type)
         .join(TeacherRobotBinding, TeacherRobotBinding.robot_model_id == RobotModel.id)
-        .where(TeacherRobotBinding.teacher_id == actor.user_id)
+        .where(
+            TeacherRobotBinding.teacher_id == actor.user_id,
+            visible_robot_filter(actor),
+        )
     )
     result = await db.execute(stmt)
     rows = result.all()
@@ -105,12 +133,13 @@ async def list_shared_robots(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
-    """浏览共享机器人库（任何已登录教师可访问）。"""
+    """浏览本校共享机器人库（系统内置共享机器人对各校可见）。"""
     _require_teacher_or_admin(actor)
 
     stmt = select(RobotModel).where(
         RobotModel.visibility == RobotVisibility.SHARED,
         RobotModel.status == RobotStatus.READY,
+        visible_robot_filter(actor),
     )
 
     if search:
@@ -155,27 +184,14 @@ async def list_shared_robots(
 @router.get("/{robot_id}", response_model=RobotModelResponse)
 async def get_robot(
     robot_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     """获取机器人详情（需绑定关系或共享可见）。"""
-    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
-    robot = result.scalar_one_or_none()
-    if not robot:
-        raise HTTPException(status_code=404, detail="机器人不存在")
-    if actor_has_role(actor, "admin"):
-        return robot
-    if robot.visibility == RobotVisibility.SHARED:
-        return robot
-    binding_result = await db.execute(
-        select(TeacherRobotBinding).where(
-            TeacherRobotBinding.teacher_id == actor.user_id,
-            TeacherRobotBinding.robot_model_id == robot_id,
-        )
+    return await _get_audited_visible_robot_or_404(
+        db, request, actor, robot_id, action="get_robot"
     )
-    if not binding_result.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="无权访问该机器人")
-    return robot
 
 
 @router.put("/{robot_id}", response_model=RobotModelResponse)
@@ -290,7 +306,12 @@ async def upload_robot_files(
             )
 
     return FileUploadResponse(
-        uploaded=[RobotAssetResponse.model_validate(a) for a in uploaded],
+        uploaded=[
+            RobotAssetResponse.model_validate(a).model_copy(
+                update={"file_path": a.file_path.removeprefix(f"{robot_id}/")}
+            )
+            for a in uploaded
+        ],
         failed=failed,
     )
 
@@ -347,17 +368,15 @@ async def trigger_analysis(
 @router.get("/{robot_id}/analysis-tasks", response_model=AnalysisTaskListResponse)
 async def list_analysis_tasks(
     robot_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     """查看机器人的分析任务列表。"""
     _require_teacher_or_admin(actor)
-    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
-    robot = result.scalar_one_or_none()
-    if not robot:
-        raise HTTPException(status_code=404, detail="机器人不存在")
-    if robot.owner_teacher_id != actor.user_id and not actor_has_role(actor, "admin"):
-        raise HTTPException(status_code=403, detail="只有创建者或管理员可以查看分析任务")
+    await _get_audited_visible_robot_or_404(
+        db, request, actor, robot_id, action="list_analysis_tasks"
+    )
 
     task_result = await db.execute(
         select(AnalysisTask)
@@ -439,16 +458,14 @@ async def set_visibility(
 @router.post("/{robot_id}/bind", status_code=status.HTTP_201_CREATED)
 async def bind_shared_robot(
     robot_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     """引用一个共享机器人到自己名下。"""
     _require_teacher_or_admin(actor)
 
-    result = await db.execute(select(RobotModel).where(RobotModel.id == robot_id))
-    robot = result.scalar_one_or_none()
-    if not robot:
-        raise HTTPException(status_code=404, detail="机器人不存在")
+    robot = await get_visible_robot_or_404(db, robot_id, actor)
     if robot.visibility != RobotVisibility.SHARED:
         raise HTTPException(status_code=400, detail="该机器人未设为共享，无法引用")
 
@@ -501,13 +518,16 @@ async def unbind_shared_robot(
 @router.get("/{robot_id}/tools")
 async def get_robot_tools(
     robot_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     """获取机器人工具列表（从 assembly_manifest.json 中读取）。"""
     import json
 
-    await get_visible_robot_or_404(db, robot_id, actor)
+    await _get_audited_visible_robot_or_404(
+        db, request, actor, robot_id, action="get_robot_tools"
+    )
 
     try:
         manifest_bytes = await to_thread.run_sync(
@@ -522,12 +542,15 @@ async def get_robot_tools(
 @router.get("/{robot_id}/assets")
 async def list_robot_assets(
     robot_id: int,
+    request: Request,
     asset_type: Optional[str] = Query(None, description="过滤资产类型: upload_original, model_glb, manifest, thumbnail"),
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     """列出机器人的资产文件，支持按 asset_type 过滤。"""
-    await get_visible_robot_or_404(db, robot_id, actor)
+    await _get_audited_visible_robot_or_404(
+        db, request, actor, robot_id, action="list_robot_assets"
+    )
     query = select(RobotAsset).where(RobotAsset.robot_model_id == robot_id)
     if asset_type:
         query = query.where(RobotAsset.asset_type == asset_type)
@@ -552,6 +575,7 @@ async def list_robot_assets(
 async def get_robot_asset(
     robot_id: int,
     file_path: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
@@ -565,7 +589,9 @@ async def get_robot_asset(
     前端需改为先用带令牌的客户端取回二进制、再交给加载器
     （`RuntimeAssetPreview.tsx` 已有该模式）。
     """
-    await get_visible_robot_or_404(db, robot_id, actor)
+    await _get_audited_visible_robot_or_404(
+        db, request, actor, robot_id, action="get_robot_asset"
+    )
 
     ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
     content_types = {

@@ -5,8 +5,8 @@ Phase 1 记录：`robots.py` 的工具、资产清单与任意资产路径下载
 
 本文件锁定新规格。一个决定性的数据事实：`RobotVisibility` 只有 `PRIVATE` 与
 `SHARED` 两档（`app/models/robot_model.py:8-11`），**没有面向匿名的公开档**——
-`SHARED` 的语义是"对已认证用户可见"，不是"对互联网公开"。因此资产不存在合法的
-匿名读取场景，一律要求认证，并沿用 `get_robot` 的可见性/绑定规则。
+`SHARED` 的语义是"对同校已认证用户可见"，不是"对互联网公开"。因此资产不存在
+合法的匿名读取场景，一律要求认证，并沿用统一的机器人可见性规则。
 
 越权读取对外返回 404（验收章程 G1 + 单校五机验收矩阵对 AUTH-103 的复验口径），
 不返回 403——403 会泄漏"该机器人存在"。
@@ -143,7 +143,7 @@ def _act_as(client: TestClient, token: str | None) -> None:
 def test_anonymous_cannot_touch_robot_assets(asset_env, route: str) -> None:
     """AUTH-GATE-09：匿名访问任何资产入口都必须 401。
 
-    含 `SHARED` 机器人——SHARED 是"对已认证用户可见"，不是对匿名公开。
+    含 `SHARED` 机器人——SHARED 是"对同校已认证用户可见"，不是对匿名公开。
     """
     client = asset_env["client"]
     _act_as(client, None)
@@ -182,8 +182,8 @@ def test_bound_teacher_can_list_own_robot_assets(asset_env) -> None:
     assert "items" in resp.json()
 
 
-def test_any_authenticated_user_can_list_shared_robot_assets(asset_env) -> None:
-    """正向边界：SHARED 机器人对**已认证**用户可见（与 get_robot 的规则一致）。"""
+def test_same_school_user_can_list_shared_robot_assets(asset_env) -> None:
+    """正向边界：SHARED 机器人对同校已认证用户可见。"""
     client = asset_env["client"]
     _act_as(client, asset_env["other_token"])
 

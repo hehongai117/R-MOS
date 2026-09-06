@@ -1,5 +1,5 @@
 """教师 Onboarding 端点。"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.models.robot_model import RobotModel, RobotStatus, TeacherRobotBinding
 from app.models.user import User
 from app.services.authz_guard import ActorContext, get_current_actor, actor_has_role
+from app.services.robot.visibility import get_visible_robot_or_404, visible_robot_filter
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -25,7 +26,10 @@ async def list_available_robots(
     if not actor_has_role(actor, "teacher"):
         raise HTTPException(status_code=403, detail="仅教师可访问")
 
-    stmt = select(RobotModel).where(RobotModel.status == RobotStatus.READY)
+    stmt = select(RobotModel).where(
+        RobotModel.status == RobotStatus.READY,
+        visible_robot_filter(actor),
+    )
     result = await db.execute(stmt)
     robots = result.scalars().all()
 
@@ -46,6 +50,7 @@ async def list_available_robots(
 @router.post("/robots")
 async def select_robots(
     payload: RobotSelectionRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
@@ -63,12 +68,8 @@ async def select_robots(
 
     # 校验所有 robot_id 存在且状态为 ready
     for rid in payload.robot_ids:
-        robot = (
-            await db.execute(
-                select(RobotModel).where(RobotModel.id == rid, RobotModel.status == RobotStatus.READY)
-            )
-        ).scalar_one_or_none()
-        if not robot:
+        robot = await get_visible_robot_or_404(db, rid, actor)
+        if robot.status != RobotStatus.READY:
             raise HTTPException(status_code=400, detail=f"机器人 ID={rid} 不存在或不可用")
 
     # 批量创建绑定
