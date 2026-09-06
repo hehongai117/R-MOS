@@ -8,6 +8,7 @@ from typing import Optional, List, Dict, Any
 import enum
 
 from app.schemas.report import LLMEvaluationReport
+from app.core.enums import RiskLevel
 
 
 class CoachRecommendRequest(BaseModel):
@@ -31,16 +32,29 @@ class KnowledgeSearchRequest(BaseModel):
     status: Optional[str] = "APPROVED"
 
 
+class KnowledgeTypeInput(str, enum.Enum):
+    SOLUTION = "solution"
+    PATTERN = "pattern"
+    DOCUMENT = "document"
+    TIP = "tip"
+    WARNING = "warning"
+
+
+class KnowledgeDecision(str, enum.Enum):
+    APPROVE = "approve"
+    REJECT = "reject"
+
+
 class KnowledgeCreateRequest(BaseModel):
     title: str
     content: str
-    type: str = "solution"
+    type: KnowledgeTypeInput = KnowledgeTypeInput.SOLUTION
     scope: Optional[Dict[str, Any]] = None
-    risk_level: str = "R1"
+    risk_level: RiskLevel = RiskLevel.R1
 
 
 class KnowledgeApproveRequest(BaseModel):
-    decision: str  # approve, reject
+    decision: KnowledgeDecision
     feedback: str = ""
     rating: Optional[float] = None
 

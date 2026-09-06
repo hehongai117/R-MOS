@@ -148,15 +148,15 @@ async def create_knowledge(
     actor: ActorContext = Depends(require_permission("agent:execute")),
 ):
     """Create new knowledge entry"""
-    from app.services.knowledge_governance import KnowledgeType, RiskLevel, Scope
+    from app.services.knowledge_governance import KnowledgeType, Scope
 
     entry = knowledge_governance.create_knowledge(
         title=request.title,
         content=request.content,
-        entry_type=KnowledgeType(request.type),
+        entry_type=KnowledgeType(request.type.value),
         creator_id=str(actor.user_id),
         scope=Scope(**request.scope) if request.scope else None,
-        risk_level=RiskLevel(request.risk_level),
+        risk_level=request.risk_level,
     )
 
     return {
@@ -282,12 +282,13 @@ async def submit_knowledge(
     """Submit knowledge for review"""
     # 审计 C-AUTH-04：此前无任何归属校验，他校用户可提交他人草稿送审。
     entry = knowledge_governance.get_knowledge(entry_id)
-    if entry is not None:
-        visible = await _same_school_user_ids(db, actor)
-        if visible is not None and entry.created_by and entry.created_by not in visible:
-            # 写路径用 403，不用 404——口径见 `ownership.py`：
-            # 读路径 404 是为了不泄露存在性；写操作的目标对象已由调用方确认存在。
-            raise HTTPException(status_code=403, detail="cross-school knowledge submit denied")
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Knowledge entry not found")
+    visible = await _same_school_user_ids(db, actor)
+    if visible is not None and entry.created_by and entry.created_by not in visible:
+        # 写路径用 403，不用 404——口径见 `ownership.py`：
+        # 读路径 404 是为了不泄露存在性；写操作的目标对象已由调用方确认存在。
+        raise HTTPException(status_code=403, detail="cross-school knowledge submit denied")
     success, message = knowledge_governance.submit_for_review(entry_id)
     if not success:
         raise HTTPException(status_code=400, detail=message)
@@ -307,11 +308,11 @@ async def approve_knowledge(
         ApprovalRequest(
             entry_id=entry_id,
             reviewer_id=str(actor.user_id),
-            decision=request.decision,
+            decision=request.decision.value,
             feedback=request.feedback,
             rating=request.rating,
         )
     )
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    return {"status": request.decision}
+    return {"status": request.decision.value}

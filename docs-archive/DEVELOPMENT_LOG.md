@@ -10058,3 +10058,39 @@ A1 曾指出、主审又自犯一次的同一个坑）复查 92 个写端点，�
   - 未新增抽象、依赖、数据结构或迁移；结构收口与功能约束是独立差异块，可分别反向应用；按任务要求未 commit、未 push
   - 最终 `git status --short` 未出现 `data/knowledge_store.json`
 - Next Step: 由董事会复核当前未提交差异；在无沙箱限制环境原样复跑全量可补齐 3 项 PostgreSQL 门禁。本记录不自行宣布模块 E 或 S3 阶段完成。
+
+## 2026-09-06 — RMOS-S3-005 模块 C 第三步三条 HTTP 契约修复
+
+- DateTime: 2026-09-06 20:34:20 +0800
+- Task: `RMOS-S3-005（模块 C 第三步：G4）`；只修 C-API-01、C-VALID-01、C-APPROVAL-01，不重做已完成的 G1/G2。
+- Scope (files changed):
+  - 生产代码：`r-mos-backend/app/api/v1/endpoints/agent_knowledge.py`、`r-mos-backend/app/schemas/agent.py`
+  - 测试：`r-mos-backend/tests/unit/test_agent_characterization.py`、`r-mos-backend/tests/unit/test_api_knowledge.py`
+  - 证据：`docs/testing/TEST_REPORT.md`、`docs-archive/DEVELOPMENT_LOG.md`
+- Commands Run:
+  - 每次 pytest 均在本 worktree 的 `r-mos-backend` 下先执行：`set -a; . /Users/xuhehong/Desktop/r-mos/r-mos-backend/.env; set +a`、`unset CORS_ORIGINS`、`export DEBUG=true`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_agent_characterization.py::test_submit_knowledge_nonexistent_returns_404 tests/unit/test_api_knowledge.py::test_create_invalid_enum_returns_validation_error tests/unit/test_api_knowledge.py::test_approve_rejects_unknown_decision_without_changing_entry`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_agent_characterization.py::test_submit_knowledge_nonexistent_returns_404 tests/unit/test_api_knowledge.py::test_create_invalid_enum_returns_validation_error tests/unit/test_api_knowledge.py::test_approve_rejects_unknown_decision_without_changing_entry tests/unit/test_api_knowledge.py::test_other_school_user_cannot_submit_foreign_draft`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_api_knowledge.py tests/unit/test_agent_characterization.py tests/unit/test_knowledge_hub.py`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`（两次；未加 `-q`、未加 `--timeout`）
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings --collect-only`
+  - `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`（改前、改后各一次）
+  - `rg` 检查前端审批调用值；`git diff --check`、`git diff --name-only`、`git status --short`
+- Tests:
+  - 改前旧行为断言：`4 passed in 1.56s`，确认不存在为 400、两个非法枚举为 500、非法决定返回 200 并写成拒绝
+  - RED：`4 failed in 1.58s`，新规格逐条准确击穿旧行为
+  - 首轮 GREEN：状态码与状态保护已经生效；3 项新增响应体断言因未采用项目统一 422 包装格式而失败，修正为既有格式后定向 `5 passed in 1.57s`
+  - 模块 C 扩大回归：补边界证据前 `77 passed in 11.98s`；最终复验 `80 passed in 13.12s`
+  - 首轮全量：`3 failed, 1150 passed in 103.96s (0:01:43)`；`1153 tests collected in 1.18s`，说明任务给定 1153 基线包含沙箱内失败的 3 项数据库门禁
+  - 最终全量汇总原文：`3 failed, 1153 passed in 106.38s (0:01:46)`
+  - 分层依赖改前、改后均为：跨模块边 `96`，`service -> service` 跨模块边 `45`、方向 `27`，业务模块强连通分量 `0`；没有新增跨模块 `service -> service` 边
+- Result: **PASS（RMOS-S3-005 模块 C 第三步三条 HTTP 契约范围）/ 环境受限（3 项 PostgreSQL 门禁）**。除任务预先声明的 3 项数据库连接失败外均通过，通过数达到 1153。
+- Risks/Notes:
+  - C-API-01：确实不存在由 400 改为 404；只有存在对象才继续学校边界校验，跨校写入仍为 403；存在但状态不允许仍为 400
+  - C-VALID-01：知识类型与风险等级改由 Pydantic 枚举入参拦截，非法值由 500 改为 422；未在业务代码添加 try/except
+  - C-APPROVAL-01：审批决定改为只接受 approve/reject；非法值由“200 且静默拒绝”改为 422，条目保持 PENDING，历史记录不增加
+  - 三条被修改的既有断言均为“测试固化漏洞”；没有任何断言属于“生产改错了”而被放宽
+  - 前端调用类型已限制为 approve/reject，未发现模块外契约击穿；未新增依赖、迁移、抽象或跨模块服务调用
+  - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均在连接 `::1:5432` 时由沙箱返回 `PermissionError: [Errno 1] Operation not permitted`
+  - 按任务要求未 commit、未 push；最终 `git status --short` 未出现 `data/knowledge_store.json`。该文件是仓库既有跟踪文件，工作区与 HEAD 的 SHA-256 均为 `6d00252d03194ba0a67948a0e9b48beff0b4ca6418198bd9ab55b35b15c0475f`，内容未变
+- Next Step: 由董事会复核当前未提交差异；如需补齐数据库门禁的全绿证据，在无沙箱限制环境按同一全量命令复跑。本记录不自行宣布模块 C 或 S3 阶段完成。

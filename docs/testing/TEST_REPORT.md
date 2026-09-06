@@ -521,3 +521,31 @@
 - 分层依赖重测：跨模块边 `94`；`service -> service` 跨模块边 `45`、方向 `27`；业务模块强连通分量 `0`。与批准基线一致，没有新增跨模块 `service -> service` 边
 - Failure Handling：首轮全量只有 3 项已知沙箱数据库失败，但通过数为 1099，未满足本任务 `>=1100`；补充普通任务合法完成的正向行为证据后重新执行全量，通过数达到 1100。最终 3 项失败仍固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均因沙箱拒绝连接 `::1:5432`
 - Result：**PASS（RMOS-S3-003 模块 E 第二步 G1-G5 软件行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。本条不自动宣布模块 E 完成，不代表预生产、真机、课堂或生产验收。
+
+### RMOS-S3-005-C-G4｜模块 C 三条 HTTP 契约修复
+
+- Test ID / 门禁编号：`C-API-01`、`C-VALID-01`、`C-APPROVAL-01`；G2 保护用例 `C-AUTH-04`
+- 提交：以 `3ab36ed1` 为基线的未提交工作树；分支 `audit/phase3-auth-control-realtime`。按用户要求未 commit、未 push
+- 执行环境：本 worktree 的 `r-mos-backend`；解释器 `/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python`；加载主工作区 `.env` 后执行 `unset CORS_ORIGINS; export DEBUG=true`
+- 命令：
+  - 定向 RED/GREEN：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_agent_characterization.py::test_submit_knowledge_nonexistent_returns_404 tests/unit/test_api_knowledge.py::test_create_invalid_enum_returns_validation_error tests/unit/test_api_knowledge.py::test_approve_rejects_unknown_decision_without_changing_entry tests/unit/test_api_knowledge.py::test_other_school_user_cannot_submit_foreign_draft`
+  - 模块 C 回归：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings tests/unit/test_api_knowledge.py tests/unit/test_agent_characterization.py tests/unit/test_knowledge_hub.py`
+  - 全量：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python -m pytest -p no:warnings`（未加 `-q`、未加 `--timeout`）
+  - 依赖：`/Users/xuhehong/Desktop/r-mos/r-mos-backend/venv/bin/python ../docs/governance/evidence/2026-09-05-layered-dependency-measure.py`
+- 行为结果：
+  - C-API-01：提交确实不存在的知识条目由 400 改为 404；存在但状态不允许仍为 400
+  - C-VALID-01：非法知识类型和非法风险等级均由 500 改为 422；合法 warning 类型和 R3 风险仍可创建
+  - C-APPROVAL-01：非法 publish 决定由 200 且写成 REJECTED 改为 422；条目保持 PENDING，历史记录不增加
+  - C-AUTH-04：跨校提交仍返回 403，草稿仍保持 DRAFT
+- Tests / 关键原始输出：
+  - RED：`4 failed in 1.58s`
+  - 定向 GREEN：`5 passed in 1.57s`
+  - 模块 C 回归：`80 passed in 13.12s`
+  - 全量汇总原文：`3 failed, 1153 passed in 106.38s (0:01:46)`
+- 被修改的既有断言分类：C-API-01 的 400、C-VALID-01 的 500、C-APPROVAL-01 的 200/REJECTED 全部属于“测试固化漏洞”；没有任何既有断言属于“生产改错了”
+- 分层依赖重测：改前、改后均为跨模块边 `96`，`service -> service` 跨模块边 `45`、方向 `27`，业务模块强连通分量 `0`；没有新增跨模块 `service -> service` 边
+- Failure Handling：
+  - 首轮 GREEN 中状态码已正确，但 3 项新增响应体断言错误假设了框架默认 detail 结构；核对项目统一 422 格式后仅修正新断言，复验通过，未改生产契约
+  - 首轮全量为 `3 failed, 1150 passed`，现场收集为 1153；补充 2 条合法枚举边界和 1 条已存在错误状态证据后，最终通过数达到 1153
+  - 最终 3 项失败固定为 `test_audit_query_indexes_exist`、`test_audit_trace_query_explain_uses_trace_index`、`test_skill_registry_migration_gate`，均因沙箱拒绝连接 `::1:5432`
+- Result：**PASS（RMOS-S3-005 模块 C 第三步三条 HTTP 契约软件行为范围）/ 环境受限（3 项 PostgreSQL 门禁）**。本条不自动宣布模块 C 完成，不代表预生产、真机、课堂或生产验收。

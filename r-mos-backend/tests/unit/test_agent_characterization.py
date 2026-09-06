@@ -620,8 +620,8 @@ def test_submit_knowledge_success() -> None:
         app.state.test_sessionmaker = None
 
 
-def test_submit_knowledge_nonexistent_returns_400() -> None:
-    """这是当前行为，疑似缺陷 C-API-01：不存在条目返回 400，待模块 C 改造时处置。"""
+def test_submit_knowledge_nonexistent_returns_404() -> None:
+    """C-API-01：提交确实不存在的知识条目返回 404。"""
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="ksub2@x.com", password="StrongPass123", full_name="KSUB2")
@@ -631,7 +631,7 @@ def test_submit_knowledge_nonexistent_returns_400() -> None:
             "/api/v1/agent/knowledge/nonexistent-entry-id/submit",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 404
     finally:
         client.close()
         app.dependency_overrides.clear()

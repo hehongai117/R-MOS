@@ -513,11 +513,11 @@ def test_knowledge_write_routes_reject_missing_required_input(
     ],
     ids=["unknown-type", "unknown-risk"],
 )
-def test_create_invalid_enum_returns_server_error_current_behavior(
+def test_create_invalid_enum_returns_validation_error(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
     invalid_fields: dict[str, str],
 ) -> None:
-    """这是当前行为，疑似缺陷 C-VALID-01：非法枚举返回 500，待模块 C 改造时处置。"""
+    """C-VALID-01：非法知识类型或风险等级在入参校验层返回 422。"""
     _, session_factory = knowledge_api_env
     email = f"knowledge_enum_{uuid4().hex[:8]}@example.com"
 
@@ -548,7 +548,51 @@ def test_create_invalid_enum_returns_server_error_current_behavior(
     finally:
         client.close()
 
-    assert response.status_code == 500
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_type"] == "ValidationError"
+    assert body["details"]["details"][0]["loc"][-1] in invalid_fields
+
+
+@pytest.mark.parametrize(
+    "valid_fields",
+    [
+        {"type": "warning"},
+        {"risk_level": "R3"},
+    ],
+    ids=["supported-type", "supported-risk"],
+)
+def test_create_accepts_supported_enum_values(
+    knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    valid_fields: dict[str, str],
+) -> None:
+    """C-VALID-01：收紧校验后仍接受知识模块支持的枚举边界值。"""
+    client, session_factory = knowledge_api_env
+    email = f"knowledge_valid_enum_{uuid4().hex[:8]}@example.com"
+    token = _register_and_login(client, email=email)
+    asyncio.run(
+        _grant_role_permissions(
+            session_factory,
+            email=email,
+            role_name=f"knowledge_valid_enum_{uuid4().hex[:8]}",
+            permission_keys=["agent:execute"],
+        )
+    )
+    payload = {
+        "title": "valid enum",
+        "content": "valid enum",
+        "type": "document",
+        "risk_level": "R1",
+        **valid_fields,
+    }
+
+    response = client.post(
+        "/api/v1/agent/knowledge",
+        headers=_auth_headers(token),
+        json=payload,
+    )
+
+    assert response.status_code == 200
 
 
 def test_cross_school_search_filters_foreign_knowledge_but_same_school_can_read(
@@ -721,10 +765,47 @@ def test_other_school_user_cannot_submit_foreign_draft(
     assert agent_endpoints.knowledge_governance._knowledge_store[entry_id].status.value == "DRAFT"
 
 
-def test_approve_accepts_unknown_decision_as_rejection_current_behavior(
+def test_submit_existing_non_draft_still_returns_400(
     knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
-    """这是当前行为，疑似缺陷 C-APPROVAL-01：非法决定被当作拒绝，待模块 C 改造时处置。"""
+    """C-API-01：只有确实不存在返回 404；状态不允许仍返回 400。"""
+    client, session_factory = knowledge_api_env
+    agent_endpoints.knowledge_governance._knowledge_store.clear()
+    email = f"knowledge_resubmit_{uuid4().hex[:8]}@example.com"
+    token = _register_and_login(client, email=email)
+    asyncio.run(
+        _grant_role_permissions(
+            session_factory,
+            email=email,
+            role_name=f"knowledge_resubmit_{uuid4().hex[:8]}",
+            permission_keys=["agent:execute"],
+        )
+    )
+    create_response = client.post(
+        "/api/v1/agent/knowledge",
+        headers=_auth_headers(token),
+        json={"title": "resubmit", "content": "content", "type": "document"},
+    )
+    assert create_response.status_code == 200
+    entry_id = create_response.json()["id"]
+    assert client.post(
+        f"/api/v1/agent/knowledge/{entry_id}/submit",
+        headers=_auth_headers(token),
+    ).status_code == 200
+
+    response = client.post(
+        f"/api/v1/agent/knowledge/{entry_id}/submit",
+        headers=_auth_headers(token),
+    )
+
+    assert response.status_code == 400
+    assert agent_endpoints.knowledge_governance._knowledge_store[entry_id].status.value == "PENDING"
+
+
+def test_approve_rejects_unknown_decision_without_changing_entry(
+    knowledge_api_env: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    """C-APPROVAL-01：非法决定必须显式报错，且不得静默拒绝条目。"""
     client, session_factory = knowledge_api_env
     agent_endpoints.knowledge_governance._knowledge_store.clear()
 
@@ -749,6 +830,8 @@ def test_approve_accepts_unknown_decision_as_rejection_current_behavior(
         f"/api/v1/agent/knowledge/{entry_id}/submit",
         headers=_auth_headers(token),
     ).status_code == 200
+    entry = agent_endpoints.knowledge_governance._knowledge_store[entry_id]
+    history_before = list(entry.history)
 
     approve_response = client.post(
         f"/api/v1/agent/knowledge/{entry_id}/approve",
@@ -756,9 +839,12 @@ def test_approve_accepts_unknown_decision_as_rejection_current_behavior(
         json={"decision": "publish"},
     )
 
-    assert approve_response.status_code == 200
-    assert approve_response.json() == {"status": "publish"}
-    assert agent_endpoints.knowledge_governance._knowledge_store[entry_id].status.value == "REJECTED"
+    assert approve_response.status_code == 422
+    body = approve_response.json()
+    assert body["error_type"] == "ValidationError"
+    assert body["details"]["details"][0]["loc"][-1] == "decision"
+    assert entry.status.value == "PENDING"
+    assert entry.history == history_before
 
 
 def test_upload_rejects_parent_path_with_unsupported_type(
