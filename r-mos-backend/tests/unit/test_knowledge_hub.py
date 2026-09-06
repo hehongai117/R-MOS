@@ -17,6 +17,7 @@ def _chunk(
     content: str,
     embedding: list[float] | None,
     metadata_json: dict | None = None,
+    owner_user_id: str | None = None,
 ) -> AIKnowledgeChunk:
     return AIKnowledgeChunk(
         source_type="manual",
@@ -24,6 +25,7 @@ def _chunk(
         content=content,
         embedding=embedding,
         metadata_json=metadata_json,
+        owner_user_id=owner_user_id,
         created_at=datetime.utcnow(),
     )
 
@@ -166,3 +168,25 @@ async def test_knowledge_hub_semantic_search_ranks_by_similarity(test_db):
 
     assert [item.title for item in results] == ["chunk-near", "chunk-mid", "chunk-far"]
     assert results[0].score > results[1].score > results[2].score
+
+
+@pytest.mark.asyncio
+async def test_knowledge_hub_returns_other_owner_chunk_current_behavior(test_db):
+    """这是当前行为，疑似缺陷 C-AUTH-05：检索不按条目归属过滤，待模块 C 改造时处置。"""
+    test_db.add(
+        _chunk(
+            source_id="other-user-private-chunk",
+            content="private calibration secret",
+            embedding=None,
+            owner_user_id="other-user",
+        )
+    )
+    await test_db.commit()
+
+    results = await KnowledgeHub().search(
+        db=test_db,
+        query="private calibration secret",
+        top_k=5,
+    )
+
+    assert "other-user-private-chunk" in {item.title for item in results}

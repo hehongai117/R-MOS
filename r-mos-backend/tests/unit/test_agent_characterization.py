@@ -620,7 +620,7 @@ def test_submit_knowledge_success() -> None:
 
 
 def test_submit_knowledge_nonexistent_returns_400() -> None:
-    """POST /agent/knowledge/{entry_id}/submit — 不存在的条目返回 400."""
+    """这是当前行为，疑似缺陷 C-API-01：不存在条目返回 400，待模块 C 改造时处置。"""
     client, sf = _build_client()
     try:
         token = _register_and_login(client, email="ksub2@x.com", password="StrongPass123", full_name="KSUB2")
